@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Two-Team Staircase Game</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 60px 20px 20px; /* Added top spacing (60px instead of 20px) */
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+    }
+
+    body.active-blue {
+      background-color: #e6f2ff;
+    }
+
+    body.active-red {
+      background-color: #ffe6e6;
+    }
+
+    .game-container {
+      display: flex;
+      gap: 50px;
+    }
+
+    .staircase-container {
+      position: relative;
+      width: 650px;
+      height: 390px;
+    }
+
+    .step {
+      position: absolute;
+      width: 50px;
+      height: 30px;
+      background-color: #A0522D;
+      border: 1px solid #5C2E00;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      box-sizing: border-box;
+    }
+
+    .mirrored .step {
+      transform: scaleX(-1);
+    }
+
+    .mirrored .step span {
+      transform: scaleX(-1); /* flip text back */
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+    }
+
+    .character {
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      box-sizing: border-box;
+      transition: bottom 0.5s, left 0.5s;
+    }
+
+    .team1 .character {
+      background-color: blue;
+      border: 1px solid darkblue;
+    }
+
+    .team2 .character {
+      background-color: red;
+      border: 1px solid darkred;
+    }
+
+    .game-ui {
+      text-align: center;
+      padding: 15px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-top: 10px;
+    }
+
+    .controls button {
+      margin: 8px;
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      color: white;
+    }
+
+    .team1 .controls .blue { background-color: #007bff; }
+    .team2 .controls .blue { background-color: #dc3545; }
+
+    .controls .hit { background-color: #28a745; }
+    .controls .stop { background-color: #dc3545; }
+
+    .controls button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .game-info p {
+      margin: 8px 0;
+      font-size: 18px;
+    }
+
+    .game-info .message {
+      font-weight: bold;
+      min-height: 25px;
+    }
+
+    .stars-display {
+      font-size: 22px;
+      color: gold;
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-container">
+  <!-- Team 1 -->
+  <div class="team1">
+    <div class="staircase-container" id="staircase1"></div>
+    <div class="game-ui">
+      <div class="controls">
+        <button class="blue">BLUE</button>
+        <button class="hit" disabled>HIT</button>
+        <button class="stop" disabled>STOP</button>
+      </div>
+      <div class="game-info">
+        <p>Dice Roll: <span class="dice">-</span></p>
+        <p>Step: <span class="step-count">0</span></p>
+        <p>Score: <span class="score">0</span></p>
+        <p>Stars: <span class="stars stars-display"> </span></p>
+        <p class="message"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team 2 -->
+  <div class="team2">
+    <div class="staircase-container mirrored" id="staircase2"></div>
+    <div class="game-ui">
+      <div class="controls">
+        <button class="blue">RED</button>
+        <button class="hit" disabled>HIT</button>
+        <button class="stop" disabled>STOP</button>
+      </div>
+      <div class="game-info">
+        <p>Dice Roll: <span class="dice">-</span></p>
+        <p>Step: <span class="step-count">0</span></p>
+        <p>Score: <span class="score">0</span></p>
+        <p>Stars: <span class="stars stars-display"> </span></p>
+        <p class="message"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STEP_WIDTH = 50;
+  const STEP_HEIGHT = 30;
+  const CHARACTER_WIDTH = 25;
+  const CHARACTER_OFFSET_Y = 30; // raised above step height
+  const CHARACTER_OFFSET_X = (STEP_WIDTH - CHARACTER_WIDTH) / 2;
+  const MAX_STEP = 12;
+
+  const teams = {
+    team1: initTeam('staircase1', false),
+    team2: initTeam('staircase2', true)
+  };
+
+  function initTeam(staircaseId, mirrored) {
+    const staircase = document.getElementById(staircaseId);
+    for (let i = 0; i <= MAX_STEP; i++) {
+      const step = document.createElement('div');
+      step.className = 'step';
+      step.style.bottom = (i * STEP_HEIGHT) + 'px';
+      step.style.left = mirrored
+        ? (MAX_STEP - i) * STEP_WIDTH + 'px'
+        : i * STEP_WIDTH + 'px';
+
+      const label = document.createElement('span');
+      label.textContent = i;
+      step.appendChild(label);
+
+      staircase.appendChild(step);
+    }
+
+    const char = document.createElement('div');
+    char.classList.add('character');
+    staircase.appendChild(char);
+
+    const container = staircase.parentElement;
+    return {
+      container,
+      char,
+      mirrored,
+      step: 0,
+      score: 0,
+      stars: 0,
+      stopped: false,
+      diceElem: container.querySelector('.dice'),
+      stepElem: container.querySelector('.step-count'),
+      scoreElem: container.querySelector('.score'),
+      starsElem: container.querySelector('.stars'),
+      msgElem: container.querySelector('.message'),
+      controls: {
+        blue: container.querySelector('.blue'),
+        hit: container.querySelector('.hit'),
+        stop: container.querySelector('.stop')
+      }
+    };
+  }
+
+  for (let teamKey in teams) {
+    const team = teams[teamKey];
+    team.controls.blue.addEventListener('click', () => startGame(team));
+    team.controls.hit.addEventListener('click', () => rollDice(team));
+    team.controls.stop.addEventListener('click', () => stopGame(team));
+    updateVisual(team);
+    updateUI(team);
+  }
+
+  function startGame(team) {
+    team.step = 0;
+    team.score = 0;
+    team.stopped = false;
+    team.msgElem.textContent = 'Game started! Hit to move.';
+    updateVisual(team);
+    updateUI(team);
+    setActiveBg(team);
+    team.controls.blue.disabled = true;
+    team.controls.hit.disabled = false;
+    team.controls.stop.disabled = false;
+  }
+
+  function rollDice(team) {
+    if (team.stopped) return;
+
+    const roll = Math.floor(Math.random() * 6) + 1;
+    team.step += roll;
+    team.diceElem.textContent = roll;
+
+    if (team.step > MAX_STEP) {
+      team.score = 0;
+      team.msgElem.textContent = `Rolled ${roll}. Fell off the cliff!`;
+      team.stopped = true;
+      updateUI(team);
+      updateVisual(team);
+      otherTeamWins(team);
+      return;
+    }
+
+    team.msgElem.textContent = `Rolled ${roll}. Step ${team.step}`;
+    updateVisual(team);
+    updateUI(team);
+    checkEnd();
+  }
+
+  function stopGame(team) {
+    if (team.stopped) return;
+
+    team.stopped = true;
+    team.score = team.step;
+    team.msgElem.textContent = `Stopped at step ${team.step}. Scored ${team.score} points.`;
+    updateUI(team);
+    checkEnd();
+  }
+
+  function updateVisual(team) {
+    const x = (team.mirrored ? (MAX_STEP - team.step) : team.step) * STEP_WIDTH + CHARACTER_OFFSET_X;
+    const y = team.step * STEP_HEIGHT + CHARACTER_OFFSET_Y;
+    team.char.style.left = x + 'px';
+    team.char.style.bottom = y + 'px';
+  }
+
+  function updateUI(team) {
+    team.stepElem.textContent = team.step;
+    team.scoreElem.textContent = team.score;
+    team.starsElem.textContent = '⭐'.repeat(team.stars);
+  }
+
+  function setActiveBg(team) {
+    document.body.classList.remove('active-blue', 'active-red');
+    document.body.classList.add(team.container.classList.contains('team1') ? 'active-blue' : 'active-red');
+  }
+
+  function checkEnd() {
+    if (teams.team1.stopped && teams.team2.stopped) {
+      determineWinner();
+    }
+  }
+
+  function otherTeamWins(fallenTeam) {
+    const otherTeam = fallenTeam === teams.team1 ? teams.team2 : teams.team1;
+    if (!otherTeam.stopped) {
+      otherTeam.stopped = true;
+      otherTeam.score = otherTeam.step;
+    }
+
+    fallenTeam.msgElem.textContent += " ❌";
+    otherTeam.msgElem.textContent += " ⭐ Opponent fell. You win this round!";
+    otherTeam.stars++;
+
+    updateUI(fallenTeam);
+    updateUI(otherTeam);
+
+    setTimeout(resetGame, 2000);
+  }
+
+  function determineWinner() {
+    if (teams.team1.score > teams.team2.score) {
+      teams.team1.stars++;
+      teams.team1.msgElem.textContent += ' ⭐ Team 1 wins this round!';
+      teams.team2.msgElem.textContent += ' 😞 Team 2 loses.';
+    } else if (teams.team2.score > teams.team1.score) {
+      teams.team2.stars++;
+      teams.team2.msgElem.textContent += ' ⭐ Team 2 wins this round!';
+      teams.team1.msgElem.textContent += ' 😞 Team 1 loses.';
+    } else {
+      teams.team1.msgElem.textContent += ' 🤝 It\'s a tie!';
+      teams.team2.msgElem.textContent += ' 🤝 It\'s a tie!';
+    }
+
+    updateUI(teams.team1);
+    updateUI(teams.team2);
+
+    setTimeout(resetGame, 2000);
+  }
+
+  function resetGame() {
+    for (let team of Object.values(teams)) {
+      team.step = 0;
+      team.score = 0;
+      team.stopped = false;
+      team.diceElem.textContent = '-';
+      team.msgElem.textContent = '';
+      team.controls.blue.disabled = false;
+      team.controls.hit.disabled = true;
+      team.controls.stop.disabled = true;
+      updateVisual(team);
+      updateUI(team);
+    }
+    document.body.classList.remove('active-blue', 'active-red');
+  }
+</script>
+
+</body>
+</html>

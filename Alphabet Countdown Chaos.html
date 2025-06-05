@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alphabet Countdown Chaos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            transition: background-color 0.5s;
+        }
+        #game-container {
+            margin-top: 20px;
+        }
+        .letter-btn {
+            padding: 10px;
+            margin: 5px;
+            font-size: 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .letter-btn:disabled {
+            background-color: gray;
+            cursor: not-allowed;
+        }
+        .unused-letter {
+            background-color: red !important;
+            color: white;
+        }
+        #timer {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        #message {
+            font-size: 30px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        #reset-btn {
+            padding: 10px;
+            font-size: 20px;
+            margin-top: 20px;
+            cursor: pointer;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #score {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        #progress-bar-container {
+            width: 300px;
+            height: 20px;
+            background-color: #ddd;
+            margin: 20px auto;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            width: 100%;
+            height: 100%;
+            background-color: green;
+            transition: width 1s linear;
+        }
+        @keyframes flash {
+            0% { background-color: red; }
+            50% { background-color: white; }
+            100% { background-color: red; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Alphabet Countdown Chaos</h1>
+    <button onclick="setDifficulty('easy')">Easy Mode</button>
+    <button onclick="setDifficulty('hard')">Hard Mode</button>
+    <div id="game-container"></div>
+    <div id="progress-bar-container">
+        <div id="progress-bar"></div>
+    </div>
+    <div id="timer">Time Left: 20s</div>
+    <div id="score">Score: 0</div>
+    <div id="message"></div>
+    <button id="reset-btn" onclick="resetGame()">Reset Game</button>
+
+    <audio id="click-sound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+    <audio id="win-sound" src="https://www.soundjay.com/misc/small-bell-ring-01.wav"></audio>
+    <audio id="lose-sound" src="https://www.soundjay.com/button/beep-10.wav"></audio>
+    <audio id="tick-sound" src="https://www.soundjay.com/button/beep-09.wav"></audio>
+
+    <script>
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        let timeLeft;
+        let timerInterval;
+        let usedLetters = new Set();
+        let score = 0;
+        let difficulty = 'easy';
+
+        function startTimer() {
+            clearInterval(timerInterval); // Reset timer
+            timeLeft = difficulty === 'hard' ? 10 : 20;
+            document.getElementById('timer').innerText = `Time Left: ${timeLeft}s`;
+            document.body.style.animation = "none"; // Reset animation
+            updateProgressBar();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = `Time Left: ${timeLeft}s`;
+                updateProgressBar();
+
+                if (timeLeft <= 5) {
+                    document.body.style.animation = "flash 0.5s infinite";
+                    document.getElementById('tick-sound').play();
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.body.style.animation = "none"; // Stop flashing
+                    document.getElementById('message').innerText = "GAME OVER!";
+                    highlightUnusedLetters();
+                    disableAllButtons();
+                    document.getElementById('lose-sound').play();
+                }
+            }, 1000);
+        }
+
+        function updateProgressBar() {
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = `${(timeLeft / (difficulty === 'hard' ? 10 : 20)) * 100}%`;
+        }
+
+        function disableAllButtons() {
+            document.querySelectorAll('.letter-btn').forEach(btn => btn.disabled = true);
+        }
+
+        function highlightUnusedLetters() {
+            document.querySelectorAll('.letter-btn').forEach(btn => {
+                if (!usedLetters.has(btn.innerText)) {
+                    btn.classList.add('unused-letter');
+                }
+            });
+        }
+
+        function handleLetterClick(letter, button) {
+            if (!usedLetters.has(letter)) {
+                usedLetters.add(letter);
+                button.disabled = true;
+                button.style.backgroundColor = 'gray';
+                document.getElementById('click-sound').play();
+                
+                score += timeLeft; // Score is based on remaining time
+                document.getElementById('score').innerText = `Score: ${score}`;
+                
+                startTimer(); // Reset timer every time a letter is clicked
+                checkWinCondition();
+            }
+        }
+
+        function checkWinCondition() {
+            if (usedLetters.size === alphabet.length) {
+                clearInterval(timerInterval);
+                document.body.style.animation = "none"; // Stop flashing
+                document.getElementById('message').innerText = "YOU WIN!";
+                document.getElementById('win-sound').play();
+            }
+        }
+
+        function resetGame() {
+            usedLetters.clear();
+            document.getElementById('message').innerText = "";
+            document.getElementById('game-container').innerHTML = "";
+            createButtons();
+            clearInterval(timerInterval);
+            timeLeft = difficulty === 'hard' ? 10 : 20;
+            document.getElementById('timer').innerText = `Time Left: ${timeLeft}s`;
+            document.getElementById('score').innerText = "Score: 0";
+            score = 0;
+            document.body.style.animation = "none";
+            updateProgressBar();
+        }
+
+        function createButtons() {
+            const container = document.getElementById('game-container');
+            container.innerHTML = "";
+            alphabet.forEach(letter => {
+                const button = document.createElement('button');
+                button.innerText = letter;
+                button.classList.add('letter-btn');
+                button.onclick = () => handleLetterClick(letter, button);
+                container.appendChild(button);
+            });
+        }
+
+        function setDifficulty(level) {
+            difficulty = level;
+            resetGame();
+        }
+
+        document.addEventListener('keydown', (event) => {
+            const letter = event.key.toUpperCase();
+            if (alphabet.includes(letter)) {
+                const button = [...document.querySelectorAll('.letter-btn')].find(btn => btn.innerText === letter);
+                if (button && !button.disabled) {
+                    handleLetterClick(letter, button);
+                }
+            }
+        });
+
+        window.onload = resetGame; // Ensure game starts correctly
+    </script>
+</body>
+</html>

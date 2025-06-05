@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ESL Wheel Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+    .team-0 { background-color: #dbeafe; }
+    .team-1 { background-color: #fecaca; }
+    .row {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+    .square {
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      user-select: none;
+    }
+    .hidden { background-color: #d1d5db; }
+    .visible { background-color: #fff; }
+    .highlight { outline: 2px solid #facc15; }
+    .invisible { visibility: hidden; }
+    .alphabet button {
+      font-size: 0.8rem;
+      padding: 0.3rem 0.5rem;
+      margin: 2px;
+      min-width: 32px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid #999;
+      background-color: #f0f0f0;
+    }
+    .alphabet button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background-color: #ccc;
+      border-color: #aaa;
+    }
+    .alphabet button:not(:disabled):hover {
+      background-color: #ddd;
+    }
+    button {
+      padding: 0.4rem 0.8rem;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: 1px solid #666;
+      background-color: #eee;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { background-color: #ddd; }
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+    #spin-value {
+      font-weight: bold;
+      font-size: 1.4rem;
+      margin-left: 1rem;
+      min-width: 100px;
+      display: inline-block;
+    }
+    #solve-input, #puzzle-input {
+      padding: 0.4rem;
+      font-size: 1rem;
+      width: 250px;
+      margin-left: 1rem;
+      border-radius: 5px;
+      border: 1px solid #666;
+      text-transform: uppercase;
+    }
+    #instructions {
+      font-size: 0.9rem;
+      color: #444;
+      margin: 1rem 0;
+    }
+    #message {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #111;
+    }
+  </style>
+</head>
+<body class="team-0">
+  <div class="container">
+    <div>
+      <input id="puzzle-input" type="text" placeholder="Enter a phrase" />
+      <button onclick="generatePuzzle()">Generate Puzzle</button>
+      <button onclick="resetGame()">Reset Game</button>
+    </div>
+
+    <div id="instructions">
+      Spin the wheel to get points, then guess a consonant.<br />
+      Click "Buy Vowel" to reveal vowels for 250 points.<br />
+      Try to solve the puzzle at any time during your turn.<br />
+    </div>
+
+    <div style="margin-top:1rem;">
+      <strong>Round:</strong> <span id="round-display">1</span>
+    </div>
+    <div id="team-display" style="margin-top:0.5rem; font-weight:bold; font-size:1.2rem;"></div>
+    <div id="score-display" style="margin-bottom:1rem;"></div>
+
+    <div id="puzzle"></div>
+
+    <div id="alphabet" class="alphabet" style="display: flex; flex-wrap: wrap; max-width: 600px; margin-top:1rem;"></div>
+
+    <div style="margin-top:1rem;">
+      <button id="spin-btn" onclick="spinWheel()">Spin the Wheel</button>
+      <span id="spin-value"></span>
+      <button id="buy-vowel-btn" onclick="buyVowel()" disabled>Buy Vowel (250 points)</button>
+    </div>
+
+    <div style="margin-top:1rem;">
+      <input id="solve-input" type="text" placeholder="Solve the puzzle" />
+      <button onclick="attemptSolve()">Solve Puzzle</button>
+    </div>
+
+    <div id="message"></div>
+  </div>
+
+  <script>
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const vowels = ['A', 'E', 'I', 'O', 'U'];
+    const alwaysRevealed = [" ", ",", ".", "'", '"', "-", "!", "?", ";", ":", "(", ")"];
+
+    let puzzle = [];
+    let revealed = [];
+    let usedLetters = [];
+    let lastRevealedIndices = [];
+    let spinValue = null;
+    let currentTeam = 0;
+    let scores = [0, 0];
+    let hasSpun = false;
+    let spinning = false;
+    let buyingVowel = false;
+    let round = 1;
+
+    const puzzleInput = document.getElementById("puzzle-input");
+    const puzzleDiv = document.getElementById("puzzle");
+    const alphabetDiv = document.getElementById("alphabet");
+    const spinBtn = document.getElementById("spin-btn");
+    const spinValueDisplay = document.getElementById("spin-value");
+    const teamDisplay = document.getElementById("team-display");
+    const scoreDisplay = document.getElementById("score-display");
+    const roundDisplay = document.getElementById("round-display");
+    const buyVowelBtn = document.getElementById("buy-vowel-btn");
+    const solveInput = document.getElementById("solve-input");
+    const messageDiv = document.getElementById("message");
+
+    function showMessage(text, duration = 0) {
+      messageDiv.textContent = text;
+      if (duration > 0) {
+        setTimeout(() => {
+          messageDiv.textContent = "";
+        }, duration);
+      }
+    }
+
+    function generatePuzzle() {
+      const text = puzzleInput.value.toUpperCase().trim();
+      if (!text) return alert("Please enter a phrase.");
+      puzzle = text.split("");
+      revealed = puzzle.map(c => alwaysRevealed.includes(c));
+      usedLetters = [];
+      lastRevealedIndices = [];
+      spinValue = null;
+      hasSpun = false;
+      spinning = false;
+      buyingVowel = false;
+      puzzleInput.value = "";
+      solveInput.value = "";
+      messageDiv.textContent = "";
+      renderPuzzle();
+      renderAlphabet();
+      updateDisplay();
+    }
+
+    function resetGame() {
+      puzzle = [];
+      revealed = [];
+      usedLetters = [];
+      lastRevealedIndices = [];
+      spinValue = null;
+      hasSpun = false;
+      spinning = false;
+      buyingVowel = false;
+      currentTeam = 0;
+      puzzleInput.value = "";
+      solveInput.value = "";
+      messageDiv.textContent = "";
+      renderPuzzle();
+      renderAlphabet();
+      updateDisplay();
+    }
+
+    function renderPuzzle() {
+      puzzleDiv.innerHTML = "";
+      if (puzzle.length === 0) return;
+
+      const maxLineLength = 14;
+      const text = puzzle.join("");
+      const words = text.split(" ");
+      const lines = [];
+      let currentLine = "";
+
+      for (let word of words) {
+        if ((currentLine + word).length + (currentLine ? 1 : 0) <= maxLineLength) {
+          currentLine += (currentLine ? " " : "") + word;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      let globalIndex = 0;
+
+      lines.forEach(line => {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "row";
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          while (globalIndex < puzzle.length && puzzle[globalIndex] !== char) globalIndex++;
+          const revealedChar = revealed[globalIndex];
+          const isHighlight = lastRevealedIndices.includes(globalIndex);
+
+          const div = document.createElement("div");
+          div.className = `square ${char === ' ' ? 'invisible' : revealedChar ? 'visible' : 'hidden'} ${isHighlight ? 'highlight' : ''}`;
+          div.textContent = revealedChar && char !== ' ' ? char : "";
+          rowDiv.appendChild(div);
+          globalIndex++;
+        }
+        puzzleDiv.appendChild(rowDiv);
+      });
+    }
+
+    function renderAlphabet() {
+      alphabetDiv.innerHTML = "";
+      alphabet.forEach(letter => {
+        const btn = document.createElement("button");
+        btn.textContent = letter;
+        const isVowel = vowels.includes(letter);
+        const isUsed = usedLetters.includes(letter);
+
+        btn.disabled = isUsed || (isVowel ? !buyingVowel : !(hasSpun && !spinning));
+        btn.onclick = () => handleLetter(letter);
+        alphabetDiv.appendChild(btn);
+      });
+
+      buyVowelBtn.disabled = buyingVowel || scores[currentTeam] < 250 || puzzle.length === 0 || spinning || !hasSpun;
+    }
+
+    function handleLetter(letter) {
+      if (usedLetters.includes(letter) || spinning) return;
+      const isVowel = vowels.includes(letter);
+
+      if (isVowel) {
+        if (!buyingVowel) return;
+        if (scores[currentTeam] < 250) return;
+
+        scores[currentTeam] -= 250;
+        buyingVowel = false;
+
+        const indices = [];
+        revealed = revealed.map((r, i) => {
+          if (puzzle[i] === letter) {
+            indices.push(i);
+            return true;
+          }
+          return r;
+        });
+
+        usedLetters.push(letter);
+        lastRevealedIndices = indices;
+
+        currentTeam = 1 - currentTeam;
+        hasSpun = false;
+        spinValue = null;
+
+      } else {
+        if (!hasSpun) return;
+
+        const indices = [];
+        revealed = revealed.map((r, i) => {
+          if (puzzle[i] === letter) {
+            indices.push(i);
+            return true;
+          }
+          return r;
+        });
+
+        usedLetters.push(letter);
+        lastRevealedIndices = indices;
+
+        if (indices.length > 0 && spinValue) {
+          scores[currentTeam] += indices.length * spinValue;
+        } else {
+          currentTeam = 1 - currentTeam;
+        }
+
+        hasSpun = false;
+        spinValue = null;
+      }
+
+      if (revealed.every(r => r)) {
+        scores[currentTeam] += 3000;
+        revealed = revealed.map(() => true);
+        renderPuzzle();
+        showMessage("CORRECT! NEW ROUND STARTS IN 10 SECONDS");
+        let countdown = 10;
+        const interval = setInterval(() => {
+          countdown--;
+          showMessage(`CORRECT! NEW ROUND STARTS IN ${countdown} SECONDS`);
+          if (countdown === 0) {
+            clearInterval(interval);
+            resetGame();
+          }
+        }, 1000);
+        return;
+      }
+
+      renderPuzzle();
+      renderAlphabet();
+      updateDisplay();
+    }
+
+    function buyVowel() {
+      if (scores[currentTeam] >= 250 && hasSpun && !spinning && !buyingVowel) {
+        buyingVowel = true;
+        renderAlphabet();
+      }
+    }
+
+    function attemptSolve() {
+      if (puzzle.length === 0) return;
+      const guess = solveInput.value.toUpperCase().trim();
+      if (!guess) return;
+      if (guess === puzzle.join("")) {
+        scores[currentTeam] += 3000;
+        revealed = revealed.map(() => true);
+        renderPuzzle();
+        showMessage("CORRECT! NEW ROUND STARTS IN 10 SECONDS");
+        let countdown = 10;
+        const interval = setInterval(() => {
+          countdown--;
+          showMessage(`CORRECT! NEW ROUND STARTS IN ${countdown} SECONDS`);
+          if (countdown === 0) {
+            clearInterval(interval);
+            resetGame();
+          }
+        }, 1000);
+      } else {
+        showMessage("INCORRECT!", 5000);
+        setTimeout(() => {
+          currentTeam = 1 - currentTeam;
+          hasSpun = false;
+          spinValue = null;
+          renderAlphabet();
+          updateDisplay();
+        }, 5000);
+      }
+    }
+
+    function spinWheel() {
+      if (spinning || hasSpun || puzzle.length === 0) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      spinValueDisplay.textContent = "";
+      buyingVowel = false;
+      renderAlphabet();
+
+      const outcomes = [
+        ...Array(1).fill("LOSE"),
+        ...Array(2).fill(100), ...Array(2).fill(200),
+        ...Array(3).fill(300), ...Array(3).fill(400), ...Array(3).fill(500),
+        ...Array(3).fill(600), ...Array(3).fill(700), ...Array(3).fill(800),
+        ...Array(1).fill(900), ...Array(1).fill(1000)
+      ];
+
+      let spinCount = 0;
+      let delay = 50;
+      const spinSequence = setInterval(() => {
+        const value = outcomes[Math.floor(Math.random() * outcomes.length)];
+        spinValueDisplay.textContent = (value === "LOSE") ? "Lose Turn" : value;
+        spinValue = value;
+        spinCount++;
+        delay += 20;
+        if (spinCount > 20) {
+          clearInterval(spinSequence);
+          spinning = false;
+          if (spinValue === "LOSE") {
+            showMessage("LOSE A TURN!", 3000);
+            currentTeam = 1 - currentTeam;
+            hasSpun = false;
+            spinValue = null;
+          } else {
+            hasSpun = true;
+          }
+          renderAlphabet();
+          updateDisplay();
+        }
+      }, delay);
+    }
+
+    function updateDisplay() {
+      teamDisplay.textContent = `Current Team: Team ${currentTeam + 1}`;
+      scoreDisplay.innerHTML = `Team 1 Score: ${scores[0]} &nbsp;&nbsp;&nbsp; Team 2 Score: ${scores[1]}`;
+      roundDisplay.textContent = round;
+      document.body.className = currentTeam === 0 ? "team-0" : "team-1";
+      spinBtn.disabled = hasSpun || spinning || puzzle.length === 0;
+      buyVowelBtn.disabled = buyingVowel || scores[currentTeam] < 250 || puzzle.length === 0 || spinning || !hasSpun;
+    }
+
+    renderPuzzle();
+    renderAlphabet();
+    updateDisplay();
+  </script>
+</body>
+</html>

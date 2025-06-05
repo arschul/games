@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Grid Game</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      background-color: #ffcccc;
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+    }
+
+    .input-section {
+      width: 200px;
+      margin: 10px;
+      text-align: center;
+    }
+
+    .word-list {
+      min-height: 50px;
+      border: 1px solid #ccc;
+      padding: 5px;
+      text-align: center;
+      font-size: 18px;
+      word-wrap: break-word;
+    }
+
+    .grid-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      border: 3px solid black;
+    }
+
+    .grid div {
+      border: 2px solid black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .grid input {
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      font-size: 20px;
+      text-transform: uppercase;
+      border: none;
+    }
+
+    .coordinates {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 5px;
+    }
+
+    .row-labels {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin-right: 5px;
+      font-size: 18px;
+    }
+
+    .score {
+      font-size: 18px;
+      margin-top: 10px;
+    }
+
+    .progress-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .progress-bar-container {
+      width: 300px;
+      height: 20px;
+      border: 2px solid black;
+      position: relative;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: green;
+      width: 100%;
+    }
+
+    #pauseBtn {
+      font-size: 20px;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    #timer {
+      font-size: 18px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="input-section">
+      <input type="text" id="leftInput" placeholder="Type a word" />
+      <div class="word-list" id="leftWordList"></div>
+      <div class="score">Score: <span id="leftScore">0</span></div>
+    </div>
+
+    <div class="grid-container">
+      <div class="coordinates">
+        <div style="width: 50px;"></div>
+        <div style="display: flex;">
+          <div style="width: 50px; text-align: center;">1</div>
+          <div style="width: 50px; text-align: center;">2</div>
+          <div style="width: 50px; text-align: center;">3</div>
+          <div style="width: 50px; text-align: center;">4</div>
+          <div style="width: 50px; text-align: center;">5</div>
+          <div style="width: 50px; text-align: center;">6</div>
+        </div>
+      </div>
+      <div style="display: flex;">
+        <div class="row-labels">
+          <div style="height: 50px;">10</div>
+          <div style="height: 50px;">20</div>
+          <div style="height: 50px;">30</div>
+          <div style="height: 50px;">40</div>
+          <div style="height: 50px;">50</div>
+          <div style="height: 50px;">60</div>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </div>
+
+    <div class="input-section">
+      <input type="text" id="rightInput" placeholder="Type a word" />
+      <div class="word-list" id="rightWordList"></div>
+      <div class="score">Score: <span id="rightScore">0</span></div>
+    </div>
+  </div>
+
+  <div class="progress-controls">
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <button id="pauseBtn" title="Pause">&#9208;</button>
+  </div>
+  <div id="timer">Time Left: 60s</div>
+
+  <script>
+    // Build 6x6 grid dynamically
+    const gridContainer = document.getElementById("grid");
+    for (let i = 0; i < 36; i++) {
+      const cell = document.createElement("div");
+      const input = document.createElement("input");
+      input.type = "text";
+      input.maxLength = 1;
+      cell.appendChild(input);
+      gridContainer.appendChild(cell);
+    }
+
+    let isRed = true;
+    let timeLeft = 60;
+    let countdownInterval;
+    let isPaused = false;
+
+    const progressBar = document.getElementById("progressBar");
+    const timerDisplay = document.getElementById("timer");
+    const pauseBtn = document.getElementById("pauseBtn");
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = `Time Left: ${timeLeft}s`;
+      progressBar.style.width = `${(timeLeft / 60) * 100}%`;
+    }
+
+    function startTimer() {
+      clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        if (!isPaused) {
+          timeLeft--;
+          updateTimerDisplay();
+
+          if (timeLeft === 0) {
+            // Toggle color and reset timer
+            document.body.style.backgroundColor = isRed ? "#ccddff" : "#ffcccc";
+            isRed = !isRed;
+            timeLeft = 60;
+            updateTimerDisplay();
+          }
+        }
+      }, 1000);
+    }
+
+    pauseBtn.innerHTML = "&#9208;"; // ⏸
+    pauseBtn.addEventListener("click", () => {
+      isPaused = !isPaused;
+      pauseBtn.innerHTML = isPaused ? "&#9654;" : "&#9208;"; // ▶️ / ⏸
+      pauseBtn.title = isPaused ? "Resume" : "Pause";
+    });
+
+    document.querySelectorAll(".grid input").forEach(input => {
+      input.addEventListener("keypress", (event) => {
+        if (event.key === "Enter") {
+          document.body.style.backgroundColor = isRed ? "#ccddff" : "#ffcccc";
+          isRed = !isRed;
+          timeLeft = 60;
+          updateTimerDisplay();
+        }
+      });
+    });
+
+    let allWords = new Set();
+
+    function processInput(inputId, wordListId, scoreId) {
+      const input = document.getElementById(inputId);
+      const wordList = document.getElementById(wordListId);
+      const scoreDisplay = document.getElementById(scoreId);
+
+      input.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+          const word = input.value.toUpperCase().trim();
+          if (word && !allWords.has(word)) {
+            allWords.add(word);
+            wordList.textContent += (wordList.textContent ? " " : "") + word;
+            const score = word.length;
+            scoreDisplay.textContent = parseInt(scoreDisplay.textContent) + score;
+            input.value = "";
+          } else {
+            alert("Word already used!");
+          }
+        }
+      });
+    }
+
+    processInput("leftInput", "leftWordList", "leftScore");
+    processInput("rightInput", "rightWordList", "rightScore");
+
+    updateTimerDisplay();
+    startTimer();
+  </script>
+</body>
+</html>

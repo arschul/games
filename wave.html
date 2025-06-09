@@ -246,6 +246,13 @@
             border: none;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
+        
+        .dial-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-top: 15px;
+        }
 
         .game-info {
             background: var(--card-bg);
@@ -259,38 +266,13 @@
             text-align: center;
             font-size: 1.2rem;
             font-weight: 600;
-            margin-bottom: 15px;
             padding: 10px;
             border-radius: 8px;
             background: var(--primary-color);
             color: white;
         }
 
-        .clue-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 16px;
-            background: var(--card-bg);
-            color: var(--text-color);
-            margin-bottom: 15px;
-        }
-
-        .clue-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-
-        .timer {
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--accent-color);
-            margin: 10px 0;
-        }
-
-        .leaderboard {
+        .history {
             background: var(--card-bg);
             border-radius: 12px;
             padding: 20px;
@@ -298,12 +280,12 @@
             margin-top: 20px;
         }
 
-        .leaderboard h3 {
+        .history h3 {
             margin-bottom: 15px;
             text-align: center;
         }
 
-        .leaderboard-entry {
+        .history-entry {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
@@ -411,20 +393,17 @@
 
         <div class="controls">
             <button class="btn btn-primary" onclick="newGame()">New Game</button>
-            <button class="btn btn-accent" onclick="toggleTimer()">Timer: <span id="timer-status">OFF</span></button>
-            <button class="btn btn-primary" onclick="showLeaderboard()">Leaderboard</button>
         </div>
 
         <div class="game-info">
             <div class="phase-indicator" id="phase-indicator">Waiting to start...</div>
-            <div class="timer" id="timer" style="display: none;">60</div>
         </div>
 
         <div class="game-board">
             <div class="team-panel team-a" id="team-a">
                 <h3>Team A</h3>
                 <div class="score" id="score-a">0</div>
-                <div>Rounds Won: <span id="rounds-a">0</span></div>
+                <div>Games Won: <span id="rounds-a">0</span></div>
             </div>
 
             <div class="dial-container">
@@ -441,22 +420,16 @@
                 </div>
                 
                 <input type="range" class="dial-slider" id="dial-slider" min="0" max="100" value="50">
+                <div id="dial-value-display" class="dial-value">50%</div>
                 
-                <div id="clue-section" style="display: none;">
-                    <input type="text" class="clue-input" id="clue-input" placeholder="Enter your clue here...">
-                    <div style="margin: 10px 0;">
-                        <button class="btn btn-secondary" id="reveal-btn" onclick="toggleTargetReveal()">👁️ Reveal Target</button>
-                        <div id="target-reveal" style="display: none; margin-top: 10px; padding: 10px; background: var(--accent-color); color: white; border-radius: 8px; font-weight: bold;">
-                            Target Position: <span id="target-position-display"></span>%
-                        </div>
-                    </div>
-                    <button class="btn btn-primary" onclick="submitClue()">Submit Clue</button>
+                <div id="psychic-controls" style="margin: 15px 0;">
+                     <button class="btn btn-secondary" id="reveal-btn" onclick="toggleTargetReveal()">👁️ Reveal Target (Psychic Only)</button>
+                     <div id="target-reveal" style="display: none; margin-top: 10px; padding: 10px; background: var(--accent-color); color: white; border-radius: 8px; font-weight: bold;">
+                         Target Position: <span id="target-position-display"></span>%
+                     </div>
                 </div>
-                
-                <div id="guess-section" style="display: none;">
-                    <div style="margin: 15px 0;">
-                        <strong>Clue: </strong><span id="current-clue"></span>
-                    </div>
+
+                <div id="guess-section" style="display: none; margin-top: 15px;">
                     <button class="btn btn-accent" onclick="submitGuess()">Submit Guess</button>
                 </div>
                 
@@ -479,13 +452,13 @@
             <div class="team-panel team-b" id="team-b">
                 <h3>Team B</h3>
                 <div class="score" id="score-b">0</div>
-                <div>Rounds Won: <span id="rounds-b">0</span></div>
+                <div>Games Won: <span id="rounds-b">0</span></div>
             </div>
         </div>
 
-        <div class="leaderboard" id="leaderboard">
+        <div class="history" id="history-section">
             <h3>Game History</h3>
-            <div id="leaderboard-content">
+            <div id="history-content">
                 <p>No games played yet</p>
             </div>
         </div>
@@ -503,73 +476,33 @@
         // Game state
         let gameState = {
             currentTeam: 'A',
-            phase: 'waiting', // waiting, clue, guess, bonus, result
+            phase: 'waiting', // waiting, guess, bonus, result
             scores: { A: 0, B: 0 },
-            rounds: { A: 0, B: 0 },
+            gamesWon: { A: 0, B: 0 },
             targetPosition: 50,
-            targetZone: { start: 40, end: 60 },
-            currentClue: '',
+            targetVisualZone: { start: 45, end: 55 }, // Just for visual feedback
             guessPosition: 50,
-            timerEnabled: false,
-            timerValue: 60,
-            timerInterval: null,
             gameHistory: [],
             usedSpectrums: []
         };
 
         // Spectrum concepts
         const spectrums = [
-    ['Hot', 'Cold'],
-    ['Fast', 'Slow'],
-    ['Big', 'Small'],
-    ['Loud', 'Quiet'],
-    ['Bright', 'Dark'],
-    ['Happy', 'Sad'],
-    ['Old', 'New'],
-    ['Hard', 'Soft'],
-    ['Expensive', 'Cheap'],
-    ['Popular', 'Obscure'],
-    ['Simple', 'Complex'],
-    ['Clean', 'Dirty'],
-    ['Sweet', 'Sour'],
-    ['Smooth', 'Rough'],
-    ['Light', 'Heavy'],
-    ['Wet', 'Dry'],
-    ['Sharp', 'Dull'],
-    ['Thick', 'Thin'],
-    ['Wide', 'Narrow'],
-    ['Long', 'Short'],
-    ['Rich', 'Poor'],
-    ['Strong', 'Weak'],
-    ['Beautiful', 'Ugly'],
-    ['Smart', 'Dumb'],
-    ['Funny', 'Serious'],
-    ['Brave', 'Cowardly'],
-    ['Healthy', 'Sick'],
-    ['Young', 'Old'],
-    ['Tall', 'Short'],
-    ['Fat', 'Thin'],
-    ['Friendly', 'Mean'],
-    ['Calm', 'Angry'],
-    ['Safe', 'Dangerous'],
-    ['Easy', 'Difficult'],
-    ['Real', 'Fake'],
-    ['Natural', 'Artificial'],
-    ['Modern', 'Ancient'],
-    ['Urban', 'Rural'],
-    ['Indoor', 'Outdoor'],
-    ['Public', 'Private'],
-    ['Formal', 'Casual'],
-    ['Professional', 'Amateur'],
-    ['Luxury', 'Basic'],
-    ['Rare', 'Common'],
-    ['Spicy', 'Mild'],
-    ['Crunchy', 'Soft'],
-    ['Fragrant', 'Stinky'],
-    ['Colorful', 'Bland'],
-    ['Exciting', 'Boring'],
-    ['Relaxing', 'Stressful']
-];
+            ['Hot', 'Cold'], ['Fast', 'Slow'], ['Big', 'Small'], ['Loud', 'Quiet'],
+            ['Bright', 'Dark'], ['Happy', 'Sad'], ['Old', 'New'], ['Hard', 'Soft'],
+            ['Expensive', 'Cheap'], ['Popular', 'Obscure'], ['Simple', 'Complex'],
+            ['Clean', 'Dirty'], ['Sweet', 'Sour'], ['Smooth', 'Rough'], ['Light', 'Heavy'],
+            ['Wet', 'Dry'], ['Sharp', 'Dull'], ['Thick', 'Thin'], ['Wide', 'Narrow'],
+            ['Long', 'Short'], ['Rich', 'Poor'], ['Strong', 'Weak'], ['Beautiful', 'Ugly'],
+            ['Smart', 'Dumb'], ['Funny', 'Serious'], ['Brave', 'Cowardly'], ['Healthy', 'Sick'],
+            ['Young', 'Old'], ['Tall', 'Short'], ['Fat', 'Thin'], ['Friendly', 'Mean'],
+            ['Calm', 'Angry'], ['Safe', 'Dangerous'], ['Easy', 'Difficult'], ['Real', 'Fake'],
+            ['Natural', 'Artificial'], ['Modern', 'Ancient'], ['Urban', 'Rural'],
+            ['Indoor', 'Outdoor'], ['Public', 'Private'], ['Formal', 'Casual'],
+            ['Professional', 'Amateur'], ['Luxury', 'Basic'], ['Rare', 'Common'],
+            ['Spicy', 'Mild'], ['Crunchy', 'Soft'], ['Fragrant', 'Stinky'],
+            ['Colorful', 'Bland'], ['Exciting', 'Boring'], ['Relaxing', 'Stressful']
+        ];
 
         // Audio context for sound effects
         let audioContext;
@@ -611,23 +544,24 @@
             
             slider.addEventListener('input', function() {
                 updatePointerPosition(this.value);
+                updateDialValueDisplay(this.value);
                 playSound(200 + this.value * 5, 0.1);
             });
             
             // Keyboard controls
             document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && gameState.phase === 'clue') {
-                    submitClue();
-                } else if (e.key === 'Enter' && gameState.phase === 'guess') {
+                if (e.key === 'Enter' && gameState.phase === 'guess') {
                     submitGuess();
                 } else if (e.key === 'ArrowLeft' && gameState.phase === 'guess') {
                     const slider = document.getElementById('dial-slider');
                     slider.value = Math.max(0, parseInt(slider.value) - 1);
                     updatePointerPosition(slider.value);
+                    updateDialValueDisplay(slider.value);
                 } else if (e.key === 'ArrowRight' && gameState.phase === 'guess') {
                     const slider = document.getElementById('dial-slider');
                     slider.value = Math.min(100, parseInt(slider.value) + 1);
                     updatePointerPosition(slider.value);
+                    updateDialValueDisplay(slider.value);
                 }
             });
         }
@@ -640,23 +574,27 @@
             pointer.style.left = position + 'px';
         }
 
+        function updateDialValueDisplay(value) {
+            const display = document.getElementById('dial-value-display');
+            display.textContent = `${value}%`;
+        }
+
         function newGame() {
             gameState.scores = { A: 0, B: 0 };
-            gameState.rounds = { A: 0, B: 0 };
+            gameState.gamesWon = { A: 0, B: 0 };
             gameState.gameHistory = [];
             gameState.usedSpectrums = [];
             updateDisplay();
+            updateHistoryDisplay();
             newRound();
             playSound(440, 0.2);
         }
 
         function newRound() {
-            // Generate new spectrum (avoid repeats until all are used)
             let availableSpectrums = spectrums.filter((spectrum, index) => 
                 !gameState.usedSpectrums.includes(index)
             );
             
-            // If all spectrums have been used, reset the list
             if (availableSpectrums.length === 0) {
                 gameState.usedSpectrums = [];
                 availableSpectrums = spectrums;
@@ -670,81 +608,66 @@
             document.getElementById('spectrum-left').textContent = spectrum[0];
             document.getElementById('spectrum-right').textContent = spectrum[1];
             
-            // Generate target position and zone
             gameState.targetPosition = Math.floor(Math.random() * 80) + 10;
-            const zoneSize = 20;
-            gameState.targetZone = {
+            const zoneSize = 10;
+            gameState.targetVisualZone = {
                 start: Math.max(0, gameState.targetPosition - zoneSize/2),
                 end: Math.min(100, gameState.targetPosition + zoneSize/2)
             };
             
-            // Reset UI
             document.getElementById('dial-slider').value = 50;
             updatePointerPosition(50);
+            updateDialValueDisplay(50);
             document.getElementById('target-zone').classList.remove('revealed');
-            document.getElementById('clue-input').value = '';
             
-            // Reset reveal button
             const revealDiv = document.getElementById('target-reveal');
             const revealBtn = document.getElementById('reveal-btn');
             if (revealDiv) {
                 revealDiv.style.display = 'none';
-                revealBtn.textContent = '👁️ Reveal Target';
+                revealBtn.textContent = '👁️ Reveal Target (Psychic Only)';
                 revealBtn.classList.remove('btn-accent');
                 revealBtn.classList.add('btn-secondary');
             }
             
-            // Start clue phase
-            gameState.phase = 'clue';
-            updateDisplay();
-            
-            if (gameState.timerEnabled) {
-                startTimer();
-            }
-            
-            playSound(330, 0.3);
-        }
-
-        function submitClue() {
-            const clueInput = document.getElementById('clue-input');
-            const clue = clueInput.value.trim();
-            
-            if (!clue) {
-                alert('Please enter a clue!');
-                return;
-            }
-            
-            gameState.currentClue = clue;
             gameState.phase = 'guess';
             updateDisplay();
-            
-            if (gameState.timerEnabled) {
-                startTimer();
-            }
-            
-            playSound(523, 0.2);
+            playSound(330, 0.3);
         }
 
         function submitGuess() {
             const slider = document.getElementById('dial-slider');
             gameState.guessPosition = parseInt(slider.value);
             
-            // Check if guess is in target zone
-            const inZone = gameState.guessPosition >= gameState.targetZone.start && 
-                          gameState.guessPosition <= gameState.targetZone.end;
-            
-            if (inZone) {
-                gameState.scores[gameState.currentTeam] += 2;
-                showResult('Perfect!', `Great guess! You scored 2 points.`, 'success');
+            const diff = Math.abs(gameState.guessPosition - gameState.targetPosition);
+            let points = 0;
+
+            if (diff === 0) {
+                points = 5;
+            } else if (diff <= 3) {
+                points = 4;
+            } else if (diff <= 8) {
+                points = 3;
+            } else if (diff <= 12) {
+                points = 3;
+            } else if (diff <= 15) {
+                points = 2;
+            } else if (diff <= 20) {
+                points = 1;
+            }
+
+            if (points > 0) {
+                gameState.scores[gameState.currentTeam] += points;
+                const message = points === 5 
+                    ? `Perfect guess! You scored 5 points!` 
+                    : `Great guess! You were ${diff}% away and scored ${points} point(s).`;
+                showResult('You Scored!', message, 'success');
                 playSound(659, 0.5);
+                endRound();
             } else {
                 gameState.phase = 'bonus';
                 updateDisplay();
                 playSound(220, 0.3);
-                return;
             }
-            
-            endRound();
         }
 
         function bonusGuess(direction) {
@@ -765,38 +688,31 @@
         }
 
         function endRound() {
-            stopTimer();
-            
-            // Reveal target zone
             const targetZone = document.getElementById('target-zone');
-            targetZone.style.left = gameState.targetZone.start + '%';
-            targetZone.style.width = (gameState.targetZone.end - gameState.targetZone.start) + '%';
+            targetZone.style.left = gameState.targetVisualZone.start + '%';
+            targetZone.style.width = (gameState.targetVisualZone.end - gameState.targetVisualZone.start) + '%';
             targetZone.classList.add('revealed');
             
-            // Switch teams
-            gameState.currentTeam = gameState.currentTeam === 'A' ? 'B' : 'A';
-            
-            // Check for round winner
-            if (gameState.scores.A >= 10 || gameState.scores.B >= 10) {
-                const winner = gameState.scores.A >= 10 ? 'A' : 'B';
-                gameState.rounds[winner]++;
+            if (gameState.scores.A >= 15 || gameState.scores.B >= 15) {
+                const winner = gameState.scores.A >= 15 ? 'A' : 'B';
+                gameState.gamesWon[winner]++;
                 
-                // Add to game history
                 gameState.gameHistory.push({
                     winner: `Team ${winner}`,
                     scoreA: gameState.scores.A,
                     scoreB: gameState.scores.B,
                     timestamp: new Date().toLocaleString()
                 });
-                
+
+                updateHistoryDisplay();
+                showResult('Game Over!', `Team ${winner} wins the game! Click "New Game" to play again.`, 'success');
                 gameState.scores = { A: 0, B: 0 };
-                showResult('Round Winner!', `Team ${winner} wins the round!`, 'success');
                 playSound(880, 1);
             }
             
+            gameState.currentTeam = gameState.currentTeam === 'A' ? 'B' : 'A';
             updateDisplay();
             
-            // Show target position and next button
             document.getElementById('final-target-position').textContent = Math.round(gameState.targetPosition);
             gameState.phase = 'next';
             updateDisplay();
@@ -807,27 +723,25 @@
         }
 
         function toggleTargetReveal() {
-    const revealDiv = document.getElementById('target-reveal');
-    const revealBtn = document.getElementById('reveal-btn');
-    const targetDisplay = document.getElementById('target-position-display');
-    
-    if (revealDiv.style.display === 'none') {
-        // Show target position
-        targetDisplay.textContent = Math.round(gameState.targetPosition);
-        revealDiv.style.display = 'block';
-        revealBtn.textContent = '🙈 Hide Target';
-        revealBtn.classList.remove('btn-secondary');
-        revealBtn.classList.add('btn-accent');
-        playSound(523, 0.2);
-    } else {
-        // Hide target position
-        revealDiv.style.display = 'none';
-        revealBtn.textContent = '👁️ Reveal Target';
-        revealBtn.classList.remove('btn-accent');
-        revealBtn.classList.add('btn-secondary');
-        playSound(440, 0.2);
-    }
-}
+            const revealDiv = document.getElementById('target-reveal');
+            const revealBtn = document.getElementById('reveal-btn');
+            const targetDisplay = document.getElementById('target-position-display');
+            
+            if (revealDiv.style.display === 'none') {
+                targetDisplay.textContent = Math.round(gameState.targetPosition);
+                revealDiv.style.display = 'block';
+                revealBtn.textContent = '🙈 Hide Target';
+                revealBtn.classList.remove('btn-secondary');
+                revealBtn.classList.add('btn-accent');
+                playSound(523, 0.2);
+            } else {
+                revealDiv.style.display = 'none';
+                revealBtn.textContent = '👁️ Reveal Target (Psychic Only)';
+                revealBtn.classList.remove('btn-accent');
+                revealBtn.classList.add('btn-secondary');
+                playSound(440, 0.2);
+            }
+        }
 
         function showResult(title, message, type) {
             document.getElementById('result-title').textContent = title;
@@ -839,94 +753,40 @@
             document.getElementById('result-modal').classList.remove('show');
         }
 
-        function startTimer() {
-            stopTimer();
-            gameState.timerValue = 60;
-            document.getElementById('timer').style.display = 'block';
-            
-            gameState.timerInterval = setInterval(() => {
-                gameState.timerValue--;
-                document.getElementById('timer').textContent = gameState.timerValue;
-                
-                if (gameState.timerValue <= 10) {
-                    document.getElementById('timer').style.color = 'var(--danger-color)';
-                    if (gameState.timerValue <= 5) {
-                        playSound(800, 0.1);
-                    }
-                }
-                
-                if (gameState.timerValue <= 0) {
-                    stopTimer();
-                    if (gameState.phase === 'clue') {
-                        alert('Time\'s up! Please enter a clue.');
-                    } else if (gameState.phase === 'guess') {
-                        submitGuess();
-                    }
-                }
-            }, 1000);
-        }
-
-        function stopTimer() {
-            if (gameState.timerInterval) {
-                clearInterval(gameState.timerInterval);
-                gameState.timerInterval = null;
-            }
-            document.getElementById('timer').style.display = 'none';
-            document.getElementById('timer').style.color = 'var(--accent-color)';
-        }
-
-        function toggleTimer() {
-            gameState.timerEnabled = !gameState.timerEnabled;
-            document.getElementById('timer-status').textContent = gameState.timerEnabled ? 'ON' : 'OFF';
-            
-            if (!gameState.timerEnabled) {
-                stopTimer();
-            }
-            
-            playSound(440, 0.1);
-        }
-
-        function showLeaderboard() {
-            const content = document.getElementById('leaderboard-content');
-            
+        function updateHistoryDisplay() {
+            const content = document.getElementById('history-content');
             if (gameState.gameHistory.length === 0) {
                 content.innerHTML = '<p>No games played yet</p>';
                 return;
             }
-            
             let html = '';
             gameState.gameHistory.forEach((game, index) => {
                 html += `
-                    <div class="leaderboard-entry">
-                        <span>Game ${index + 1}: ${game.winner}</span>
-                        <span>${game.scoreA} - ${game.scoreB}</span>
+                    <div class="history-entry">
+                        <span>Game ${index + 1}: ${game.winner} wins</span>
+                        <span>(${game.scoreA} - ${game.scoreB})</span>
                     </div>
                 `;
             });
-            
             content.innerHTML = html;
         }
 
         function updateDisplay() {
-            // Update scores
             document.getElementById('score-a').textContent = gameState.scores.A;
             document.getElementById('score-b').textContent = gameState.scores.B;
-            document.getElementById('rounds-a').textContent = gameState.rounds.A;
-            document.getElementById('rounds-b').textContent = gameState.rounds.B;
+            document.getElementById('rounds-a').textContent = gameState.gamesWon.A;
+            document.getElementById('rounds-b').textContent = gameState.gamesWon.B;
             
-            // Update active team
             document.getElementById('team-a').classList.toggle('active', gameState.currentTeam === 'A');
             document.getElementById('team-b').classList.toggle('active', gameState.currentTeam === 'B');
             
-            // Update phase indicator and sections
             const phaseIndicator = document.getElementById('phase-indicator');
-            const clueSection = document.getElementById('clue-section');
+            const psychicControls = document.getElementById('psychic-controls');
             const guessSection = document.getElementById('guess-section');
             const bonusSection = document.getElementById('bonus-section');
             const nextSection = document.getElementById('next-section');
             
-            // Hide all sections
-            clueSection.style.display = 'none';
+            psychicControls.style.display = 'none';
             guessSection.style.display = 'none';
             bonusSection.style.display = 'none';
             nextSection.style.display = 'none';
@@ -935,15 +795,10 @@
                 case 'waiting':
                     phaseIndicator.textContent = 'Click "New Game" to start!';
                     break;
-                case 'clue':
-                    phaseIndicator.textContent = `Team ${gameState.currentTeam} - Psychic Phase: Give a clue!`;
-                    clueSection.style.display = 'block';
-                    document.getElementById('clue-input').focus();
-                    break;
                 case 'guess':
-                    phaseIndicator.textContent = `Team ${gameState.currentTeam} - Guessing Phase: Move the dial!`;
+                    phaseIndicator.textContent = `Team ${gameState.currentTeam} - Psychic gives a clue, Team guesses!`;
+                    psychicControls.style.display = 'block';
                     guessSection.style.display = 'block';
-                    document.getElementById('current-clue').textContent = gameState.currentClue;
                     break;
                 case 'bonus':
                     phaseIndicator.textContent = `Team ${gameState.currentTeam === 'A' ? 'B' : 'A'} - Bonus Guess!`;
@@ -973,7 +828,6 @@
             playSound(523, 0.1);
         }
 
-        // Load saved theme
         function loadTheme() {
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'dark') {
@@ -982,7 +836,6 @@
             }
         }
 
-        // Initialize game when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadTheme();
             initGame();

@@ -264,16 +264,27 @@
 
     .timer-icon {
       font-size: 32px;
-      color: var(--secondary-color);
+      color: var(--accent-color); /* Changed to accent color */
     }
 
     .timer-text {
       font-size: 2.5em;
       font-weight: bold;
-      color: var(--secondary-color);
+      color: var(--accent-color); /* Changed to accent color */
       min-width: 40px; /* Prevent jump when numbers change */
       text-align: center;
     }
+
+    /* New style for individual team timers */
+    .team-timer-display {
+      font-size: 1.5em; /* Slightly smaller than main timer */
+      font-weight: bold;
+      color: var(--accent-color); /* Default to accent color */
+      margin-top: 5px;
+      min-width: 60px; /* Ensure consistent width */
+      text-align: center;
+    }
+
 
     .controls {
       display: flex;
@@ -491,7 +502,7 @@
               <p id="prompt" class="prompt-text"></p>
               <div class="timer-container">
                   <span class="material-icons timer-icon">timer</span>
-                  <span id="timer" class="timer-text">120</span>
+                  <span id="timer" class="timer-text">02:00</span>
                   <button id="pauseBtn" class="icon-button team-ability-button" aria-label="Pause timer">
                       <span class="material-icons">pause</span>
                   </button>
@@ -606,6 +617,12 @@
       }
     }
 
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
     // --- Game Setup Logic ---
     function generateTeamNameInputs(num) {
       teamNameInputsDiv.innerHTML = ""
@@ -680,6 +697,7 @@
           <div class="stars-display"></div>
           <div class="team-name">${team.name}</div>
           <div class="strikes"></div>
+          <div class="team-timer-display" data-team-timer-index="${index}"></div> <!-- Individual Team Timer -->
           <div class="team-abilities">
             <button class="team-ability-button" data-ability-type="switch" aria-label="Switch categories">
               <span class="material-icons">delete</span>
@@ -700,6 +718,7 @@
         teamBox.querySelector('[data-ability-type="extendTimer"]').addEventListener("click", () => handleExtendTimer(index))
 
         updateTeamBox(index) // Initial update for strikes, stars, and active state
+        updateTeamTimerDisplay(index); // Initial update for individual team timer
       })
     }
 
@@ -775,7 +794,7 @@
     // New: Start individual team timer
     function startTeamTimer(teamIndex) {
       const team = teams[teamIndex];
-      if (team.isIndividualTimerRunning) return; // Prevent multiple intervals
+      if (team.isIndividualTimerRunning || team.isOut) return; // Prevent multiple intervals or starting for out teams
 
       team.isIndividualTimerRunning = true;
       team.isIndividualTimerPaused = false;
@@ -788,7 +807,8 @@
 
       team.individualTimerInterval = setInterval(() => {
         team.individualTimeLeft--;
-        if (teamIndex === currentTeamIndex) { // Only update display if it's the current team
+        updateTeamTimerDisplay(teamIndex); // Update individual team's timer display
+        if (teamIndex === currentTeamIndex) { // Only update global display if it's the current team
           updateTimerDisplay();
         }
         if (team.individualTimeLeft <= 0) {
@@ -820,13 +840,33 @@
       }
     }
 
+    // New: Update individual team timer display in their box
+    function updateTeamTimerDisplay(teamIndex) {
+      const team = teams[teamIndex];
+      const teamTimerDiv = teamsContainer.querySelector(`[data-team-timer-index="${teamIndex}"]`);
+      if (!teamTimerDiv) return;
+
+      if (team.isOut) {
+        teamTimerDiv.textContent = "OUT";
+        teamTimerDiv.style.color = "var(--secondary-color)";
+      } else {
+        teamTimerDiv.textContent = formatTime(team.individualTimeLeft);
+        if (team.individualTimeLeft <= 10 && team.individualTimeLeft > 0) {
+          teamTimerDiv.style.color = "var(--secondary-color)";
+        } else {
+          teamTimerDiv.style.color = "var(--accent-color)";
+        }
+      }
+    }
+
+    // Update the central timer display (for the current active team)
     function updateTimerDisplay() {
       const currentTeam = teams[currentTeamIndex];
-      timerDisplay.textContent = currentTeam.individualTimeLeft;
+      timerDisplay.textContent = formatTime(currentTeam.individualTimeLeft);
       if (currentTeam.individualTimeLeft <= 10 && currentTeam.individualTimeLeft > 0) {
         timerDisplay.style.color = "var(--secondary-color)";
       } else {
-        timerDisplay.style.color = "var(--secondary-color)";
+        timerDisplay.style.color = "var(--accent-color)";
       }
     }
 
@@ -895,6 +935,7 @@
       }
 
       updateTeamBox(currentTeamIndex);
+      updateTeamTimerDisplay(currentTeamIndex); // Update individual timer display to show "OUT" if applicable
       showMessage(message, 3000);
 
       // Change one of the categories
@@ -1074,7 +1115,7 @@
       updateCategoriesDisplay();
 
       currentTeam.individualTimeLeft = 120; // Reset individual timer to 2 minutes
-      updateTimerDisplay();
+      updateTeamTimerDisplay(currentTeamIndex); // Update individual team's timer display
       stopTeamTimer(currentTeamIndex); // Pause after action
       startTeamTimer(currentTeamIndex); // Restart timer
 
@@ -1120,7 +1161,8 @@
       updateTeamBox(teamIndex); // Disable the button
 
       currentTeam.individualTimeLeft += 45; // Add 45 seconds to individual timer
-      updateTimerDisplay();
+      updateTeamTimerDisplay(currentTeamIndex); // Update individual team's timer display
+      updateTimerDisplay(); // Update global timer display
       
       showMessage(`${currentTeam.name} extended their timer by 45 seconds!`, 2000);
     }

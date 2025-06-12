@@ -431,97 +431,6 @@
       color: var(--text-color);
     }
 
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      main {
-        padding: 20px;
-        width: 95%;
-      }
-
-      h1 {
-        font-size: 2em;
-      }
-
-      h2 {
-        font-size: 1.8em;
-      }
-
-      .prompt-text {
-        font-size: 1.5em;
-      }
-
-      .timer-text {
-        font-size: 2em;
-      }
-
-      .correct-button .material-icons,
-      .incorrect-button .material-icons {
-        font-size: 40px;
-      }
-
-      .team-box {
-        min-width: 150px;
-        padding: 10px 15px;
-      }
-
-      .team-name {
-        font-size: 1.2em;
-      }
-
-      .category-tag {
-        font-size: 1em;
-        padding: 6px 12px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      main {
-        padding: 15px;
-      }
-
-      h1 {
-        font-size: 1.8em;
-      }
-
-      h2 {
-        font-size: 1.5em;
-      }
-
-      .form-group {
-        margin-bottom: 10px;
-      }
-
-      .button {
-        padding: 12px 20px;
-        font-size: 1em;
-      }
-
-      .prompt-text {
-        font-size: 1.2em;
-      }
-
-      .timer-text {
-        font-size: 1.8em;
-      }
-
-      .controls {
-        gap: 10px; /* Even smaller gap for very small screens */
-      }
-
-      .correct-button .material-icons,
-      .incorrect-button .material-icons {
-        font-size: 36px;
-      }
-
-      .team-box {
-        min-width: 120px;
-      }
-
-      .team-name {
-        font-size: 1.1em;
-      }
-    }
-
     /* Styles for stars */
     .stars-display {
       display: flex;
@@ -582,8 +491,8 @@
               <p id="prompt" class="prompt-text"></p>
               <div class="timer-container">
                   <span class="material-icons timer-icon">timer</span>
-                  <span id="timer" class="timer-text">30</span>
-                  <button id="pauseBtn" class="icon-button team-ability-button" aria-label="Pause timer"> <!-- Moved Pause Button -->
+                  <span id="timer" class="timer-text">120</span>
+                  <button id="pauseBtn" class="icon-button team-ability-button" aria-label="Pause timer">
                       <span class="material-icons">pause</span>
                   </button>
               </div>
@@ -647,11 +556,7 @@
     // --- Game State Variables ---
     let teams = []
     let currentTeamIndex = 0
-    let timerInterval
-    let timeLeft = 30
     let gameStarted = false
-    let isTimerRunning = false;
-    let isTimerPaused = false;
 
     // --- Category Data (100 easy categories) ---
     const allCategoryNames = [
@@ -739,9 +644,13 @@
           strikes: 0,
           stars: 0,
           isOut: false,
-          hasSwitched: false, // New ability tracker
-          hasSkipped: false, // New ability tracker
-          hasExtendedTimer: false, // New ability tracker
+          hasSwitched: false,
+          hasSkipped: false,
+          hasExtendedTimer: false,
+          individualTimeLeft: 120, // New: individual timer
+          individualTimerInterval: null, // New: individual timer interval ID
+          isIndividualTimerRunning: false, // New: individual timer running state
+          isIndividualTimerPaused: false, // New: individual timer paused state
         })
       }
 
@@ -821,9 +730,10 @@
       }
 
       // Highlight active team
-      document.querySelectorAll(".team-box").forEach((box) => box.classList.remove("active"))
-      if (!team.isOut) {
-        teamBox.classList.add("active")
+      if (index === currentTeamIndex && !team.isOut) {
+        teamBox.classList.add("active");
+      } else {
+        teamBox.classList.remove("active");
       }
 
       // Mark team as out
@@ -839,16 +749,11 @@
       const teamExtendTimerBtn = teamBox.querySelector('[data-ability-type="extendTimer"]')
 
       // Enable/disable ability buttons based on current team and usage
-      if (index === currentTeamIndex && !team.isOut) {
-        if (teamSwitchBtn) teamSwitchBtn.disabled = team.hasSwitched
-        if (teamSkipBtn) teamSkipBtn.disabled = team.hasSkipped
-        if (teamExtendTimerBtn) teamExtendTimerBtn.disabled = team.hasExtendedTimer
-      } else {
-        // Disable all ability buttons if it's not the current team's turn or team is out
-        if (teamSwitchBtn) teamSwitchBtn.disabled = true
-        if (teamSkipBtn) teamSkipBtn.disabled = true
-        if (teamExtendTimerBtn) teamExtendTimerBtn.disabled = true
-      }
+      // Buttons are enabled if it's the current team's turn AND they haven't used the ability yet AND the team is not out.
+      // Otherwise, they are disabled.
+      if (teamSwitchBtn) teamSwitchBtn.disabled = !(index === currentTeamIndex && !team.isOut && !team.hasSwitched);
+      if (teamSkipBtn) teamSkipBtn.disabled = !(index === currentTeamIndex && !team.isOut && !team.hasSkipped);
+      if (teamExtendTimerBtn) teamExtendTimerBtn.disabled = !(index === currentTeamIndex && !team.isOut && !team.hasExtendedTimer);
     }
 
     function updateCategoriesDisplay() {
@@ -867,8 +772,69 @@
       nextTurn()
     }
 
+    // New: Start individual team timer
+    function startTeamTimer(teamIndex) {
+      const team = teams[teamIndex];
+      if (team.isIndividualTimerRunning) return; // Prevent multiple intervals
+
+      team.isIndividualTimerRunning = true;
+      team.isIndividualTimerPaused = false;
+      
+      // Only update the global pause button if it's the current team's turn
+      if (teamIndex === currentTeamIndex) {
+        pauseBtn.querySelector(".material-icons").textContent = "pause";
+        pauseBtn.setAttribute("aria-label", "Pause timer");
+      }
+
+      team.individualTimerInterval = setInterval(() => {
+        team.individualTimeLeft--;
+        if (teamIndex === currentTeamIndex) { // Only update display if it's the current team
+          updateTimerDisplay();
+        }
+        if (team.individualTimeLeft <= 0) {
+          clearInterval(team.individualTimerInterval);
+          team.individualTimerInterval = null;
+          team.isIndividualTimerRunning = false;
+          team.isIndividualTimerPaused = false; // Timer ran out, not paused
+          if (teamIndex === currentTeamIndex) { // Only trigger strike if it's the current team's turn
+            handleStrike(true); // Timer ran out
+          }
+        }
+      }, 1000);
+    }
+
+    // New: Stop individual team timer
+    function stopTeamTimer(teamIndex) {
+      const team = teams[teamIndex];
+      if (team.individualTimerInterval) {
+        clearInterval(team.individualTimerInterval);
+        team.individualTimerInterval = null;
+      }
+      team.isIndividualTimerRunning = false;
+      team.isIndividualTimerPaused = true; // Explicitly paused
+      
+      // Only update the global pause button if it's the current team's turn
+      if (teamIndex === currentTeamIndex) {
+        pauseBtn.querySelector(".material-icons").textContent = "play_arrow";
+        pauseBtn.setAttribute("aria-label", "Resume timer");
+      }
+    }
+
+    function updateTimerDisplay() {
+      const currentTeam = teams[currentTeamIndex];
+      timerDisplay.textContent = currentTeam.individualTimeLeft;
+      if (currentTeam.individualTimeLeft <= 10 && currentTeam.individualTimeLeft > 0) {
+        timerDisplay.style.color = "var(--secondary-color)";
+      } else {
+        timerDisplay.style.color = "var(--secondary-color)";
+      }
+    }
+
     function nextTurn() {
-      stopTimer(); // Stop any existing timer
+      // Stop the timer for the *previous* current team before changing turns
+      if (gameStarted && teams[currentTeamIndex] && teams[currentTeamIndex].isIndividualTimerRunning) {
+        stopTeamTimer(currentTeamIndex);
+      }
 
       const totalTeams = teams.length;
       let nextIndex = (currentTeamIndex + 1) % totalTeams;
@@ -877,74 +843,30 @@
       // Iterate through all teams to find the next active one
       for (let i = 0; i < totalTeams; i++) {
         if (!teams[nextIndex].isOut) {
-          currentTeamIndex = nextIndex; // Update currentTeamIndex to the found active team
+          currentTeamIndex = nextIndex;
           foundNextTeam = true;
           break;
         }
-        nextIndex = (nextIndex + 1) % totalTeams; // Move to the next team in the circle
+        nextIndex = (nextIndex + 1) % totalTeams;
       }
 
       if (!foundNextTeam) {
-        // This means all teams are out, or only one is left.
-        // checkGameOver will handle the end of round/game.
         checkGameOver();
         return;
       }
 
-      updateTeamBox(currentTeamIndex); // Highlight the new active team and update ability buttons
-      timeLeft = 30; // Reset timer for new turn
+      teams.forEach((_, index) => updateTeamBox(index)); // Update all team boxes for highlighting and button states
+
+      // Update timer display for the new current team
       updateTimerDisplay();
-      startTimer(); // Start timer for the new turn
-    }
 
-    function startTimer() {
-      if (isTimerRunning) return; // Prevent multiple intervals
-
-      isTimerRunning = true;
-      isTimerPaused = false;
-      pauseBtn.querySelector(".material-icons").textContent = "pause";
-      pauseBtn.setAttribute("aria-label", "Pause timer");
-
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        updateTimerDisplay();
-        if (timeLeft <= 0) {
-          handleStrike(true); // Timer ran out
-        }
-      }, 1000);
-    }
-
-    function stopTimer() {
-      clearInterval(timerInterval);
-      isTimerRunning = false;
-      isTimerPaused = true; // When stopped by action, it's paused
-      pauseBtn.querySelector(".material-icons").textContent = "play_arrow";
-      pauseBtn.setAttribute("aria-label", "Resume timer");
-    }
-
-    function togglePause() {
-      if (isTimerRunning) {
-        stopTimer(); // This will pause it
-      } else if (isTimerPaused) {
-        startTimer(); // This will resume it
-      } else {
-        // If timer is not running and not paused (e.g., first turn), start it
-        startTimer();
-      }
-    }
-
-    function updateTimerDisplay() {
-      timerDisplay.textContent = timeLeft
-      if (timeLeft <= 10 && timeLeft > 0) {
-        timerDisplay.style.color = "var(--secondary-color)"
-      } else {
-        timerDisplay.style.color = "var(--secondary-color)" // Always red for timer
-      }
+      // Start or resume the timer for the new current team
+      startTeamTimer(currentTeamIndex);
     }
 
     function handleCorrect() {
       playSound("correct")
-      stopTimer(); // Pause timer
+      stopTeamTimer(currentTeamIndex); // Stop current team's timer
       nextTurn()
     }
 
@@ -955,17 +877,25 @@
 
     function handleStrike(timerExpired) {
       const currentTeam = teams[currentTeamIndex]
-      currentTeam.strikes++
       playSound("strike")
-      stopTimer(); // Pause timer
-      updateTeamBox(currentTeamIndex)
+      stopTeamTimer(currentTeamIndex); // Stop current team's timer
 
-      let message = `${currentTeam.name} got a strike!`
+      let message = `${currentTeam.name} got a strike!`;
+
       if (timerExpired) {
-        message = `${currentTeam.name}'s time ran out! Strike!`
-        playSound("timerEnd")
+        currentTeam.isOut = true; // Team is out if timer expires
+        message = `${currentTeam.name}'s time ran out! They are out for the round!`;
+        playSound("timerEnd");
+      } else {
+        currentTeam.strikes++; // Only add strike if not timer expired
+        if (currentTeam.strikes >= 3) {
+          currentTeam.isOut = true;
+          message = `${currentTeam.name} is out!`;
+        }
       }
-      showMessage(message)
+
+      updateTeamBox(currentTeamIndex);
+      showMessage(message, 3000);
 
       // Change one of the categories
       if (availableCategoriesForSession.length > 0) {
@@ -999,20 +929,18 @@
         console.warn("No more categories to change to!");
       }
 
-      if (currentTeam.strikes >= 3) {
-        currentTeam.isOut = true
-        updateTeamBox(currentTeamIndex)
-        showMessage(`${currentTeam.name} is out!`, 3000)
-        // After a team is out, check game over conditions.
-        // If game is not over, nextTurn will be called by checkGameOver or startNewRound.
-        checkGameOver();
+      if (currentTeam.isOut) {
+        checkGameOver(); // Check if game/round is over
       } else {
-        nextTurn(); // If team is not out, just move to the next turn
+        nextTurn(); // If not out, move to next turn
       }
     }
 
     function checkGameOver() {
-      stopTimer(); // Always stop timer when checking game over
+      // Stop the timer for the current team if it's still running
+      if (teams[currentTeamIndex] && teams[currentTeamIndex].isIndividualTimerRunning) {
+        stopTeamTimer(currentTeamIndex);
+      }
 
       const activeTeams = teams.filter((team) => !team.isOut);
 
@@ -1072,6 +1000,14 @@
         team.hasSwitched = false;
         team.hasSkipped = false;
         team.hasExtendedTimer = false;
+        // Reset individual timer for the new round
+        team.individualTimeLeft = 120;
+        if (team.individualTimerInterval) {
+          clearInterval(team.individualTimerInterval);
+          team.individualTimerInterval = null;
+        }
+        team.isIndividualTimerRunning = false;
+        team.isIndividualTimerPaused = false;
       });
 
       activeCategories = [];
@@ -1137,12 +1073,12 @@
       }
       updateCategoriesDisplay();
 
-      timeLeft = 30; // Reset timer
+      currentTeam.individualTimeLeft = 120; // Reset individual timer to 2 minutes
       updateTimerDisplay();
-      stopTimer(); // Pause after action
-      startTimer(); // Restart timer
+      stopTeamTimer(currentTeamIndex); // Pause after action
+      startTeamTimer(currentTeamIndex); // Restart timer
 
-      showMessage(`${currentTeam.name} used their Switch! New categories!`, 2000);
+      showMessage(`${currentTeam.name} used their Switch! New categories and timer reset!`, 2000);
     }
 
     function handleSkip(teamIndex) {
@@ -1161,7 +1097,7 @@
       currentTeam.hasSkipped = true;
       updateTeamBox(teamIndex); // Disable the button
 
-      stopTimer(); // Pause timer
+      stopTeamTimer(currentTeamIndex); // Pause timer
       nextTurn(); // Move to next team
 
       showMessage(`${currentTeam.name} used their Skip!`, 1500);
@@ -1183,10 +1119,10 @@
       currentTeam.hasExtendedTimer = true;
       updateTeamBox(teamIndex); // Disable the button
 
-      timeLeft += 45; // Add 45 seconds
+      currentTeam.individualTimeLeft += 45; // Add 45 seconds to individual timer
       updateTimerDisplay();
       
-      showMessage(`${currentTeam.name} extended the timer by 45 seconds!`, 2000);
+      showMessage(`${currentTeam.name} extended their timer by 45 seconds!`, 2000);
     }
 
     // --- Event Listeners ---
@@ -1210,6 +1146,19 @@
         darkModeToggle.setAttribute("aria-label", "Toggle dark mode")
       }
     })
+
+    // New: Toggle pause for the current team's timer
+    function togglePause() {
+      const currentTeam = teams[currentTeamIndex];
+      if (currentTeam.isIndividualTimerRunning) {
+        stopTeamTimer(currentTeamIndex);
+      } else if (currentTeam.isIndividualTimerPaused) {
+        startTeamTimer(currentTeamIndex);
+      } else {
+        // If timer is not running and not paused (e.g., first turn), start it
+        startTeamTimer(currentTeamIndex);
+      }
+    }
 
     // --- Initial Setup ---
     document.addEventListener("DOMContentLoaded", () => {

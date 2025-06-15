@@ -1,358 +1,968 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Two-Team Staircase Game</title>
-  <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 60px 20px 20px; /* Added top spacing (60px instead of 20px) */
-      font-family: Arial, sans-serif;
-      background-color: #f0f0f0;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏔️ Staircase Climbing Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body.active-blue {
-      background-color: #e6f2ff;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #fdf4ff 50%, #fce7f3 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
 
-    body.active-red {
-      background-color: #ffe6e6;
-    }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-    .game-container {
-      display: flex;
-      gap: 50px;
-    }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
 
-    .staircase-container {
-      position: relative;
-      width: 650px;
-      height: 390px;
-    }
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #9333ea, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
 
-    .step {
-      position: absolute;
-      width: 50px;
-      height: 30px;
-      background-color: #A0522D;
-      border: 1px solid #5C2E00;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: bold;
-      box-sizing: border-box;
-    }
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.125rem;
+        }
 
-    .mirrored .step {
-      transform: scaleX(-1);
-    }
+        .game-status {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
 
-    .mirrored .step span {
-      transform: scaleX(-1); /* flip text back */
-      display: inline-block;
-      width: 100%;
-      text-align: center;
-    }
+        .round-info {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
 
-    .character {
-      position: absolute;
-      width: 25px;
-      height: 25px;
-      box-sizing: border-box;
-      transition: bottom 0.5s, left 0.5s;
-    }
+        .score-summary {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            font-size: 1.125rem;
+        }
 
-    .team1 .character {
-      background-color: blue;
-      border: 1px solid darkblue;
-    }
+        .team-total {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: bold;
+        }
 
-    .team2 .character {
-      background-color: red;
-      border: 1px solid darkred;
-    }
+        .team-total.blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
 
-    .game-ui {
-      text-align: center;
-      padding: 15px;
-      background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      margin-top: 10px;
-    }
+        .team-total.red {
+            background: #fecaca;
+            color: #991b1b;
+        }
 
-    .controls button {
-      margin: 8px;
-      padding: 12px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      border: none;
-      border-radius: 5px;
-      color: white;
-    }
+        .game-winner {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #059669;
+            margin-top: 0.5rem;
+        }
 
-    .team1 .controls .blue { background-color: #007bff; }
-    .team2 .controls .blue { background-color: #dc3545; }
+        .game-container {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            align-items: flex-start;
+        }
 
-    .controls .hit { background-color: #28a745; }
-    .controls .stop { background-color: #dc3545; }
+        .team-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
 
-    .controls button:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
+        .staircase-container {
+            position: relative;
+            width: 650px;
+            height: 400px;
+            background: linear-gradient(to bottom, #bae6fd, #e0f2fe);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
 
-    .game-info p {
-      margin: 8px 0;
-      font-size: 18px;
-    }
+        .staircase-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, #bbf7d0 0%, #dcfce7 50%, transparent 100%);
+            opacity: 0.5;
+        }
 
-    .game-info .message {
-      font-weight: bold;
-      min-height: 25px;
-    }
+        .step {
+            position: absolute;
+            width: 50px;
+            height: 30px;
+            background: linear-gradient(to right, #d97706, #b45309);
+            border: 1px solid rgba(146, 64, 14, 0.3);
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.875rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
 
-    .stars-display {
-      font-size: 22px;
-      color: gold;
-    }
-  </style>
+        .step.current {
+            background: #fbbf24;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5), 0 0 0 2px #fbbf24;
+            transform: scale(1.05);
+        }
+
+        .step.passed {
+            background: linear-gradient(to right, #10b981, #059669);
+        }
+
+        .character {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.5s ease;
+            z-index: 10;
+            transform-origin: center;
+        }
+
+        .character:hover {
+            transform: scale(1.1);
+        }
+
+        .character.blue {
+            background: linear-gradient(to bottom right, #60a5fa, #2563eb);
+            border-color: #1d4ed8;
+        }
+
+        .character.red {
+            background: linear-gradient(to bottom right, #f87171, #dc2626);
+            border-color: #b91c1c;
+        }
+
+        .danger-zone {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 32px;
+            background: linear-gradient(to right, #ef4444, #dc2626);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .team-ui {
+            width: 650px;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .team-ui.active-blue {
+            box-shadow: 0 0 0 2px #60a5fa, 0 10px 15px -3px rgba(96, 165, 250, 0.2);
+        }
+
+        .team-ui.active-red {
+            box-shadow: 0 0 0 2px #f87171, 0 10px 15px -3px rgba(248, 113, 113, 0.2);
+        }
+
+        .team-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .team-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .team-name.blue {
+            color: #2563eb;
+        }
+
+        .team-name.red {
+            color: #dc2626;
+        }
+
+        .team-points {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.25rem;
+        }
+
+        .total-points {
+            font-size: 1.25rem;
+            font-weight: bold;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+        }
+
+        .total-points.blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .total-points.red {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .round-points {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-start.blue {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-start.blue:hover:not(:disabled) {
+            background: #2563eb;
+        }
+
+        .btn-start.red {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-start.red:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .btn-roll {
+            background: white;
+            color: #374151;
+            border: 2px solid #d1d5db;
+        }
+
+        .btn-roll:hover:not(:disabled) {
+            border-color: #9ca3af;
+            background: #f9fafb;
+        }
+
+        .btn-stop {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #4b5563;
+        }
+
+        .btn-new-game {
+            background: #059669;
+            color: white;
+            margin: 0 auto;
+            display: block;
+            margin-top: 1rem;
+        }
+
+        .btn-new-game:hover {
+            background: #047857;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.75rem;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-weight: bold;
+            font-size: 1.125rem;
+            min-height: 2rem;
+        }
+
+        .dice-display {
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 2px dashed #9ca3af;
+            border-radius: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .message {
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .message.default {
+            background: #f9fafb;
+            color: #6b7280;
+        }
+
+        .message.info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #dbeafe;
+        }
+
+        .message.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #dcfce7;
+        }
+
+        .message.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .mirrored .step {
+            transform: scaleX(-1);
+        }
+
+        .mirrored .step span {
+            transform: scaleX(-1);
+            display: inline-block;
+        }
+
+        .points-history {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .history-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .history-rounds {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .round-score {
+            padding: 0.25rem 0.5rem;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🏔️ Staircase Climbing Challenge</h1>
+            <p class="subtitle">Accumulate points over 5 rounds - highest total wins!</p>
+        </div>
 
-<div class="game-container">
-  <!-- Team 1 -->
-  <div class="team1">
-    <div class="staircase-container" id="staircase1"></div>
-    <div class="game-ui">
-      <div class="controls">
-        <button class="blue">BLUE</button>
-        <button class="hit" disabled>HIT</button>
-        <button class="stop" disabled>STOP</button>
-      </div>
-      <div class="game-info">
-        <p>Dice Roll: <span class="dice">-</span></p>
-        <p>Step: <span class="step-count">0</span></p>
-        <p>Score: <span class="score">0</span></p>
-        <p>Stars: <span class="stars stars-display"> </span></p>
-        <p class="message"></p>
-      </div>
+        <div class="game-status">
+            <div class="round-info" id="roundInfo">Round 1 of 5</div>
+            <div class="score-summary">
+                <div class="team-total blue">
+                    Blue Team: <span id="blueTotal">0</span> points
+                </div>
+                <div class="team-total red">
+                    Red Team: <span id="redTotal">0</span> points
+                </div>
+            </div>
+            <div class="game-winner" id="gameWinner" style="display: none;"></div>
+            <button class="btn btn-new-game" id="newGameBtn" style="display: none;">
+                🎮 Start New Game
+            </button>
+        </div>
+
+        <div class="game-container">
+            <!-- Team 1 -->
+            <div class="team-section">
+                <div class="staircase-container" id="staircase1"></div>
+                <div class="team-ui" id="ui1">
+                    <div class="team-header">
+                        <h2 class="team-name blue">Blue Team</h2>
+                        <div class="team-points">
+                            <div class="total-points blue" id="bluePoints">0 pts</div>
+                            <div class="round-points">This round: <span id="blueRoundPoints">0</span></div>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-start blue" id="start1">
+                            ⚡ START
+                        </button>
+                        <button class="btn btn-roll" id="roll1" disabled>
+                            🎲 ROLL
+                        </button>
+                        <button class="btn btn-stop" id="stop1" disabled>
+                            🛡️ STOP
+                        </button>
+                    </div>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-label">Last Roll</div>
+                            <div class="stat-value">
+                                <div class="dice-display" id="dice1"></div>
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Current Step</div>
+                            <div class="stat-value" id="step1">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Round Score</div>
+                            <div class="stat-value" id="score1">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Total Points</div>
+                            <div class="stat-value" id="totalPoints1">0</div>
+                        </div>
+                    </div>
+                    <div class="message default" id="message1">Ready to climb!</div>
+                    <div class="points-history">
+                        <div class="history-title">Round History:</div>
+                        <div class="history-rounds" id="history1">
+                            <span class="round-score">No rounds yet</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team 2 -->
+            <div class="team-section">
+                <div class="staircase-container mirrored" id="staircase2"></div>
+                <div class="team-ui" id="ui2">
+                    <div class="team-header">
+                        <h2 class="team-name red">Red Team</h2>
+                        <div class="team-points">
+                            <div class="total-points red" id="redPoints">0 pts</div>
+                            <div class="round-points">This round: <span id="redRoundPoints">0</span></div>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-start red" id="start2">
+                            ⚡ START
+                        </button>
+                        <button class="btn btn-roll" id="roll2" disabled>
+                            🎲 ROLL
+                        </button>
+                        <button class="btn btn-stop" id="stop2" disabled>
+                            🛡️ STOP
+                        </button>
+                    </div>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-label">Last Roll</div>
+                            <div class="stat-value">
+                                <div class="dice-display" id="dice2"></div>
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Current Step</div>
+                            <div class="stat-value" id="step2">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Round Score</div>
+                            <div class="stat-value" id="score2">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Total Points</div>
+                            <div class="stat-value" id="totalPoints2">0</div>
+                        </div>
+                    </div>
+                    <div class="message default" id="message2">Ready to climb!</div>
+                    <div class="points-history">
+                        <div class="history-title">Round History:</div>
+                        <div class="history-rounds" id="history2">
+                            <span class="round-score">No rounds yet</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🎯 Goal: Accumulate the most points over 5 rounds to win the game!</p>
+        </div>
     </div>
-  </div>
 
-  <!-- Team 2 -->
-  <div class="team2">
-    <div class="staircase-container mirrored" id="staircase2"></div>
-    <div class="game-ui">
-      <div class="controls">
-        <button class="blue">RED</button>
-        <button class="hit" disabled>HIT</button>
-        <button class="stop" disabled>STOP</button>
-      </div>
-      <div class="game-info">
-        <p>Dice Roll: <span class="dice">-</span></p>
-        <p>Step: <span class="step-count">0</span></p>
-        <p>Score: <span class="score">0</span></p>
-        <p>Stars: <span class="stars stars-display"> </span></p>
-        <p class="message"></p>
-      </div>
-    </div>
-  </div>
-</div>
+    <script>
+        const MAX_STEP = 12;
+        const STEP_WIDTH = 50;
+        const STEP_HEIGHT = 30;
+        const CHARACTER_WIDTH = 32;
+        const CHARACTER_OFFSET_Y = 35;
+        const CHARACTER_OFFSET_X = (STEP_WIDTH - CHARACTER_WIDTH) / 2;
+        const MAX_ROUNDS = 5;
 
-<script>
-  const STEP_WIDTH = 50;
-  const STEP_HEIGHT = 30;
-  const CHARACTER_WIDTH = 25;
-  const CHARACTER_OFFSET_Y = 30; // raised above step height
-  const CHARACTER_OFFSET_X = (STEP_WIDTH - CHARACTER_WIDTH) / 2;
-  const MAX_STEP = 12;
+        let currentRound = 1;
+        let gameFinished = false;
 
-  const teams = {
-    team1: initTeam('staircase1', false),
-    team2: initTeam('staircase2', true)
-  };
+        const teams = {
+            team1: initTeam(1, false),
+            team2: initTeam(2, true)
+        };
 
-  function initTeam(staircaseId, mirrored) {
-    const staircase = document.getElementById(staircaseId);
-    for (let i = 0; i <= MAX_STEP; i++) {
-      const step = document.createElement('div');
-      step.className = 'step';
-      step.style.bottom = (i * STEP_HEIGHT) + 'px';
-      step.style.left = mirrored
-        ? (MAX_STEP - i) * STEP_WIDTH + 'px'
-        : i * STEP_WIDTH + 'px';
+        let activeTeam = null;
+        let gameInProgress = false;
 
-      const label = document.createElement('span');
-      label.textContent = i;
-      step.appendChild(label);
+        function initTeam(teamNum, mirrored) {
+            const staircase = document.getElementById(`staircase${teamNum}`);
+            
+            // Create steps
+            for (let i = 0; i <= MAX_STEP; i++) {
+                const step = document.createElement('div');
+                step.className = 'step';
+                step.style.bottom = (i * STEP_HEIGHT) + 'px';
+                step.style.left = mirrored 
+                    ? (MAX_STEP - i) * STEP_WIDTH + 'px'
+                    : i * STEP_WIDTH + 'px';
 
-      staircase.appendChild(step);
-    }
+                const label = document.createElement('span');
+                label.textContent = i;
+                step.appendChild(label);
 
-    const char = document.createElement('div');
-    char.classList.add('character');
-    staircase.appendChild(char);
+                staircase.appendChild(step);
+            }
 
-    const container = staircase.parentElement;
-    return {
-      container,
-      char,
-      mirrored,
-      step: 0,
-      score: 0,
-      stars: 0,
-      stopped: false,
-      diceElem: container.querySelector('.dice'),
-      stepElem: container.querySelector('.step-count'),
-      scoreElem: container.querySelector('.score'),
-      starsElem: container.querySelector('.stars'),
-      msgElem: container.querySelector('.message'),
-      controls: {
-        blue: container.querySelector('.blue'),
-        hit: container.querySelector('.hit'),
-        stop: container.querySelector('.stop')
-      }
-    };
-  }
+            // Create character
+            const character = document.createElement('div');
+            character.className = `character ${teamNum === 1 ? 'blue' : 'red'}`;
+            character.innerHTML = teamNum === 1 ? '🔵' : '🔴';
+            staircase.appendChild(character);
 
-  for (let teamKey in teams) {
-    const team = teams[teamKey];
-    team.controls.blue.addEventListener('click', () => startGame(team));
-    team.controls.hit.addEventListener('click', () => rollDice(team));
-    team.controls.stop.addEventListener('click', () => stopGame(team));
-    updateVisual(team);
-    updateUI(team);
-  }
+            return {
+                teamNum,
+                mirrored,
+                step: 0,
+                score: 0,
+                totalPoints: 0,
+                roundHistory: [],
+                stopped: false,
+                lastRoll: null,
+                staircase,
+                character,
+                elements: {
+                    ui: document.getElementById(`ui${teamNum}`),
+                    start: document.getElementById(`start${teamNum}`),
+                    roll: document.getElementById(`roll${teamNum}`),
+                    stop: document.getElementById(`stop${teamNum}`),
+                    dice: document.getElementById(`dice${teamNum}`),
+                    step: document.getElementById(`step${teamNum}`),
+                    score: document.getElementById(`score${teamNum}`),
+                    totalPoints: document.getElementById(`totalPoints${teamNum}`),
+                    message: document.getElementById(`message${teamNum}`),
+                    history: document.getElementById(`history${teamNum}`),
+                    roundPoints: document.getElementById(`${teamNum === 1 ? 'blue' : 'red'}RoundPoints`)
+                }
+            };
+        }
 
-  function startGame(team) {
-    team.step = 0;
-    team.score = 0;
-    team.stopped = false;
-    team.msgElem.textContent = 'Game started! Hit to move.';
-    updateVisual(team);
-    updateUI(team);
-    setActiveBg(team);
-    team.controls.blue.disabled = true;
-    team.controls.hit.disabled = false;
-    team.controls.stop.disabled = false;
-  }
+        function getDiceDisplay(roll) {
+            const diceMap = {
+                1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅'
+            };
+            return diceMap[roll] || '';
+        }
 
-  function rollDice(team) {
-    if (team.stopped) return;
+        function updateVisual(team) {
+            const x = (team.mirrored ? (MAX_STEP - team.step) : team.step) * STEP_WIDTH + CHARACTER_OFFSET_X;
+            const y = team.step * STEP_HEIGHT + CHARACTER_OFFSET_Y;
+            
+            team.character.style.left = x + 'px';
+            team.character.style.bottom = y + 'px';
 
-    const roll = Math.floor(Math.random() * 6) + 1;
-    team.step += roll;
-    team.diceElem.textContent = roll;
+            // Update step highlighting
+            const steps = team.staircase.querySelectorAll('.step');
+            steps.forEach((step, index) => {
+                step.classList.remove('current', 'passed');
+                if (index === team.step && !team.stopped) {
+                    step.classList.add('current');
+                } else if (index < team.step) {
+                    step.classList.add('passed');
+                }
+            });
 
-    if (team.step > MAX_STEP) {
-      team.score = 0;
-      team.msgElem.textContent = `Rolled ${roll}. Fell off the cliff!`;
-      team.stopped = true;
-      updateUI(team);
-      updateVisual(team);
-      otherTeamWins(team);
-      return;
-    }
+            // Show danger zone if fallen
+            const existingDanger = team.staircase.querySelector('.danger-zone');
+            if (team.step > MAX_STEP && !existingDanger) {
+                const dangerZone = document.createElement('div');
+                dangerZone.className = 'danger-zone';
+                dangerZone.innerHTML = '⚠️ DANGER ZONE ⚠️';
+                team.staircase.appendChild(dangerZone);
+            } else if (team.step <= MAX_STEP && existingDanger) {
+                existingDanger.remove();
+            }
+        }
 
-    team.msgElem.textContent = `Rolled ${roll}. Step ${team.step}`;
-    updateVisual(team);
-    updateUI(team);
-    checkEnd();
-  }
+        function updateUI(team) {
+            team.elements.dice.innerHTML = team.lastRoll ? getDiceDisplay(team.lastRoll) : '';
+            team.elements.step.textContent = team.step;
+            team.elements.score.textContent = team.score;
+            team.elements.totalPoints.textContent = team.totalPoints;
+            team.elements.roundPoints.textContent = team.score;
+            
+            // Update points display in header
+            const pointsDisplay = team.teamNum === 1 ? 
+                document.getElementById('bluePoints') : 
+                document.getElementById('redPoints');
+            pointsDisplay.textContent = `${team.totalPoints} pts`;
+            
+            // Update total in game status
+            const totalDisplay = team.teamNum === 1 ? 
+                document.getElementById('blueTotal') : 
+                document.getElementById('redTotal');
+            totalDisplay.textContent = team.totalPoints;
+            
+            // Update history
+            updateHistory(team);
+        }
 
-  function stopGame(team) {
-    if (team.stopped) return;
+        function updateHistory(team) {
+            const historyContainer = team.elements.history;
+            if (team.roundHistory.length === 0) {
+                historyContainer.innerHTML = '<span class="round-score">No rounds yet</span>';
+            } else {
+                historyContainer.innerHTML = team.roundHistory
+                    .map((points, index) => `<span class="round-score">R${index + 1}: ${points}</span>`)
+                    .join('');
+            }
+        }
 
-    team.stopped = true;
-    team.score = team.step;
-    team.msgElem.textContent = `Stopped at step ${team.step}. Scored ${team.score} points.`;
-    updateUI(team);
-    checkEnd();
-  }
+        function updateGameStatus() {
+            document.getElementById('roundInfo').textContent = 
+                gameFinished ? `Game Complete!` : `Round ${currentRound} of ${MAX_ROUNDS}`;
+        }
 
-  function updateVisual(team) {
-    const x = (team.mirrored ? (MAX_STEP - team.step) : team.step) * STEP_WIDTH + CHARACTER_OFFSET_X;
-    const y = team.step * STEP_HEIGHT + CHARACTER_OFFSET_Y;
-    team.char.style.left = x + 'px';
-    team.char.style.bottom = y + 'px';
-  }
+        function setMessage(team, message, type = 'info') {
+            team.elements.message.textContent = message;
+            team.elements.message.className = `message ${type}`;
+        }
 
-  function updateUI(team) {
-    team.stepElem.textContent = team.step;
-    team.scoreElem.textContent = team.score;
-    team.starsElem.textContent = '⭐'.repeat(team.stars);
-  }
+        function setActiveTeam(team) {
+            // Remove active class from all UIs
+            Object.values(teams).forEach(t => {
+                t.elements.ui.classList.remove('active-blue', 'active-red');
+            });
+            
+            if (team) {
+                activeTeam = team.teamNum;
+                const activeClass = team.teamNum === 1 ? 'active-blue' : 'active-red';
+                team.elements.ui.classList.add(activeClass);
+            } else {
+                activeTeam = null;
+            }
+        }
 
-  function setActiveBg(team) {
-    document.body.classList.remove('active-blue', 'active-red');
-    document.body.classList.add(team.container.classList.contains('team1') ? 'active-blue' : 'active-red');
-  }
+        function startGame(team) {
+            if (gameFinished) return;
+            
+            team.step = 0;
+            team.score = 0;
+            team.stopped = false;
+            team.lastRoll = null;
+            
+            setMessage(team, 'Game started! Roll the dice to climb!', 'info');
+            updateVisual(team);
+            updateUI(team);
+            setActiveTeam(team);
+            
+            gameInProgress = true;
+            team.elements.start.disabled = true;
+            team.elements.roll.disabled = false;
+            team.elements.stop.disabled = false;
+        }
 
-  function checkEnd() {
-    if (teams.team1.stopped && teams.team2.stopped) {
-      determineWinner();
-    }
-  }
+        function rollDice(team) {
+            if (team.stopped || activeTeam !== team.teamNum || gameFinished) return;
 
-  function otherTeamWins(fallenTeam) {
-    const otherTeam = fallenTeam === teams.team1 ? teams.team2 : teams.team1;
-    if (!otherTeam.stopped) {
-      otherTeam.stopped = true;
-      otherTeam.score = otherTeam.step;
-    }
+            const roll = Math.floor(Math.random() * 6) + 1;
+            team.lastRoll = roll;
+            team.step += roll;
 
-    fallenTeam.msgElem.textContent += " ❌";
-    otherTeam.msgElem.textContent += " ⭐ Opponent fell. You win this round!";
-    otherTeam.stars++;
+            if (team.step > MAX_STEP) {
+                team.score = 0;
+                team.stopped = true;
+                setMessage(team, `Rolled ${roll}! Fell off the cliff! 💥 No points this round!`, 'error');
+                
+                // Other team wins
+                const otherTeam = Object.values(teams).find(t => t.teamNum !== team.teamNum);
+                if (!otherTeam.stopped) {
+                    otherTeam.stopped = true;
+                    otherTeam.score = otherTeam.step;
+                    setMessage(otherTeam, `Opponent fell! You get ${otherTeam.step} points! 🎉`, 'success');
+                    updateUI(otherTeam);
+                }
+                
+                updateVisual(team);
+                updateUI(team);
+                setTimeout(endRound, 3000);
+            } else {
+                setMessage(team, `Rolled ${roll}! Now on step ${team.step}`, 'info');
+                updateVisual(team);
+                updateUI(team);
+                
+                if (team.step === MAX_STEP) {
+                    team.stopped = true;
+                    team.score = team.step;
+                    setMessage(team, `Perfect! Reached the top! 🏆 ${team.step} points!`, 'success');
+                    checkRoundEnd();
+                }
+            }
+        }
 
-    updateUI(fallenTeam);
-    updateUI(otherTeam);
+        function stopGame(team) {
+            if (team.stopped || activeTeam !== team.teamNum || gameFinished) return;
 
-    setTimeout(resetGame, 2000);
-  }
+            team.stopped = true;
+            team.score = team.step;
+            setMessage(team, `Stopped at step ${team.step}. Secured ${team.step} points! 🛡️`, 'info');
+            updateUI(team);
+            checkRoundEnd();
+        }
 
-  function determineWinner() {
-    if (teams.team1.score > teams.team2.score) {
-      teams.team1.stars++;
-      teams.team1.msgElem.textContent += ' ⭐ Team 1 wins this round!';
-      teams.team2.msgElem.textContent += ' 😞 Team 2 loses.';
-    } else if (teams.team2.score > teams.team1.score) {
-      teams.team2.stars++;
-      teams.team2.msgElem.textContent += ' ⭐ Team 2 wins this round!';
-      teams.team1.msgElem.textContent += ' 😞 Team 1 loses.';
-    } else {
-      teams.team1.msgElem.textContent += ' 🤝 It\'s a tie!';
-      teams.team2.msgElem.textContent += ' 🤝 It\'s a tie!';
-    }
+        function checkRoundEnd() {
+            setTimeout(() => {
+                const allStopped = Object.values(teams).every(team => team.stopped);
+                if (allStopped) {
+                    endRound();
+                }
+            }, 100);
+        }
 
-    updateUI(teams.team1);
-    updateUI(teams.team2);
+        function endRound() {
+            // Add round scores to total points and history
+            Object.values(teams).forEach(team => {
+                team.totalPoints += team.score;
+                team.roundHistory.push(team.score);
+                updateUI(team);
+            });
 
-    setTimeout(resetGame, 2000);
-  }
+            // Show round results
+            const [team1, team2] = Object.values(teams);
+            if (team1.score > team2.score) {
+                setMessage(team1, `${team1.elements.message.textContent} 🌟 Round winner!`, 'success');
+                setMessage(team2, `${team2.elements.message.textContent} Better luck next round!`, 'info');
+            } else if (team2.score > team1.score) {
+                setMessage(team2, `${team2.elements.message.textContent} 🌟 Round winner!`, 'success');
+                setMessage(team1, `${team1.elements.message.textContent} Better luck next round!`, 'info');
+            } else {
+                setMessage(team1, `${team1.elements.message.textContent} 🤝 Round tied!`, 'info');
+                setMessage(team2, `${team2.elements.message.textContent} 🤝 Round tied!`, 'info');
+            }
 
-  function resetGame() {
-    for (let team of Object.values(teams)) {
-      team.step = 0;
-      team.score = 0;
-      team.stopped = false;
-      team.diceElem.textContent = '-';
-      team.msgElem.textContent = '';
-      team.controls.blue.disabled = false;
-      team.controls.hit.disabled = true;
-      team.controls.stop.disabled = true;
-      updateVisual(team);
-      updateUI(team);
-    }
-    document.body.classList.remove('active-blue', 'active-red');
-  }
-</script>
+            // Check if game is finished
+            if (currentRound >= MAX_ROUNDS) {
+                setTimeout(endGame, 3000);
+            } else {
+                setTimeout(nextRound, 3000);
+            }
+        }
 
+        function nextRound() {
+            currentRound++;
+            updateGameStatus();
+            resetRound();
+        }
+
+        function endGame() {
+            gameFinished = true;
+            updateGameStatus();
+            
+            const [team1, team2] = Object.values(teams);
+            const winnerElement = document.getElementById('gameWinner');
+            const newGameBtn = document.getElementById('newGameBtn');
+            
+            if (team1.totalPoints > team2.totalPoints) {
+                winnerElement.textContent = `🏆 Blue Team Wins! (${team1.totalPoints} vs ${team2.totalPoints} points)`;
+                setMessage(team1, 'GAME WINNER! 🏆🎉', 'success');
+                setMessage(team2, 'Good game! Try again! 👏', 'info');
+            } else if (team2.totalPoints > team1.totalPoints) {
+                winnerElement.textContent = `🏆 Red Team Wins! (${team2.totalPoints} vs ${team1.totalPoints} points)`;
+                setMessage(team2, 'GAME WINNER! 🏆🎉', 'success');
+                setMessage(team1, 'Good game! Try again! 👏', 'info');
+            } else {
+                winnerElement.textContent = `🤝 It's a Perfect Tie! (${team1.totalPoints} points each)`;
+                setMessage(team1, 'PERFECT TIE! 🤝✨', 'success');
+                setMessage(team2, 'PERFECT TIE! 🤝✨', 'success');
+            }
+            
+            winnerElement.style.display = 'block';
+            newGameBtn.style.display = 'block';
+            
+            // Disable all controls
+            Object.values(teams).forEach(team => {
+                team.elements.start.disabled = true;
+                team.elements.roll.disabled = true;
+                team.elements.stop.disabled = true;
+            });
+        }
+
+        function resetRound() {
+            Object.values(teams).forEach(team => {
+                team.step = 0;
+                team.score = 0;
+                team.stopped = false;
+                team.lastRoll = null;
+                
+                // Remove danger zones
+                const dangerZone = team.staircase.querySelector('.danger-zone');
+                if (dangerZone) dangerZone.remove();
+                
+                setMessage(team, 'Ready for next round!', 'default');
+                updateVisual(team);
+                updateUI(team);
+                
+                team.elements.start.disabled = false;
+                team.elements.roll.disabled = true;
+                team.elements.stop.disabled = true;
+            });
+            
+            setActiveTeam(null);
+            gameInProgress = false;
+        }
+
+        function newGame() {
+            currentRound = 1;
+            gameFinished = false;
+            
+            Object.values(teams).forEach(team => {
+                team.totalPoints = 0;
+                team.roundHistory = [];
+            });
+            
+            document.getElementById('gameWinner').style.display = 'none';
+            document.getElementById('newGameBtn').style.display = 'none';
+            
+            updateGameStatus();
+            resetRound();
+        }
+
+        // Event listeners
+        teams.team1.elements.start.addEventListener('click', () => startGame(teams.team1));
+        teams.team1.elements.roll.addEventListener('click', () => rollDice(teams.team1));
+        teams.team1.elements.stop.addEventListener('click', () => stopGame(teams.team1));
+
+        teams.team2.elements.start.addEventListener('click', () => startGame(teams.team2));
+        teams.team2.elements.roll.addEventListener('click', () => rollDice(teams.team2));
+        teams.team2.elements.stop.addEventListener('click', () => stopGame(teams.team2));
+
+        document.getElementById('newGameBtn').addEventListener('click', newGame);
+
+        // Initialize
+        Object.values(teams).forEach(team => {
+            updateVisual(team);
+            updateUI(team);
+        });
+        updateGameStatus();
+    </script>
 </body>
 </html>

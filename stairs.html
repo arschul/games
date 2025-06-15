@@ -763,7 +763,12 @@
         }
 
         function startGame(team) {
-            if (gameFinished) return;
+            if (gameFinished || team.stopped) return;
+            
+            // If this is the first player to start in the round
+            if (!gameInProgress) {
+                gameInProgress = true;
+            }
             
             team.step = 0;
             team.score = 0;
@@ -775,7 +780,6 @@
             updateUI(team);
             setActiveTeam(team);
             
-            gameInProgress = true;
             team.elements.start.disabled = true;
             team.elements.roll.disabled = false;
             team.elements.stop.disabled = false;
@@ -792,19 +796,11 @@
                 team.score = 0;
                 team.stopped = true;
                 setMessage(team, `Rolled ${roll}! Fell off the cliff! 💥 No points this round!`, 'error');
-                
-                // Other team wins
-                const otherTeam = Object.values(teams).find(t => t.teamNum !== team.teamNum);
-                if (!otherTeam.stopped) {
-                    otherTeam.stopped = true;
-                    otherTeam.score = otherTeam.step;
-                    setMessage(otherTeam, `Opponent fell! You get ${otherTeam.step} points! 🎉`, 'success');
-                    updateUI(otherTeam);
-                }
-                
                 updateVisual(team);
                 updateUI(team);
-                setTimeout(endRound, 3000);
+                
+                // Don't end round immediately - let other player continue if they haven't played
+                checkRoundEnd();
             } else {
                 setMessage(team, `Rolled ${roll}! Now on step ${team.step}`, 'info');
                 updateVisual(team);
@@ -814,6 +810,7 @@
                     team.stopped = true;
                     team.score = team.step;
                     setMessage(team, `Perfect! Reached the top! 🏆 ${team.step} points!`, 'success');
+                    // Don't end round immediately - let other player continue if they haven't played
                     checkRoundEnd();
                 }
             }
@@ -826,6 +823,8 @@
             team.score = team.step;
             setMessage(team, `Stopped at step ${team.step}. Secured ${team.step} points! 🛡️`, 'info');
             updateUI(team);
+            
+            // Don't end round immediately - let other player continue if they haven't played
             checkRoundEnd();
         }
 
@@ -834,6 +833,16 @@
                 const allStopped = Object.values(teams).every(team => team.stopped);
                 if (allStopped) {
                     endRound();
+                } else {
+                    // If only one player has stopped, disable their controls but keep round going
+                    Object.values(teams).forEach(team => {
+                        if (team.stopped) {
+                            team.elements.start.disabled = true;
+                            team.elements.roll.disabled = true;
+                            team.elements.stop.disabled = true;
+                            setActiveTeam(null); // Clear active team so other player can start
+                        }
+                    });
                 }
             }, 100);
         }
@@ -848,15 +857,20 @@
 
             // Show round results
             const [team1, team2] = Object.values(teams);
+            let roundMessage = '';
+            
             if (team1.score > team2.score) {
+                roundMessage = ` 🌟 Blue Team wins this round! (${team1.score} vs ${team2.score})`;
                 setMessage(team1, `${team1.elements.message.textContent} 🌟 Round winner!`, 'success');
-                setMessage(team2, `${team2.elements.message.textContent} Better luck next round!`, 'info');
+                setMessage(team2, `Round complete! Blue Team scored higher. (${team1.score} vs ${team2.score})`, 'info');
             } else if (team2.score > team1.score) {
+                roundMessage = ` 🌟 Red Team wins this round! (${team2.score} vs ${team1.score})`;
                 setMessage(team2, `${team2.elements.message.textContent} 🌟 Round winner!`, 'success');
-                setMessage(team1, `${team1.elements.message.textContent} Better luck next round!`, 'info');
+                setMessage(team1, `Round complete! Red Team scored higher. (${team2.score} vs ${team1.score})`, 'info');
             } else {
-                setMessage(team1, `${team1.elements.message.textContent} 🤝 Round tied!`, 'info');
-                setMessage(team2, `${team2.elements.message.textContent} 🤝 Round tied!`, 'info');
+                roundMessage = ` 🤝 Round tied! (${team1.score} points each)`;
+                setMessage(team1, `Round complete! 🤝 Tied at ${team1.score} points!`, 'info');
+                setMessage(team2, `Round complete! 🤝 Tied at ${team2.score} points!`, 'info');
             }
 
             // Check if game is finished

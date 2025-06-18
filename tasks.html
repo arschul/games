@@ -337,14 +337,10 @@
               </div>
           </div>
           <div class="form-group">
-              <label for="assign-to">Assign To:</label>
-              <select id="assign-to" required>
-                  <option value="">Select a kid</option>
-                  <option value="Bianca">Bianca</option>
-                  <option value="Samuel">Samuel</option>
-                  <option value="Lucca">Lucca</option>
-                  <option value="Pedro">Pedro</option>
-              </select>
+              <label>Assign To:</label>
+              <div id="assign-to-checkboxes" class="checkbox-group">
+                  <!-- Kid checkboxes will be populated dynamically -->
+              </div>
           </div>
           <div class="form-group">
               <label for="task-due-date">Due Date:</label>
@@ -662,35 +658,54 @@
           document.getElementById('task-reward').value = amount.toFixed(2);
       }
 
+      function populateAssignToCheckboxes() {
+          const assignToCheckboxesDiv = document.getElementById('assign-to-checkboxes');
+          assignToCheckboxesDiv.innerHTML = '';
+          KIDS_NAMES.forEach(kidName => {
+              const label = document.createElement('label');
+              label.innerHTML = `
+                  <input type="checkbox" name="assignKid" value="${kidName}">
+                  ${kidName}
+              `;
+              assignToCheckboxesDiv.appendChild(label);
+          });
+      }
+
       function assignTask() {
           const descriptionInput = document.getElementById('task-description');
           const rewardInput = document.getElementById('task-reward');
-          const assignToSelect = document.getElementById('assign-to');
           const dueDateInput = document.getElementById('task-due-date');
 
           const description = descriptionInput.value.trim();
           const reward = parseFloat(rewardInput.value);
-          const assignedTo = assignToSelect.value;
           const dueDate = dueDateInput.value; // YYYY-MM-DD
 
-          if (!description || isNaN(reward) || reward <= 0 || !assignedTo || !dueDate) {
-              alert('Please fill in all task details correctly.');
+          const selectedKids = Array.from(document.querySelectorAll('#assign-to-checkboxes input[name="assignKid"]:checked'))
+                                    .map(checkbox => checkbox.value);
+
+          if (!description || isNaN(reward) || reward <= 0 || selectedKids.length === 0 || !dueDate) {
+              alert('Please fill in task description, reward, select at least one kid, and set a due date.');
               return;
           }
 
-          const newTask = {
-              id: generateUniqueId(),
-              description,
-              reward,
-              assignedTo,
-              dueDate,
-              status: 'pending'
-          };
+          selectedKids.forEach(assignedTo => {
+              const newTask = {
+                  id: generateUniqueId(),
+                  description,
+                  reward,
+                  assignedTo,
+                  dueDate,
+                  status: 'pending'
+              };
+              tasksData.push(newTask);
+          });
 
-          tasksData.push(newTask);
           descriptionInput.value = '';
           rewardInput.value = '0.50';
-          assignToSelect.value = '';
+          // Uncheck all checkboxes
+          document.querySelectorAll('#assign-to-checkboxes input[name="assignKid"]').forEach(checkbox => {
+              checkbox.checked = false;
+          });
           dueDateInput.value = getTodayDateString(); // Reset date input to today
           refreshUI();
       }
@@ -915,6 +930,7 @@
       // --- Initial Load ---
       document.addEventListener('DOMContentLoaded', () => {
           loadData();
+          populateAssignToCheckboxes(); // Populate checkboxes for new task assignment
           assignDailyTasks(); // Assign daily tasks if not already done for today
           refreshUI();
 

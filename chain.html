@@ -49,7 +49,30 @@
       gap: 1.5rem; /* space-y-6 */
     }
 
-    /* Current Word & Required Length Display */
+    /* Game Mode Selector */
+    .game-mode-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem; /* space-y-3 */
+      padding: 0.75rem;
+      background-color: #f0f9ff; /* bg-blue-50 */
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    .game-mode-selector label {
+      font-weight: 600;
+      color: #1e40af;
+    }
+    .game-mode-selector select {
+      padding: 0.5rem;
+      border: 1px solid #93c5fd; /* border-blue-300 */
+      border-radius: 0.375rem;
+      background-color: #ffffff;
+      font-size: 1rem;
+      color: #1f2937;
+    }
+
+    /* Info Grid */
     .info-grid {
       display: grid;
       grid-template-columns: 1fr; /* grid-cols-1 */
@@ -184,8 +207,8 @@
     #pause-btn { background-color: #2563eb; /* bg-blue-600 */ }
     #pause-btn:hover:not(:disabled) { background-color: #1d4ed8; /* hover:bg-blue-700 */ }
 
-    #new-game-btn { background-color: #dc2626; /* bg-red-600 */ }
-    #new-game-btn:hover:not(:disabled) { background-color: #b91c1c; /* hover:bg-red-700 */ }
+    #new-game-btn, #start-game-btn { background-color: #dc2626; /* bg-red-600 */ }
+    #new-game-btn:hover:not(:disabled), #start-game-btn:hover:not(:disabled) { background-color: #b91c1c; /* hover:bg-red-700 */ }
 
     /* Alphabet Buttons */
     #alphabet {
@@ -221,6 +244,14 @@
       cursor: not-allowed;
       opacity: 0.7;
     }
+    /* Specific styling for disabled end letters in TAILS mode */
+    #alphabet button.disabled-end-letter {
+      background-color: #fca5a5; /* bg-red-300 */
+      color: #7f1d1d; /* text-red-800 */
+      border-color: #ef4444; /* border-red-500 */
+      font-weight: bold;
+    }
+
 
     /* Message Display */
     #message {
@@ -265,6 +296,16 @@
       <h1 class="card-title">Word Chain Game</h1>
     </div>
     <div class="card-content">
+      <div class="game-mode-selector">
+        <label for="game-mode-dropdown">Choose Mode:</label>
+        <select id="game-mode-dropdown">
+          <option value="HEADS">HEADS</option>
+          <option value="TAILS">TAILS</option>
+          <option value="RANDOM">RANDOM</option>
+        </select>
+        <button id="start-game-btn" class="game-button">Start Selected Mode</button>
+      </div>
+
       <div class="info-grid">
         <div class="info-item">
           <span>Current Word:</span>
@@ -274,10 +315,18 @@
           <span>Required Length:</span>
           <strong id="required-length">3</strong>
         </div>
+        <div id="tails-disabled-letters" class="info-item" style="display: none;">
+            <span>Disabled End Letters:</span>
+            <strong id="disabled-end-letters-display"></strong>
+        </div>
+        <div id="random-first-letter-display" class="info-item" style="display: none;">
+            <span>Required First Letter:</span>
+            <strong id="required-first-letter-value"></strong>
+        </div>
       </div>
 
       <div id="next-word-hint">
-        First word: Must be 3 letters long.
+        Select a game mode and click "Start Selected Mode" to begin.
       </div>
 
       <div class="timer-section">
@@ -291,11 +340,11 @@
       </div>
 
       <div class="input-buttons-section">
-        <input type="text" id="word-input" placeholder="Type your word here" />
+        <input type="text" id="word-input" placeholder="Type your word here" disabled />
         <div class="button-group">
-          <button id="submit-btn" class="game-button">Submit</button>
-          <button id="pause-btn" class="game-button">Pause</button>
-          <button id="new-game-btn" class="game-button">New Game</button>
+          <button id="submit-btn" class="game-button" disabled>Submit</button>
+          <button id="pause-btn" class="game-button" disabled>Pause</button>
+          <button id="new-game-btn" class="game-button" disabled>New Game</button>
         </div>
       </div>
 
@@ -313,13 +362,24 @@
   <script>
     let currentWord = "";
     let requiredLength = 3;
-    let usedLetters = [];
+    let usedLetters = []; // For HEADS and RANDOM mode (first letters)
     let timeLeft = 30;
     let timerInterval = null;
     let gameStarted = false;
     let isPaused = false;
     let wordHistory = [];
+    let gameMode = "HEADS"; // Default mode
 
+    // Mode-specific variables
+    let disabledEndLetters = []; // For TAILS mode
+    let randomRequiredFirstLetter = ""; // For RANDOM mode
+    let randomUsedFirstLetters = []; // For RANDOM mode
+
+    const alphabetArray = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+    // DOM Elements
+    const gameModeDropdown = document.getElementById("game-mode-dropdown");
+    const startGameBtn = document.getElementById("start-game-btn");
     const wordInput = document.getElementById("word-input");
     const currentWordSpan = document.getElementById("current-word");
     const requiredLengthSpan = document.getElementById("required-length");
@@ -333,9 +393,13 @@
     const nextWordHintDiv = document.getElementById("next-word-hint");
     const wordHistoryContainer = document.getElementById("word-history-container");
     const wordHistoryParagraph = document.getElementById("word-history");
+    const tailsDisabledLettersDiv = document.getElementById("tails-disabled-letters");
+    const disabledEndLettersDisplay = document.getElementById("disabled-end-letters-display");
+    const randomFirstLetterDisplayDiv = document.getElementById("random-first-letter-display");
+    const requiredFirstLetterValue = document.getElementById("required-first-letter-value");
 
     // Build alphabet buttons
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(letter => {
+    alphabetArray.forEach(letter => {
       const btn = document.createElement("button");
       btn.textContent = letter;
       btn.id = `letter-${letter}`;
@@ -353,15 +417,34 @@
       wordInput.value = "";
       updateNextWordHint();
       updateWordHistoryDisplay();
+      updateModeSpecificDisplays();
       wordInput.focus(); // Keep focus
     }
 
     function updateNextWordHint() {
-      if (gameStarted && currentWord) {
-        const lastLetter = currentWord[currentWord.length - 1];
-        nextWordHintDiv.textContent = `Next word: Starts with "${lastLetter}" and must be ${requiredLength} or ${requiredLength + 1} letters long.`;
-      } else {
+      if (!gameStarted) {
+        nextWordHintDiv.textContent = "Select a game mode and click 'Start Selected Mode' to begin.";
+        return;
+      }
+
+      if (!currentWord) {
         nextWordHintDiv.textContent = "First word: Must be 3 letters long.";
+        return;
+      }
+
+      const lastLetterOfPrevWord = currentWord[currentWord.length - 1];
+      const firstLetterOfPrevWord = currentWord[0];
+
+      switch (gameMode) {
+        case "HEADS":
+          nextWordHintDiv.textContent = `Next word: Must start with "${firstLetterOfPrevWord}" and be ${requiredLength} letters long, OR start with a NEW unused letter and be ${requiredLength + 1} letters long.`;
+          break;
+        case "TAILS":
+          nextWordHintDiv.textContent = `Next word: Must start with "${lastLetterOfPrevWord}" and be ${requiredLength} or ${requiredLength + 1} letters long. Cannot end with a disabled letter.`;
+          break;
+        case "RANDOM":
+          nextWordHintDiv.textContent = `Next word: Must start with "${randomRequiredFirstLetter}" and be ${requiredLength + 1} letters long.`;
+          break;
       }
     }
 
@@ -375,6 +458,33 @@
       }
     }
 
+    function updateModeSpecificDisplays() {
+      // Reset visibility
+      tailsDisabledLettersDiv.style.display = "none";
+      randomFirstLetterDisplayDiv.style.display = "none";
+
+      // Clear alphabet button styling
+      document.querySelectorAll("#alphabet button").forEach(btn => {
+        btn.classList.remove("disabled-end-letter");
+      });
+
+      if (gameStarted) {
+        if (gameMode === "TAILS") {
+          tailsDisabledLettersDiv.style.display = "flex";
+          disabledEndLettersDisplay.textContent = disabledEndLetters.join(", ");
+          disabledEndLetters.forEach(letter => {
+            const btn = document.getElementById(`letter-${letter}`);
+            if (btn) {
+              btn.classList.add("disabled-end-letter");
+            }
+          });
+        } else if (gameMode === "RANDOM") {
+          randomFirstLetterDisplayDiv.style.display = "flex";
+          requiredFirstLetterValue.textContent = randomRequiredFirstLetter;
+        }
+      }
+    }
+
     function disableLetter(letter) {
       const btn = document.getElementById(`letter-${letter}`);
       if (btn && !usedLetters.includes(letter)) {
@@ -382,6 +492,16 @@
         btn.classList.add("disabled");
         usedLetters.push(letter);
       }
+    }
+
+    function enableAllAlphabetLetters() {
+      usedLetters = [];
+      randomUsedFirstLetters = [];
+      document.querySelectorAll("#alphabet button").forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove("disabled");
+        btn.classList.remove("disabled-end-letter"); // Clear TAILS specific styling
+      });
     }
 
     function updateTimerDisplay() {
@@ -402,13 +522,80 @@
             showMessage("⏰ Time's up! Game Over.", "text-red-600");
             submitBtn.disabled = true;
             wordInput.disabled = true;
+            pauseBtn.disabled = true;
             gameStarted = false; // End game on time up
           }
         }
       }, 1000);
     }
 
+    function generateRandomDisabledEndLetters() {
+      disabledEndLetters = [];
+      const availableLetters = [...alphabetArray];
+      for (let i = 0; i < 3; i++) {
+        if (availableLetters.length === 0) break;
+        const randomIndex = Math.floor(Math.random() * availableLetters.length);
+        disabledEndLetters.push(availableLetters.splice(randomIndex, 1)[0]);
+      }
+      updateModeSpecificDisplays(); // Update display immediately
+    }
+
+    function assignRandomFirstLetter() {
+      const availableLetters = alphabetArray.filter(letter => !randomUsedFirstLetters.includes(letter));
+      if (availableLetters.length === 0) {
+        showMessage("All letters used in RANDOM mode! Game Over.", "text-red-600");
+        submitBtn.disabled = true;
+        wordInput.disabled = true;
+        pauseBtn.disabled = true;
+        gameStarted = false;
+        return;
+      }
+      const randomIndex = Math.floor(Math.random() * availableLetters.length);
+      randomRequiredFirstLetter = availableLetters[randomIndex];
+      randomUsedFirstLetters.push(randomRequiredFirstLetter);
+      updateModeSpecificDisplays(); // Update display immediately
+    }
+
+    function newGame() {
+      currentWord = "";
+      requiredLength = 3;
+      timeLeft = 30;
+      gameStarted = true; // Set to true when game starts
+      isPaused = false;
+      wordHistory = [];
+      disabledEndLetters = [];
+      randomRequiredFirstLetter = "";
+      randomUsedFirstLetters = [];
+      clearInterval(timerInterval);
+      timerInterval = null;
+      
+      wordInput.disabled = false;
+      submitBtn.disabled = false;
+      pauseBtn.disabled = false;
+      newGameBtn.disabled = false; // Ensure new game button is enabled
+      pauseBtn.textContent = "Pause";
+      
+      enableAllAlphabetLetters(); // Reset all alphabet buttons
+      showMessage("Game started! Enter your first word.", "text-gray-700");
+      
+      if (gameMode === "TAILS") {
+        generateRandomDisabledEndLetters();
+      } else if (gameMode === "RANDOM") {
+        assignRandomFirstLetter();
+      }
+      
+      updateDisplay();
+      updateTimerDisplay();
+      wordInput.focus();
+    }
+
     function handleSubmit() {
+      if (!gameStarted || isPaused || timeLeft <= 0) {
+        showMessage("Game not active. Start a new game or unpause.");
+        wordInput.focus();
+        return;
+      }
+
       const inputWord = wordInput.value.trim().toUpperCase();
 
       if (!inputWord) {
@@ -424,8 +611,10 @@
 
       const inputLen = inputWord.length;
       const firstLetter = inputWord[0];
+      const lastLetter = inputWord[inputWord.length - 1];
 
-      if (!gameStarted) {
+      // First word validation (common for all modes)
+      if (wordHistory.length === 0) {
         if (inputLen !== 3) {
           showMessage("First word must be 3 letters long.");
           wordInput.focus();
@@ -433,35 +622,120 @@
         }
         currentWord = inputWord;
         requiredLength = 3;
-        disableLetter(firstLetter);
-        gameStarted = true;
         wordHistory.push(inputWord);
         showMessage(`Accepted "${inputWord}" as the first word.`, "text-green-600");
         startTimer();
-      } else {
-        const prevFirstLetter = currentWord[currentWord.length - 1]; // Last letter of previous word
-        const sameLetter = firstLetter === prevFirstLetter;
-        const sameLength = inputLen === requiredLength;
-        const diffLetterValid = !sameLetter && !usedLetters.includes(firstLetter) && inputLen === requiredLength + 1;
+        updateDisplay();
+        return;
+      }
 
-        if (sameLetter && sameLength) {
-          currentWord = inputWord;
-          wordHistory.push(inputWord);
-          showMessage(`Accepted "${inputWord}" (same letter/length)`, "text-green-600");
-          startTimer();
-        } else if (diffLetterValid) {
-          currentWord = inputWord;
-          requiredLength++;
-          disableLetter(firstLetter);
-          wordHistory.push(inputWord);
-          showMessage(`Accepted "${inputWord}" (new letter / +1 length)`, "text-blue-600");
-          startTimer();
-        } else {
-          showMessage("Invalid move! Must match last letter of previous word & length OR use new unused letter & be 1 letter longer.");
-        }
+      // Mode-specific validation for subsequent words
+      let isValidMove = false;
+      let messageText = "";
+      let messageColor = "text-red-500";
+      let newRequiredLength = requiredLength;
+
+      // TAILS mode specific check (disabled end letters)
+      if (gameMode === "TAILS" && disabledEndLetters.includes(lastLetter)) {
+        showMessage("Word cannot end with a disabled letter!");
+        wordInput.focus();
+        return;
+      }
+
+      switch (gameMode) {
+        case "HEADS":
+          const prevFirstLetterHeads = currentWord[0];
+          const sameFirstLetterHeads = firstLetter === prevFirstLetterHeads;
+          const sameLengthHeads = inputLen === requiredLength;
+          const diffLetterValidHeads = !sameFirstLetterHeads && !usedLetters.includes(firstLetter) && inputLen === requiredLength + 1;
+
+          if (sameFirstLetterHeads && sameLengthHeads) {
+            isValidMove = true;
+            messageText = `Accepted "${inputWord}" (same first letter/length)`;
+            messageColor = "text-green-600";
+          } else if (diffLetterValidHeads) {
+            isValidMove = true;
+            newRequiredLength = requiredLength + 1;
+            disableLetter(firstLetter); // Disable the new starting letter
+            messageText = `Accepted "${inputWord}" (new first letter / +1 length)`;
+            messageColor = "text-blue-600";
+          } else {
+            messageText = "Invalid move! Must match first letter & length OR use new unused letter & be 1 letter longer.";
+          }
+          break;
+
+        case "TAILS":
+          const prevLastLetterTails = currentWord[currentWord.length - 1];
+          if (firstLetter !== prevLastLetterTails) {
+            messageText = `Invalid move! Word must start with "${prevLastLetterTails}" (last letter of previous word).`;
+          } else if (inputLen === requiredLength || inputLen === requiredLength + 1) {
+            isValidMove = true;
+            newRequiredLength = inputLen; // Length becomes the new word's length
+            generateRandomDisabledEndLetters(); // Generate new disabled letters for next round
+            messageText = `Accepted "${inputWord}" (starts with last letter)`;
+            messageColor = "text-green-600";
+          } else {
+            messageText = `Invalid length! Must be ${requiredLength} or ${requiredLength + 1} letters long.`;
+          }
+          break;
+
+        case "RANDOM":
+          if (firstLetter !== randomRequiredFirstLetter) {
+            messageText = `Invalid move! Word must start with "${randomRequiredFirstLetter}".`;
+          } else if (inputLen === requiredLength + 1) {
+            isValidMove = true;
+            newRequiredLength = requiredLength + 1;
+            assignRandomFirstLetter(); // Assign new random first letter for next round
+            messageText = `Accepted "${inputWord}" (random first letter / +1 length)`;
+            messageColor = "text-green-600";
+          } else {
+            messageText = `Invalid length! Must be ${requiredLength + 1} letters long.`;
+          }
+          break;
+      }
+
+      if (isValidMove) {
+        currentWord = inputWord;
+        requiredLength = newRequiredLength;
+        wordHistory.push(inputWord);
+        showMessage(messageText, messageColor);
+        startTimer();
+      } else {
+        showMessage(messageText, messageColor);
       }
       updateDisplay();
     }
+
+    // Event Listeners
+    gameModeDropdown.addEventListener("change", () => {
+      gameMode = gameModeDropdown.value;
+      showMessage(`Mode set to ${gameMode}. Click 'Start Selected Mode' to begin.`, "text-gray-700");
+      // Reset game state visually without starting
+      currentWord = "";
+      requiredLength = 3;
+      timeLeft = 30;
+      gameStarted = false;
+      isPaused = false;
+      wordHistory = [];
+      disabledEndLetters = [];
+      randomRequiredFirstLetter = "";
+      randomUsedFirstLetters = [];
+      clearInterval(timerInterval);
+      timerInterval = null;
+      wordInput.disabled = true;
+      submitBtn.disabled = true;
+      pauseBtn.disabled = true;
+      newGameBtn.disabled = true;
+      pauseBtn.textContent = "Pause";
+      enableAllAlphabetLetters();
+      updateDisplay();
+      updateTimerDisplay();
+      wordInput.focus();
+    });
+
+    startGameBtn.addEventListener("click", () => {
+      newGame();
+    });
 
     pauseBtn.addEventListener("click", () => {
       isPaused = !isPaused;
@@ -475,30 +749,11 @@
     });
 
     newGameBtn.addEventListener("click", () => {
-      currentWord = "";
-      requiredLength = 3;
-      usedLetters = [];
-      timeLeft = 30;
-      gameStarted = false;
-      isPaused = false;
-      wordHistory = [];
-      clearInterval(timerInterval);
-      timerInterval = null; // Clear ref
-      
-      wordInput.disabled = false;
-      submitBtn.disabled = false;
-      pauseBtn.textContent = "Pause";
-      
-      document.querySelectorAll("#alphabet button").forEach(btn => {
-        btn.disabled = false;
-        btn.classList.remove("disabled");
-      });
-      showMessage("Game reset!", "text-gray-700");
-      updateDisplay();
+      newGame();
     });
 
     wordInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
+      if (event.key === "Enter" && !wordInput.disabled) {
         handleSubmit();
       }
     });

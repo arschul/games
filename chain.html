@@ -70,6 +70,7 @@
       background-color: #ffffff;
       font-size: 1rem;
       color: #1f2937;
+      margin-bottom: 0.5rem; /* Added for spacing between selects */
     }
 
     /* Info Grid */
@@ -301,7 +302,12 @@
         <select id="game-mode-dropdown">
           <option value="HEADS">HEADS</option>
           <option value="TAILS">TAILS</option>
-          <option value="RANDOM">RANDOM</option>
+          <option value="CHAOS">CHAOS</option>
+        </select>
+        <label for="timer-duration-dropdown">Timer:</label>
+        <select id="timer-duration-dropdown">
+            <option value="30">30 Seconds</option>
+            <option value="60">1 Minute</option>
         </select>
         <button id="start-game-btn" class="game-button">Start Selected Mode</button>
       </div>
@@ -319,14 +325,14 @@
             <span>Disabled End Letters:</span>
             <strong id="disabled-end-letters-display"></strong>
         </div>
-        <div id="random-first-letter-display" class="info-item" style="display: none;">
+        <div id="chaos-first-letter-display" class="info-item" style="display: none;">
             <span>Required First Letter:</span>
             <strong id="required-first-letter-value"></strong>
         </div>
       </div>
 
       <div id="next-word-hint">
-        Select a game mode and click "Start Selected Mode" to begin.
+        Select a game mode and timer, then click 'Start Selected Mode' to begin.
       </div>
 
       <div class="timer-section">
@@ -362,23 +368,25 @@
   <script>
     let currentWord = "";
     let requiredLength = 3;
-    let usedLetters = []; // For HEADS and RANDOM mode (first letters)
+    let usedLetters = []; // For HEADS and CHAOS mode (first letters)
     let timeLeft = 30;
     let timerInterval = null;
     let gameStarted = false;
     let isPaused = false;
     let wordHistory = [];
     let gameMode = "HEADS"; // Default mode
+    let selectedTimeLimit = 30; // Default timer duration
 
     // Mode-specific variables
     let disabledEndLetters = []; // For TAILS mode
-    let randomRequiredFirstLetter = ""; // For RANDOM mode
-    let randomUsedFirstLetters = []; // For RANDOM mode
+    let chaosRequiredFirstLetter = ""; // For CHAOS mode
+    let chaosUsedFirstLetters = []; // For CHAOS mode
 
     const alphabetArray = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
     // DOM Elements
     const gameModeDropdown = document.getElementById("game-mode-dropdown");
+    const timerDurationDropdown = document.getElementById("timer-duration-dropdown");
     const startGameBtn = document.getElementById("start-game-btn");
     const wordInput = document.getElementById("word-input");
     const currentWordSpan = document.getElementById("current-word");
@@ -395,7 +403,7 @@
     const wordHistoryParagraph = document.getElementById("word-history");
     const tailsDisabledLettersDiv = document.getElementById("tails-disabled-letters");
     const disabledEndLettersDisplay = document.getElementById("disabled-end-letters-display");
-    const randomFirstLetterDisplayDiv = document.getElementById("random-first-letter-display");
+    const chaosFirstLetterDisplayDiv = document.getElementById("chaos-first-letter-display");
     const requiredFirstLetterValue = document.getElementById("required-first-letter-value");
 
     // Build alphabet buttons
@@ -423,12 +431,12 @@
 
     function updateNextWordHint() {
       if (!gameStarted) {
-        nextWordHintDiv.textContent = "Select a game mode and click 'Start Selected Mode' to begin.";
+        nextWordHintDiv.textContent = "Select a game mode and timer, then click 'Start Selected Mode' to begin.";
         return;
       }
 
       if (!currentWord) {
-        nextWordHintDiv.textContent = "First word: Must be 3 letters long.";
+        nextWordHintDiv.textContent = "First word: 3 letters long.";
         return;
       }
 
@@ -437,13 +445,13 @@
 
       switch (gameMode) {
         case "HEADS":
-          nextWordHintDiv.textContent = `Next word: Must start with "${firstLetterOfPrevWord}" and be ${requiredLength} letters long, OR start with a NEW unused letter and be ${requiredLength + 1} letters long.`;
+          nextWordHintDiv.textContent = `Next: Starts with "${firstLetterOfPrevWord}" (len ${requiredLength}) OR new letter (len ${requiredLength + 1}).`;
           break;
         case "TAILS":
-          nextWordHintDiv.textContent = `Next word: Must start with "${lastLetterOfPrevWord}" and be ${requiredLength} or ${requiredLength + 1} letters long. Cannot end with a disabled letter.`;
+          nextWordHintDiv.textContent = `Next: Starts with "${lastLetterOfPrevWord}" (len ${requiredLength} or ${requiredLength + 1}).`;
           break;
-        case "RANDOM":
-          nextWordHintDiv.textContent = `Next word: Must start with "${randomRequiredFirstLetter}" and be ${requiredLength + 1} letters long.`;
+        case "CHAOS":
+          nextWordHintDiv.textContent = `Next: Starts with "${chaosRequiredFirstLetter}" (len ${requiredLength + 1}).`;
           break;
       }
     }
@@ -461,7 +469,7 @@
     function updateModeSpecificDisplays() {
       // Reset visibility
       tailsDisabledLettersDiv.style.display = "none";
-      randomFirstLetterDisplayDiv.style.display = "none";
+      chaosFirstLetterDisplayDiv.style.display = "none";
 
       // Clear alphabet button styling
       document.querySelectorAll("#alphabet button").forEach(btn => {
@@ -478,9 +486,9 @@
               btn.classList.add("disabled-end-letter");
             }
           });
-        } else if (gameMode === "RANDOM") {
-          randomFirstLetterDisplayDiv.style.display = "flex";
-          requiredFirstLetterValue.textContent = randomRequiredFirstLetter;
+        } else if (gameMode === "CHAOS") {
+          chaosFirstLetterDisplayDiv.style.display = "flex";
+          requiredFirstLetterValue.textContent = chaosRequiredFirstLetter;
         }
       }
     }
@@ -495,8 +503,8 @@
     }
 
     function enableAllAlphabetLetters() {
-      usedLetters = [];
-      randomUsedFirstLetters = [];
+      usedLetters = []; // Reset for HEADS/CHAOS first letter tracking
+      chaosUsedFirstLetters = []; // Reset for CHAOS mode
       document.querySelectorAll("#alphabet button").forEach(btn => {
         btn.disabled = false;
         btn.classList.remove("disabled");
@@ -506,12 +514,12 @@
 
     function updateTimerDisplay() {
       timerSpan.textContent = `${timeLeft}s`;
-      progressBar.style.width = `${(timeLeft / 30) * 100}%`;
+      progressBar.style.width = `${(timeLeft / selectedTimeLimit) * 100}%`;
     }
 
     function startTimer() {
       clearInterval(timerInterval);
-      timeLeft = 30;
+      timeLeft = selectedTimeLimit;
       updateTimerDisplay();
       timerInterval = setInterval(() => {
         if (!isPaused) {
@@ -532,7 +540,7 @@
     function generateRandomDisabledEndLetters() {
       disabledEndLetters = [];
       const availableLetters = [...alphabetArray];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 5; i++) { // Changed from 3 to 5
         if (availableLetters.length === 0) break;
         const randomIndex = Math.floor(Math.random() * availableLetters.length);
         disabledEndLetters.push(availableLetters.splice(randomIndex, 1)[0]);
@@ -540,32 +548,33 @@
       updateModeSpecificDisplays(); // Update display immediately
     }
 
-    function assignRandomFirstLetter() {
-      const availableLetters = alphabetArray.filter(letter => !randomUsedFirstLetters.includes(letter));
+    function assignChaosFirstLetter() {
+      const availableLetters = alphabetArray.filter(letter => !chaosUsedFirstLetters.includes(letter));
       if (availableLetters.length === 0) {
-        showMessage("All letters used in RANDOM mode! Game Over.", "text-red-600");
+        showMessage("All letters used in CHAOS mode! Game Over.", "text-red-600");
         submitBtn.disabled = true;
         wordInput.disabled = true;
         pauseBtn.disabled = true;
+        newGameBtn.disabled = true; // Disable new game if no letters left
         gameStarted = false;
         return;
       }
       const randomIndex = Math.floor(Math.random() * availableLetters.length);
-      randomRequiredFirstLetter = availableLetters[randomIndex];
-      randomUsedFirstLetters.push(randomRequiredFirstLetter);
+      chaosRequiredFirstLetter = availableLetters[randomIndex];
+      chaosUsedFirstLetters.push(chaosRequiredFirstLetter);
       updateModeSpecificDisplays(); // Update display immediately
     }
 
     function newGame() {
       currentWord = "";
       requiredLength = 3;
-      timeLeft = 30;
+      timeLeft = selectedTimeLimit;
       gameStarted = true; // Set to true when game starts
       isPaused = false;
       wordHistory = [];
       disabledEndLetters = [];
-      randomRequiredFirstLetter = "";
-      randomUsedFirstLetters = [];
+      chaosRequiredFirstLetter = "";
+      chaosUsedFirstLetters = [];
       clearInterval(timerInterval);
       timerInterval = null;
       
@@ -580,8 +589,8 @@
       
       if (gameMode === "TAILS") {
         generateRandomDisabledEndLetters();
-      } else if (gameMode === "RANDOM") {
-        assignRandomFirstLetter();
+      } else if (gameMode === "CHAOS") {
+        assignChaosFirstLetter();
       }
       
       updateDisplay();
@@ -624,6 +633,12 @@
         requiredLength = 3;
         wordHistory.push(inputWord);
         showMessage(`Accepted "${inputWord}" as the first word.`, "text-green-600");
+        
+        // For HEADS mode, the first word's starting letter is also 'used'
+        if (gameMode === "HEADS") {
+            disableLetter(firstLetter);
+        }
+
         startTimer();
         updateDisplay();
         return;
@@ -653,6 +668,9 @@
             isValidMove = true;
             messageText = `Accepted "${inputWord}" (same first letter/length)`;
             messageColor = "text-green-600";
+            // Always disable the first letter of the accepted word in HEADS mode
+            // This ensures all starting letters used in the chain are tracked
+            disableLetter(firstLetter);
           } else if (diffLetterValidHeads) {
             isValidMove = true;
             newRequiredLength = requiredLength + 1;
@@ -667,7 +685,7 @@
         case "TAILS":
           const prevLastLetterTails = currentWord[currentWord.length - 1];
           if (firstLetter !== prevLastLetterTails) {
-            messageText = `Invalid move! Word must start with "${prevLastLetterTails}" (last letter of previous word).`;
+            messageText = `Invalid move! Word must start with "${prevLastLetterTails}".`;
           } else if (inputLen === requiredLength || inputLen === requiredLength + 1) {
             isValidMove = true;
             newRequiredLength = inputLen; // Length becomes the new word's length
@@ -679,13 +697,13 @@
           }
           break;
 
-        case "RANDOM":
-          if (firstLetter !== randomRequiredFirstLetter) {
-            messageText = `Invalid move! Word must start with "${randomRequiredFirstLetter}".`;
+        case "CHAOS":
+          if (firstLetter !== chaosRequiredFirstLetter) {
+            messageText = `Invalid move! Word must start with "${chaosRequiredFirstLetter}".`;
           } else if (inputLen === requiredLength + 1) {
             isValidMove = true;
             newRequiredLength = requiredLength + 1;
-            assignRandomFirstLetter(); // Assign new random first letter for next round
+            assignChaosFirstLetter(); // Assign new random first letter for next round
             messageText = `Accepted "${inputWord}" (random first letter / +1 length)`;
             messageColor = "text-green-600";
           } else {
@@ -713,13 +731,13 @@
       // Reset game state visually without starting
       currentWord = "";
       requiredLength = 3;
-      timeLeft = 30;
+      timeLeft = selectedTimeLimit; // Reset timer display to selected limit
       gameStarted = false;
       isPaused = false;
       wordHistory = [];
       disabledEndLetters = [];
-      randomRequiredFirstLetter = "";
-      randomUsedFirstLetters = [];
+      chaosRequiredFirstLetter = "";
+      chaosUsedFirstLetters = [];
       clearInterval(timerInterval);
       timerInterval = null;
       wordInput.disabled = true;
@@ -730,6 +748,17 @@
       enableAllAlphabetLetters();
       updateDisplay();
       updateTimerDisplay();
+      wordInput.focus();
+    });
+
+    timerDurationDropdown.addEventListener("change", () => {
+      selectedTimeLimit = parseInt(timerDurationDropdown.value);
+      showMessage(`Timer set to ${selectedTimeLimit} seconds.`, "text-gray-700");
+      // If game is not started, just update display
+      if (!gameStarted) {
+        timeLeft = selectedTimeLimit;
+        updateTimerDisplay();
+      }
       wordInput.focus();
     });
 

@@ -20,7 +20,7 @@
     /* Game Area Card */
     #game-area {
       width: 100%;
-      max-width: 48rem; /* max-w-2xl */
+      max-width: 60rem; /* Increased max-width for widescreen */
       background-color: #ffffff; /* bg-white */
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
       border-radius: 0.75rem; /* rounded-xl */
@@ -376,6 +376,7 @@
     let wordHistory = [];
     let gameMode = "HEADS"; // Default mode
     let selectedTimeLimit = 30; // Default timer duration
+    let submittedWords = new Set(); // To track all words used in the current game
 
     // Mode-specific variables
     let disabledEndLetters = []; // For TAILS mode
@@ -445,13 +446,13 @@
 
       switch (gameMode) {
         case "HEADS":
-          nextWordHintDiv.textContent = `Next: Starts with "${firstLetterOfPrevWord}" (len ${requiredLength}) OR new letter (len ${requiredLength + 1}).`;
+          nextWordHintDiv.textContent = `Next: First letter "${firstLetterOfPrevWord}" (len ${requiredLength}) OR new letter (len ${requiredLength + 1}).`;
           break;
         case "TAILS":
-          nextWordHintDiv.textContent = `Next: Starts with "${lastLetterOfPrevWord}" (len ${requiredLength} or ${requiredLength + 1}).`;
+          nextWordHintDiv.textContent = `Next: First letter "${lastLetterOfPrevWord}" (len ${requiredLength} or ${requiredLength + 1}).`;
           break;
         case "CHAOS":
-          nextWordHintDiv.textContent = `Next: Starts with "${chaosRequiredFirstLetter}" (len ${requiredLength + 1}).`;
+          nextWordHintDiv.textContent = `Next: First letter "${chaosRequiredFirstLetter}" (len ${requiredLength + 1}).`;
           break;
       }
     }
@@ -572,6 +573,7 @@
       gameStarted = true; // Set to true when game starts
       isPaused = false;
       wordHistory = [];
+      submittedWords.clear(); // Clear submitted words for new game
       disabledEndLetters = [];
       chaosRequiredFirstLetter = "";
       chaosUsedFirstLetters = [];
@@ -617,6 +619,13 @@
         wordInput.focus();
         return;
       }
+      
+      // Check for repeated words
+      if (submittedWords.has(inputWord)) {
+          showMessage(`"${inputWord}" has already been used!`, "text-red-500");
+          wordInput.focus();
+          return;
+      }
 
       const inputLen = inputWord.length;
       const firstLetter = inputWord[0];
@@ -632,6 +641,7 @@
         currentWord = inputWord;
         requiredLength = 3;
         wordHistory.push(inputWord);
+        submittedWords.add(inputWord); // Add to submitted words
         showMessage(`Accepted "${inputWord}" as the first word.`, "text-green-600");
         
         // For HEADS mode, the first word's starting letter is also 'used'
@@ -666,7 +676,7 @@
 
           if (sameFirstLetterHeads && sameLengthHeads) {
             isValidMove = true;
-            messageText = `Accepted "${inputWord}" (same first letter/length)`;
+            messageText = `Accepted "${inputWord}"`;
             messageColor = "text-green-600";
             // Always disable the first letter of the accepted word in HEADS mode
             // This ensures all starting letters used in the chain are tracked
@@ -675,10 +685,10 @@
             isValidMove = true;
             newRequiredLength = requiredLength + 1;
             disableLetter(firstLetter); // Disable the new starting letter
-            messageText = `Accepted "${inputWord}" (new first letter / +1 length)`;
+            messageText = `Accepted "${inputWord}"`;
             messageColor = "text-blue-600";
           } else {
-            messageText = "Invalid move! Must match first letter & length OR use new unused letter & be 1 letter longer.";
+            messageText = "Invalid move!";
           }
           break;
 
@@ -690,10 +700,10 @@
             isValidMove = true;
             newRequiredLength = inputLen; // Length becomes the new word's length
             generateRandomDisabledEndLetters(); // Generate new disabled letters for next round
-            messageText = `Accepted "${inputWord}" (starts with last letter)`;
+            messageText = `Accepted "${inputWord}"`;
             messageColor = "text-green-600";
           } else {
-            messageText = `Invalid length! Must be ${requiredLength} or ${requiredLength + 1} letters long.`;
+            messageText = `Invalid length!`;
           }
           break;
 
@@ -704,10 +714,10 @@
             isValidMove = true;
             newRequiredLength = requiredLength + 1;
             assignChaosFirstLetter(); // Assign new random first letter for next round
-            messageText = `Accepted "${inputWord}" (random first letter / +1 length)`;
+            messageText = `Accepted "${inputWord}"`;
             messageColor = "text-green-600";
           } else {
-            messageText = `Invalid length! Must be ${requiredLength + 1} letters long.`;
+            messageText = `Invalid length!`;
           }
           break;
       }
@@ -716,6 +726,7 @@
         currentWord = inputWord;
         requiredLength = newRequiredLength;
         wordHistory.push(inputWord);
+        submittedWords.add(inputWord); // Add to submitted words
         showMessage(messageText, messageColor);
         startTimer();
       } else {
@@ -735,6 +746,7 @@
       gameStarted = false;
       isPaused = false;
       wordHistory = [];
+      submittedWords.clear(); // Clear submitted words for new game
       disabledEndLetters = [];
       chaosRequiredFirstLetter = "";
       chaosUsedFirstLetters = [];

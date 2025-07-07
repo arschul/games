@@ -301,31 +301,34 @@
         document.addEventListener("DOMContentLoaded", () => {
             const emojis = [
                 "😀", "😠", "😴", "😐", "😭", // Faces
-                "🐶", "🐱", "🐔", "🐟", "🐦", // Animals
+                "🐶", "🐱", "🐔", "🐟", "🐦", "🐍", "🐒", "🐝", "🐧", "🦁", // Animals
                 "🍓", "🍌", "🍉", "🍎", "🥑", // Fruits
                 "🚗", "⛵", "✈️", "🚲", "🛴", // Vehicles
                 "🔪", "🍴", "🍽️", "🥛", "☕", // Objects
-                "⬆️", "⬇️", "⬅️", "➡️", "✅", // Arrows/Symbols (✅ is a checkmark, grouped here for simplicity)
-                "⚽", "⚾", "🏀", "🏐", "🎱"  // Sports
+                "⬆️", "⬇️", "⬅️", "➡️", "✅", // Arrows/Symbols
+                "⚽", "⚾", "🏀", "🏐", "🎱", // Sports
+                "🍣", "🍗", "🍝", "🥣", "🌮", // Food
+                "🏄", "🏊", "🚴", "⛷️", "🧘", // Activities
+                "🌳", "⛰️", "🏖️", "🏜️", "🌋"  // Nature
             ];
 
             const emojiCategories = {
                 faces: ["😀", "😠", "😴", "😐", "😭"],
-                animals: ["🐶", "🐱", "🐔", "🐟", "🐦"],
+                animals: ["🐶", "🐱", "🐔", "🐟", "🐦", "🐍", "🐒", "🐝", "🐧", "🦁"],
                 fruits: ["🍓", "🍌", "🍉", "🍎", "🥑"],
                 vehicles: ["🚗", "⛵", "✈️", "🚲", "🛴"],
                 objects: ["🔪", "🍴", "🍽️", "🥛", "☕"],
                 symbols: ["⬆️", "⬇️", "⬅️", "➡️", "✅"],
-                sports: ["⚽", "⚾", "🏀", "🏐", "🎱"]
+                sports: ["⚽", "⚾", "🏀", "🏐", "🎱"],
+                food: ["🍣", "🍗", "🍝", "🥣", "🌮"],
+                activities: ["🏄", "🏊", "🚴", "⛷️", "🧘"],
+                nature: ["🌳", "⛰️", "🏖️", "🏜️", "🌋"]
             };
 
-            const actionTypes = [
-                "add_emoji",
-                "remove_emoji",
-                "count_total",
-                "specific_emoji_present",
-                "count_category"
-            ];
+            const addRemoveActionTypes = ["add_emoji", "remove_emoji"];
+            // 'count_total' is handled separately as it can always repeat
+            const specificOtherActionTypes = ["count_category"]; // Only count_category remains for non-repeating "other" questions
+
 
             const difficultyScreen = document.getElementById("difficulty-screen");
             const gameScreen = document.getElementById("game-screen");
@@ -358,6 +361,8 @@
             let currentQuestionDetails = {};
             let correctAnswerValue = "";
             let countdownInterval = null;
+            // To track unique "other" questions per game (e.g., "count_category:faces")
+            let usedOtherQuestionIdentifiers = new Set(); 
 
             // Approximate size of an emoji span including padding/margin
             const EMOJI_WIDTH = 60;
@@ -403,7 +408,7 @@
                             if (newRect.x < placed.x + placed.width &&
                                 newRect.x + newRect.width > placed.x &&
                                 newRect.y < placed.y + placed.height &&
-                                newRect.y + newRect.height > placed.y) {
+                                newRect.y + placed.height > placed.y) {
                                 overlaps = true;
                                 break;
                             }
@@ -453,6 +458,7 @@
                 round = 0; // Will be incremented in prepareRound
                 selectedTimerDuration = parseInt(timerSelect.value);
                 totalRounds = parseInt(roundsSelect.value);
+                usedOtherQuestionIdentifiers = new Set(); // Reset for new game
 
                 switch (difficulty) {
                     case "easy":
@@ -492,18 +498,52 @@
                 goBtn.disabled = false;
                 answerBtn.disabled = true;
 
-                // The `previousEmojis` for *this* round is the `currentEmojis` from the *end of the last round*.
-                // This is handled by `previousEmojis = [...currentEmojis];` in `handleAnswer` before `prepareRound` is called.
-                // So, `previousEmojis` is already correctly set for the start of *this* round.
-
-                // Now, determine the action for *this* round and calculate `currentEmojis` based on `previousEmojis`.
-                currentActionType = actionTypes[getRandomInt(0, actionTypes.length - 1)];
-                currentQuestionDetails = {};
+                // Determine the action for this round based on new rules
                 changedEmoji = "";
                 changeType = "";
+                currentQuestionDetails = {}; // Clear details for new round
 
                 let nextEmojisState = [...previousEmojis]; // Start with the state *before* this round's change
 
+                if (round === 1) {
+                    currentActionType = "add_emoji";
+                } else if (round === 2) {
+                    currentActionType = "remove_emoji";
+                } else if (round % 2 !== 0) { // Odd rounds (3, 5, etc.) -> "other" questions (count_category) or count_total
+                    let potentialQuestionIdentifiers = [];
+
+                    // 'count_total' can always be asked
+                    potentialQuestionIdentifiers.push("count_total");
+
+                    // Add count_category questions that haven't been asked for that specific category
+                    Object.keys(emojiCategories).forEach(categoryName => {
+                        const identifier = `count_category:${categoryName}`;
+                        if (!usedOtherQuestionIdentifiers.has(identifier)) {
+                            potentialQuestionIdentifiers.push(identifier);
+                        }
+                    });
+
+                    if (potentialQuestionIdentifiers.length > 0) {
+                        const selectedIdentifier = potentialQuestionIdentifiers[getRandomInt(0, potentialQuestionIdentifiers.length - 1)];
+
+                        if (selectedIdentifier === "count_total") {
+                            currentActionType = "count_total";
+                        } else if (selectedIdentifier.startsWith("count_category:")) {
+                            currentActionType = "count_category";
+                            currentQuestionDetails.category = selectedIdentifier.split(":")[1];
+                            usedOtherQuestionIdentifiers.add(selectedIdentifier); // Mark this specific question as used
+                        }
+                    } else {
+                        // Fallback if, against all odds, even 'count_total' is somehow not available or if the logic above fails
+                        currentActionType = addRemoveActionTypes[getRandomInt(0, addRemoveActionTypes.length - 1)];
+                        console.warn("Unexpected: No unique 'other' questions available. Falling back to add/remove.");
+                    }
+
+                } else { // Even rounds (4, 6, etc.) -> "add/remove" questions
+                    currentActionType = addRemoveActionTypes[getRandomInt(0, addRemoveActionTypes.length - 1)];
+                }
+
+                // Apply changes if it's an add/remove action
                 if (currentActionType === "add_emoji") {
                     const availableToAdd = emojis.filter((emoji) => !nextEmojisState.includes(emoji));
                     if (availableToAdd.length > 0) {
@@ -571,50 +611,43 @@
                     displayEmojis(currentEmojis);
                     emojiGrid.classList.remove("invisible"); // Make them visible for second observation
                     startCountdown(selectedTimerDuration, handleSecondObservationEnd);
+
+                    // Show question and enable answer button immediately when second timer starts
+                    answerBtn.disabled = false;
+                    questionArea.classList.remove("hidden");
+
+                    // Set the question text and calculate correct answer based on currentActionType
+                    switch (currentActionType) {
+                        case "add_emoji":
+                            questionText.textContent = "WHAT EMOJI WAS ADDED?";
+                            correctAnswerValue = changedEmoji;
+                            break;
+                        case "remove_emoji":
+                            questionText.textContent = "WHAT EMOJI WAS REMOVED?";
+                            correctAnswerValue = changedEmoji;
+                            break;
+                        case "count_total":
+                            questionText.textContent = "HOW MANY EMOJIS ARE THERE NOW?";
+                            correctAnswerValue = currentEmojis.length;
+                            break;
+                        case "count_category":
+                            questionText.textContent = `HOW MANY ${currentQuestionDetails.category.toUpperCase()} EMOJIS ARE THERE?`;
+                            let count = 0;
+                            const categoryEmojis = emojiCategories[currentQuestionDetails.category];
+                            currentEmojis.forEach(emoji => {
+                                if (categoryEmojis.includes(emoji)) {
+                                    count++;
+                                }
+                            });
+                            correctAnswerValue = count;
+                            break;
+                    }
                 }, 5000); // 5 seconds transition delay
             };
 
             const handleSecondObservationEnd = () => {
                 emojiGrid.classList.add("invisible"); // Hide emojis again
-                answerBtn.disabled = false;
-                questionArea.classList.remove("hidden");
-
-                // Set the question text and calculate correct answer based on currentActionType
-                switch (currentActionType) {
-                    case "add_emoji":
-                        questionText.textContent = "WHAT EMOJI WAS ADDED?";
-                        correctAnswerValue = changedEmoji;
-                        break;
-                    case "remove_emoji":
-                        questionText.textContent = "WHAT EMOJI WAS REMOVED?";
-                        correctAnswerValue = changedEmoji;
-                        break;
-                    case "count_total":
-                        questionText.textContent = "HOW MANY EMOJIS ARE THERE NOW?";
-                        correctAnswerValue = currentEmojis.length;
-                        break;
-                    case "specific_emoji_present":
-                        const randomEmoji = emojis[getRandomInt(0, emojis.length - 1)];
-                        currentQuestionDetails.emoji = randomEmoji;
-                        questionText.textContent = `WAS ${randomEmoji} THERE? (Yes/No)`;
-                        correctAnswerValue = currentEmojis.includes(randomEmoji) ? "Yes" : "No";
-                        break;
-                    case "count_category":
-                        const categories = Object.keys(emojiCategories);
-                        const randomCategoryName = categories[getRandomInt(0, categories.length - 1)];
-                        currentQuestionDetails.category = randomCategoryName;
-                        questionText.textContent = `HOW MANY ${randomCategoryName.toUpperCase()} EMOJIS ARE THERE?`;
-                        
-                        let count = 0;
-                        const categoryEmojis = emojiCategories[randomCategoryName];
-                        currentEmojis.forEach(emoji => {
-                            if (categoryEmojis.includes(emoji)) {
-                                count++;
-                            }
-                        });
-                        correctAnswerValue = count;
-                        break;
-                }
+                // Question and answer button are already visible/enabled
             };
 
             const handleAnswer = () => {
@@ -631,9 +664,6 @@
                         break;
                     case "count_total":
                         answerMessage = `There are ${correctAnswerValue} emojis.`;
-                        break;
-                    case "specific_emoji_present":
-                        answerMessage = `${currentQuestionDetails.emoji} was ${correctAnswerValue === "Yes" ? "present" : "not present"}.`;
                         break;
                     case "count_category":
                         answerMessage = `There are ${correctAnswerValue} ${currentQuestionDetails.category} emojis.`;
@@ -678,6 +708,7 @@
                     clearInterval(countdownInterval);
                     countdownInterval = null;
                 }
+                usedOtherQuestionIdentifiers = new Set(); // Reset used "other" questions for a new game
                 emojiGrid.classList.remove("invisible");
                 emojiGrid.classList.remove("hidden"); // Ensure grid is visible for next game
 

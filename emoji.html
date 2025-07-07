@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Changed? Emoji Game</title>
+    <style>
+        /* General hidden class to ensure elements are hidden */
+        .hidden {
+            display: none !important; /* Using !important to ensure it overrides other display properties */
+        }
+
+        body {
+            font-family: "Segoe UI Emoji", "Apple Color Emoji", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 0.5s ease-in-out;
+        }
+
+        .game-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 900px; /* Increased max-width for widescreen */
+            width: 90%; /* Use percentage for responsiveness */
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* .screen.hidden is still needed for screen transitions */
+        .screen.hidden {
+            display: none;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: #555;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .difficulty-options, .game-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .difficulty-btn,
+        .game-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            width: 100%;
+            max-width: 300px;
+            box-sizing: border-box;
+        }
+
+        .difficulty-btn:hover,
+        .game-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .difficulty-btn:active,
+        .game-btn:active {
+            transform: translateY(0);
+        }
+
+        .game-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .selector-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .selector-group label {
+            font-size: 1em;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .selector-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            background-color: white;
+            cursor: pointer;
+        }
+
+        .emoji-grid {
+            position: relative;
+            width: 100%;
+            min-height: 500px; /* Increased min-height for more space */
+            margin-bottom: 30px;
+            transition: opacity 0.5s ease-in-out;
+            overflow: hidden;
+            border: 1px dashed #ddd; /* Visual boundary for the grid */
+            box-sizing: border-box;
+        }
+
+        .emoji-grid.invisible {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .emoji {
+            position: absolute;
+            font-size: 3em;
+            width: 60px; /* Fixed width for collision detection */
+            height: 60px; /* Fixed height for collision detection */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            transition: left 0.5s ease, top 0.5s ease;
+            line-height: 1;
+            z-index: 1; /* Ensure emojis are above the grid border */
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .timer-display {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+
+        .question-area {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .question-text {
+            font-size: 1.5em;
+            color: #333;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .answer-text {
+            font-size: 1.3em;
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .game-over-text {
+            font-size: 2em;
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 20px;
+                max-width: 90%;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            .difficulty-btn,
+            .game-btn {
+                padding: 12px 20px;
+                font-size: 1em;
+            }
+            .emoji {
+                font-size: 2.5em;
+                width: 50px;
+                height: 50px;
+            }
+            .emoji-grid {
+                min-height: 350px;
+            }
+            .difficulty-options, .game-options {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            .difficulty-btn,
+            .game-btn {
+                padding: 10px 15px;
+                font-size: 0.9em;
+            }
+            .emoji {
+                font-size: 2em;
+                width: 40px;
+                height: 40px;
+            }
+            .emoji-grid {
+                min-height: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="difficulty-screen" class="screen active">
+            <h1>Choose Difficulty</h1>
+            <div class="difficulty-options">
+                <button id="easy-btn" class="difficulty-btn">Easy (8-12 Emojis)</button>
+                <button id="medium-btn" class="difficulty-btn">Medium (13-16 Emojis)</button>
+                <button id="hard-btn" class="difficulty-btn">Hard (17-22 Emojis)</button>
+            </div>
+            <div class="game-options">
+                <div class="selector-group">
+                    <label for="timer-select">Timer Duration:</label>
+                    <select id="timer-select">
+                        <option value="10">10 Seconds</option>
+                        <option value="20">20 Seconds</option>
+                        <option value="30">30 Seconds</option>
+                        <option value="40">40 Seconds</option>
+                        <option value="50">50 Seconds</option>
+                        <option value="60">60 Seconds</option>
+                    </select>
+                </div>
+                <div class="selector-group">
+                    <label for="rounds-select">Number of Rounds:</label>
+                    <select id="rounds-select">
+                        <option value="3">3 Rounds</option>
+                        <option value="5" selected>5 Rounds</option>
+                        <option value="10">10 Rounds</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-screen" class="screen hidden">
+            <h2 id="round-display">Round 1</h2>
+            <div class="timer-display" id="timer-display"></div>
+            <div id="emoji-grid" class="emoji-grid"></div>
+            <div class="controls">
+                <button id="go-btn" class="game-btn">GO</button>
+                <div id="question-area" class="hidden">
+                    <p class="question-text" id="question-text">WHAT CHANGED?</p>
+                    <button id="answer-btn" class="game-btn">ANSWER</button>
+                    <p id="answer-display" class="answer-text hidden" aria-live="polite"></p>
+                </div>
+            </div>
+            <p id="game-over-message" class="game-over-text hidden"></p>
+            <button id="play-again-btn" class="game-btn hidden">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const emojis = [
+                "😀", "😠", "😴", "😐", "😭", // Faces
+                "🐶", "🐱", "🐔", "🐟", "🐦", // Animals
+                "🍓", "🍌", "🍉", "🍎", "🥑", // Fruits
+                "🚗", "⛵", "✈️", "🚲", "🛴", // Vehicles
+                "🔪", "🍴", "🍽️", "🥛", "☕", // Objects
+                "⬆️", "⬇️", "⬅️", "➡️", "✅", // Arrows/Symbols (✅ is a checkmark, grouped here for simplicity)
+                "⚽", "⚾", "🏀", "🏐", "🎱"  // Sports
+            ];
+
+            const emojiCategories = {
+                faces: ["😀", "😠", "😴", "😐", "😭"],
+                animals: ["🐶", "🐱", "🐔", "🐟", "🐦"],
+                fruits: ["🍓", "🍌", "🍉", "🍎", "🥑"],
+                vehicles: ["🚗", "⛵", "✈️", "🚲", "🛴"],
+                objects: ["🔪", "🍴", "🍽️", "🥛", "☕"],
+                symbols: ["⬆️", "⬇️", "⬅️", "➡️", "✅"],
+                sports: ["⚽", "⚾", "🏀", "🏐", "🎱"]
+            };
+
+            const actionTypes = [
+                "add_emoji",
+                "remove_emoji",
+                "count_total",
+                "specific_emoji_present",
+                "count_category"
+            ];
+
+            const difficultyScreen = document.getElementById("difficulty-screen");
+            const gameScreen = document.getElementById("game-screen");
+            const easyBtn = document.getElementById("easy-btn");
+            const mediumBtn = document.getElementById("medium-btn");
+            const hardBtn = document.getElementById("hard-btn");
+            const timerSelect = document.getElementById("timer-select");
+            const roundsSelect = document.getElementById("rounds-select");
+            const emojiGrid = document.getElementById("emoji-grid");
+            const goBtn = document.getElementById("go-btn");
+            const answerBtn = document.getElementById("answer-btn");
+            const roundDisplay = document.getElementById("round-display");
+            const timerDisplay = document.getElementById("timer-display");
+            const questionArea = document.getElementById("question-area");
+            const questionText = document.getElementById("question-text");
+            const answerDisplay = document.getElementById("answer-display");
+            const gameOverMessage = document.getElementById("game-over-message");
+            const playAgainBtn = document.getElementById("play-again-btn");
+
+            let currentDifficulty = "";
+            let numEmojis = 0;
+            let selectedTimerDuration = parseInt(timerSelect.value);
+            let totalRounds = parseInt(roundsSelect.value);
+            let currentEmojis = []; // State *after* potential change
+            let previousEmojis = []; // State *before* potential change (for comparison)
+            let round = 0;
+            let changedEmoji = "";
+            let changeType = ""; // 'added' or 'removed'
+            let currentActionType = "";
+            let currentQuestionDetails = {};
+            let correctAnswerValue = "";
+            let countdownInterval = null;
+
+            // Approximate size of an emoji span including padding/margin
+            const EMOJI_WIDTH = 60;
+            const EMOJI_HEIGHT = 60;
+            const PADDING = 10; // Minimum space between emojis
+
+            const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+            const getUniqueRandomEmojis = (count, exclude = []) => {
+                const availableEmojis = emojis.filter((emoji) => !exclude.includes(emoji));
+                if (availableEmojis.length < count) {
+                    console.warn("Not enough unique emojis available for the requested count.");
+                    return availableEmojis; // Return all available if not enough
+                }
+                const shuffled = availableEmojis.sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, count);
+            };
+
+            const generateNonOverlappingPositions = (emojisCount, containerWidth, containerHeight) => {
+                const positions = [];
+                const placedRects = []; // Store {x, y, width, height} of placed emojis
+                const EMOJI_SIZE_WITH_PADDING = EMOJI_WIDTH + PADDING;
+
+                for (let i = 0; i < emojisCount; i++) {
+                    let newX, newY;
+                    let attempts = 0;
+                    const maxAttempts = 1000; // Increased attempts for better non-overlap
+
+                    let foundPosition = false;
+                    while (attempts < maxAttempts) {
+                        newX = getRandomInt(0, containerWidth - EMOJI_WIDTH);
+                        newY = getRandomInt(0, containerHeight - EMOJI_HEIGHT);
+
+                        const newRect = {
+                            x: newX,
+                            y: newY,
+                            width: EMOJI_SIZE_WITH_PADDING,
+                            height: EMOJI_SIZE_WITH_PADDING
+                        };
+
+                        let overlaps = false;
+                        for (const placed of placedRects) {
+                            if (newRect.x < placed.x + placed.width &&
+                                newRect.x + newRect.width > placed.x &&
+                                newRect.y < placed.y + placed.height &&
+                                newRect.y + newRect.height > placed.y) {
+                                overlaps = true;
+                                break;
+                            }
+                        }
+
+                        if (!overlaps) {
+                            positions.push({ x: newX, y: newY });
+                            placedRects.push(newRect);
+                            foundPosition = true;
+                            break; // Found a non-overlapping position
+                        }
+                        attempts++;
+                    }
+                    if (!foundPosition) {
+                        console.warn(`Failed to find non-overlapping position for emoji ${i + 1}. Placing randomly, may overlap.`);
+                        // Fallback: push a random position anyway
+                        newX = getRandomInt(0, containerWidth - EMOJI_WIDTH);
+                        newY = getRandomInt(0, containerHeight - EMOJI_HEIGHT);
+                        positions.push({ x: newX, y: newY });
+                        placedRects.push({ x: newX, y: newY, width: EMOJI_SIZE_WITH_PADDING, height: EMOJI_SIZE_WITH_PADDING });
+                    }
+                }
+                return positions;
+            };
+
+            const displayEmojis = (emojisToDisplay) => {
+                emojiGrid.innerHTML = "";
+                requestAnimationFrame(() => {
+                    const containerWidth = emojiGrid.offsetWidth;
+                    const containerHeight = emojiGrid.offsetHeight;
+
+                    const positions = generateNonOverlappingPositions(emojisToDisplay.length, containerWidth, containerHeight);
+
+                    emojisToDisplay.forEach((emoji, index) => {
+                        const span = document.createElement("span");
+                        span.classList.add("emoji");
+                        span.textContent = emoji;
+                        span.style.left = `${positions[index].x}px`;
+                        span.style.top = `${positions[index].y}px`;
+                        emojiGrid.appendChild(span);
+                    });
+                });
+            };
+
+            const startGame = (difficulty) => {
+                currentDifficulty = difficulty;
+                round = 0; // Will be incremented in prepareRound
+                selectedTimerDuration = parseInt(timerSelect.value);
+                totalRounds = parseInt(roundsSelect.value);
+
+                switch (difficulty) {
+                    case "easy":
+                        numEmojis = getRandomInt(8, 12);
+                        break;
+                    case "medium":
+                        numEmojis = getRandomInt(13, 16);
+                        break;
+                    case "hard":
+                        numEmojis = getRandomInt(17, 22);
+                        break;
+                }
+
+                // Initial set of emojis for the very first round
+                previousEmojis = getUniqueRandomEmojis(numEmojis);
+                currentEmojis = [...previousEmojis]; // currentEmojis starts as same as previous for round 1
+
+                difficultyScreen.classList.add("hidden");
+                gameScreen.classList.remove("hidden");
+
+                prepareRound(); // Start the first round setup
+            };
+
+            const prepareRound = () => {
+                round++;
+                if (round > totalRounds) {
+                    endGame();
+                    return;
+                }
+
+                // Clear previous question/answer and timer display
+                questionArea.classList.add("hidden");
+                answerDisplay.classList.add("hidden");
+                timerDisplay.textContent = "Press GO to start round";
+
+                roundDisplay.textContent = `Round ${round} of ${totalRounds}`;
+                goBtn.disabled = false;
+                answerBtn.disabled = true;
+
+                // The `previousEmojis` for *this* round is the `currentEmojis` from the *end of the last round*.
+                // This is handled by `previousEmojis = [...currentEmojis];` in `handleAnswer` before `prepareRound` is called.
+                // So, `previousEmojis` is already correctly set for the start of *this* round.
+
+                // Now, determine the action for *this* round and calculate `currentEmojis` based on `previousEmojis`.
+                currentActionType = actionTypes[getRandomInt(0, actionTypes.length - 1)];
+                currentQuestionDetails = {};
+                changedEmoji = "";
+                changeType = "";
+
+                let nextEmojisState = [...previousEmojis]; // Start with the state *before* this round's change
+
+                if (currentActionType === "add_emoji") {
+                    const availableToAdd = emojis.filter((emoji) => !nextEmojisState.includes(emoji));
+                    if (availableToAdd.length > 0) {
+                        changedEmoji = availableToAdd[getRandomInt(0, availableToAdd.length - 1)];
+                        nextEmojisState.push(changedEmoji);
+                        changeType = "added";
+                    } else {
+                        // Fallback if no new emojis can be added, change action type
+                        currentActionType = "count_total"; // Fallback to a question type
+                        console.warn("No new emojis to add, switching to count_total.");
+                    }
+                } else if (currentActionType === "remove_emoji") {
+                    if (nextEmojisState.length > 1) { // Ensure at least one emoji remains
+                        const randomIndex = getRandomInt(0, nextEmojisState.length - 1);
+                        changedEmoji = nextEmojisState[randomIndex];
+                        nextEmojisState.splice(randomIndex, 1);
+                        changeType = "removed";
+                    } else {
+                        // Fallback if only one emoji left, change action type
+                        currentActionType = "count_total"; // Fallback to a question type
+                        console.warn("Only one emoji left, switching to count_total.");
+                    }
+                }
+
+                currentEmojis = nextEmojisState; // This is the state *after* this round's change
+
+                // Display the initial state (previousEmojis) but keep it invisible until GO
+                displayEmojis(previousEmojis);
+                emojiGrid.classList.add("invisible");
+            };
+
+            const startCountdown = (duration, onEndCallback) => {
+                let timeLeft = duration;
+                timerDisplay.textContent = `Time: ${timeLeft}s`;
+                if (countdownInterval) clearInterval(countdownInterval); // Clear any existing timer
+
+                countdownInterval = setInterval(() => {
+                    timeLeft--;
+                    timerDisplay.textContent = `Time: ${timeLeft}s`;
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        countdownInterval = null;
+                        onEndCallback();
+                    }
+                }, 1000);
+            };
+
+            const handleGoClick = () => {
+                goBtn.disabled = true;
+                // Hide previous question/answer immediately when GO is clicked
+                questionArea.classList.add("hidden");
+                answerDisplay.classList.add("hidden");
+
+                emojiGrid.classList.remove("invisible"); // Make emojis visible for first observation
+                startCountdown(selectedTimerDuration, handleFirstObservationEnd);
+            };
+
+            const handleFirstObservationEnd = () => {
+                emojiGrid.classList.add("invisible"); // Hide emojis
+                timerDisplay.textContent = "Comparing...";
+
+                // After 5 seconds, show the second state and start the second timer
+                setTimeout(() => {
+                    // Display the *new* state of emojis (currentEmojis) with new random positions
+                    displayEmojis(currentEmojis);
+                    emojiGrid.classList.remove("invisible"); // Make them visible for second observation
+                    startCountdown(selectedTimerDuration, handleSecondObservationEnd);
+                }, 5000); // 5 seconds transition delay
+            };
+
+            const handleSecondObservationEnd = () => {
+                emojiGrid.classList.add("invisible"); // Hide emojis again
+                answerBtn.disabled = false;
+                questionArea.classList.remove("hidden");
+
+                // Set the question text and calculate correct answer based on currentActionType
+                switch (currentActionType) {
+                    case "add_emoji":
+                        questionText.textContent = "WHAT EMOJI WAS ADDED?";
+                        correctAnswerValue = changedEmoji;
+                        break;
+                    case "remove_emoji":
+                        questionText.textContent = "WHAT EMOJI WAS REMOVED?";
+                        correctAnswerValue = changedEmoji;
+                        break;
+                    case "count_total":
+                        questionText.textContent = "HOW MANY EMOJIS ARE THERE NOW?";
+                        correctAnswerValue = currentEmojis.length;
+                        break;
+                    case "specific_emoji_present":
+                        const randomEmoji = emojis[getRandomInt(0, emojis.length - 1)];
+                        currentQuestionDetails.emoji = randomEmoji;
+                        questionText.textContent = `WAS ${randomEmoji} THERE? (Yes/No)`;
+                        correctAnswerValue = currentEmojis.includes(randomEmoji) ? "Yes" : "No";
+                        break;
+                    case "count_category":
+                        const categories = Object.keys(emojiCategories);
+                        const randomCategoryName = categories[getRandomInt(0, categories.length - 1)];
+                        currentQuestionDetails.category = randomCategoryName;
+                        questionText.textContent = `HOW MANY ${randomCategoryName.toUpperCase()} EMOJIS ARE THERE?`;
+                        
+                        let count = 0;
+                        const categoryEmojis = emojiCategories[randomCategoryName];
+                        currentEmojis.forEach(emoji => {
+                            if (categoryEmojis.includes(emoji)) {
+                                count++;
+                            }
+                        });
+                        correctAnswerValue = count;
+                        break;
+                }
+            };
+
+            const handleAnswer = () => {
+                answerBtn.disabled = true;
+                answerDisplay.classList.remove("hidden");
+                
+                let answerMessage = "";
+                switch (currentActionType) {
+                    case "add_emoji":
+                        answerMessage = `The ${correctAnswerValue} was added.`;
+                        break;
+                    case "remove_emoji":
+                        answerMessage = `The ${correctAnswerValue} was removed.`;
+                        break;
+                    case "count_total":
+                        answerMessage = `There are ${correctAnswerValue} emojis.`;
+                        break;
+                    case "specific_emoji_present":
+                        answerMessage = `${currentQuestionDetails.emoji} was ${correctAnswerValue === "Yes" ? "present" : "not present"}.`;
+                        break;
+                    case "count_category":
+                        answerMessage = `There are ${correctAnswerValue} ${currentQuestionDetails.category} emojis.`;
+                        break;
+                }
+                answerDisplay.textContent = answerMessage;
+
+                // Show the actual current state of emojis after the answer is revealed
+                emojiGrid.classList.remove("invisible");
+                displayEmojis(currentEmojis); // Re-display to ensure correct positions if not already
+
+                // Prepare for next round after a short delay
+                setTimeout(() => {
+                    // Set previousEmojis for the next round to be the current state
+                    previousEmojis = [...currentEmojis];
+                    prepareRound();
+                }, 3000); // 3 seconds to see the answer and new state
+            };
+
+            const endGame = () => {
+                goBtn.disabled = true;
+                answerBtn.disabled = true;
+                questionArea.classList.add("hidden");
+                answerDisplay.classList.add("hidden");
+                timerDisplay.textContent = "";
+                gameOverMessage.classList.remove("hidden");
+                gameOverMessage.textContent = "Game Over! Well played!";
+                playAgainBtn.classList.remove("hidden");
+                emojiGrid.classList.add("hidden"); // Hide emoji grid at game over
+            };
+
+            const resetGame = () => {
+                round = 0;
+                currentEmojis = [];
+                previousEmojis = [];
+                changedEmoji = "";
+                changeType = "";
+                currentActionType = "";
+                currentQuestionDetails = {};
+                correctAnswerValue = "";
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+                emojiGrid.classList.remove("invisible");
+                emojiGrid.classList.remove("hidden"); // Ensure grid is visible for next game
+
+                gameScreen.classList.add("hidden");
+                difficultyScreen.classList.remove("hidden");
+                gameOverMessage.classList.add("hidden");
+                playAgainBtn.classList.add("hidden");
+                answerDisplay.classList.add("hidden");
+                questionArea.classList.add("hidden");
+                goBtn.disabled = false;
+                answerBtn.disabled = true;
+            };
+
+            // Event Listeners
+            easyBtn.addEventListener("click", () => startGame("easy"));
+            mediumBtn.addEventListener("click", () => startGame("medium"));
+            hardBtn.addEventListener("click", () => startGame("hard"));
+            timerSelect.addEventListener("change", (e) => selectedTimerDuration = parseInt(e.target.value));
+            roundsSelect.addEventListener("change", (e) => totalRounds = parseInt(e.target.value));
+            goBtn.addEventListener("click", handleGoClick);
+            answerBtn.addEventListener("click", handleAnswer);
+            playAgainBtn.addEventListener("click", resetGame);
+        });
+    </script>
+</body>
+</html>

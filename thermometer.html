@@ -82,6 +82,18 @@
       margin: 1rem 0;
     }
 
+    .main-timer-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin: 1rem 0;
+    }
+
+    .main-timer-controls button {
+      font-size: 14px;
+      padding: 8px 16px;
+    }
+
     .penalty-text {
       font-size: 1.1rem;
       color: #475569;
@@ -110,6 +122,17 @@
       margin: 1rem 0;
       font-size: 0.9rem;
       color: #92400e;
+      text-align: center;
+    }
+
+    .paused-indicator {
+      background: #fee2e2;
+      border: 2px solid #ef4444;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      color: #dc2626;
       text-align: center;
     }
 
@@ -246,6 +269,11 @@
       .timer-controls {
         flex-wrap: wrap;
       }
+
+      .main-timer-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
     }
   </style>
 </head>
@@ -265,6 +293,14 @@
           <div class="stars-display" id="starsDisplay">⭐ Stars: 0</div>
           <div class="penalty-text" id="penaltyOutput">Status: Safe Zone</div>
           <div class="main-timer" id="mainTimer">Timer: 10:00</div>
+          <div class="main-timer-controls">
+            <button onclick="pauseMainTimer()" class="warning" id="pauseMainBtn">⏸️ Pause</button>
+            <button onclick="resumeMainTimer()" class="success" id="resumeMainBtn" style="display: none;">▶️ Resume</button>
+            <button onclick="resetMainTimer()">🔄 Reset</button>
+          </div>
+          <div class="paused-indicator" id="pausedIndicator" style="display: none;">
+            ⏸️ Main Timer Paused
+          </div>
           <div class="test-mode" id="testMode" style="display: none;">
             🧪 Test Mode: Press 'T' to set timer to 1 second
           </div>
@@ -330,6 +366,7 @@
     let portugueseCount = 0;
     let stars = 0;
     let testMode = false;
+    let mainTimerPaused = false;
     const fill = document.getElementById('fill');
     const penaltyOutput = document.getElementById('penaltyOutput');
     const starsDisplay = document.getElementById('starsDisplay');
@@ -453,7 +490,7 @@
           updateMainTimerDisplay();
         } else {
           document.getElementById('testMode').style.display = 'none';
-          resetMainTimer();
+          resetMainTimerToDefault();
         }
       }
     });
@@ -500,7 +537,7 @@
       
       updateThermometer();
       updateDisplay();
-      resetMainTimer();
+      resetMainTimerToDefault();
       
       // Reset message after 3 seconds
       setTimeout(() => {
@@ -509,7 +546,7 @@
     }
 
     // Main timer functions
-    function resetMainTimer() {
+    function resetMainTimerToDefault() {
       if (testMode) {
         mainMinutes = 0;
         mainSeconds = 1;
@@ -520,6 +557,27 @@
       updateMainTimerDisplay();
     }
 
+    function resetMainTimer() {
+      resetMainTimerToDefault();
+      if (mainTimerPaused) {
+        resumeMainTimer();
+      }
+    }
+
+    function pauseMainTimer() {
+      mainTimerPaused = true;
+      document.getElementById('pauseMainBtn').style.display = 'none';
+      document.getElementById('resumeMainBtn').style.display = 'inline-block';
+      document.getElementById('pausedIndicator').style.display = 'block';
+    }
+
+    function resumeMainTimer() {
+      mainTimerPaused = false;
+      document.getElementById('pauseMainBtn').style.display = 'inline-block';
+      document.getElementById('resumeMainBtn').style.display = 'none';
+      document.getElementById('pausedIndicator').style.display = 'none';
+    }
+
     function updateMainTimerDisplay() {
       document.getElementById("mainTimer").innerText = 
         `Timer: ${String(mainMinutes).padStart(2, '0')}:${String(mainSeconds).padStart(2, '0')}`;
@@ -527,35 +585,37 @@
 
     function startMainTimer() {
       mainTimer = setInterval(() => {
-        if (mainSeconds === 0) {
-          if (mainMinutes === 0) {
-            // Timer reached zero
-            if (portugueseCount <= 0) {
-              // At level 0 - award a star!
-              stars++;
-              penaltyOutput.innerText = "🌟 Star earned for staying in English!";
-              setTimeout(() => {
-                updateDisplay();
-              }, 3000);
+        if (!mainTimerPaused) {
+          if (mainSeconds === 0) {
+            if (mainMinutes === 0) {
+              // Timer reached zero
+              if (portugueseCount <= 0) {
+                // At level 0 - award a star!
+                stars++;
+                penaltyOutput.innerText = "🌟 Star earned for staying in English!";
+                setTimeout(() => {
+                  updateDisplay();
+                }, 3000);
+              } else {
+                // Above level 0 - reduce Portuguese count by 1
+                portugueseCount = Math.max(portugueseCount - 1, 0);
+                penaltyOutput.innerText = "✅ Level reduced by 1 for staying in English!";
+                setTimeout(() => {
+                  updateDisplay();
+                }, 3000);
+              }
+              updateThermometer();
+              updateDisplay();
+              resetMainTimerToDefault();
             } else {
-              // Above level 0 - reduce Portuguese count by 1
-              portugueseCount = Math.max(portugueseCount - 1, 0);
-              penaltyOutput.innerText = "✅ Level reduced by 1 for staying in English!";
-              setTimeout(() => {
-                updateDisplay();
-              }, 3000);
+              mainMinutes--;
+              mainSeconds = 59;
             }
-            updateThermometer();
-            updateDisplay();
-            resetMainTimer();
           } else {
-            mainMinutes--;
-            mainSeconds = 59;
+            mainSeconds--;
           }
-        } else {
-          mainSeconds--;
+          updateMainTimerDisplay();
         }
-        updateMainTimerDisplay();
       }, 1000);
     }
 

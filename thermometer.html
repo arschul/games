@@ -372,10 +372,11 @@
     const starsDisplay = document.getElementById('starsDisplay');
     const levelDisplay = document.getElementById('levelDisplay');
     
-    // Timer variables
+    // Timer variables using timestamps for accuracy
+    let mainTimerStartTime = Date.now();
+    let mainTimerDuration = 10 * 60 * 1000; // 10 minutes in milliseconds
+    let mainTimerPausedTime = 0;
     let mainTimer;
-    let mainMinutes = 10;
-    let mainSeconds = 0;
     
     // Activity timer variables
     let oralTimer;
@@ -485,13 +486,21 @@
         testMode = !testMode;
         if (testMode) {
           document.getElementById('testMode').style.display = 'block';
-          mainMinutes = 0;
-          mainSeconds = 1;
-          updateMainTimerDisplay();
+          mainTimerDuration = 1000; // 1 second in test mode
+          resetMainTimerToDefault();
         } else {
           document.getElementById('testMode').style.display = 'none';
+          mainTimerDuration = 10 * 60 * 1000; // 10 minutes
           resetMainTimerToDefault();
         }
+      }
+    });
+
+    // Prevent page from being throttled when not visible
+    document.addEventListener('visibilitychange', function() {
+      // Force timer update when page becomes visible again
+      if (!document.hidden) {
+        updateMainTimerDisplay();
       }
     });
 
@@ -545,78 +554,89 @@
       }, 3000);
     }
 
-    // Main timer functions
+    // Main timer functions using timestamp-based approach
     function resetMainTimerToDefault() {
-      if (testMode) {
-        mainMinutes = 0;
-        mainSeconds = 1;
-      } else {
-        mainMinutes = 10;
-        mainSeconds = 0;
+      mainTimerStartTime = Date.now();
+      mainTimerPausedTime = 0;
+      if (mainTimerPaused) {
+        resumeMainTimer();
       }
       updateMainTimerDisplay();
     }
 
     function resetMainTimer() {
       resetMainTimerToDefault();
-      if (mainTimerPaused) {
-        resumeMainTimer();
-      }
     }
 
     function pauseMainTimer() {
-      mainTimerPaused = true;
-      document.getElementById('pauseMainBtn').style.display = 'none';
-      document.getElementById('resumeMainBtn').style.display = 'inline-block';
-      document.getElementById('pausedIndicator').style.display = 'block';
+      if (!mainTimerPaused) {
+        mainTimerPaused = true;
+        mainTimerPausedTime = Date.now();
+        document.getElementById('pauseMainBtn').style.display = 'none';
+        document.getElementById('resumeMainBtn').style.display = 'inline-block';
+        document.getElementById('pausedIndicator').style.display = 'block';
+      }
     }
 
     function resumeMainTimer() {
-      mainTimerPaused = false;
-      document.getElementById('pauseMainBtn').style.display = 'inline-block';
-      document.getElementById('resumeMainBtn').style.display = 'none';
-      document.getElementById('pausedIndicator').style.display = 'none';
+      if (mainTimerPaused) {
+        mainTimerPaused = false;
+        // Adjust start time to account for paused duration
+        const pausedDuration = Date.now() - mainTimerPausedTime;
+        mainTimerStartTime += pausedDuration;
+        mainTimerPausedTime = 0;
+        document.getElementById('pauseMainBtn').style.display = 'inline-block';
+        document.getElementById('resumeMainBtn').style.display = 'none';
+        document.getElementById('pausedIndicator').style.display = 'none';
+      }
     }
 
     function updateMainTimerDisplay() {
+      if (mainTimerPaused) {
+        return; // Don't update display when paused
+      }
+
+      const currentTime = Date.now();
+      const elapsed = currentTime - mainTimerStartTime;
+      const remaining = Math.max(0, mainTimerDuration - elapsed);
+      
+      if (remaining === 0) {
+        // Timer completed
+        if (portugueseCount <= 0) {
+          // At level 0 - award a star!
+          stars++;
+          penaltyOutput.innerText = "🌟 Star earned for staying in English!";
+          setTimeout(() => {
+            updateDisplay();
+          }, 3000);
+        } else {
+          // Above level 0 - reduce Portuguese count by 1
+          portugueseCount = Math.max(portugueseCount - 1, 0);
+          penaltyOutput.innerText = "✅ Level reduced by 1 for staying in English!";
+          setTimeout(() => {
+            updateDisplay();
+          }, 3000);
+        }
+        updateThermometer();
+        updateDisplay();
+        resetMainTimerToDefault();
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      
       document.getElementById("mainTimer").innerText = 
-        `Timer: ${String(mainMinutes).padStart(2, '0')}:${String(mainSeconds).padStart(2, '0')}`;
+        `Timer: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
     function startMainTimer() {
-      mainTimer = setInterval(() => {
-        if (!mainTimerPaused) {
-          if (mainSeconds === 0) {
-            if (mainMinutes === 0) {
-              // Timer reached zero
-              if (portugueseCount <= 0) {
-                // At level 0 - award a star!
-                stars++;
-                penaltyOutput.innerText = "🌟 Star earned for staying in English!";
-                setTimeout(() => {
-                  updateDisplay();
-                }, 3000);
-              } else {
-                // Above level 0 - reduce Portuguese count by 1
-                portugueseCount = Math.max(portugueseCount - 1, 0);
-                penaltyOutput.innerText = "✅ Level reduced by 1 for staying in English!";
-                setTimeout(() => {
-                  updateDisplay();
-                }, 3000);
-              }
-              updateThermometer();
-              updateDisplay();
-              resetMainTimerToDefault();
-            } else {
-              mainMinutes--;
-              mainSeconds = 59;
-            }
-          } else {
-            mainSeconds--;
-          }
-          updateMainTimerDisplay();
-        }
-      }, 1000);
+      // Use requestAnimationFrame for smooth, consistent updates
+      function timerLoop() {
+        updateMainTimerDisplay();
+        requestAnimationFrame(timerLoop);
+      }
+      requestAnimationFrame(timerLoop);
     }
 
     // Oral timer functions

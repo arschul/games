@@ -372,6 +372,7 @@
             players: [],
             currentMission: 1,
             currentLeaderIndex: 0,
+            startingLeaderIndex: 0, // Add this to track the starting leader across games
             missions: [],
             selectedPlayers: [],
             showRoles: false,
@@ -411,9 +412,10 @@
                     id: `player-${i}`,
                     name: `Player ${i + 1}`,
                     role: null,
-                    isLeader: i === 0
+                    isLeader: i === gameState.startingLeaderIndex
                 });
             }
+            gameState.currentLeaderIndex = gameState.startingLeaderIndex;
             gameState.phase = 'role-assignment';
             render();
         }
@@ -489,7 +491,7 @@
                 leader: ''
             };
 
-            // Move to next leader
+            // Move to next leader and update crown
             gameState.currentLeaderIndex = (gameState.currentLeaderIndex + 1) % gameState.playerCount;
             gameState.players.forEach((p, index) => {
                 p.isLeader = index === gameState.currentLeaderIndex;
@@ -533,7 +535,7 @@
                 }
             }
 
-            // Move to next mission
+            // Move to next mission and rotate leader
             if (gameState.currentMission < 5) {
                 gameState.currentMission++;
                 gameState.currentLeaderIndex = (gameState.currentLeaderIndex + 1) % gameState.playerCount;
@@ -545,17 +547,20 @@
         }
 
         function resetGame() {
+            // Rotate to next starting leader for fairness
+            gameState.startingLeaderIndex = (gameState.startingLeaderIndex + 1) % gameState.playerCount;
+            gameState.currentLeaderIndex = gameState.startingLeaderIndex;
+            
             // Preserve existing players but reset their leader status
             gameState.players.forEach((player, index) => {
-                player.isLeader = index === 0;
+                player.isLeader = index === gameState.startingLeaderIndex;
                 player.role = null;
             });
             
             gameState = {
                 ...gameState,
-                phase: 'role-assignment', // Go directly to role assignment instead of setup
+                phase: 'role-assignment',
                 currentMission: 1,
-                currentLeaderIndex: 0,
                 selectedPlayers: [],
                 resistanceWins: 0,
                 spyWins: 0,
@@ -720,7 +725,6 @@
                                 </div>
                             `).join('')}
                         </div>
-                    </div>
 
                     <!-- Mission History -->
                     <div class="card">

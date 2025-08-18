@@ -75,23 +75,12 @@
       text-align: left;
     }
 
-    .main-timer {
-      font-size: 2rem;
-      font-weight: bold;
-      color: #1e40af;
-      margin: 1rem 0;
-    }
-
-    .main-timer-controls {
+    .main-controls {
       display: flex;
       gap: 10px;
       align-items: center;
       margin: 1rem 0;
-    }
-
-    .main-timer-controls button {
-      font-size: 14px;
-      padding: 8px 16px;
+      flex-wrap: wrap;
     }
 
     .penalty-text {
@@ -112,39 +101,6 @@
       color: #059669;
       margin: 0.5rem 0;
       font-weight: bold;
-    }
-
-    .test-mode {
-      background: #fef3c7;
-      border: 2px solid #f59e0b;
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin: 1rem 0;
-      font-size: 0.9rem;
-      color: #92400e;
-      text-align: center;
-    }
-
-    .paused-indicator {
-      background: #fee2e2;
-      border: 2px solid #ef4444;
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin: 1rem 0;
-      font-size: 0.9rem;
-      color: #dc2626;
-      text-align: center;
-    }
-
-    .timer-debug {
-      background: #f0f9ff;
-      border: 1px solid #0ea5e9;
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin: 1rem 0;
-      font-size: 0.8rem;
-      color: #0369a1;
-      text-align: center;
     }
 
     button {
@@ -178,6 +134,12 @@
 
     button.warning {
       background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    button.star {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      font-size: 18px;
+      padding: 12px 20px;
     }
 
     button:disabled {
@@ -281,8 +243,7 @@
         flex-wrap: wrap;
       }
 
-      .main-timer-controls {
-        flex-wrap: wrap;
+      .main-controls {
         justify-content: center;
       }
     }
@@ -299,25 +260,13 @@
           <div class="fill" id="fill"></div>
         </div>
         <div class="thermometer-info">
-          <button onclick="increment()" class="danger">Portuguese Used 😬</button>
+          <div class="main-controls">
+            <button onclick="increment()" class="danger">Portuguese Used 😬</button>
+            <button onclick="awardStar()" class="star">⭐ Award Star</button>
+          </div>
           <div class="level-display" id="levelDisplay">Level: 0</div>
           <div class="stars-display" id="starsDisplay">⭐ Stars: 0</div>
           <div class="penalty-text" id="penaltyOutput">Status: Safe Zone</div>
-          <div class="main-timer" id="mainTimer">Timer: 10:00</div>
-          <div class="main-timer-controls">
-            <button onclick="pauseMainTimer()" class="warning" id="pauseMainBtn">⏸️ Pause</button>
-            <button onclick="resumeMainTimer()" class="success" id="resumeMainBtn" style="display: none;">▶️ Resume</button>
-            <button onclick="resetMainTimer()">🔄 Reset</button>
-          </div>
-          <div class="paused-indicator" id="pausedIndicator" style="display: none;">
-            ⏸️ Main Timer Paused
-          </div>
-          <div class="timer-debug" id="timerDebug">
-            🔄 Timer cycles: 0 | ⭐ Stars earned: 0
-          </div>
-          <div class="test-mode" id="testMode" style="display: none;">
-            🧪 Test Mode: Press 'T' to set timer to 1 second
-          </div>
         </div>
       </div>
     </div>
@@ -379,20 +328,10 @@
     // Main thermometer variables
     let portugueseCount = 0;
     let stars = 0;
-    let testMode = false;
-    let mainTimerPaused = false;
-    let timerCycles = 0;
-    let starsEarned = 0;
     const fill = document.getElementById('fill');
     const penaltyOutput = document.getElementById('penaltyOutput');
     const starsDisplay = document.getElementById('starsDisplay');
     const levelDisplay = document.getElementById('levelDisplay');
-    
-    // Timer variables - using Web Worker approach
-    let mainTimerStartTime = Date.now();
-    let mainTimerDuration = 10 * 60 * 1000; // 10 minutes in milliseconds
-    let mainTimerPausedAt = 0;
-    let mainTimerTotalPausedTime = 0;
     
     // Activity timer variables
     let oralTimer;
@@ -414,83 +353,6 @@
       "Use 3 Words in a Creative Paragraph",
       "No Game, All Gain"
     ];
-
-    // Create a Web Worker for reliable timing
-    const workerCode = `
-      let timerInterval;
-      let startTime;
-      let duration;
-      let paused = false;
-      let pausedAt = 0;
-      let totalPausedTime = 0;
-
-      self.onmessage = function(e) {
-        const { type, data } = e.data;
-        
-        switch(type) {
-          case 'start':
-            startTime = data.startTime;
-            duration = data.duration;
-            totalPausedTime = data.totalPausedTime || 0;
-            paused = false;
-            
-            if (timerInterval) clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-              if (!paused) {
-                const now = Date.now();
-                const elapsed = now - startTime - totalPausedTime;
-                const remaining = Math.max(0, duration - elapsed);
-                
-                self.postMessage({
-                  type: 'tick',
-                  remaining: remaining,
-                  elapsed: elapsed
-                });
-                
-                if (remaining === 0) {
-                  self.postMessage({ type: 'complete' });
-                  clearInterval(timerInterval);
-                }
-              }
-            }, 100); // Update every 100ms for accuracy
-            break;
-            
-          case 'pause':
-            paused = true;
-            pausedAt = Date.now();
-            break;
-            
-          case 'resume':
-            if (paused) {
-              totalPausedTime += Date.now() - pausedAt;
-              paused = false;
-            }
-            break;
-            
-          case 'stop':
-            if (timerInterval) {
-              clearInterval(timerInterval);
-              timerInterval = null;
-            }
-            break;
-        }
-      };
-    `;
-
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const workerUrl = URL.createObjectURL(blob);
-    let timerWorker = new Worker(workerUrl);
-
-    // Set up worker message handler
-    timerWorker.onmessage = function(e) {
-      const { type, remaining, elapsed } = e.data;
-      
-      if (type === 'tick') {
-        updateMainTimerDisplay(remaining);
-      } else if (type === 'complete') {
-        handleTimerComplete();
-      }
-    };
 
     // Word pools for creative paragraph
     const basicWords = [
@@ -573,21 +435,6 @@
       "What's something that makes you happy?", "Describe your bedroom.", "What are you afraid of?"
     ];
 
-    // Keyboard event listener for test mode
-    document.addEventListener('keydown', function(event) {
-      if (event.key.toLowerCase() === 't') {
-        testMode = !testMode;
-        if (testMode) {
-          document.getElementById('testMode').style.display = 'block';
-          mainTimerDuration = 1000; // 1 second in test mode
-        } else {
-          document.getElementById('testMode').style.display = 'none';
-          mainTimerDuration = 10 * 60 * 1000; // 10 minutes
-        }
-        resetMainTimer();
-      }
-    });
-
     // Main thermometer functions
     function updateThermometer() {
       let percent = Math.min((portugueseCount / (penalties.length * 2)) * 100, 100);
@@ -600,10 +447,6 @@
       
       // Update stars display
       starsDisplay.innerText = `⭐ Stars: ${stars}`;
-      
-      // Update debug info
-      document.getElementById('timerDebug').innerText = 
-        `🔄 Timer cycles: ${timerCycles} | ⭐ Stars earned: ${starsEarned}`;
       
       // Update penalty/status text
       if (portugueseCount <= 0) {
@@ -624,7 +467,7 @@
       // Always increase Portuguese count (fills thermometer)
       portugueseCount++;
       
-      // Remove a star if available
+      // Remove a star if available (can't go negative)
       if (stars > 0) {
         stars--;
         penaltyOutput.innerText = "⭐ Star removed + Level increased for Portuguese use!";
@@ -634,7 +477,6 @@
       
       updateThermometer();
       updateDisplay();
-      resetMainTimer();
       
       // Reset message after 3 seconds
       setTimeout(() => {
@@ -642,89 +484,15 @@
       }, 3000);
     }
 
-    // Main timer functions
-    function startMainTimer() {
-      mainTimerStartTime = Date.now();
-      mainTimerTotalPausedTime = 0;
-      mainTimerPaused = false;
-      
-      timerWorker.postMessage({
-        type: 'start',
-        data: {
-          startTime: mainTimerStartTime,
-          duration: mainTimerDuration,
-          totalPausedTime: mainTimerTotalPausedTime
-        }
-      });
-    }
-
-    function resetMainTimer() {
-      timerWorker.postMessage({ type: 'stop' });
-      
-      if (mainTimerPaused) {
-        resumeMainTimer();
-      }
-      
-      startMainTimer();
-    }
-
-    function pauseMainTimer() {
-      if (!mainTimerPaused) {
-        mainTimerPaused = true;
-        mainTimerPausedAt = Date.now();
-        timerWorker.postMessage({ type: 'pause' });
-        
-        document.getElementById('pauseMainBtn').style.display = 'none';
-        document.getElementById('resumeMainBtn').style.display = 'inline-block';
-        document.getElementById('pausedIndicator').style.display = 'block';
-      }
-    }
-
-    function resumeMainTimer() {
-      if (mainTimerPaused) {
-        mainTimerPaused = false;
-        mainTimerTotalPausedTime += Date.now() - mainTimerPausedAt;
-        timerWorker.postMessage({ type: 'resume' });
-        
-        document.getElementById('pauseMainBtn').style.display = 'inline-block';
-        document.getElementById('resumeMainBtn').style.display = 'none';
-        document.getElementById('pausedIndicator').style.display = 'none';
-      }
-    }
-
-    function updateMainTimerDisplay(remaining) {
-      if (mainTimerPaused) return;
-      
-      const minutes = Math.floor(remaining / 60000);
-      const seconds = Math.floor((remaining % 60000) / 1000);
-      
-      document.getElementById("mainTimer").innerText = 
-        `Timer: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-
-    function handleTimerComplete() {
-      timerCycles++;
-      
-      if (portugueseCount <= 0) {
-        // At level 0 - award a star!
-        stars++;
-        starsEarned++;
-        penaltyOutput.innerText = "🌟 Star earned for staying in English!";
-        setTimeout(() => {
-          updateDisplay();
-        }, 3000);
-      } else {
-        // Above level 0 - reduce Portuguese count by 1
-        portugueseCount = Math.max(portugueseCount - 1, 0);
-        penaltyOutput.innerText = "✅ Level reduced by 1 for staying in English!";
-        setTimeout(() => {
-          updateDisplay();
-        }, 3000);
-      }
-      
-      updateThermometer();
+    function awardStar() {
+      stars++;
+      penaltyOutput.innerText = "🌟 Star awarded by teacher!";
       updateDisplay();
-      startMainTimer(); // Start next cycle
+      
+      // Reset message after 3 seconds
+      setTimeout(() => {
+        updateDisplay();
+      }, 3000);
     }
 
     // Oral timer functions
@@ -871,15 +639,8 @@
     // Initialize
     updateDisplay();
     updateThermometer();
-    startMainTimer();
     updateOralTimerDisplay();
     updateInterviewTimerDisplay();
-
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', () => {
-      timerWorker.postMessage({ type: 'stop' });
-      timerWorker.terminate();
-    });
   </script>
 </body>
 </html>

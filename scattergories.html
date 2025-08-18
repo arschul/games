@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scattergories Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .timer-display {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .timer-display.warning {
+            color: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .letter-wheel {
+            font-size: 4em;
+            font-weight: bold;
+            color: #764ba2;
+            margin: 30px 0;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 3px solid #667eea;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .letter-wheel.spinning {
+            animation: letterSpin 0.1s infinite;
+        }
+
+        @keyframes letterSpin {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .categories {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+        }
+
+        .categories h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .category-list {
+            list-style: none;
+            text-align: left;
+        }
+
+        .category-list li {
+            background: white;
+            margin: 8px 0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-weight: 500;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .stop-button {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .stop-button:hover {
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
+        }
+
+        .round-info {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            border: 2px solid #667eea;
+        }
+
+        .round-info h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .game-status {
+            font-size: 1.2em;
+            margin: 20px 0;
+            color: #333;
+            font-weight: 500;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .timer-display {
+                font-size: 2.5em;
+            }
+            
+            .letter-wheel {
+                font-size: 3em;
+                height: 80px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button {
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎯 Scattergories</h1>
+        
+        <div class="game-status" id="gameStatus">Ready to play! Click "Spin Letter" to begin.</div>
+        
+        <div class="timer-display" id="timerDisplay">2:00</div>
+        
+        <div class="letter-wheel" id="letterWheel">?</div>
+        
+        <div class="buttons">
+            <button id="spinBtn" onclick="spinLetter()">🎡 Spin Letter</button>
+            <button id="stopBtn" onclick="stopTimer()" disabled class="stop-button">⏹️ Stop Timer</button>
+            <button id="newRoundBtn" onclick="startNewRound()" disabled>🔄 New Round</button>
+        </div>
+        
+        <div class="categories" id="categoriesContainer">
+            <h3>Your Categories:</h3>
+            <ul class="category-list" id="categoryList"></ul>
+        </div>
+        
+        <div class="round-info" id="roundInfo">
+            <h4>Current Round Info:</h4>
+            <p><strong>Letter:</strong> <span id="currentLetter">-</span></p>
+            <p><strong>Time Remaining:</strong> <span id="timeRemaining">2:00</span></p>
+        </div>
+    </div>
+
+    <script>
+        const categories = [
+            "Something that makes noise",
+            "A sport",
+            "Movie title",
+            "Things you find in a kitchen",
+            "Animals with four legs",
+            "Things that are red",
+            "School subjects",
+            "Things you wear",
+            "Foods that are sweet",
+            "Things in the sky",
+            "Musical instruments",
+            "Things that are round",
+            "Jobs or occupations",
+            "Things you find at the beach",
+            "Types of transportation",
+            "Things that are cold",
+            "Board games",
+            "Things made of wood",
+            "Cartoon characters",
+            "Things you find in a bathroom",
+            "Types of weather",
+            "Things that fly",
+            "Foods you eat with your hands",
+            "Things that are green",
+            "TV shows",
+            "Things you find in a park",
+            "Types of buildings",
+            "Things that are soft",
+            "Breakfast foods",
+            "Things you find in space",
+            "Types of flowers",
+            "Things that are heavy",
+            "Video games",
+            "Things you find underground",
+            "Types of shoes",
+            "Things that smell good",
+            "Holiday traditions",
+            "Things made of metal",
+            "Famous landmarks",
+            "Things that are sticky",
+            "Types of books",
+            "Things you find in a garden",
+            "Desserts",
+            "Things that are loud",
+            "Types of vehicles",
+            "Things you find in a hospital",
+            "Spicy foods",
+            "Things that are shiny",
+            "Types of dances",
+            "Things you find in the ocean",
+            "Things that are square",
+            "Types of pasta",
+            "Things you find in a library",
+            "Scary things",
+            "Things that bounce",
+            "Types of cheese",
+            "Things you find in a classroom",
+            "Things that are purple",
+            "Types of candy",
+            "Things you plug in",
+            "Things that melt",
+            "Types of hats",
+            "Things you find in a garage",
+            "Things that are transparent",
+            "Types of soup",
+            "Things you find in a wallet",
+            "Things that grow",
+            "Types of bread",
+            "Things you find in a hotel",
+            "Things that are fuzzy",
+            "Types of pizza toppings",
+            "Things you find in a backpack",
+            "Things that are expensive",
+            "Types of ice cream flavors",
+            "Things you find in a toolbox",
+            "Things that are fragile",
+            "Types of sandwiches",
+            "Things you find in a medicine cabinet",
+            "Things that are waterproof",
+            "Types of salad ingredients",
+            "Things you find in a gym",
+            "Things that are magnetic",
+            "Types of breakfast cereals",
+            "Things you find in a suitcase",
+            "Things that are elastic",
+            "Types of nuts",
+            "Things you find in a refrigerator",
+            "Things that glow",
+            "Types of herbs and spices",
+            "Things you find in a first aid kit",
+            "Things that are edible",
+            "Types of beverages",
+            "Things you find in a car",
+            "Things that are invisible",
+            "Types of fruits",
+            "Things you find in a pocket",
+            "Things that are recyclable",
+            "Types of vegetables",
+            "Things you find in an office",
+            "Things that are flammable",
+            "Types of cookies"
+        ];
+
+        const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'W'];
+        
+        let currentCategories = [];
+        let currentLetter = '';
+        let timer = null;
+        let timeLeft = 120; // 2 minutes in seconds
+        let isSpinning = false;
+        let gameActive = false;
+        let usedCategories = [];
+
+        function revealCategories() {
+            // Reset game state
+            stopTimer();
+            timeLeft = 120;
+            updateTimerDisplay();
+            
+            currentCategories = [];
+            let availableCategories = categories.filter(cat => !usedCategories.includes(cat));
+            
+            if (availableCategories.length < 5) {
+                usedCategories = [];
+                availableCategories = [...categories];
+            }
+            
+            const shuffled = [...availableCategories].sort(() => 0.5 - Math.random());
+            currentCategories = shuffled.slice(0, 5);
+            
+            usedCategories.push(...currentCategories);
+            
+            // Display categories
+            const categoryList = document.getElementById('categoryList');
+            categoryList.innerHTML = '';
+            currentCategories.forEach(category => {
+                const li = document.createElement('li');
+                li.textContent = category;
+                categoryList.appendChild(li);
+            });
+            
+            // Update buttons
+            document.getElementById('spinBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('newRoundBtn').disabled = true;
+            
+            // Reset letter wheel
+            document.getElementById('letterWheel').textContent = '?';
+            document.getElementById('currentLetter').textContent = '-';
+            
+            // Update status
+            document.getElementById('gameStatus').textContent = 'New categories revealed! Click "Spin Letter" to begin.';
+        }
+
+        function spinLetter() {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            const letterWheel = document.getElementById('letterWheel');
+            letterWheel.classList.add('spinning');
+            
+            // Update buttons
+            document.getElementById('spinBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = true;
+            
+            let spinCount = 0;
+            const maxSpins = 50; // 5 seconds at 100ms intervals
+            
+            const spinInterval = setInterval(() => {
+                const randomLetter = alphabet[Math.floor(Math.random() * alphabet.length)];
+                letterWheel.textContent = randomLetter;
+                spinCount++;
+                
+                if (spinCount >= maxSpins) {
+                    clearInterval(spinInterval);
+                    letterWheel.classList.remove('spinning');
+                    
+                    // Final letter selection
+                    currentLetter = alphabet[Math.floor(Math.random() * alphabet.length)];
+                    letterWheel.textContent = currentLetter;
+                    document.getElementById('currentLetter').textContent = currentLetter;
+                    
+                    // Start timer
+                    startTimer();
+                    isSpinning = false;
+                    
+                    // Update status
+                    document.getElementById('gameStatus').textContent = `Letter is ${currentLetter}! You have 2 minutes to find answers.`;
+                }
+            }, 100);
+        }
+
+        function startTimer() {
+            gameActive = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 30) {
+                    document.getElementById('timerDisplay').classList.add('warning');
+                }
+                
+                if (timeLeft <= 0) {
+                    timeUp();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+            gameActive = false;
+            document.getElementById('timerDisplay').classList.remove('warning');
+            document.getElementById('stopBtn').disabled = true;
+            if (currentCategories.length > 0) {
+                document.getElementById('newRoundBtn').disabled = false;
+            }
+        }
+
+        function timeUp() {
+            stopTimer();
+            document.getElementById('gameStatus').textContent = "Time's up! Click 'New Round' for a new round.";
+            
+            // Update buttons
+            document.getElementById('spinBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('newRoundBtn').disabled = false;
+        }
+
+        function startNewRound() {
+            revealCategories();
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = display;
+            document.getElementById('timeRemaining').textContent = display;
+        }
+
+        window.onload = function() {
+            revealCategories();
+        };
+    </script>
+</body>
+</html>

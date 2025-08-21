@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dice Elimination Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .setup-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .player-selector {
+            margin-bottom: 20px;
+        }
+
+        .player-selector label {
+            font-size: 1.2em;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .player-selector select {
+            padding: 10px 15px;
+            font-size: 1.1em;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .players-container {
+            display: grid;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .player {
+            background: #f7fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .player.eliminated {
+            opacity: 0.5;
+            background: #fed7d7;
+            border-color: #fc8181;
+        }
+
+        .player.winner {
+            background: #c6f6d5;
+            border-color: #48bb78;
+            box-shadow: 0 0 20px rgba(72, 187, 120, 0.3);
+        }
+
+        .player-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .player-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .player-name-input {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2d3748;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            text-align: center;
+            width: 100%;
+            max-width: 200px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .player-name-input:focus {
+            border-color: #4299e1;
+        }
+
+        .squares-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .square {
+            width: 60px;
+            height: 60px;
+            border: 3px solid #cbd5e0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .square input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            background: transparent;
+            outline: none;
+            -moz-appearance: textfield;
+        }
+
+        .square input::-webkit-outer-spin-button,
+        .square input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .square.filled {
+            background: #e6fffa;
+            border-color: #38b2ac;
+            color: #2d3748;
+        }
+
+        .square.eliminated {
+            background: #fed7d7;
+            border-color: #fc8181;
+            opacity: 0.6;
+            text-decoration: line-through;
+            text-decoration-thickness: 3px;
+            color: #e53e3e;
+        }
+
+        .game-controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+        }
+
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .dice-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #edf2f7;
+            border-radius: 15px;
+        }
+
+        .dice {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border: 3px solid #2d3748;
+            border-radius: 15px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 20px;
+            transition: all 0.5s ease;
+        }
+
+        .dice.rolling {
+            animation: roll 0.5s ease-in-out;
+        }
+
+        @keyframes roll {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(90deg); }
+            50% { transform: rotate(180deg); }
+            75% { transform: rotate(270deg); }
+        }
+
+        .game-status {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .status-playing {
+            background: #bee3f8;
+            color: #2b6cb0;
+        }
+
+        .status-winner {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .squares-container {
+                gap: 5px;
+            }
+            
+            .square {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2em;
+            }
+            
+            .square input {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 Left to Right</h1>
+        
+        <div class="setup-section">
+            <div class="player-selector">
+                <label for="playerCount">Number of Players:</label>
+                <select id="playerCount">
+                    <option value="2">2 Players</option>
+                    <option value="3">3 Players</option>
+                    <option value="4">4 Players</option>
+                    <option value="5">5 Players</option>
+                    <option value="6">6 Players</option>
+                    <option value="7">7 Players</option>
+                    <option value="8">8 Players</option>
+                    <option value="9">9 Players</option>
+                    <option value="10">10 Players</option>
+                    <option value="11">11 Players</option>
+                    <option value="12">12 Players</option>
+                    <option value="13">13 Players</option>
+                    <option value="14">14 Players</option>
+                    <option value="15">15 Players</option>
+                    <option value="16">16 Players</option>
+                </select>
+                <button class="btn btn-primary" onclick="setupGame()">Setup Game</button>
+            </div>
+        </div>
+
+        <div id="gameArea" class="hidden">
+            <div id="playersContainer" class="players-container"></div>
+            
+            <div class="game-controls">
+                <button id="startGameBtn" class="btn btn-success" onclick="startGame()" disabled>Start Game</button>
+                <button id="newGameBtn" class="btn btn-primary" onclick="newGame()" style="display: none;">New Game</button>
+            </div>
+
+            <div id="gameSection" class="hidden">
+                <div class="dice-section">
+                    <div class="dice" id="dice">?</div>
+                    <br>
+                    <button id="rollBtn" class="btn btn-primary" onclick="rollDice()">Roll Dice</button>
+                </div>
+                
+                <div id="gameStatus" class="game-status status-playing">
+                    Fill all squares with numbers 1-6, then start the game!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            players: [],
+            currentPlayer: 0,
+            gameStarted: false,
+            gameEnded: false
+        };
+
+        function setupGame() {
+            const playerCount = parseInt(document.getElementById('playerCount').value);
+            gameState.players = [];
+            gameState.currentPlayer = 0;
+            gameState.gameStarted = false;
+            gameState.gameEnded = false;
+
+            // Create players
+            for (let i = 0; i < playerCount; i++) {
+                gameState.players.push({
+                    id: i,
+                    name: `Player ${i + 1}`,
+                    squares: [null, null, null, null, null, null],
+                    eliminated: false
+                });
+            }
+
+            renderPlayers();
+            document.getElementById('gameArea').classList.remove('hidden');
+            document.getElementById('gameSection').classList.add('hidden');
+            document.getElementById('startGameBtn').disabled = true;
+            updateGameStatus("Fill all squares with numbers 1-6, then start the game!");
+        }
+
+        function renderPlayers() {
+            const container = document.getElementById('playersContainer');
+            container.innerHTML = '';
+
+            // Determine grid layout based on player count
+            const playerCount = gameState.players.length;
+            if (playerCount <= 2) {
+                container.style.gridTemplateColumns = 'repeat(auto-fit, minmax(400px, 1fr))';
+            } else if (playerCount <= 4) {
+                container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            } else if (playerCount <= 9) {
+                container.style.gridTemplateColumns = 'repeat(3, 1fr)';
+            } else {
+                container.style.gridTemplateColumns = 'repeat(4, 1fr)';
+            }
+
+            gameState.players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = `player ${player.eliminated ? 'eliminated' : ''}`;
+                if (isWinner(player)) {
+                    playerDiv.classList.add('winner');
+                }
+
+                const playerNameContent = gameState.gameStarted 
+                    ? `<div class="player-name">${player.name}</div>`
+                    : `<input type="text" class="player-name-input" value="${player.name}" onchange="updatePlayerName(${player.id}, this.value)" placeholder="Enter player name">`;
+
+                playerDiv.innerHTML = `
+                    <div class="player-header">
+                        ${playerNameContent}
+                    </div>
+                    <div class="squares-container">
+                        ${player.squares.map((value, index) => {
+                            if (gameState.gameStarted) {
+                                // Game has started - show eliminated squares with strikethrough or filled squares
+                                if (typeof value === 'object' && value !== null && value.eliminated) {
+                                    return `<div class="square filled eliminated">${value.originalValue}</div>`;
+                                } else if (value !== null && typeof value === 'number') {
+                                    return `<div class="square filled">${value}</div>`;
+                                } else {
+                                    return `<div class="square"></div>`;
+                                }
+                            } else {
+                                // Game hasn't started - keep all squares as editable inputs
+                                const inputValue = (value !== null && typeof value === 'number') ? value : '';
+                                return `<div class="square ${inputValue ? 'filled' : ''}"><input type="number" min="1" max="6" value="${inputValue}" oninput="handleSquareInput(${player.id}, ${index}, this)" onchange="updateSquare(${player.id}, ${index}, this.value)"></div>`;
+                            }
+                        }).join('')}
+                    </div>
+                `;
+
+                container.appendChild(playerDiv);
+            });
+
+            checkStartGameButton();
+        }
+
+        function updateSquare(playerId, squareIndex, value) {
+            const numValue = parseInt(value);
+            if (numValue >= 1 && numValue <= 6) {
+                gameState.players[playerId].squares[squareIndex] = numValue;
+                autoAdvanceToNextSquare(playerId, squareIndex);
+            } else {
+                gameState.players[playerId].squares[squareIndex] = null;
+            }
+            renderPlayers();
+        }
+
+        function autoAdvanceToNextSquare(playerId, currentSquareIndex) {
+            // Find the next empty square for this player
+            const player = gameState.players[playerId];
+            for (let i = currentSquareIndex + 1; i < player.squares.length; i++) {
+                if (player.squares[i] === null) {
+                    // Focus the next empty square after a short delay to allow rendering
+                    setTimeout(() => {
+                        const playerElements = document.querySelectorAll('.player');
+                        const currentPlayerElement = playerElements[playerId];
+                        const inputs = currentPlayerElement.querySelectorAll('input[type="number"]');
+                        if (inputs[i]) {
+                            inputs[i].focus();
+                        }
+                    }, 50);
+                    return;
+                }
+            }
+            
+            // If no empty squares found in current player, try next player
+            for (let nextPlayerId = playerId + 1; nextPlayerId < gameState.players.length; nextPlayerId++) {
+                const nextPlayer = gameState.players[nextPlayerId];
+                for (let i = 0; i < nextPlayer.squares.length; i++) {
+                    if (nextPlayer.squares[i] === null) {
+                        setTimeout(() => {
+                            const playerElements = document.querySelectorAll('.player');
+                            const nextPlayerElement = playerElements[nextPlayerId];
+                            const inputs = nextPlayerElement.querySelectorAll('input[type="number"]');
+                            if (inputs[i]) {
+                                inputs[i].focus();
+                            }
+                        }, 50);
+                        return;
+                    }
+                }
+            }
+        }
+
+        function handleSquareInput(playerId, squareIndex, inputElement) {
+            const value = inputElement.value;
+            const numValue = parseInt(value);
+            
+            // If valid single digit 1-6, immediately advance
+            if (value.length === 1 && numValue >= 1 && numValue <= 6) {
+                gameState.players[playerId].squares[squareIndex] = numValue;
+                autoAdvanceToNextSquare(playerId, squareIndex);
+                renderPlayers();
+            }
+        }
+
+        function updatePlayerName(playerId, newName) {
+            if (newName.trim()) {
+                gameState.players[playerId].name = newName.trim();
+            }
+        }
+
+        function checkStartGameButton() {
+            const allSquaresFilled = gameState.players.every(player => 
+                player.squares.every(square => square !== null)
+            );
+            document.getElementById('startGameBtn').disabled = !allSquaresFilled || gameState.gameStarted;
+        }
+
+        function startGame() {
+            gameState.gameStarted = true;
+            document.getElementById('gameSection').classList.remove('hidden');
+            document.getElementById('startGameBtn').style.display = 'none';
+            renderPlayers();
+            updateGameStatus("Game started! Roll the dice to eliminate squares!");
+        }
+
+        function rollDice() {
+            if (gameState.gameEnded) return;
+
+            const dice = document.getElementById('dice');
+            const rollBtn = document.getElementById('rollBtn');
+            
+            dice.classList.add('rolling');
+            rollBtn.disabled = true;
+            
+            playSound('roll');
+
+            // Simulate rolling animation
+            let rollCount = 0;
+            const rollInterval = setInterval(() => {
+                dice.textContent = Math.floor(Math.random() * 6) + 1;
+                rollCount++;
+                
+                if (rollCount >= 10) {
+                    clearInterval(rollInterval);
+                    const finalRoll = Math.floor(Math.random() * 6) + 1;
+                    dice.textContent = finalRoll;
+                    dice.classList.remove('rolling');
+                    rollBtn.disabled = false;
+                    
+                    processRoll(finalRoll);
+                }
+            }, 50);
+        }
+
+        function processRoll(diceValue) {
+            let squaresEliminated = 0;
+            let playersEliminated = 0;
+
+            gameState.players.forEach(player => {
+                if (player.eliminated) return;
+
+                // Continue eliminating squares as long as the leftmost matches the dice
+                let continueEliminating = true;
+                while (continueEliminating) {
+                    continueEliminating = false;
+                    
+                    // Find leftmost non-eliminated square
+                    for (let i = 0; i < player.squares.length; i++) {
+                        const square = player.squares[i];
+                        if (!(typeof square === 'object' && square !== null && square.eliminated)) {
+                            // This is the leftmost square, check if it matches the dice
+                            if (square === diceValue) {
+                                player.squares[i] = { originalValue: square, eliminated: true };
+                                squaresEliminated++;
+                                continueEliminating = true; // Continue checking for more matches
+                            }
+                            break; // Only check the leftmost square, then continue the while loop
+                        }
+                    }
+                }
+
+                // Check if player is eliminated
+                const allEliminated = player.squares.every(square => 
+                    typeof square === 'object' && square !== null && square.eliminated
+                );
+                if (allEliminated && !player.eliminated) {
+                    player.eliminated = true;
+                    playersEliminated++;
+                }
+            });
+
+            if (squaresEliminated === 0 && !gameState.gameEnded) {
+                updateGameStatus(`Rolled ${diceValue}! No squares eliminated. Rolling again...`);
+                renderPlayers();
+                
+                // Auto-roll after a short delay
+                setTimeout(() => {
+                    if (!gameState.gameEnded) {
+                        rollDice();
+                    }
+                }, 1000);
+                return;
+            }
+
+            if (squaresEliminated > 0) {
+                playSound('eliminate');
+            }
+            if (playersEliminated > 0) {
+                setTimeout(() => playSound('playerOut'), 300);
+            }
+
+            renderPlayers();
+            checkGameEnd();
+
+            if (squaresEliminated > 0) {
+                updateGameStatus(`Rolled ${diceValue}! ${squaresEliminated} square(s) eliminated!`);
+            }
+        }
+
+        function checkGameEnd() {
+            const activePlayers = gameState.players.filter(player => !player.eliminated);
+            
+            if (activePlayers.length === 1) {
+                gameState.gameEnded = true;
+                const winner = activePlayers[0];
+                updateGameStatus(`🎉 ${winner.name} wins the game! 🎉`);
+                document.getElementById('rollBtn').disabled = true;
+                document.getElementById('newGameBtn').style.display = 'inline-block';
+                
+                setTimeout(() => playSound('win'), 500);
+                
+                // Add winner class
+                renderPlayers();
+            } else if (activePlayers.length === 0) {
+                gameState.gameEnded = true;
+                updateGameStatus("It's a tie! All players eliminated!");
+                document.getElementById('rollBtn').disabled = true;
+                document.getElementById('newGameBtn').style.display = 'inline-block';
+            }
+        }
+
+        function isWinner(player) {
+            if (!gameState.gameEnded) return false;
+            const activePlayers = gameState.players.filter(p => !p.eliminated);
+            return activePlayers.length === 1 && activePlayers[0].id === player.id;
+        }
+
+        function updateGameStatus(message) {
+            const statusDiv = document.getElementById('gameStatus');
+            statusDiv.textContent = message;
+            
+            if (gameState.gameEnded) {
+                statusDiv.className = 'game-status status-winner';
+            } else {
+                statusDiv.className = 'game-status status-playing';
+            }
+        }
+
+        function newGame() {
+            gameState.players.forEach(player => {
+                player.squares = [null, null, null, null, null, null];
+                player.eliminated = false;
+            });
+            
+            gameState.currentPlayer = 0;
+            gameState.gameStarted = false;
+            gameState.gameEnded = false;
+            
+            // Reset UI elements
+            document.getElementById('gameSection').classList.add('hidden');
+            document.getElementById('newGameBtn').style.display = 'none';
+            document.getElementById('startGameBtn').style.display = 'inline-block';
+            document.getElementById('startGameBtn').disabled = true;
+            document.getElementById('dice').textContent = '?';
+            document.getElementById('rollBtn').disabled = false;
+            
+            // Re-render players with empty editable squares
+            renderPlayers();
+            updateGameStatus("Fill all squares with numbers 1-6, then start the game!");
+        }
+
+        // Initialize the game
+        window.onload = function() {
+            updateGameStatus("Select number of players and click 'Setup Game' to begin!");
+        };
+
+        function playSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            let frequency, duration;
+            
+            switch(type) {
+                case 'roll':
+                    frequency = 440;
+                    duration = 0.1;
+                    break;
+                case 'eliminate':
+                    frequency = 220;
+                    duration = 0.3;
+                    break;
+                case 'playerOut':
+                    frequency = 150;
+                    duration = 0.5;
+                    break;
+                case 'win':
+                    // Play a victory tune
+                    playVictorySound(audioContext);
+                    return;
+                default:
+                    return;
+            }
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        function playVictorySound(audioContext) {
+            const notes = [523, 659, 784, 1047]; // C, E, G, C
+            notes.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.2);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + index * 0.2);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.2 + 0.3);
+                
+                oscillator.start(audioContext.currentTime + index * 0.2);
+                oscillator.stop(audioContext.currentTime + index * 0.2 + 0.3);
+            });
+        }
+    </script>
+</body>
+</html>

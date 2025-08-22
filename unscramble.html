@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Word Scramble</title>
+    <style>
+        :root {
+            --bg-light: #ffffff;
+            --bg-dark: #1a1a1a;
+            --surface-light: #f8f9fa;
+            --surface-dark: #2d2d2d;
+            --text-light: #333333;
+            --text-dark: #ffffff;
+            --border-light: #e9ecef;
+            --border-dark: #404040;
+            --shadow-light: rgba(0,0,0,0.1);
+            --shadow-dark: rgba(0,0,0,0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        body.dark {
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid var(--border-light);
+            background: var(--bg-light);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .dark .theme-toggle {
+            border-color: var(--border-dark);
+            background: var(--surface-dark);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px var(--shadow-light);
+        }
+
+        .dark .theme-toggle:hover {
+            box-shadow: 0 4px 12px var(--shadow-dark);
+        }
+
+        .game-container {
+            background: var(--bg-light);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px var(--shadow-light);
+            max-width: 1400px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 40px;
+            align-items: start;
+            border: 1px solid var(--border-light);
+            backdrop-filter: blur(10px);
+        }
+
+        .dark .game-container {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+            box-shadow: 0 20px 60px var(--shadow-dark);
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .teams {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .team {
+            text-align: center;
+            padding: 24px;
+            border-radius: 20px;
+            min-width: 180px;
+            background: var(--surface-light);
+            border: 2px solid var(--border-light);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dark .team {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+        }
+
+        .team::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .team.blue.active {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border-color: #2980b9;
+            transform: scale(1.05);
+            box-shadow: 0 15px 35px rgba(52, 152, 219, 0.4);
+        }
+
+        .team.red.active {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border-color: #c0392b;
+            transform: scale(1.05);
+            box-shadow: 0 15px 35px rgba(231, 76, 60, 0.4);
+        }
+
+        .team.active::before {
+            left: 100%;
+        }
+
+        .team-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        .team-score {
+            font-size: 2.5rem;
+            font-weight: 900;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .category-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .category-box {
+            width: 350px;
+            height: 120px;
+            border: 3px solid var(--border-light);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-light);
+            background: var(--surface-light);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .dark .category-box {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .category-box.team-blue {
+            border-color: #3498db;
+            color: #3498db;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.2);
+        }
+
+        .category-box.team-red {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.2);
+        }
+
+        .main-game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .difficulty-btn {
+            padding: 18px 36px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border: 2px solid var(--border-light);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-light);
+            color: var(--text-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dark .difficulty-btn {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        /* Disable difficulty buttons when game is active */
+        .difficulty-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .difficulty-btn:not(:disabled):hover.team-blue {
+            border-color: #3498db;
+            color: #3498db;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+        }
+
+        .difficulty-btn:not(:disabled):hover.team-red {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+
+        .game-area {
+            text-align: center;
+            margin-bottom: 40px;
+            width: 100%;
+        }
+
+        .category {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 12px;
+            letter-spacing: 0.02em;
+        }
+
+        .letter-area {
+            margin-bottom: 40px;
+        }
+
+        .scrambled-letters {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .letter-tile {
+            width: 55px;
+            height: 55px;
+            background: var(--bg-light);
+            border: 2px solid var(--border-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            position: relative;
+        }
+
+        .dark .letter-tile {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+        }
+
+        .letter-tile:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px var(--shadow-light);
+        }
+
+        .dark .letter-tile:hover {
+            box-shadow: 0 8px 20px var(--shadow-dark);
+        }
+
+        .letter-tile.team-blue:hover {
+            border-color: #3498db;
+            color: #3498db;
+            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .letter-tile.team-red:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .letter-tile.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Prevent removal of revealed letters */
+        .letter-tile.revealed {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            cursor: not-allowed;
+            border-color: #e67e22;
+        }
+
+        .answer-grid {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            /* Prevent wrapping for long words */
+            white-space: nowrap;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .answer-slot {
+            width: 55px;
+            height: 55px;
+            border: 2px dashed var(--border-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: var(--surface-light);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+
+        .dark .answer-slot {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+        }
+
+        .answer-slot.filled {
+            background: var(--bg-light);
+            border-style: solid;
+        }
+
+        .dark .answer-slot.filled {
+            background: var(--surface-dark);
+        }
+
+        /* Style for revealed letters */
+        .answer-slot.revealed {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border-color: #e67e22;
+            cursor: not-allowed;
+        }
+
+        .answer-slot.team-blue {
+            border-color: #3498db;
+        }
+
+        .answer-slot.team-red {
+            border-color: #e74c3c;
+        }
+
+        .answer-slot.space {
+            width: 24px;
+            border: none;
+            background: transparent;
+            cursor: default;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 14px 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: 2px solid var(--border-light);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        .dark .action-btn {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .action-btn:hover.team-blue {
+            border-color: #3498db;
+            color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(52, 152, 219, 0.3);
+        }
+
+        .action-btn:hover.team-red {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(231, 76, 60, 0.3);
+        }
+
+        .hint-display {
+            background: var(--surface-light);
+            border: 2px solid var(--border-light);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 24px 0;
+            font-size: 1.2rem;
+            color: var(--text-light);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-style: italic;
+        }
+
+        .dark .hint-display {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .points-display {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #6c757d;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .message {
+            padding: 18px;
+            border-radius: 12px;
+            margin: 24px 0;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        @media (max-width: 1024px) {
+            .game-container {
+                grid-template-columns: 1fr;
+                max-width: 900px;
+                padding: 30px;
+            }
+            
+            .teams {
+                flex-direction: row;
+                justify-content: space-around;
+            }
+
+            .answer-grid {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.2rem;
+            }
+            
+            .letter-tile, .answer-slot {
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+
+            .category-box {
+                width: 280px;
+                height: 100px;
+                font-size: 1.3rem;
+            }
+
+            .game-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Added dark mode toggle button -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+        <span id="themeIcon">🌙</span>
+    </button>
+
+    <div class="game-container">
+        <div class="header">
+            <h1 class="title">Team Word Scramble</h1>
+        </div>
+
+        <div class="teams">
+            <div class="team blue active" id="blueTeam">
+                <div class="team-name">Blue Team</div>
+                <div class="team-score" id="blueScore">0</div>
+            </div>
+            <div class="team red" id="redTeam">
+                <div class="team-name">Red Team</div>
+                <div class="team-score" id="redScore">0</div>
+            </div>
+        </div>
+
+        <div class="main-game-area">
+            <div class="category-container">
+                <div class="category-box team-blue" id="categoryBox">Choose difficulty to start!</div>
+            </div>
+
+            <div class="difficulty-buttons">
+                <button class="difficulty-btn team-blue" id="easyBtn" onclick="selectDifficulty('easy')">Easy Word (5 Points)</button>
+                <button class="difficulty-btn team-blue" id="hardBtn" onclick="selectDifficulty('hard')">Hard Word (10 Points)</button>
+            </div>
+
+            <div class="game-area">
+                <div class="category" id="categoryDisplay">Choose difficulty to start!</div>
+                <div class="points-display" id="pointsDisplay"></div>
+                
+                <div class="letter-area">
+                    <div class="scrambled-letters" id="scrambledLetters"></div>
+                    <div class="answer-grid" id="answerGrid"></div>
+                </div>
+                
+                <div class="hint-display" id="hintDisplay">Hint will appear here when you click the Hint button</div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-btn team-blue" onclick="solveWord()">Solve</button>
+                <button class="action-btn team-blue" onclick="revealLetter()">Reveal Letter (-1 pt)</button>
+                <!-- Updated hint cost to 3 points -->
+                <button class="action-btn team-blue" onclick="showHint()">Hint (-3 pts)</button>
+                <button class="action-btn team-blue" onclick="giveUp()">Give Up</button>
+            </div>
+
+            <div id="messageArea"></div>
+        </div>
+
+        <div></div>
+    </div>
+
+    <!-- Added audio elements for game sounds -->
+    <audio id="selectSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT" type="audio/wav">
+    </audio>
+    <audio id="correctSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT" type="audio/wav">
+    </audio>
+    <audio id="errorSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT" type="audio/wav">
+    </audio>
+
+    <script>
+
+        const easyWords = {
+            "foodAndDrink": [
+                { word: 'apple', hint: 'A fruit that might keep the doctor away' },
+                { word: 'bread', hint: 'Baked dough, often sliced for sandwiches' },
+                { word: 'juice', hint: 'The liquid from a fruit or vegetable' },
+                { word: 'salad', hint: 'A healthy mix of fresh greens and vegetables' },
+                { word: 'pasta', hint: 'Italian noodles like spaghetti or macaroni' },
+                { word: 'bacon', hint: 'Cured pork strips, often for breakfast' },
+                { word: 'candy', hint: 'A general term for a sugary confection' },
+                { word: 'grape', hint: 'Small fruit that grows in bunches on a vine' },
+                { word: 'lemon', hint: 'A sour, yellow citrus fruit' },
+                { word: 'mango', hint: 'A sweet, tropical stone fruit' },
+                { word: 'melon', hint: 'A large, sweet fruit with a hard rind' },
+                { word: 'onion', hint: 'A pungent vegetable that can make you cry' },
+                { word: 'peach', hint: 'A fruit with a fuzzy skin' },
+                { word: 'pizza', hint: 'A baked dish with a round base of dough' },
+                { word: 'steak', hint: 'A thick slice of high-quality beef' },
+                { word: 'toast', hint: 'Sliced bread that has been browned by heat' },
+                { word: 'waffle', hint: 'Breakfast food with a grid-like pattern' },
+                { word: 'yogurt', hint: 'A common fermented milk product' },
+                { word: 'sugar', hint: 'A common sweetening substance' },
+                { word: 'cheese', hint: 'A solid dairy product made from milk' },
+                { word: 'water', hint: 'H2O, the essential liquid for life' },
+                { word: 'coffee', hint: 'A brewed drink from roasted beans' },
+                { word: 'cereal', hint: 'A grain-based breakfast food, often with milk' },
+                { word: 'donut', hint: 'A fried, often ring-shaped, sweet treat' },
+                { word: 'honey', hint: 'A sweet, sticky substance made by bees' },
+                { word: 'cookie', hint: 'A small, sweet baked good' },
+                { word: 'butter', hint: 'A dairy spread made from cream' },
+                { word: 'muffin', hint: 'A small, individual quick bread or cake' },
+                { word: 'pickle', hint: 'A cucumber preserved in brine or vinegar' },
+                { word: 'sushi', hint: 'A Japanese dish featuring vinegared rice' }
+            ],
+            "animals": [
+                { word: 'tiger', hint: 'A large, striped feline' },
+                { word: 'horse', hint: 'A domesticated hoofed mammal, often ridden' },
+                { word: 'mouse', hint: 'A small rodent, often a house pest' },
+                { word: 'sheep', hint: 'A farm animal known for its woolly fleece' },
+                { word: 'eagle', hint: 'A large bird of prey with keen eyesight' },
+                { word: 'snake', hint: 'A long, legless reptile' },
+                { word: 'whale', hint: 'A very large, air-breathing marine mammal' },
+                { word: 'camel', hint: 'An animal with a hump that lives in the desert' },
+                { word: 'zebra', hint: 'An African equine with black-and-white stripes' },
+                { word: 'panda', hint: 'A bear-like mammal from China that eats bamboo' },
+                { word: 'koala', hint: 'An Australian marsupial that eats eucalyptus leaves' },
+                { word: 'gecko', hint: 'A small lizard known for its chirping calls' },
+                { word: 'lemur', hint: 'A primate from Madagascar with a long tail' },
+                { word: 'monkey', hint: 'A primate, often found swinging in trees' },
+                { word: 'parrot', hint: 'A colorful bird that can mimic human speech' },
+                { word: 'rabbit', hint: 'A hopping mammal with very long ears' },
+                { word: 'spider', hint: 'An eight-legged arachnid that spins webs' },
+                { word: 'squid', hint: 'A marine creature with tentacles and ink defense' },
+                { word: 'turkey', hint: 'A large bird, popular on Thanksgiving' },
+                { word: 'turtle', hint: 'A slow-moving reptile protected by a shell' },
+                { word: 'walrus', hint: 'A large marine mammal with long tusks' },
+                { word: 'shark', hint: 'A predatory fish with rows of sharp teeth' },
+                { word: 'sloth', hint: 'A very slow-moving mammal from Central America' },
+                { word: 'lizard', hint: 'A reptile with scales and a long tail' },
+                { word: 'otter', hint: 'A playful, semi-aquatic mammal' },
+                { word: 'ferret', hint: 'A domesticated, weasel-like mammal' },
+                { word: 'jaguar', hint: 'A large, spotted feline from the Americas' },
+                { word: 'pigeon', hint: 'A common bird often found in cities' },
+                { word: 'salmon', hint: 'A fish known for swimming upstream to spawn' },
+                { word: 'hyena', hint: 'A carnivorous mammal known for its "laugh"' }
+            ],
+            "objects": [
+                { word: 'chair', hint: 'An item of furniture for one person to sit on' },
+                { word: 'table', hint: 'Furniture with a flat top for holding items' },
+                { word: 'phone', hint: 'A device used for voice communication' },
+                { word: 'clock', hint: 'An instrument to measure and indicate time' },
+                { word: 'spoon', hint: 'A utensil for eating liquid food' },
+                { word: 'plate', hint: 'A flat dish for holding food' },
+                { word: 'knife', hint: 'A utensil with a blade for cutting' },
+                { word: 'couch', hint: 'A long upholstered seat for multiple people' },
+                { word: 'brush', hint: 'An implement with bristles, for cleaning or grooming' },
+                { word: 'frame', hint: 'A border for a picture or mirror' },
+                { word: 'glass', hint: 'A transparent material; also a drinking vessel' },
+                { word: 'lamp', hint: 'A device for giving light' },
+                { word: 'mirror', hint: 'A surface that reflects an image' },
+                { word: 'pencil', hint: 'A writing utensil with a graphite core' },
+                { word: 'pillow', hint: 'A cushion to support the head during sleep' },
+                { word: 'radio', hint: 'A device for receiving broadcast signals' },
+                { word: 'shelf', hint: 'A flat length of wood or other material for storage' },
+                { word: 'towel', hint: 'An absorbent cloth for drying' },
+                { word: 'wallet', hint: 'A small case for holding money and cards' },
+                { word: 'watch', hint: 'A timepiece worn on the wrist' },
+                { word: 'wheel', hint: 'A circular object that revolves on an axle' },
+                { word: 'zipper', hint: 'A fastening device with interlocking teeth' },
+                { word: 'bottle', hint: 'A container, typically glass or plastic, for liquids' },
+                { word: 'bucket', hint: 'A cylindrical container for carrying things' },
+                { word: 'candle', hint: 'A cylinder of wax with a wick that gives light' },
+                { word: 'glove', hint: 'A covering for the hand' },
+                { word: 'scarf', hint: 'A length of fabric worn around the neck' },
+                { word: 'ticket', hint: 'A piece of paper giving entitlement to an event' },
+                { word: 'remote', hint: 'A device to operate an electronic from a distance' },
+                { word: 'key', hint: 'A small piece of shaped metal for operating a lock' }
+            ],
+            "videoGames": [
+                { word: 'mario', hint: 'Plumber who saves a princess' },
+                { word: 'sonic', hint: 'A very fast, blue hedgehog' },
+                { word: 'zelda', hint: 'Series about a hero named Link in Hyrule' },
+                { word: 'banjo', hint: 'A bear with a bird in his backpack' },
+                { word: 'crash', hint: 'A bandicoot who spins and breaks crates' },
+                { word: 'kirby', hint: 'A pink puffball who inhales enemies' },
+                { word: 'limbo', hint: 'A black-and-white puzzle-platformer' },
+                { word: 'samus', hint: 'Bounty hunter in a powerful suit from Metroid' },
+                { word: 'spyro', hint: 'A small, purple dragon' },
+                { word: 'doom', hint: 'Iconic first-person shooter against demons' },
+                { word: 'hades', hint: 'Roguelike about escaping the Greek underworld' },
+                { word: 'halo', hint: 'Sci-fi shooter series with Master Chief' },
+                { word: 'inside', hint: 'A dark puzzle-platformer from the makers of Limbo' },
+                { word: 'portal', hint: 'A puzzle game involving a gun that creates openings' },
+                { word: 'roblox', hint: 'An online platform where users create games' },
+                { word: 'celeste', hint: 'Game about climbing a mountain' },
+                { word: 'unpack', hint: 'A chill game about taking items out of boxes' },
+                { word: 'witcher', hint: 'Series about Geralt of Rivia' },
+                { word: 'racing', hint: 'A genre involving speed and vehicles' },
+                { word: 'puzzle', hint: 'A genre that tests problem-solving skills' },
+                { word: 'indie', hint: 'Games made by small, independent developers' },
+                { word: 'action', hint: 'A genre focusing on physical challenges' },
+                { word: 'rogue', hint: 'A genre with permadeath and procedural generation' },
+                { word: 'simon', hint: 'Vampire hunter from the Castlevania series' },
+                { word: 'cuphead', hint: 'Game with a 1930s cartoon art style' },
+                { word: 'journey', hint: 'An artistic game about traveling to a mountain' },
+                { word: 'persona', hint: 'A series of Japanese role-playing games' },
+                { word: 'sims', hint: 'A popular life simulation game' },
+                { word: 'rayman', hint: 'A hero with no limbs' },
+                { word: 'ratchet', hint: 'A Lombax with a robot companion' }
+            ],
+            "verbs": [
+                { word: 'dance', hint: 'To move rhythmically to music' },
+                { word: 'write', hint: 'To mark letters or symbols on a surface' },
+                { word: 'paint', hint: 'To apply color to a surface with a brush' },
+                { word: 'speak', hint: 'To say something in order to convey information' },
+                { word: 'drive', hint: 'To operate and control a motor vehicle' },
+                { word: 'sleep', hint: 'To rest your mind and body' },
+                { word: 'think', hint: 'To use your mind to consider something' },
+                { word: 'laugh', hint: 'To make sounds of amusement' },
+                { word: 'climb', hint: 'To go up something, using hands and feet' },
+                { word: 'build', hint: 'To construct by putting parts together' },
+                { word: 'catch', hint: 'To intercept and hold a moving object' },
+                { word: 'drink', hint: 'To take liquid into the body through the mouth' },
+                { word: 'fight', hint: 'To take part in a violent struggle' },
+                { word: 'float', hint: 'To rest on the surface of a liquid' },
+                { word: 'guess', hint: 'To estimate without sufficient information' },
+                { word: 'learn', hint: 'To gain knowledge or skill' },
+                { word: 'listen', hint: 'To give attention to a sound' },
+                { word: 'watch', hint: 'To look at or observe attentively' },
+                { word: 'dream', hint: 'To experience images and sensations in your sleep' },
+                { word: 'smile', hint: 'To form one\'s features into a pleased expression' },
+                { word: 'shout', hint: 'To speak with a very loud voice' },
+                { word: 'throw', hint: 'To propel something through the air' },
+                { word: 'clean', hint: 'To make something free of dirt or mess' },
+                { word: 'bring', hint: 'To take or go with to a place' },
+                { word: 'carry', hint: 'To support and move from one place to another' },
+                { word: 'choose', hint: 'To decide on a course of action' },
+                { word: 'create', hint: 'To bring something into existence' },
+                { word: 'finish', hint: 'To bring a task to an end' },
+                { word: 'follow', hint: 'To go after in the same direction' },
+                { word: 'forget', hint: 'To fail to remember' }
+            ],
+            "professions": [
+                { word: 'actor', hint: 'A person who portrays a character in a performance' },
+                { word: 'nurse', hint: 'A person trained to care for the sick' },
+                { word: 'baker', hint: 'Someone who makes bread and cakes' },
+                { word: 'chef', hint: 'A professional cook in a restaurant' },
+                { word: 'doctor', hint: 'A qualified practitioner of medicine' },
+                { word: 'judge', hint: 'A public official in a court of law' },
+                { word: 'lawyer', hint: 'A person who practices or studies law' },
+                { word: 'pilot', hint: 'A person who operates the flying controls of an aircraft' },
+                { word: 'poet', hint: 'A person who writes verses' },
+                { word: 'sailor', hint: 'A person who works on a boat or ship' },
+                { word: 'singer', hint: 'A person who uses their voice to make music' },
+                { word: 'writer', hint: 'A person who has written a particular text' },
+                { word: 'artist', hint: 'A person who creates paintings or drawings' },
+                { word: 'mason', hint: 'A builder and worker in stone' },
+                { word: 'coach', hint: 'A person who trains a sports team' },
+                { word: 'clown', hint: 'A comic entertainer, especially in a circus' },
+                { word: 'dancer', hint: 'A person who moves to music' },
+                { word: 'driver', hint: 'A person who operates a vehicle' },
+                { word: 'farmer', hint: 'A person who cultivates land and raises livestock' },
+                { word: 'guard', hint: 'A person who keeps watch or protects a place' },
+                { word: 'hunter', hint: 'A person who pursues wild animals for sport or food' },
+                { word: 'miner', hint: 'A person who works underground to extract minerals' },
+                { word: 'pastor', hint: 'A minister in charge of a Christian church' },
+                { word: 'police', hint: 'People who enforce the law' },
+                { word: 'priest', hint: 'An ordained minister of the Catholic church' },
+                { word: 'ranger', hint: 'A keeper of a park, forest, or area of countryside' },
+                { word: 'tailor', hint: 'A person who makes, mends, or alters clothing' },
+                { word: 'usher', hint: 'A person who shows people to their seats' },
+                { word: 'butler', hint: 'The chief manservant of a house' },
+                { word: 'author', hint: 'A writer of a book or article' }
+            ],
+            "moviesAndTvShows": [
+                { word: 'aliens', hint: 'Sci-fi horror sequel directed by James Cameron' },
+                { word: 'avatar', hint: 'Movie about blue-skinned aliens on Pandora' },
+                { word: 'bones', hint: 'TV series about a forensic anthropologist' },
+                { word: 'brave', hint: 'Pixar film about a Scottish princess and archer' },
+                { word: 'chuck', hint: 'TV series about a computer geek who becomes a spy' },
+                { word: 'coach', hint: 'Sitcom starring Craig T. Nelson as a football team leader' },
+                { word: 'cobra', hint: 'Action film starring Sylvester Stallone' },
+                { word: 'creed', hint: 'Movie about Apollo\'s son, trained by Rocky' },
+                { word: 'dexter', hint: 'TV series about a blood-spatter analyst who is a serial killer' },
+                { word: 'fargo', hint: 'Film and TV series set in the Midwest' },
+                { word: 'frozen', hint: 'Disney film about two sisters, one with ice powers' },
+                { word: 'grease', hint: 'Musical film starring John Travolta and Olivia Newton-John' },
+                { word: 'signs', hint: 'M. Night Shyamalan film about crop circles' },
+                { word: 'house', hint: 'TV series about a brilliant but cynical medical doctor' },
+                { word: 'jumanji', hint: 'Movie about a magical board game' },
+                { word: 'mulan', hint: 'Disney film about a woman who joins the army' },
+                { word: 'psycho', hint: 'Alfred Hitchcock horror film with a famous shower scene' },
+                { word: 'rango', hint: 'Animated film about a chameleon who becomes a sheriff' },
+                { word: 'rocky', hint: 'Film about a boxer from Philadelphia' },
+                { word: 'scrubs', hint: 'Sitcom set in a teaching hospital' },
+                { word: 'shrek', hint: 'Animated film about a green ogre' },
+                { word: 'snatch', hint: 'Guy Ritchie crime film' },
+                { word: 'speed', hint: 'Action film about a bus that cannot slow down' },
+                { word: 'suits', hint: 'TV series about lawyers in New York City' },
+                { word: 'taken', hint: 'Action film where Liam Neeson has a particular set of skills' },
+                { word: 'tarzan', hint: 'Story about a man raised by apes in the jungle' },
+                { word: 'titanic', hint: 'Film about a famously "unsinkable" ship' },
+                { word: 'venom', hint: 'Film about a journalist who bonds with an alien symbiote' },
+                { word: 'wanted', hint: 'Action film about a secret society of assassins' },
+                { word: 'weeds', hint: 'TV series about a suburban mom who starts dealing' }
+            ],
+            "countries": [
+                { word: 'brazil', hint: 'Largest country in South America' },
+                { word: 'china', hint: 'The most populous country in the world' },
+                { word: 'egypt', hint: 'North African country known for pyramids' },
+                { word: 'france', hint: 'European country known for the Eiffel Tower' },
+                { word: 'greece', hint: 'Southeastern European country known for ancient philosophers' },
+                { word: 'india', hint: 'South Asian country known for the Taj Mahal' },
+                { word: 'japan', hint: 'Island nation in East Asia, the "Land of the Rising Sun"' },
+                { word: 'kenya', hint: 'East African country known for its savanna and wildlife' },
+                { word: 'mexico', hint: 'Country south of the United States' },
+                { word: 'nepal', hint: 'Country home to Mount Everest' },
+                { word: 'peru', hint: 'South American country home to Machu Picchu' },
+                { word: 'spain', hint: 'European country known for flamenco and bullfighting' },
+                { word: 'turkey', hint: 'Country located in both Europe and Asia' },
+                { word: 'chile', hint: 'A long, narrow country on the coast of South America' },
+                { word: 'cuba', hint: 'Caribbean island nation known for cigars' },
+                { word: 'ghana', hint: 'West African country on the Gulf of Guinea' },
+                { word: 'haiti', hint: 'Caribbean country that shares an island with the Dominican Republic' },
+                { word: 'iran', hint: 'Country in the Middle East, formerly known as Persia' },
+                { word: 'iraq', hint: 'Country in the Middle East, ancient Mesopotamia' },
+                { word: 'italy', hint: 'European country shaped like a boot' },
+                { word: 'libya', hint: 'Country in North Africa bordering the Mediterranean Sea' },
+                { word: 'malta', hint: 'A small island country in the Mediterranean' },
+                { word: 'poland', hint: 'Country in Central Europe' },
+                { word: 'qatar', hint: 'A small, wealthy country in the Middle East' },
+                { word: 'russia', hint: 'The largest country in the world by area' },
+                { word: 'sudan', hint: 'Country in Northeast Africa' },
+                { word: 'syria', hint: 'Country in the Middle East' },
+                { word: 'uganda', hint: 'A landlocked country in East Africa' },
+                { word: 'yemen', hint: 'Country on the southern end of the Arabian Peninsula' },
+                { word: 'serbia', hint: 'Country in Southeast Europe' }
+            ],
+            "brandsAndCompanies": [
+                { word: 'apple', hint: 'Tech company that makes the iPhone' },
+                { word: 'google', hint: 'The world\'s most popular search engine' },
+                { word: 'nike', hint: 'Sportswear company with the slogan "Just Do It"' },
+                { word: 'amazon', hint: 'The world\'s largest online retailer' },
+                { word: 'disney', hint: 'Entertainment company famous for its theme parks and animation' },
+                { word: 'ford', hint: 'American multinational automaker' },
+                { word: 'honda', hint: 'Japanese multinational conglomerate known for vehicles' },
+                { word: 'lego', hint: 'A line of plastic construction toys' },
+                { word: 'pepsi', hint: 'A major competitor to Coca-Cola' },
+                { word: 'puma', hint: 'German multinational corporation that designs athletic footwear' },
+                { word: 'sega', hint: 'Company that created Sonic the Hedgehog' },
+                { word: 'sony', hint: 'Japanese multinational conglomerate, makes the PlayStation' },
+                { word: 'tesla', hint: 'Electric vehicle and clean energy company' },
+                { word: 'uber', hint: 'A popular ride-hailing service' },
+                { word: 'visa', hint: 'A multinational financial services corporation' },
+                { word: 'yahoo', hint: 'An early internet portal and search engine' },
+                { word: 'zynga', hint: 'Social game developer known for FarmVille' },
+                { word: 'atari', hint: 'A pioneering video game and home computer company' },
+                { word: 'canon', hint: 'A multinational corporation specializing in imaging products' },
+                { word: 'casio', hint: 'An electronics company known for calculators and watches' },
+                { word: 'ebay', hint: 'An online auction and shopping website' },
+                { word: 'intel', hint: 'A company that makes microprocessor chips for computers' },
+                { word: 'kodak', hint: 'A company historically known for photographic film products' },
+                { word: 'mattel', hint: 'An American multinational toy manufacturing company' },
+                { word: 'dior', hint: 'A luxury goods company from France' },
+                { word: 'gucci', hint: 'An Italian luxury brand of fashion' },
+                { word: 'prada', hint: 'An Italian luxury fashion house' },
+                { word: 'rolex', hint: 'A manufacturer of luxury watches' },
+                { word: 'sharp', hint: 'A Japanese multinational corporation that designs electronics' },
+                { word: 'tissot', hint: 'A Swiss luxury watchmaker' }
+            ]
+        };
+
+        const hardWords = {
+            "foodAndDrink": [
+                { word: 'spaghetti', hint: 'Long, thin Italian pasta' },
+                { word: 'pineapple', hint: 'A tropical fruit with a tough, spiky exterior' },
+                { word: 'broccoli', hint: 'A green vegetable with a tree-like shape' },
+                { word: 'cappuccino', hint: 'An espresso-based coffee with steamed milk foam' },
+                { word: 'cauliflower', hint: 'A white vegetable, a relative of broccoli' },
+                { word: 'champagne', hint: 'A sparkling wine from a specific region of France' },
+                { word: 'cheeseburger', hint: 'A hamburger with a slice of dairy product on it' },
+                { word: 'chocolate', hint: 'A sweet food made from cacao beans' },
+                { word: 'cucumber', hint: 'A long, green gourd, often used in salads' },
+                { word: 'guacamole', hint: 'A popular dip made from mashed avocados' },
+                { word: 'lemonade', hint: 'A sweet drink made from a yellow citrus fruit' },
+                { word: 'macaroni', hint: 'A type of small, tube-shaped pasta' },
+                { word: 'mozzarella', hint: 'A soft, white Italian cheese, great on pizza' },
+                { word: 'mushroom', hint: 'A type of edible fungus, often used in cooking' },
+                { word: 'pepperoni', hint: 'A spicy sausage, a very popular pizza topping' },
+                { word: 'raspberry', hint: 'A small, red, sweet, and slightly tart fruit' },
+                { word: 'strawberry', hint: 'A red fruit with its seeds on the outside' },
+                { word: 'watermelon', hint: 'A very large fruit with green rind and red flesh' },
+                { word: 'blackberry', hint: 'A dark purple, edible soft fruit' },
+                { word: 'cranberry', hint: 'A small, tart red berry often made into a sauce' },
+                { word: 'grapefruit', hint: 'A large, somewhat sour citrus fruit' },
+                { word: 'peppermint', hint: 'A type of mint, often used in candy canes' },
+                { word: 'sandwich', hint: 'Two slices of bread with a filling in between' },
+                { word: 'doughnut', hint: 'A fried, sweet ring of leavened flour' },
+                { word: 'espresso', hint: 'A strong, concentrated coffee made by forcing steam through beans' },
+                { word: 'margarine', hint: 'A butter substitute made from vegetable oils' },
+                { word: 'cantaloupe', hint: 'A type of melon with a netted skin and orange flesh' },
+                { word: 'asparagus', hint: 'A green vegetable with spear-like stalks' },
+                { word: 'croissant', hint: 'A flaky, crescent-shaped pastry' },
+                { word: 'honeydew', hint: 'A type of melon with a smooth rind and pale green flesh' }
+            ],
+            "animals": [
+                { word: 'elephant', hint: 'Largest land animal with a long trunk' },
+                { word: 'kangaroo', hint: 'An Australian marsupial that hops and has a pouch' },
+                { word: 'crocodile', hint: 'A large amphibious reptile with a long snout' },
+                { word: 'chimpanzee', hint: 'A highly intelligent great ape' },
+                { word: 'dolphin', hint: 'An intelligent marine mammal known for its playful behavior' },
+                { word: 'gorilla', hint: 'The largest and most powerful living primate' },
+                { word: 'flamingo', hint: 'A tall wading bird with distinct pink feathers' },
+                { word: 'alligator', hint: 'A large reptile similar to a crocodile, found in the Americas' },
+                { word: 'leopard', hint: 'A large, spotted feline known for its climbing ability' },
+                { word: 'octopus', hint: 'A sea creature with eight flexible arms' },
+                { word: 'ostrich', hint: 'A large, flightless bird known for running at high speeds' },
+                { word: 'porcupine', hint: 'A rodent covered with sharp quills for defense' },
+                { word: 'salamander', hint: 'An amphibian that typically resembles a lizard' },
+                { word: 'scorpion', hint: 'An arachnid with a venomous stinger on its tail' },
+                { word: 'squirrel', hint: 'A small rodent that climbs trees and gathers nuts' },
+                { word: 'tarantula', hint: 'A large, hairy type of spider' },
+                { word: 'woodpecker', hint: 'A bird that pecks holes in trees to find insects' },
+                { word: 'armadillo', hint: 'A mammal with a leathery armored shell' },
+                { word: 'chameleon', hint: 'A lizard that can change its skin color to match its surroundings' },
+                { word: 'butterfly', hint: 'An insect with large, often colorful wings' },
+                { word: 'anteater', hint: 'A mammal that has a long snout and feeds on ants' },
+                { word: 'capybara', hint: 'The world\'s largest rodent, native to South America' },
+                { word: 'centipede', hint: 'An arthropod with a flattened body and many pairs of legs' },
+                { word: 'hedgehog', hint: 'A small, spiny mammal that curls into a ball for defense' },
+                { word: 'platypus', hint: 'An egg-laying mammal from Australia with a bill like a duck' },
+                { word: 'anaconda', hint: 'A very large, non-venomous snake found in South America' },
+                { word: 'barracuda', hint: 'A large, predatory saltwater fish with sharp teeth' },
+                { word: 'pangolin', hint: 'A scaly mammal that eats ants' },
+                { word: 'porpoise', hint: 'A marine mammal similar to a dolphin but with a blunter snout' },
+                { word: 'roadrunner', hint: 'A fast-running bird found in the deserts of North America' }
+            ],
+            "objects": [
+                { word: 'backpack', hint: 'A bag carried on one\'s back, typically with two straps' },
+                { word: 'computer', hint: 'An electronic device for storing and processing data' },
+                { word: 'calendar', hint: 'A chart or series of pages showing the days, weeks, and months' },
+                { word: 'dictionary', hint: 'A book or electronic resource that lists words and their meanings' },
+                { word: 'envelope', hint: 'A flat paper container for a letter' },
+                { word: 'keyboard', hint: 'A panel of keys for operating a computer or typewriter' },
+                { word: 'microwave', hint: 'An oven that heats and cooks food using high-frequency radiation' },
+                { word: 'passport', hint: 'An official government document for international travel' },
+                { word: 'scissors', hint: 'An instrument used for cutting with two pivoted blades' },
+                { word: 'stapler', hint: 'A device for fastening papers together with a metal clip' },
+                { word: 'telescope', hint: 'An optical instrument for making distant objects appear nearer' },
+                { word: 'umbrella', hint: 'A device used for protection against rain or sun' },
+                { word: 'whiteboard', hint: 'A glossy surface for non-permanent markings' },
+                { word: 'accordion', hint: 'A portable musical instrument with bellows and keys' },
+                { word: 'binoculars', hint: 'An optical instrument for viewing distant objects with both eyes' },
+                { word: 'clipboard', hint: 'A board with a spring clip at the top for holding paper' },
+                { word: 'flashlight', hint: 'A battery-operated portable light' },
+                { word: 'headphones', hint: 'A pair of earphones joined by a band placed over the head' },
+                { word: 'helicopter', hint: 'An aircraft that derives its lift from rotating blades' },
+                { word: 'lawnmower', hint: 'A machine for cutting grass' },
+                { word: 'motorcycle', hint: 'A two-wheeled automotive vehicle' },
+                { word: 'photograph', hint: 'A picture made using a camera' },
+                { word: 'projector', hint: 'A device that displays an image onto a surface' },
+                { word: 'skateboard', hint: 'A short board with two small wheels at each end' },
+                { word: 'smartphone', hint: 'A mobile device with advanced computing capability' },
+                { word: 'submarine', hint: 'A warship designed to operate completely submerged in the sea' },
+                { word: 'trampoline', hint: 'A piece of equipment for jumping, consisting of a taut fabric sheet' },
+                { word: 'typewriter', hint: 'A machine for producing characters on paper by striking keys' },
+                { word: 'xylophone', hint: 'A musical instrument played by striking wooden bars with mallets' },
+                { word: 'briefcase', hint: 'A flat, rectangular container for carrying documents' }
+            ],
+            "videoGames": [
+                { word: 'minecraft', hint: 'A sandbox game about placing blocks and going on adventures' },
+                { word: 'fortnite', hint: 'A popular battle royale game with building mechanics' },
+                { word: 'overwatch', hint: 'A team-based multiplayer first-person shooter with hero characters' },
+                { word: 'bioshock', hint: 'A first-person shooter set in the underwater city of Rapture' },
+                { word: 'bloodborne', hint: 'A dark action RPG set in the Gothic city of Yharnam' },
+                { word: 'cyberpunk', hint: 'An action RPG set in the futuristic Night City' },
+                { word: 'dark souls', hint: 'A notoriously difficult action RPG series' },
+                { word: 'dead space', hint: 'A survival horror game set on a spaceship' },
+                { word: 'dishonored', hint: 'A stealth action game where you play as a supernatural assassin' },
+                { word: 'battlefield', hint: 'A series of large-scale military first-person shooters' },
+                { word: 'horizon', hint: 'A game set in a post-apocalyptic world with robotic creatures' },
+                { word: 'uncharted', hint: 'An action-adventure series following treasure hunter Nathan Drake' },
+                { word: 'resident evil', hint: 'A long-running survival horror series involving zombies' },
+                { word: 'sekiro', hint: 'An action-adventure game set in feudal Japan' },
+                { word: 'skyrim', hint: 'A massive open-world fantasy RPG with dragons' },
+                { word: 'spider-man', hint: 'A game where you swing through New York as a superhero' },
+                { word: 'valheim', hint: 'A survival and sandbox game with a Viking theme' },
+                { word: 'the witcher', hint: 'A fantasy RPG series following the monster hunter Geralt' },
+                { word: 'stardew valley', hint: 'A popular farming simulation game' },
+                { word: 'hollow knight', hint: 'A game about a knight in an insect kingdom' },
+                { word: 'destiny', hint: 'A multiplayer first-person shooter set in a "mythic science fiction" world' },
+                { word: 'warframe', hint: 'A cooperative free-to-play third-person shooter' },
+                { word: 'undertale', hint: 'An RPG where you can befriend or fight monsters' },
+                { word: 'god of war', hint: 'Action series about Kratos, first in Greek then Norse mythology' },
+                { word: 'assassins creed', hint: 'A historical action-adventure series about a secret order' },
+                { word: 'metroid', hint: 'A sci-fi action series starring bounty hunter Samus Aran' },
+                { word: 'titanfall', hint: 'A game with giant fighting mechs' },
+                { word: 'shovel knight', hint: 'A knight who fights with a garden tool' },
+                { word: 'fallout', hint: 'A series of post-apocalyptic role-playing games' },
+                { word: 'red dead', hint: 'A Western-themed action-adventure series (Red Dead Redemption)' }
+            ],
+            "verbs": [
+                { word: 'accomplish', hint: 'To achieve or complete successfully' },
+                { word: 'appreciate', hint: 'To recognize the full worth of' },
+                { word: 'communicate', hint: 'To share or exchange information' },
+                { word: 'concentrate', hint: 'To focus all one\'s attention' },
+                { word: 'congratulate', hint: 'To praise someone for an achievement' },
+                { word: 'consider', hint: 'To think carefully about something' },
+                { word: 'continue', hint: 'To persist in an activity or process' },
+                { word: 'contribute', hint: 'To give in order to help achieve or provide something' },
+                { word: 'decorate', hint: 'To make something look more attractive' },
+                { word: 'demonstrate', hint: 'To clearly show the existence or truth of something' },
+                { word: 'describe', hint: 'To give an account in words of someone or something' },
+                { word: 'determine', hint: 'To discover or establish exactly' },
+                { word: 'disappear', hint: 'To cease to be visible' },
+                { word: 'discover', hint: 'To find something unexpectedly' },
+                { word: 'distribute', hint: 'To give shares of something; deal out' },
+                { word: 'encourage', hint: 'To give support, confidence, or hope to someone' },
+                { word: 'establish', hint: 'To set up on a firm or permanent basis' },
+                { word: 'exaggerate', hint: 'To represent something as being larger or worse than it is' },
+                { word: 'experience', hint: 'To encounter or undergo an event or an occurrence' },
+                { word: 'fascinate', hint: 'To draw the powerfully attracting interest of' },
+                { word: 'illustrate', hint: 'To explain or make clear by using examples or visuals' },
+                { word: 'imagine', hint: 'To form a mental image or concept of' },
+                { word: 'investigate', hint: 'To carry out a systematic or formal inquiry' },
+                { word: 'negotiate', hint: 'To try to reach an agreement or compromise' },
+                { word: 'participate', hint: 'To take part in an action or event' },
+                { word: 'recommend', hint: 'To suggest as a course of action' },
+                { word: 'remember', hint: 'To have in or be able to bring to one\'s mind' },
+                { word: 'understand', hint: 'To perceive the intended meaning of' },
+                { word: 'celebrate', hint: 'To acknowledge a significant event with a social gathering' },
+                { word: 'question', hint: 'To ask about something' }
+            ],
+            "professions": [
+                { word: 'accountant', hint: 'A person who keeps or inspects financial records' },
+                { word: 'architect', hint: 'A person who designs buildings' },
+                { word: 'astronaut', hint: 'A person who is trained to travel in a spacecraft' },
+                { word: 'bartender', hint: 'A person who mixes and serves drinks at a bar' },
+                { word: 'biologist', hint: 'A scientist who studies living organisms' },
+                { word: 'carpenter', hint: 'A person who makes and repairs wooden objects' },
+                { word: 'chemist', hint: 'A person engaged in chemical research or experiments' },
+                { word: 'chiropractor', hint: 'A practitioner of spinal column manipulation' },
+                { word: 'consultant', hint: 'A person who provides expert advice professionally' },
+                { word: 'custodian', hint: 'A person who has responsibility for taking care of a building' },
+                { word: 'detective', hint: 'A person, especially a police officer, who investigates crimes' },
+                { word: 'electrician', hint: 'A person who installs and maintains electrical equipment' },
+                { word: 'engineer', hint: 'A person who designs, builds, or maintains engines or structures' },
+                { word: 'geologist', hint: 'An expert in the field of the earth\'s physical structure' },
+                { word: 'historian', hint: 'An expert in or student of the past' },
+                { word: 'instructor', hint: 'A person who teaches something' },
+                { word: 'journalist', hint: 'A person who writes for newspapers, magazines, or news websites' },
+                { word: 'librarian', hint: 'A person who works professionally in a place with books' },
+                { word: 'magician', hint: 'A person who performs tricks for entertainment' },
+                { word: 'mechanic', hint: 'A person who repairs and maintains machinery' },
+                { word: 'musician', hint: 'A person who plays a musical instrument' },
+                { word: 'pharmacist', hint: 'A person who is professionally qualified to dispense drugs' },
+                { word: 'physicist', hint: 'An expert in the science of matter and energy' },
+                { word: 'politician', hint: 'A person who is professionally involved in government affairs' },
+                { word: 'scientist', hint: 'A person who conducts scientific research' },
+                { word: 'beautician', hint: 'A person who gives beauty treatments' },
+                { word: 'bookkeeper', hint: 'A person whose job is to keep records of financial affairs' },
+                { word: 'contractor', hint: 'A person who undertakes to provide materials for a job' },
+                { word: 'paramedic', hint: 'A person trained to give emergency medical care' },
+                { word: 'surveyor', hint: 'A person who makes maps and measures land' }
+            ],
+            "moviesAndTvShows": [
+                { word: 'inception', hint: 'A movie about entering people\'s dreams' },
+                { word: 'gladiator', hint: 'A historical drama about a Roman general who becomes a slave' },
+                { word: 'braveheart', hint: 'A film about William Wallace\'s war against England' },
+                { word: 'goodfellas', hint: 'A Martin Scorsese film about the mafia' },
+                { word: 'seinfeld', hint: 'A sitcom famously about "nothing"' },
+                { word: 'westworld', hint: 'A TV series about a futuristic theme park with androids' },
+                { word: 'chernobyl', hint: 'A miniseries about a nuclear disaster in the Soviet Union' },
+                { word: 'euphoria', hint: 'A TV series about a group of high school students' },
+                { word: 'succession', hint: 'A TV series about a dysfunctional family fighting for control of a media empire' },
+                { word: 'anastasia', hint: 'An animated film about the lost Russian princess' },
+                { word: 'demolition', hint: 'A film where Jake Gyllenhaal\'s character destroys his own house' },
+                { word: 'hannibal', hint: 'A TV series about a brilliant psychiatrist and cannibalistic serial killer' },
+                { word: 'hercules', hint: 'A Disney film about the son of Zeus' },
+                { word: 'parasite', hint: 'A South Korean film that won the Academy Award for Best Picture' },
+                { word: 'ratatouille', hint: 'An animated film about a rat who wants to be a chef' },
+                { word: 'watchmen', hint: 'A film and TV series about a group of retired superheroes' },
+                { word: 'shameless', hint: 'A TV series about the dysfunctional Gallagher family' },
+                { word: 'sleepless in seattle', hint: 'A romantic comedy where Tom Hanks and Meg Ryan connect via radio' },
+                { word: 'unfaithful', hint: 'An erotic thriller film starring Diane Lane' },
+                { word: 'zoolander', hint: 'A comedy film about a male model' },
+                { word: 'district 9', hint: 'A sci-fi film about aliens living in a slum in Johannesburg' },
+                { word: 'spotlight', hint: 'A film about a team of journalists investigating child abuse' },
+                { word: 'whiplash', hint: 'A film about a young jazz drummer and his abusive instructor' },
+                { word: 'black swan', hint: 'A psychological thriller about a ballerina' },
+                { word: 'passengers', hint: 'A sci-fi film about two people who wake up early on a spaceship' },
+                { word: 'entourage', hint: 'A TV series about a movie star and his childhood friends' },
+                { word: 'madagascar', hint: 'An animated film about zoo animals who escape to an island' },
+                { word: 'prometheus', hint: 'A sci-fi horror film, a prequel to the Alien series' },
+                { word: 'underworld', hint: 'A film series about a war between vampires and werewolves' },
+                { word: 'the departed', hint: 'A crime thriller about an undercover cop and a mole in the police' }
+            ],
+            "countries": [
+                { word: 'argentina', hint: 'South American country known for tango and steak' },
+                { word: 'australia', hint: 'A country and continent known for kangaroos and koalas' },
+                { word: 'bangladesh', hint: 'A South Asian country known for its lush greenery and many waterways' },
+                { word: 'cameroon', hint: 'A country in Central Africa' },
+                { word: 'colombia', hint: 'A South American country known for its coffee' },
+                { word: 'denmark', hint: 'A Scandinavian country, home of Lego' },
+                { word: 'ethiopia', hint: 'A country in the Horn of Africa' },
+                { word: 'finland', hint: 'A Nordic country known for its many lakes' },
+                { word: 'germany', hint: 'A major country in Central Europe' },
+                { word: 'indonesia', hint: 'A Southeast Asian nation made up of thousands of volcanic islands' },
+                { word: 'malaysia', hint: 'A Southeast Asian country known for its rainforests and beaches' },
+                { word: 'morocco', hint: 'A North African country bordering the Atlantic Ocean and Mediterranean Sea' },
+                { word: 'netherlands', hint: 'A country in northwestern Europe, known for its flat landscape of canals and windmills' },
+                { word: 'nigeria', hint: 'A country in West Africa' },
+                { word: 'norway', hint: 'A Scandinavian country known for its fjords' },
+                { word: 'pakistan', hint: 'A country in South Asia' },
+                { word: 'portugal', hint: 'A southern European country on the Iberian Peninsula' },
+                { word: 'romania', hint: 'A southeastern European country known for the region of Transylvania' },
+                { word: 'scotland', hint: 'A country in the United Kingdom, north of England' },
+                { word: 'singapore', hint: 'An island city-state off southern Malaysia' },
+                { word: 'sweden', hint: 'A Scandinavian nation with thousands of coastal islands and inland lakes' },
+                { word: 'thailand', hint: 'A Southeast Asian country known for its tropical beaches and ornate temples' },
+                { word: 'tanzania', hint: 'An East African country known for its vast wilderness areas' },
+                { word: 'ukraine', hint: 'A large country in Eastern Europe' },
+                { word: 'venezuela', hint: 'A country on the northern coast of South America' },
+                { word: 'vietnam', hint: 'A Southeast Asian country known for its beaches, rivers, and bustling cities' },
+                { word: 'zimbabwe', hint: 'A landlocked country in southern Africa' },
+                { word: 'guatemala', hint: 'A Central American country south of Mexico' },
+                { word: 'kazakhstan', hint: 'A large landlocked country in Central Asia' },
+                { word: 'madagascar', hint: 'A huge island nation off the southeast coast of Africa' }
+            ],
+            "brandsAndCompanies": [
+                { word: 'microsoft', hint: 'A technology company that created Windows' },
+                { word: 'starbucks', hint: 'The world\'s largest coffeehouse chain' },
+                { word: 'mcdonalds', hint: 'The world\'s largest fast-food restaurant chain' },
+                { word: 'volkswagen', hint: 'A major German automobile manufacturer' },
+                { word: 'instagram', hint: 'A photo and video sharing social networking service' },
+                { word: 'mastercard', hint: 'A global payments and technology company' },
+                { word: 'playstation', hint: 'A series of video game consoles created by Sony' },
+                { word: 'dreamworks', hint: 'An animation studio known for Shrek and Madagascar' },
+                { word: 'heineken', hint: 'A Dutch brewing company' },
+                { word: 'panasonic', hint: 'A major Japanese multinational electronics corporation' },
+                { word: 'barclays', hint: 'A British multinational universal bank' },
+                { word: 'electrolux', hint: 'A Swedish multinational home appliance manufacturer' },
+                { word: 'guinness', hint: 'A dark Irish stout beer' },
+                { word: 'converse', hint: 'An American shoe company known for its canvas sneakers' },
+                { word: 'continental', hint: 'A leading German automotive manufacturing company' },
+                { word: 'nespresso', hint: 'A brand of coffee machines and capsules' },
+                { word: 'pringles', hint: 'A brand of potato-based chips sold in a tube' },
+                { word: 'new balance', hint: 'An American multinational corporation for athletic footwear' },
+                { word: 'the north face', hint: 'An American outdoor recreation product company' },
+                { word: 'patagonia', hint: 'An American clothing company that markets sustainable outdoor clothing' },
+                { word: 'timberland', hint: 'An American manufacturer of outdoor wear, particularly footwear' },
+                { word: 'universal', hint: 'A major American film studio' },
+                { word: 'warner bros', hint: 'An American film and entertainment company' },
+                { word: 'bridgestone', hint: 'A Japanese multinational auto and truck parts manufacturer' },
+                { word: 'champion', hint: 'An American manufacturer of clothing, specializing in sportswear' },
+                { word: 'columbia', hint: 'A company that manufactures and distributes outerwear and sportswear' },
+                { word: 'bf goodrich', hint: 'An American tire company' },
+                { word: 'goodyear', hint: 'A multinational tire manufacturing company' },
+                { word: 'qualcomm', hint: 'A company that creates semiconductors and software for wireless technology' },
+                { word: 'motorola', hint: 'An American multinational telecommunications company' }
+            ]
+        };
+
+        let currentTeam = 'blue';
+        let blueScore = 0;
+        let redScore = 0;
+        let currentWord = null;
+        let currentDifficulty = null;
+        let currentCategory = null;
+        let currentPoints = 0;
+        let hintShown = false;
+        let lettersRevealed = 0;
+        let scrambledLetters = [];
+        let answerSlots = [];
+        let revealedPositions = new Set(); // Track revealed letter positions
+
+        const categories = ['foodAndDrink', 'animals', 'objects', 'videoGames', 'verbs', 'professions', 'moviesAndTvShows', 'countries', 'brandsAndCompanies'];
+        const categoryNames = {
+            'foodAndDrink': 'Food & Drink',
+            'animals': 'Animals',
+            'objects': 'Objects',
+            'videoGames': 'Video Games',
+            'verbs': 'Verbs',
+            'professions': 'Professions',
+            'moviesAndTvShows': 'Movies & TV Shows',
+            'countries': 'Countries',
+            'brandsAndCompanies': 'Brands & Companies'
+        };
+
+        function playSound(soundId) {
+            try {
+                const sound = document.getElementById(soundId);
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log('Sound play failed:', e));
+            } catch (e) {
+                console.log('Sound not available:', e);
+            }
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const themeIcon = document.getElementById('themeIcon');
+            themeIcon.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+            
+            // Save theme preference
+            localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+        }
+
+        function loadTheme() {
+            const darkMode = localStorage.getItem('darkMode') === 'true';
+            if (darkMode) {
+                document.body.classList.add('dark');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+        }
+
+        function updateTeamColors() {
+            const teamClass = `team-${currentTeam}`;
+            
+            document.getElementById('categoryBox').className = `category-box ${teamClass}`;
+            
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.className = `difficulty-btn ${teamClass}`;
+            });
+            
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.className = `action-btn ${teamClass}`;
+            });
+            
+            document.querySelectorAll('.letter-tile').forEach(tile => {
+                if (!tile.classList.contains('used') && !tile.classList.contains('revealed')) {
+                    tile.className = `letter-tile ${teamClass}`;
+                }
+            });
+            
+            document.querySelectorAll('.answer-slot:not(.space)').forEach(slot => {
+                if (!slot.classList.contains('revealed')) {
+                    slot.classList.add(teamClass);
+                }
+            });
+        }
+
+        function selectDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+            currentPoints = difficulty === 'easy' ? 5 : 10;
+            
+            document.getElementById('easyBtn').disabled = true;
+            document.getElementById('hardBtn').disabled = true;
+            
+            flashCategories();
+        }
+
+        function flashCategories() {
+            const categoryBox = document.getElementById('categoryBox');
+            let currentIndex = 0;
+            let startTime = Date.now();
+            const totalDuration = 5000;
+            
+            function flash() {
+                const elapsedTime = Date.now() - startTime;
+                
+                if (elapsedTime >= totalDuration) {
+                    const finalIndex = Math.floor(Math.random() * categories.length);
+                    currentCategory = categories[finalIndex];
+                    categoryBox.textContent = categoryNames[currentCategory];
+                    startGame();
+                    return;
+                }
+                
+                categoryBox.textContent = categoryNames[categories[currentIndex]];
+                currentIndex = (currentIndex + 1) % categories.length;
+                
+                const progress = elapsedTime / totalDuration;
+                const speed = 50 + (progress * 400);
+                
+                setTimeout(flash, speed);
+            }
+            
+            flash();
+        }
+
+        function startGame() {
+            const wordData = currentDifficulty === 'easy' ? easyWords : hardWords;
+            const categoryWords = wordData[currentCategory];
+            const randomWord = categoryWords[Math.floor(Math.random() * categoryWords.length)];
+            
+            currentWord = randomWord;
+            hintShown = false;
+            lettersRevealed = 0;
+            revealedPositions.clear(); // Reset revealed positions
+            
+            document.getElementById('categoryDisplay').textContent = categoryNames[currentCategory];
+            document.getElementById('pointsDisplay').textContent = `${currentPoints} Points Available`;
+            document.getElementById('hintDisplay').textContent = 'Hint will appear here when you click the Hint button';
+            
+            setupLetterGame();
+            clearMessage();
+        }
+
+        function setupLetterGame() {
+            const word = currentWord.word.toLowerCase();
+            scrambledLetters = scrambleWord(word).split('');
+            
+            const scrambledContainer = document.getElementById('scrambledLetters');
+            scrambledContainer.innerHTML = '';
+            
+            scrambledLetters.forEach((letter, index) => {
+                if (letter === ' ') return;
+                
+                const tile = document.createElement('div');
+                tile.className = `letter-tile team-${currentTeam}`;
+                tile.textContent = letter;
+                tile.dataset.index = index;
+                tile.onclick = () => selectLetter(index);
+                scrambledContainer.appendChild(tile);
+            });
+            
+            const answerContainer = document.getElementById('answerGrid');
+            answerContainer.innerHTML = '';
+            answerSlots = [];
+            
+            word.split('').forEach((letter, index) => {
+                const slot = document.createElement('div');
+                
+                if (letter === ' ') {
+                    slot.className = 'answer-slot space';
+                } else {
+                    slot.className = `answer-slot team-${currentTeam}`;
+                    slot.dataset.index = index;
+                    slot.onclick = () => clearSlot(index);
+                }
+                
+                answerContainer.appendChild(slot);
+                answerSlots.push({ element: slot, letter: '', originalLetter: letter });
+            });
+        }
+
+        function selectLetter(letterIndex) {
+            const letterTile = document.querySelector(`[data-index="${letterIndex}"]`);
+            if (letterTile.classList.contains('used') || letterTile.classList.contains('revealed')) return;
+            
+            const letter = scrambledLetters[letterIndex];
+            
+            const emptySlot = answerSlots.find(slot => slot.letter === '' && slot.originalLetter !== ' ' && !revealedPositions.has(answerSlots.indexOf(slot)));
+            if (emptySlot) {
+                emptySlot.letter = letter;
+                emptySlot.element.textContent = letter;
+                emptySlot.element.classList.add('filled');
+                emptySlot.element.dataset.letterIndex = letterIndex;
+                
+                letterTile.classList.add('used');
+                playSound('selectSound'); // Added sound effect
+            }
+        }
+
+        function clearSlot(slotIndex) {
+            const slot = answerSlots[slotIndex];
+            if (slot.letter === '' || slot.originalLetter === ' ' || revealedPositions.has(slotIndex)) return; // Prevent clearing revealed letters
+            
+            const letterIndex = slot.element.dataset.letterIndex;
+            const letterTile = document.querySelector(`[data-index="${letterIndex}"]`);
+            
+            slot.letter = '';
+            slot.element.textContent = '';
+            slot.element.classList.remove('filled');
+            delete slot.element.dataset.letterIndex;
+            
+            if (letterTile) {
+                letterTile.classList.remove('used');
+            }
+        }
+
+        function scrambleWord(word) {
+            if (word.includes(' ')) {
+                return word.split(' ').map(singleWord => {
+                    const letters = singleWord.split('');
+                    for (let i = letters.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [letters[i], letters[j]] = [letters[j], letters[i]];
+                    }
+                    return letters.join('');
+                }).join(' ');
+            } else {
+                const letters = word.split('');
+                for (let i = letters.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [letters[i], letters[j]] = [letters[j], letters[i]];
+                }
+                return letters.join('');
+            }
+        }
+
+        function solveWord() {
+            if (!currentWord) {
+                showMessage('Please select a difficulty first!', 'error');
+                return;
+            }
+
+            const userAnswer = answerSlots.map(slot => slot.letter).join('');
+            const correctAnswer = currentWord.word.toLowerCase();
+
+            if (userAnswer === correctAnswer) {
+                if (currentTeam === 'blue') {
+                    blueScore += currentPoints;
+                    document.getElementById('blueScore').textContent = blueScore;
+                } else {
+                    redScore += currentPoints;
+                    document.getElementById('redScore').textContent = redScore;
+                }
+                
+                playSound('correctSound'); // Added sound effect
+                showMessage(`Correct! ${currentTeam.charAt(0).toUpperCase() + currentTeam.slice(1)} Team earned ${currentPoints} points!`, 'success');
+                switchTeam();
+                resetGame();
+            } else {
+                playSound('errorSound'); // Added sound effect
+                showMessage('Incorrect! Try again or use a hint.', 'error');
+            }
+        }
+
+        function revealLetter() {
+            if (!currentWord) {
+                showMessage('Please select a difficulty first!', 'error');
+                return;
+            }
+
+            if (currentPoints <= 1) {
+                showMessage('Not enough points to reveal a letter!', 'error');
+                return;
+            }
+
+            const word = currentWord.word.toLowerCase();
+            let revealIndex = -1;
+            
+            for (let i = 0; i < answerSlots.length; i++) {
+                if (answerSlots[i].originalLetter !== ' ' && answerSlots[i].letter === '' && !revealedPositions.has(i)) {
+                    revealIndex = i;
+                    break;
+                }
+            }
+            
+            if (revealIndex === -1) {
+                showMessage('No more letters to reveal!', 'error');
+                return;
+            }
+
+            currentPoints -= 1;
+            lettersRevealed++;
+            revealedPositions.add(revealIndex); // Track revealed position
+            
+            const correctLetter = word[revealIndex];
+            answerSlots[revealIndex].letter = correctLetter;
+            answerSlots[revealIndex].element.textContent = correctLetter;
+            answerSlots[revealIndex].element.classList.add('filled', 'revealed'); // Add revealed class
+            
+            const scrambledIndex = scrambledLetters.findIndex((letter, index) => {
+                const tile = document.querySelector(`[data-index="${index}"]`);
+                return letter === correctLetter && !tile.classList.contains('used') && !tile.classList.contains('revealed');
+            });
+            
+            if (scrambledIndex !== -1) {
+                const tile = document.querySelector(`[data-index="${scrambledIndex}"]`);
+                tile.classList.add('used', 'revealed'); // Mark as revealed
+                answerSlots[revealIndex].element.dataset.letterIndex = scrambledIndex;
+            }
+            
+            document.getElementById('pointsDisplay').textContent = `${currentPoints} Points Available`;
+            showMessage(`Letter revealed! Points reduced to ${currentPoints}`, 'success');
+        }
+
+        function showHint() {
+            if (!currentWord) {
+                showMessage('Please select a difficulty first!', 'error');
+                return;
+            }
+
+            if (currentPoints <= 3) {
+                showMessage('Not enough points to show hint!', 'error');
+                return;
+            }
+
+            if (hintShown) {
+                showMessage('Hint already shown!', 'error');
+                return;
+            }
+
+            currentPoints -= 3; // Deduct 3 points instead of 2
+            hintShown = true;
+            
+            document.getElementById('hintDisplay').textContent = currentWord.hint;
+            document.getElementById('pointsDisplay').textContent = `${currentPoints} Points Available`;
+            showMessage(`Hint shown! Points reduced to ${currentPoints}`, 'success');
+        }
+
+        function switchTeam() {
+            document.getElementById(currentTeam + 'Team').classList.remove('active');
+            currentTeam = currentTeam === 'blue' ? 'red' : 'blue';
+            document.getElementById(currentTeam + 'Team').classList.add('active');
+            updateTeamColors();
+        }
+
+        function resetGame() {
+            currentWord = null;
+            currentDifficulty = null;
+            currentCategory = null;
+            currentPoints = 0;
+            revealedPositions.clear(); // Clear revealed positions
+            
+            document.getElementById('easyBtn').disabled = false;
+            document.getElementById('hardBtn').disabled = false;
+            
+            document.getElementById('categoryDisplay').textContent = 'Choose difficulty to start!';
+            document.getElementById('categoryBox').textContent = 'Choose difficulty to start!';
+            document.getElementById('pointsDisplay').textContent = '';
+            document.getElementById('scrambledLetters').innerHTML = '';
+            document.getElementById('answerGrid').innerHTML = '';
+            document.getElementById('hintDisplay').textContent = 'Hint will appear here when you click the Hint button';
+            
+            updateTeamColors();
+        }
+
+        function showMessage(text, type) {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(clearMessage, 3000);
+        }
+
+        function clearMessage() {
+            document.getElementById('messageArea').innerHTML = '';
+        }
+
+        function giveUp() {
+            if (!currentWord) {
+                showMessage('No active game to give up!', 'error');
+                return;
+            }
+
+            playSound('errorSound'); // Added sound effect
+            showMessage(`The answer was: ${currentWord.word}. Switching to the other team.`, 'error');
+            switchTeam();
+            resetGame();
+        }
+
+        loadTheme();
+        updateTeamColors();
+    </script>
+</body>
+</html>

@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Boletim ESL</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --container-bg: #ffffff;
+            --text-color: #333;
+            --primary-color: #4a90e2;
+            --secondary-color: #3b7ad1;
+            --border-color: #ddd;
+            --slider-track: #e0e0e0;
+            --slider-thumb: #4a90e2;
+            --history-bg: #f0f4f7;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --primary-color: #8ab4f8;
+            --secondary-color: #6a95e0;
+            --border-color: #444;
+            --slider-track: #3a3a3a;
+            --slider-thumb: #8ab4f8;
+            --history-bg: #2a2a2a;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            width: 100%;
+            /* Remover ou aumentar o max-width para telas maiores */
+            /* Por exemplo, para telas de 1920px, podemos usar uma largura maior */
+            max-width: 1200px; /* Aumentado de 800px para 1200px */
+            position: relative;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+            background-color: var(--container-bg);
+            color: var(--text-color);
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .sliders-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .slider-group {
+            margin-bottom: 25px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            -webkit-appearance: none;
+            height: 8px;
+            background: var(--slider-track);
+            border-radius: 5px;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--slider-thumb);
+            border-radius: 50%;
+            border: 3px solid var(--container-bg);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s, border-color 0.3s;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: var(--slider-thumb);
+            border-radius: 50%;
+            border: 3px solid var(--container-bg);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s, border-color 0.3s;
+        }
+
+        .slider-group span {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .result-box {
+            margin-top: 30px;
+        }
+
+        #copyButton {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 15px;
+        }
+
+        #copyButton:hover {
+            background-color: var(--secondary-color);
+        }
+
+        #copyButton:active {
+            transform: scale(0.99);
+        }
+
+        #historyContainer {
+            margin-top: 30px;
+        }
+
+        #historyContainer h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .history-item {
+            background-color: var(--history-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        #themeToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--text-color);
+            transition: color 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button id="themeToggle">☀️</button>
+        <h1>Gerador de Boletim ESL</h1>
+
+        <div class="form-group">
+            <label for="studentName">Nome do Aluno:</label>
+            <input type="text" id="studentName" placeholder="Digite o nome do aluno">
+        </div>
+
+        <div class="sliders-grid" id="sliders-container">
+            </div>
+
+        <div class="result-box">
+            <label for="reportCardText">Boletim:</label>
+            <textarea id="reportCardText" rows="10" readonly></textarea>
+            <button id="copyButton">Copiar e Gerar Novo Boletim</button>
+        </div>
+
+        <div id="historyContainer">
+            <h2>Histórico de Boletins</h2>
+        </div>
+    </div>
+
+    <script>
+        const commentsData = {
+            vocabulary: [
+                [
+                    "Seu vocabulário limita sua expressão. Concentre-se em aprender e usar novas palavras para expandir suas ideias.",
+                    "É crucial dedicar mais tempo à memorização de vocabulário. Pratique diariamente e tente usar as palavras em contexto.",
+                    "O vocabulário é uma área que precisa de muita atenção. Que tal criar cartões de estudo e revisar todos os dias?",
+                    "Notei que você tem dificuldade com o vocabulário. Vamos tentar uma estratégia diferente para aprender palavras novas e usá-las na sua comunicação.",
+                    "Sua jornada no inglês ficará mais fácil se você se dedicar mais ao vocabulário. Tente ler mais e anotar palavras desconhecidas.",
+                    "A expansão do vocabulário é fundamental. Recomendo que você crie um caderno de vocabulário e o revise sempre que possível.",
+                    "Seu progresso em inglês depende da sua base de vocabulário. Vamos focar em aprender palavras-chave para diferentes tópicos.",
+                    "O vocabulário é o alicerce do idioma. Precisamos trabalhar muito para fortalecer essa área. Estou aqui para ajudar a encontrar as melhores ferramentas.",
+                    "Notei que você se frustra quando não sabe uma palavra. Vamos montar um plano para melhorar seu vocabulário e ganhar mais confiança.",
+                    "A aquisição de vocabulário é um desafio, mas um dos mais importantes. Vamos conversar sobre como torná-la mais divertida e eficaz para você."
+                ],
+                [
+                    "Seu vocabulário está em desenvolvimento, mas você pode acelerar o processo. Tente usar mais palavras novas nas conversas e nos trabalhos escritos.",
+                    "Você tem um vocabulário básico sólido, mas para crescer, precisa ser mais proativo. Desafie-se a aprender novas palavras por semana.",
+                    "Seu vocabulário está melhorando aos poucos. Para um progresso mais rápido, experimente ler textos mais complexos e anotar palavras que não conhece.",
+                    "Você já consegue se comunicar, mas seu vocabulário é um pouco limitado. Que tal usar aplicativos ou sites de jogos de vocabulário para aprender de um jeito diferente?",
+                    "Notei que você está fazendo um esforço, e isso é ótimo! Para levar seu vocabulário ao próximo nível, tente criar frases completas com as novas palavras.",
+                    "O vocabulário é uma área que você está começando a dominar. Continue assim, e procure oportunidades para usar palavras mais sofisticadas.",
+                    "Seu vocabulário precisa de mais atenção. A leitura e a escuta ativa são ótimas maneiras de se expor a novas palavras. Tente integrar isso à sua rotina.",
+                    "Notei que você se esforça para se expressar, mas o vocabulário pode ser um obstáculo. Aumente seu foco em aprender e praticar palavras novas.",
+                    "Sua base de vocabulário está boa, mas falta um pouco mais de variedade. Tente usar mais sinônimos para as palavras que você já conhece.",
+                    "Você tem potencial para expandir seu vocabulário. Uma dica é assistir a filmes ou séries com legendas em inglês e anotar as palavras que chamam a atenção."
+                ],
+                [
+                    "Você tem um vocabulário sólido e consegue se comunicar bem na maioria das situações. Para continuar progredindo, procure aprender vocabulário mais específico de temas de seu interesse.",
+                    "Seu vocabulário é adequado para o nível em que você está. O desafio agora é enriquecer seu vocabulário com novas expressões e nuances.",
+                    "Você mostra boa capacidade de usar o vocabulário. Uma sugestão para melhorar é criar um dicionário pessoal de frases e não apenas de palavras soltas.",
+                    "Sua base de vocabulário é forte. Continue lendo e assistindo a materiais em inglês para se expor a um vocabulário mais diversificado.",
+                    "Seu vocabulário está em um bom nível. Continue assim, e procure oportunidades para usar palavras mais sofisticadas.",
+                    "Você se comunica com confiança e usa o vocabulário de forma correta. Agora é a hora de explorar vocabulário relacionado a temas mais complexos.",
+                    "Ótimo trabalho com seu vocabulário! Você já consegue expressar suas ideias com clareza. Que tal se focar em vocabulário mais formal e informal para diferentes situações?",
+                    "Seu vocabulário é bom. Você raramente precisa recorrer ao português para se fazer entender. Continue assim!",
+                    "Você usa o vocabulário que já conhece de forma muito eficaz. Para o próximo passo, tente aprender expressões para soar mais como uma pessoa nativa.",
+                    "Sua capacidade de escolher as palavras certas é notável. O próximo passo é aprender expressões para soar mais como uma pessoa nativa."
+                ],
+                [
+                    "Seu vocabulário é amplo e impressiona. Você se expressa de forma clara e usa palavras complexas com precisão. Continue lendo e desafiando-se a aprender novos termos.",
+                    "Você tem um vocabulário muito bom, o que facilita a comunicação. Para continuar crescendo, procure aprofundar seu conhecimento em áreas específicas.",
+                    "A variedade do seu vocabulário é ótima! Você tem a palavra certa para muitas situações. Preste atenção aos detalhes no significado para aprimorar ainda mais.",
+                    "Você demonstra um ótimo comando de vocabulário e usa as palavras de forma criativa. Continue expandindo seu conhecimento para se tornar ainda mais fluente.",
+                    "Seu vocabulário é um de seus pontos fortes. Você já tem a capacidade de se expressar com clareza e riqueza. Mantenha o ritmo!",
+                    "Seu vocabulário é impressionante. Você não tem receio de usar palavras novas e as usa corretamente. Continue assim, e você vai dominar o inglês em pouco tempo.",
+                    "Você usa o vocabulário de forma precisa e consegue se expressar sobre uma vasta gama de tópicos. Seu progresso é constante e perceptível.",
+                    "Seu vocabulário é um diferencial. Você se comunica com clareza e profundidade. Continue lendo, pois a leitura é a melhor forma de expandir seu vocabulário.",
+                    "Você demonstra um ótimo conhecimento de vocabulário. Suas escolhas de palavras são sofisticadas e precisas. Continue praticando, e você se tornará um comunicador ainda mais habilidoso.",
+                    "Você tem um vocabulário muito sólido e consegue se comunicar com fluência. O próximo passo é focar em um vocabulário mais específico e complexo."
+                ],
+                [
+                    "Seu vocabulário é excepcional e muito rico. Você consegue se expressar de forma fluente e sofisticada em qualquer contexto.",
+                    "Você tem um domínio impressionante de vocabulário. Sua proficiência na escolha das palavras é notável.",
+                    "Seu vocabulário é uma de suas maiores qualidades. Continue se desafiando a explorar as nuances e as palavras mais complexas do idioma.",
+                    "Sua capacidade de usar uma vasta gama de vocabulário é notável e faz de você um comunicador muito eficaz.",
+                    "Você tem um vocabulário rico e a habilidade de usá-lo com maestria. Seu progresso demonstra grande domínio.",
+                    "Seu vocabulário é excelente, o que facilita sua comunicação. Continue a ler e a se expor a novas palavras para manter esse nível de maestria.",
+                    "Parabéns pelo seu vocabulário, é realmente impressionante! Você demonstra um alto nível de dedicação e proficiência.",
+                    "Seu domínio de vocabulário é de alto nível. Você se expressa com grande confiança e clareza.",
+                    "Você tem um vocabulário amplo e rico. Sua capacidade de se expressar com clareza e precisão é notável. Continue o bom trabalho!",
+                    "Parabéns, seu vocabulário demonstra total domínio do idioma. Você se comunica com fluência, precisão e sofisticação."
+                ]
+            ],
+            grammar: [
+                [
+                    "Sua gramática precisa de muita atenção. É essencial revisar os conceitos básicos e praticar a construção de frases para se fazer entender.",
+                    "Os erros de gramática estão dificultando a sua comunicação. Vamos nos concentrar em revisar as regras mais importantes para construir frases corretas.",
+                    "Sua gramática é uma área que precisamos fortalecer. A prática de exercícios e a atenção às correções em sala de aula são essenciais.",
+                    "Notei que você comete muitos erros gramaticais básicos. Vamos trabalhar juntos para revisar as regras e praticar com mais exercícios.",
+                    "Sua comunicação é afetada por erros gramaticais. Vamos focar em entender as estruturas básicas da língua para poder avançar.",
+                    "É fundamental que você dedique mais tempo ao estudo da gramática. Ela é a base de uma comunicação eficaz. Use os exercícios de casa para reforçar o que aprendemos.",
+                    "Sua gramática precisa de um grande impulso. Estou aqui para ajudar a criar um plano de estudos que se adeque a você e corrija essas dificuldades.",
+                    "A gramática é a 'espinha dorsal' do idioma. Vamos começar a focar em um tópico por vez para construir uma base sólida.",
+                    "Seu progresso está sendo limitado por questões gramaticais. É hora de arregaçar as mangas e mergulhar fundo nas regras. Estou aqui para guiar.",
+                    "Os erros gramaticais são frequentes e afetam a sua clareza. Sugiro que você revise as lições de gramática com mais frequência em casa."
+                ],
+                [
+                    "Sua gramática está em desenvolvimento, mas ainda apresenta inconsistências. Tente prestar mais atenção aos tempos verbais e à estrutura das frases.",
+                    "Você está fazendo um esforço, mas a gramática ainda precisa de mais prática. Recomendo que você revise as correções que faço nos seus trabalhos escritos.",
+                    "Sua gramática está no caminho certo, mas ainda há erros. Tente se concentrar em um erro gramatical por vez para dominá-lo.",
+                    "Você consegue se comunicar, mas a gramática ainda é um desafio. Tente praticar mais exercícios de gramática em casa para reforçar o que aprendemos em sala.",
+                    "Sua gramática está melhorando, mas ainda há áreas que precisam de atenção. Continue praticando e prestando atenção aos detalhes.",
+                    "Seus erros gramaticais estão diminuindo, mas ainda são frequentes. Que tal tentar fazer frases simples e expandi-las, passo a passo?",
+                    "Você já tem uma base, mas precisa reforçar a gramática. Concentre-se em identificar seus erros mais comuns e corrigi-los ativamente.",
+                    "Sua gramática é compreensível, mas ainda não está precisa. Preste mais atenção nas aulas e não hesite em me perguntar se tiver dúvidas.",
+                    "É importante que você se concentre mais na gramática. A fluência vem com a prática, mas a clareza vem com a precisão gramatical.",
+                    "Você está melhorando na gramática. O próximo passo é aplicar as regras com mais confiança. Vamos praticar isso juntos!"
+                ],
+                [
+                    "Sua gramática é geralmente correta, o que permite uma comunicação clara. Continue revisando e praticando para aprimorar ainda mais.",
+                    "Você demonstra um bom entendimento da gramática e comete poucos erros. Continue praticando e desafiando-se com estruturas mais avançadas.",
+                    "Sua gramática é satisfatória e não impede a comunicação. Preste atenção aos erros que ainda comete para não os repetir.",
+                    "Você já domina as estruturas básicas da gramática. Agora é a hora de se concentrar em estruturas mais complexas para ampliar suas habilidades.",
+                    "Seu uso da gramática está em um bom nível. Você consegue se comunicar bem, mas é importante continuar a praticar para evitar erros.",
+                    "Sua gramática é sólida, e isso é um ótimo ponto de partida. Agora, podemos focar em estruturas mais complexas para expandir suas habilidades.",
+                    "Você já tem uma base gramatical forte. Para melhorar ainda mais, tente usar uma variedade maior de tempos verbais e estruturas de frase.",
+                    "Sua gramática é boa e permite que você se expresse com clareza. Continue assim, e você vai dominar o inglês em pouco tempo.",
+                    "Ótimo trabalho com a gramática! Você tem um bom controle das regras. Continue praticando e revisando para manter esse nível.",
+                    "Sua gramática é consistente e confiável. Continue praticando para dominar as exceções e as estruturas mais complicadas do idioma."
+                ],
+                [
+                    "Sua gramática é muito boa e você consegue se expressar com precisão. Mantenha a prática para evitar pequenos erros e aprimorar sua fluência.",
+                    "Você demonstra um ótimo domínio da gramática. Seus trabalhos escritos e conversas mostram um alto nível de precisão. Continue o bom trabalho!",
+                    "Sua gramática está em um nível avançado. Os erros são raros e não afetam a sua comunicação. Continue assim!",
+                    "Você tem um bom entendimento da gramática. Isso permite que se comunique com grande clareza e confiança.",
+                    "Sua gramática é um ponto forte. Você já usa estruturas complexas com facilidade. Para se aperfeiçoar, preste atenção em pequenos detalhes de uso.",
+                    "Um excelente trabalho com sua gramática. Você é capaz de usar o inglês com grande precisão e confiança.",
+                    "Você usa a gramática com maestria. Continue praticando e desafie-se a explorar estruturas gramaticais mais complexas.",
+                    "Seu domínio da gramática é impressionante. Você se expressa de forma clara e coesa. Continue a praticar para aprimorar.",
+                    "Sua gramática é um diferencial. Você é capaz de usar estruturas complexas e expressar ideias sofisticadas com precisão.",
+                    "Parabéns pelo seu nível de gramática. Você já domina as estruturas básicas e avançadas. Isso demonstra um grande esforço e dedicação."
+                ],
+                [
+                    "Sua gramática é excepcional. Você se expressa de forma precisa e fluida, como um falante nativo.",
+                    "Parabéns! Sua gramática é impecável, e você usa o inglês com grande precisão em todas as situações.",
+                    "Você tem um domínio excepcional da gramática. É raro encontrar um nível tão alto de precisão. Excelente trabalho!",
+                    "Sua gramática é perfeita, e você se expressa com grande clareza e sofisticação.",
+                    "Seu controle da gramática é de um mestre. Continue assim, e você se tornará um comunicador ainda mais habilidoso.",
+                    "Você tem um nível de gramática impecável. É um prazer ver sua habilidade e precisão ao usar o idioma.",
+                    "Parabéns, seu conhecimento de gramática é excepcional! Você é um exemplo a ser seguido.",
+                    "Sua gramática é perfeita. Continue a praticar para manter esse nível de excelência.",
+                    "Seu domínio gramatical é excepcional. Você se expressa com precisão, o que é fundamental para a fluência.",
+                    "Sua gramática é notável, sem erros visíveis. Parabéns pelo seu excelente trabalho!"
+                ]
+            ],
+            listening: [
+                [
+                    "Sua compreensão auditiva precisa de muita atenção. É essencial que você pratique a escuta ativa para melhorar.",
+                    "Você tem dificuldade para entender conversas e áudios em inglês. Tente ouvir mais músicas, podcasts e assistir a vídeos para se acostumar com o som do idioma.",
+                    "A sua compreensão auditiva está limitando o seu progresso. Que tal praticar escuta ativa por pelo menos 10 minutos por dia?",
+                    "Você parece ter dificuldade para seguir a conversa. Para melhorar, é crucial que se exponha mais ao inglês falado. Comece com áudios curtos e simples.",
+                    "Sua habilidade de ouvir precisa ser desenvolvida. Tente focar em captar a ideia geral do que é dito, em vez de se preocupar com cada palavra.",
+                    "A compreensão auditiva é uma área que você precisa fortalecer. Não desanime, com a prática diária, você vai notar uma grande diferença.",
+                    "Notei que você se frustra quando ouve inglês. Vamos montar um plano para praticar escuta com materiais que você gosta, como séries e músicas.",
+                    "Seu progresso em inglês vai acelerar se você melhorar a compreensão auditiva. Tente repetir as frases que ouve para treinar seu ouvido.",
+                    "Sua habilidade de ouvir precisa de mais atenção. A escuta é a chave para a comunicação. Vamos trabalhar juntos para melhorar isso.",
+                    "Ouvir é uma habilidade que você precisa desenvolver. Tente assistir a vídeos curtos em inglês e fazer anotações sobre o que entendeu."
+                ],
+                [
+                    "Sua compreensão auditiva está melhorando, mas você ainda tem dificuldade com falas mais rápidas ou com sotaques diferentes. Tente se expor a mais tipos de áudio.",
+                    "Você entende o básico, mas ainda perde detalhes importantes. Pratique com áudios mais longos e tente identificar palavras-chave.",
+                    "Sua compreensão auditiva está no caminho certo. Para um progresso mais rápido, ouça podcasts e tente resumir o conteúdo para ver o que pegou.",
+                    "Você tem potencial para melhorar sua compreensão auditiva. Tente assistir a filmes ou séries com legendas em inglês e, aos poucos, sem legendas.",
+                    "Seus ouvidos estão começando a se acostumar com o inglês. Para levar sua habilidade ao próximo nível, tente praticar com áudios mais desafiadores.",
+                    "Você consegue entender o contexto, mas ainda tem dificuldade para captar os detalhes. Sugiro que pratique a escuta ativa com materiais variados, como notícias e entrevistas.",
+                    "Sua compreensão auditiva precisa ser mais consistente. Tente ouvir áudios repetidamente e fazer anotações para ver sua evolução.",
+                    "Você está no caminho certo com a compreensão auditiva, mas ainda precisa de prática. Tente ouvir músicas e ler a letra ao mesmo tempo para treinar seus ouvidos.",
+                    "Você já entende o básico, mas ainda se perde em conversas mais complexas. Sugiro que você pratique a escuta com materiais de um nível um pouco acima do seu.",
+                    "Sua compreensão auditiva está melhorando. A chave agora é a consistência. Ouça algo em inglês todos os dias, nem que seja por 5 minutos."
+                ],
+                [
+                    "Sua compreensão auditiva é boa e você geralmente consegue entender conversas. Para melhorar, pratique com áudios de diferentes sotaques e velocidades.",
+                    "Você demonstra uma boa compreensão auditiva na maioria das situações. Continue se expondo ao inglês falado para aprimorar ainda mais.",
+                    "Sua habilidade de ouvir é satisfatória e você consegue acompanhar a aula sem grandes problemas. Tente ouvir podcasts sobre temas que você gosta para praticar.",
+                    "Você entende a maioria do que é falado e participa bem das atividades de escuta. Para melhorar, tente ouvir áudios com menos repetição.",
+                    "Sua compreensão auditiva é boa e você raramente precisa de repetição. Continue se expondo ao inglês falado em seu dia a dia.",
+                    "Você tem uma boa capacidade de entender o que é dito. Para o próximo passo, tente ouvir e depois recontar a história em inglês.",
+                    "Sua compreensão auditiva é consistente e confiável. Continue praticando para dominar as nuances do idioma falado, como gírias e expressões idiomáticas.",
+                    "Ótimo trabalho com a compreensão auditiva! Você consegue entender bem as conversas em sala de aula. Continue assim!",
+                    "Você entende a maioria do que é falado. Seu próximo desafio é se acostumar com diferentes sotaques e velocidades de fala.",
+                    "Sua compreensão auditiva é sólida. Você consegue pegar a ideia geral e muitos detalhes. Continue a praticar para aprimorar ainda mais."
+                ],
+                [
+                    "Sua compreensão auditiva está em um ótimo nível. Você entende a maioria das conversas, mesmo as mais rápidas. Seu progresso é evidente.",
+                    "Você demonstra uma habilidade auditiva impressionante. É claro que você pratica bastante e isso se reflete na sua escuta ativa.",
+                    "Sua compreensão auditiva é muito boa. Você entende não apenas as palavras, mas também as nuances de tom e emoção. Um ótimo trabalho!",
+                    "Você tem um ouvido muito bom para o inglês. Você consegue entender falas complexas e seguir o ritmo de uma conversa fluida. Parabéns!",
+                    "Sua compreensão auditiva é um de seus pontos fortes. Você já entende a maioria das conversas, mesmo com sotaques diferentes.",
+                    "Um excelente trabalho com a compreensão auditiva. Você consegue captar todos os detalhes e entender o que é dito com grande precisão.",
+                    "Sua compreensão auditiva é impressionante. Você se comunica bem e entende a maioria das conversas. Continue assim!",
+                    "Sua habilidade de ouvir é muito boa. Você consegue seguir o que é falado com grande confiança e precisão. Parabéns!",
+                    "Você demonstra uma compreensão auditiva de alto nível. Você consegue entender o que é dito com clareza e sem grandes dificuldades. Continue praticando para manter esse nível.",
+                    "Sua compreensão auditiva está em um nível muito bom. Você já consegue entender a maioria das conversas em inglês. Continue o bom trabalho!"
+                ],
+                [
+                    "Sua compreensão auditiva é excepcional. Você entende tudo o que é dito, mesmo em contextos complexos. Seu ouvido é muito bem treinado.",
+                    "Você tem um domínio impressionante de compreensão auditiva. Sua capacidade de entender o inglês falado é notável.",
+                    "Parabéns! Sua compreensão auditiva é impecável e você entende o inglês falado com a mesma facilidade que o português.",
+                    "Sua habilidade de ouvir é excelente. Você consegue entender o que é dito com grande precisão, mesmo em situações desafiadoras.",
+                    "Você demonstra uma compreensão auditiva perfeita. Continue assim, e você será um mestre da fluência.",
+                    "Sua compreensão auditiva é excelente. Você entende o que é dito, mesmo quando é falado rapidamente ou com sotaques diferentes.",
+                    "Seu nível de compreensão auditiva é excelente. Você consegue entender a maioria das conversas em inglês. Continue assim!",
+                    "Parabéns pelo seu nível de compreensão auditiva. Você já entende a maioria das conversas e consegue se comunicar com fluência.",
+                    "Sua compreensão auditiva é notável. Você consegue entender o que é dito com grande clareza. Continue a praticar para manter esse nível.",
+                    "Você tem um nível de compreensão auditiva excepcional. Sua capacidade de entender o inglês falado é um grande diferencial. Continue o bom trabalho!"
+                ]
+            ],
+            reading: [
+                [
+                    "Sua leitura é uma área que precisa de muita atenção. Para melhorar, é crucial que você leia mais textos em inglês e se concentre na compreensão.",
+                    "Você tem dificuldade para entender textos em inglês. Tente começar com textos simples, como quadrinhos ou histórias curtas, para ganhar confiança.",
+                    "Sua leitura está limitando seu progresso. Vamos trabalhar em técnicas de leitura para que você entenda a ideia geral dos textos.",
+                    "Notei que você se frustra quando lê. A leitura pode ser um desafio, mas a prática diária fará uma grande diferença. Estou aqui para ajudar a encontrar textos que te interessem.",
+                    "Sua habilidade de leitura precisa de um grande impulso. Que tal ler um pequeno parágrafo por dia e tentar reescrevê-lo em suas próprias palavras?",
+                    "A leitura é fundamental para o seu desenvolvimento. Sugiro que você leia um pouco mais e comece a prestar atenção em como as frases são construídas.",
+                    "Seu progresso na leitura é uma área que precisa de atenção. Vamos encontrar livros, artigos ou notícias que te motivem a ler mais.",
+                    "Seu nível de leitura precisa de mais prática. Recomendo que você leia mais textos e tente encontrar o significado das palavras desconhecidas no dicionário.",
+                    "Sua leitura está muito básica, e isso está limitando seu progresso. Vamos tentar encontrar materiais que sejam desafiadores, mas não difíceis demais.",
+                    "Você tem dificuldade para ler textos em inglês. A leitura é a chave para o seu desenvolvimento. Sugiro que você leia mais para melhorar."
+                ],
+                [
+                    "Sua leitura está melhorando, mas você ainda tem dificuldade com textos mais longos ou complexos. Tente se concentrar em entender a ideia principal de cada parágrafo.",
+                    "Você entende o básico, mas ainda se perde em detalhes. Pratique com textos um pouco mais longos e tente identificar palavras-chave para entender o contexto.",
+                    "Sua habilidade de leitura está no caminho certo. Para um progresso mais rápido, tente resumir os textos que lê para ver o que pegou.",
+                    "Você tem potencial para melhorar sua leitura. Tente ler artigos de notícias ou blogs sobre temas que te interessam para praticar.",
+                    "Seu nível de leitura está melhorando. A chave agora é a consistência. Tente ler algo em inglês todos os dias, nem que seja por 5 minutos.",
+                    "Você consegue entender o contexto, mas ainda perde detalhes importantes. Sugiro que você pratique a leitura com materiais variados.",
+                    "Sua leitura precisa ser mais consistente. Tente ler pequenos textos repetidamente e fazer anotações sobre o que entendeu.",
+                    "Você está no caminho certo com a leitura. O próximo passo é ler textos mais longos e mais complexos para desafiar seu cérebro.",
+                    "Você já entende o básico, mas ainda se perde em textos mais longos. Sugiro que você pratique a leitura com materiais de um nível um pouco acima do seu.",
+                    "Sua leitura está melhorando. Continue praticando com materiais que te interessem para tornar a leitura mais divertida."
+                ],
+                [
+                    "Sua leitura é boa e você geralmente consegue entender textos em inglês. Continue se expondo a diferentes tipos de texto para aprimorar ainda mais.",
+                    "Você demonstra uma boa compreensão de leitura na maioria das situações. Continue praticando e desafiando-se com textos mais complexos.",
+                    "Sua habilidade de ler é satisfatória e você consegue acompanhar as atividades de leitura sem grandes problemas.",
+                    "Você entende a maioria do que lê. Continue praticando com textos que você gosta para tornar a leitura um hábito.",
+                    "Sua compreensão de leitura é boa e você raramente precisa de ajuda para entender textos. Continue assim!",
+                    "Você tem uma boa capacidade de ler e entender textos em inglês. Para o próximo passo, tente ler textos mais longos e mais complexos.",
+                    "Sua leitura é consistente e confiável. Continue praticando para dominar as nuances dos textos em inglês.",
+                    "Ótimo trabalho com a leitura! Você consegue entender bem os textos em sala de aula. Continue assim!",
+                    "Você entende a maioria do que lê. Seu próximo desafio é se acostumar com diferentes tipos de texto, como textos formais e informais.",
+                    "Sua leitura é sólida. Você consegue pegar a ideia geral e muitos detalhes. Continue a praticar para aprimorar ainda mais."
+                ],
+                [
+                    "Sua leitura está em um ótimo nível. Você entende a maioria dos textos, mesmo os mais complexos. Continue a desafiar-se com leituras variadas.",
+                    "Você demonstra uma habilidade de leitura impressionante. É claro que você pratica bastante fora da sala de aula, e isso se reflete em sua proficiência.",
+                    "Sua leitura é muito boa. Você entende não apenas as palavras, mas também as entrelinhas e as nuances do texto. Um ótimo trabalho!",
+                    "Você tem um ótimo entendimento de leitura. Consegue compreender textos complexos e seguir o ritmo de uma conversa fluida. Parabéns!",
+                    "Sua leitura é um de seus pontos fortes. Você já entende a maioria dos textos, mesmo com vocabulário desconhecido.",
+                    "Um excelente trabalho com a leitura. Você consegue captar todos os detalhes e entender o que é dito com grande precisão.",
+                    "Sua leitura é impressionante. Você se comunica bem e entende a maioria dos textos. Continue assim!",
+                    "Sua habilidade de leitura é muito boa. Você consegue seguir o que é escrito com grande confiança e precisão. Parabéns!",
+                    "Você demonstra uma compreensão de leitura de alto nível. Consegue entender o que é dito com clareza e sem grandes dificuldades. Continue praticando para manter esse nível.",
+                    "Sua leitura está em um nível muito bom. Você já consegue entender a maioria dos textos em inglês. Continue o bom trabalho!"
+                ],
+                [
+                    "Sua leitura é excepcional. Você entende tudo o que lê, mesmo em contextos complexos. Sua habilidade de leitura é impressionante.",
+                    "Você tem um domínio impressionante de leitura. Sua capacidade de entender o inglês escrito é notável.",
+                    "Parabéns! Sua leitura é impecável e você entende o inglês escrito com a mesma facilidade que o português.",
+                    "Sua habilidade de ler é excelente. Você consegue entender o que é escrito com grande precisão, mesmo em situações desafiadoras.",
+                    "Você demonstra uma leitura perfeita. Continue assim, e você será um mestre do inglês.",
+                    "Sua leitura é excelente. Você entende o que é escrito, mesmo quando é complexo ou com vocabulário desconhecido.",
+                    "Seu nível de leitura é excelente. Você consegue entender a maioria dos textos em inglês. Continue assim!",
+                    "Parabéns pelo seu nível de leitura. Você já entende a maioria dos textos e consegue se comunicar com fluência.",
+                    "Sua leitura é notável. Você consegue entender o que é escrito com grande clareza. Continue a praticar para manter esse nível.",
+                    "Você tem um nível de leitura excepcional. Sua capacidade de entender o inglês escrito é um grande diferencial. Continue o bom trabalho!"
+                ]
+            ],
+            speaking: [
+                [
+                    "Sua conversação é uma área que precisa de muita atenção. É essencial que você pratique mais para se sentir mais à vontade falando.",
+                    "Você tem dificuldade para se expressar oralmente em inglês. Tente falar mais em sala de aula e não tenha medo de cometer erros, eles são parte do aprendizado.",
+                    "Sua conversação está limitando o seu progresso. Vamos trabalhar em técnicas de fala para que você ganhe confiança.",
+                    "Notei que você se sente nervoso ao falar. Lembre-se, o objetivo é se comunicar. Tente falar mais, mesmo que seja com frases simples.",
+                    "Sua habilidade de falar precisa de um grande impulso. Que tal tentar conversar em inglês sobre temas que você gosta com seus amigos ou em casa?",
+                    "A conversação é fundamental para o seu desenvolvimento. Sugiro que você fale um pouco mais em sala de aula e tente participar das discussões.",
+                    "Seu progresso na conversação é uma área que precisa de atenção. Vamos encontrar formas de te motivar a falar mais, como jogos e atividades interativas.",
+                    "Seu nível de conversação precisa de mais prática. Recomendo que você tente falar mais em inglês e se acostume com o som de sua própria voz.",
+                    "Sua conversação está muito básica, e isso está limitando seu progresso. Vamos tentar encontrar materiais que sejam desafiadores, mas não difíceis demais.",
+                    "Você tem dificuldade para se expressar em inglês. A conversação é a chave para o seu desenvolvimento. Sugiro que você fale mais para melhorar."
+                ],
+                [
+                    "Sua conversação está melhorando, mas você ainda tem dificuldade com a fluência. Tente falar mais e não se preocupe tanto com a gramática perfeita.",
+                    "Você entende o básico, mas ainda se sente inibido para falar. Pratique com frases curtas e tente expandir suas ideias aos poucos.",
+                    "Sua habilidade de falar está no caminho certo. Para um progresso mais rápido, tente se forçar a falar mais em sala de aula e nas atividades em grupo.",
+                    "Você tem potencial para melhorar sua conversação. Tente encontrar um amigo ou colega com quem possa praticar a fala fora da sala de aula.",
+                    "Seu nível de conversação está melhorando. A chave agora é a consistência. Tente falar algo em inglês todos os dias, nem que seja por 5 minutos.",
+                    "Você consegue se comunicar, mas ainda se sente inseguro. Sugiro que você pratique a fala com materiais variados e sobre temas que te interessam.",
+                    "Sua conversação precisa ser mais consistente. Tente falar sobre um tema por dia e fazer anotações sobre o que gostaria de dizer.",
+                    "Você está no caminho certo com a conversação. O próximo passo é falar mais e se acostumar com a sua própria voz em inglês.",
+                    "Você já entende o básico, mas ainda se perde em conversas mais complexas. Sugiro que você pratique a fala com materiais de um nível um pouco acima do seu.",
+                    "Sua conversação está melhorando. Continue praticando e não tenha medo de cometer erros, eles são parte do aprendizado."
+                ],
+                [
+                    "Sua conversação é boa e você geralmente consegue se expressar em inglês. Continue praticando e se expondo a diferentes situações de fala para aprimorar ainda mais.",
+                    "Você demonstra uma boa habilidade de conversação na maioria das situações. Continue praticando e desafiando-se com conversas mais complexas.",
+                    "Sua habilidade de falar é satisfatória e você consegue participar das atividades de conversação sem grandes problemas.",
+                    "Você se expressa bem em inglês. Continue praticando com conversas sobre temas que você gosta para tornar a fala um hábito.",
+                    "Sua conversação é boa e você raramente precisa de ajuda para se expressar. Continue assim!",
+                    "Você tem uma boa capacidade de falar e se comunicar em inglês. Para o próximo passo, tente usar uma variedade maior de vocabulário e estruturas.",
+                    "Sua conversação é consistente e confiável. Continue praticando para dominar as nuances da fala, como entonação e ritmo.",
+                    "Ótimo trabalho com a conversação! Você consegue se expressar bem em sala de aula. Continue assim!",
+                    "Você fala bem. Seu próximo desafio é se acostumar com diferentes sotaques e velocidades de fala.",
+                    "Sua conversação é sólida. Você consegue pegar a ideia geral e muitos detalhes. Continue a praticar para aprimorar ainda mais."
+                ],
+                [
+                    "Sua conversação está em um ótimo nível. Você se expressa de forma clara, fluida e com poucos erros. Sua habilidade de falar é muito boa.",
+                    "Você demonstra uma habilidade de conversação impressionante. É claro que você pratica bastante fora da sala de aula.",
+                    "Sua conversação é muito boa. Você se expressa com confiança e consegue manter uma conversa fluida sobre diversos temas.",
+                    "Você tem uma ótima habilidade de falar. Se expressa de forma clara e consegue seguir o ritmo de uma conversa fluida. Parabéns!",
+                    "Sua conversação é um de seus pontos fortes. Você já se expressa com confiança e consegue se comunicar sobre a maioria dos temas.",
+                    "Um excelente trabalho com a conversação. Você consegue se expressar com grande precisão e confiança. Continue assim!",
+                    "Sua conversação é impressionante. Você se comunica bem e consegue se expressar com grande fluência. Continue assim!",
+                    "Sua habilidade de falar é muito boa. Você consegue se expressar com grande confiança e precisão. Parabéns!",
+                    "Você demonstra uma habilidade de conversação de alto nível. Se expressa com clareza e sem grandes dificuldades. Continue praticando para manter esse nível.",
+                    "Sua conversação está em um nível muito bom. Você já consegue se expressar de forma fluida e com poucos erros. Continue o bom trabalho!"
+                ],
+                [
+                    "Sua conversação é excepcional. Você se expressa de forma fluida e natural, como um falante nativo.",
+                    "Você tem um domínio impressionante de conversação. Sua capacidade de falar inglês é notável.",
+                    "Parabéns! Sua conversação é impecável e você fala inglês com a mesma facilidade que o português.",
+                    "Sua habilidade de falar é excelente. Você se expressa com grande precisão e confiança, mesmo em situações desafiadoras.",
+                    "Você demonstra uma conversação perfeita. Continue assim, e você será um mestre do inglês.",
+                    "Sua conversação é excelente. Você se expressa de forma fluida e com grande clareza. Continue assim!",
+                    "Seu nível de conversação é excelente. Você consegue se expressar com grande confiança. Continue a praticar para manter esse nível.",
+                    "Parabéns pelo seu nível de conversação. Você já fala inglês com fluência e confiança.",
+                    "Sua conversação é notável. Você se expressa com grande clareza. Continue a praticar para manter esse nível.",
+                    "Você tem um nível de conversação excepcional. Sua capacidade de falar inglês é um grande diferencial. Continue o bom trabalho!"
+                ]
+            ],
+            homework: [
+                [
+                    "Seu desempenho nas tarefas de casa precisa de muita atenção. Elas são essenciais para o seu desenvolvimento e não são opcionais.",
+                    "As tarefas de casa são uma parte crucial do seu aprendizado, e a falta de entrega está prejudicando o seu progresso. Fale comigo se estiver com dificuldades.",
+                    "Você tem entregado poucas ou nenhuma tarefa de casa. É fundamental que se organize e dedique tempo para elas. Elas são a base do seu aprendizado.",
+                    "O progresso no inglês só é possível com prática constante. Suas tarefas de casa são a oportunidade de praticar o que aprendemos em sala. Vamos conversar sobre como você pode se organizar melhor.",
+                    "Notei que você não está fazendo as tarefas de casa. Elas são uma ferramenta vital para o seu desenvolvimento. Por favor, priorize a entrega delas a partir de agora.",
+                    "As tarefas de casa são um pilar do seu aprendizado. A falta de entrega delas está impedindo que você alcance todo o seu potencial.",
+                    "É importante que se esforce para fazer as tarefas de casa. Elas são um complemento indispensável para o que aprendemos em sala de aula.",
+                    "Sua falta de compromisso com as tarefas de casa é preocupante. O inglês é uma habilidade que precisa de prática diária. Elas não são opcionais e afetam sua nota final.",
+                    "As tarefas de casa são uma forma de solidificar o que você aprendeu. A falta de entrega delas está impedindo seu progresso. Vamos trabalhar juntos para resolver isso.",
+                    "Sua falta de entrega de tarefas de casa é um problema sério. Por favor, dedique-se a elas para que você possa melhorar."
+                ],
+                [
+                    "Você tem entregado poucas tarefas de casa. É importante que se dedique mais a elas, pois são essenciais para o seu progresso.",
+                    "Suas tarefas de casa são entregues de forma inconsistente. É crucial que se esforce para entregá-las todas as vezes, para que possa melhorar.",
+                    "Você fez algumas tarefas, mas não todas. Lembre-se, a prática contínua é a chave para o sucesso no inglês. Tente entregar todas as tarefas de agora em diante.",
+                    "Você está no caminho certo, mas ainda precisa de mais consistência com as tarefas de casa. Lembre-se, elas são a base do seu aprendizado. Tente entregar todas as próximas tarefas.",
+                    "Seu desempenho em tarefas de casa é inconsistente. Tente se organizar para entregá-las todas. Lembre-se que a prática leva à perfeição.",
+                    "Você tem se esforçado, mas ainda tem dificuldade para entregar todas as tarefas de casa. Tente se organizar para que elas se tornem uma prioridade.",
+                    "As tarefas de casa são importantes para o seu desenvolvimento. Tente se organizar para que elas se tornem uma prioridade.",
+                    "Seu desempenho em tarefas de casa é satisfatório, mas pode ser melhor. Tente entregar todas as tarefas para que você possa melhorar.",
+                    "Você tem entregue algumas tarefas, mas ainda precisa de mais consistência. Lembre-se, a prática é a chave para o sucesso.",
+                    "Você tem feito algumas tarefas de casa. Continue assim, mas tente fazer todas para que você possa melhorar."
+                ],
+                [
+                    "Você entrega suas tarefas de casa de forma consistente, o que é ótimo para o seu aprendizado. Continue com esse hábito!",
+                    "Seu desempenho nas tarefas de casa é satisfatório. Isso mostra que você se dedica e leva o aprendizado a sério.",
+                    "Você faz as tarefas de casa de forma regular, o que é muito bom. Lembre-se de sempre se dedicar ao máximo para aproveitar o potencial delas.",
+                    "Você faz a maioria das tarefas de casa, o que é um ótimo hábito. Continue assim para solidificar seu conhecimento.",
+                    "Seu comprometimento com as tarefas de casa é bom. Você está no caminho certo para a fluência. Continue assim!",
+                    "Seu desempenho em tarefas de casa é satisfatório. Continue a se dedicar para que elas se tornem uma prioridade.",
+                    "As tarefas de casa são importantes para o seu desenvolvimento. Continue a se dedicar a elas para que você possa melhorar.",
+                    "Seu desempenho em tarefas de casa é satisfatório. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem entregue a maioria das tarefas de casa. Continue assim para que você possa melhorar.",
+                    "Você tem feito as tarefas de casa de forma consistente. Continue assim para que você possa melhorar."
+                ],
+                [
+                    "Você demonstra um bom comprometimento com as tarefas de casa. Elas são sempre entregues com qualidade e no prazo. Continue assim!",
+                    "Seu desempenho nas tarefas de casa é ótimo. Sua dedicação é um exemplo para a turma. Parabéns!",
+                    "Você é responsável com as tarefas de casa. Seu esforço é notável e se reflete no seu progresso.",
+                    "Você entrega as tarefas de casa com grande cuidado e atenção. Isso mostra que você se dedica e leva o aprendizado a sério.",
+                    "Seu comprometimento com as tarefas de casa é muito bom. Continue com esse hábito para que você possa alcançar a fluência.",
+                    "Seu desempenho em tarefas de casa é ótimo. Continue a se dedicar para que elas se tornem uma prioridade.",
+                    "As tarefas de casa são importantes para o seu desenvolvimento. Continue a se dedicar a elas para que você possa melhorar.",
+                    "Seu desempenho em tarefas de casa é ótimo. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem entregue todas as tarefas de casa. Continue assim para que você possa melhorar.",
+                    "Você tem feito as tarefas de casa com grande cuidado e atenção. Continue assim para que você possa melhorar."
+                ],
+                [
+                    "Seu desempenho nas tarefas de casa é excelente. Você sempre as entrega no prazo e com grande qualidade. Continue assim!",
+                    "Você tem um comprometimento exemplar com as tarefas de casa. Sua dedicação é notável e se reflete no seu progresso.",
+                    "Você é um exemplo para a turma em relação às tarefas de casa. Elas são sempre entregues no prazo e com grande qualidade.",
+                    "Sua dedicação com as tarefas de casa é impressionante. Continue assim para que você possa alcançar a fluência.",
+                    "Seu desempenho em tarefas de casa é excelente. Continue a se dedicar para que você possa alcançar a fluência.",
+                    "As tarefas de casa são importantes para o seu desenvolvimento. Continue a se dedicar a elas para que você possa melhorar.",
+                    "Seu desempenho em tarefas de casa é excelente. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem entregue todas as tarefas de casa. Continue assim para que você possa melhorar.",
+                    "Você tem feito as tarefas de casa com grande cuidado e atenção. Continue assim para que você possa melhorar."
+                ]
+            ],
+            attendance: [
+                [
+                    "Sua frequência às aulas precisa de muita atenção. A presença é fundamental para o seu progresso, pois cada aula é uma oportunidade de aprender e praticar.",
+                    "As faltas frequentes estão prejudicando seriamente o seu desenvolvimento. É crucial que você se esforce para vir a todas as aulas para não perder o conteúdo.",
+                    "Notei que você tem faltado muito. O aprendizado de um novo idioma é cumulativo, e sua ausência o deixa para trás. Fale com seus responsáveis para que eles ajudem a se organizar.",
+                    "Sua presença em sala de aula é essencial. Cada falta é uma aula de prática e interação que você perde. Fale comigo se houver algum problema que o impeça de vir às aulas.",
+                    "Sua frequência é uma área de grande preocupação. Por favor, priorize vir às aulas para que você possa progredir e alcançar seus objetivos.",
+                    "Sua frequência às aulas é inconsistente, o que está afetando seu desempenho. Tente se organizar para que você possa vir a todas as aulas.",
+                    "É importante que você se esforce para vir a todas as aulas. A presença é fundamental para o seu desenvolvimento, pois cada aula é uma oportunidade de aprender e praticar.",
+                    "Sua falta de compromisso com a frequência é preocupante. O inglês é uma habilidade que precisa de prática diária. Sua falta afeta sua nota final.",
+                    "As faltas são um problema sério. Por favor, dedique-se a vir para que você possa melhorar.",
+                    "Sua frequência é muito baixa. Por favor, tente vir a todas as aulas para que você possa melhorar."
+                ],
+                [
+                    "Sua frequência é um pouco inconsistente. Para ter sucesso no inglês, é muito importante que você venha a todas as aulas para não perder conteúdo e prática.",
+                    "Você tem faltado em algumas aulas. Lembre-se, cada aula é importante, e sua presença é crucial para o seu desenvolvimento. Tente se esforçar para vir a todas as próximas aulas.",
+                    "Sua frequência está em desenvolvimento. Para ter sucesso no inglês, é muito importante que você venha a todas as aulas para não perder conteúdo e prática.",
+                    "Você tem faltado em algumas aulas. Lembre-se, cada aula é importante, e sua presença é crucial para o seu desenvolvimento. Tente se esforçar para vir a todas as próximas aulas.",
+                    "Sua frequência é inconsistente. Tente se organizar para que você possa vir a todas as aulas. Lembre-se, a prática leva à perfeição.",
+                    "Você tem se esforçado, mas ainda tem dificuldade para vir a todas as aulas. Tente se organizar para que elas se tornem uma prioridade.",
+                    "Sua presença em sala de aula é importante para o seu desenvolvimento. Tente se organizar para que ela se torne uma prioridade.",
+                    "Sua frequência é satisfatória, mas pode ser melhor. Tente vir a todas as aulas para que você possa melhorar.",
+                    "Você tem vindo a algumas aulas, mas ainda precisa de mais consistência. Lembre-se, a prática é a chave para o sucesso.",
+                    "Você tem vindo a algumas aulas. Continue assim, mas tente vir a todas para que você possa melhorar."
+                ],
+                [
+                    "Sua frequência às aulas é satisfatória. Continue com esse comprometimento, pois estar em sala de aula é fundamental para o seu aprendizado.",
+                    "Você comparece à maioria das aulas, o que é ótimo para o seu progresso. Mantenha essa consistência!",
+                    "Sua frequência é boa, e isso mostra que você leva o aprendizado a sério. Continuar vindo às aulas é essencial para a sua evolução.",
+                    "Você tem uma boa frequência. Continue com esse hábito para solidificar seu conhecimento e tirar o máximo proveito das aulas.",
+                    "Seu comprometimento com a frequência é bom. Você está no caminho certo para a fluência. Continue assim!",
+                    "Sua frequência às aulas é satisfatória. Continue a se dedicar para que elas se tornem uma prioridade.",
+                    "Sua presença em sala de aula é importante para o seu desenvolvimento. Continue a se dedicar a ela para que você possa melhorar.",
+                    "Sua frequência é satisfatória. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem vindo à maioria das aulas. Continue assim para que você possa melhorar.",
+                    "Você tem vindo às aulas de forma consistente. Continue assim para que você possa melhorar."
+                ],
+                [
+                    "Sua frequência está em um ótimo nível! Você está quase sempre presente nas aulas, o que demonstra seu comprometimento e dedicação.",
+                    "Sua presença constante nas aulas é fundamental para o seu excelente progresso. Parabéns!",
+                    "Sua frequência é ótima. É claro que você valoriza cada momento em sala de aula, e isso se reflete no seu desempenho.",
+                    "Você tem uma ótima frequência. Continue com esse hábito para solidificar seu conhecimento e tirar o máximo proveito das aulas.",
+                    "Seu comprometimento com a frequência é muito bom. Continue com esse hábito para que você possa alcançar a fluência.",
+                    "Sua frequência às aulas é ótima. Continue a se dedicar para que elas se tornem uma prioridade.",
+                    "Sua presença em sala de aula é importante para o seu desenvolvimento. Continue a se dedicar a ela para que você possa melhorar.",
+                    "Sua frequência é ótima. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem vindo a todas as aulas. Continue assim para que você possa melhorar.",
+                    "Você tem vindo às aulas com grande frequência. Continue assim para que você possa melhorar."
+                ],
+                [
+                    "Sua frequência é impecável. Você está sempre presente, e isso é um pilar do seu excelente progresso. Continue assim!",
+                    "Sua frequência é exemplar. Sua presença constante demonstra um comprometimento com o aprendizado que é digno de elogios. Parabéns!",
+                    "Sua frequência é excelente. Sua dedicação é notável e se reflete no seu ótimo desempenho. Continue assim!",
+                    "Sua frequência é impecável. Você é um exemplo para a turma em relação à assiduidade. Continue assim!",
+                    "Seu compromisso com a frequência é excelente. Continue com esse hábito para que você possa alcançar a fluência.",
+                    "Sua frequência às aulas é excelente. Continue a se dedicar para que elas se tornem uma prioridade.",
+                    "Sua presença em sala de aula é importante para o seu desenvolvimento. Continue a se dedicar a ela para que você possa melhorar.",
+                    "Sua frequência é excelente. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem vindo a todas as aulas. Continue assim para que você possa melhorar.",
+                    "Você tem vindo às aulas com grande frequência. Continue assim para que você possa melhorar."
+                ]
+            ],
+            behavior: [
+                [
+                    "Seu comportamento em sala de aula precisa de atenção. É importante respeitar a todos e se concentrar nas atividades para não prejudicar seu aprendizado e o dos colegas.",
+                    "Seu comportamento está afetando sua capacidade de aprender e o ambiente de sala de aula. Precisamos conversar sobre como melhorar essa situação para que você e os outros alunos possam se concentrar.",
+                    "Notei que você tem tido dificuldades para se comportar em sala. Lembre-se de que a sala de aula é um ambiente de aprendizado e colaboração, e seu foco é essencial.",
+                    "O comportamento é uma área que precisamos abordar. Respeitar as regras da sala e os colegas é fundamental para um bom ambiente de aprendizado.",
+                    "Seu comportamento em sala de aula é inconsistente. Tente se concentrar nas atividades e respeitar a todos para que você possa progredir e os outros alunos também.",
+                    "Seu comportamento é uma área que precisa de atenção. Lembre-se que seu comportamento afeta o ambiente de sala de aula e o aprendizado de todos. Vamos trabalhar nisso juntos.",
+                    "Seu comportamento é um problema sério. Por favor, dedique-se a se comportar de forma respeitosa para que você possa melhorar.",
+                    "Sua falta de compromisso com o comportamento é preocupante. Lembre-se que seu comportamento afeta a sua nota final e o aprendizado de todos. Continue assim para que você possa melhorar.",
+                    "O comportamento é uma área que precisa de atenção. Lembre-se que seu comportamento afeta o ambiente de sala de aula e o aprendizado de todos. Vamos trabalhar nisso juntos.",
+                    "Seu comportamento em sala de aula é inconsistente. Tente se concentrar nas atividades e respeitar a todos para que você possa progredir e os outros alunos também."
+                ],
+                [
+                    "Seu comportamento está melhorando, mas você ainda tem dificuldades para se concentrar. Tente se esforçar para se manter focado nas atividades e não atrapalhar os colegas.",
+                    "Você está fazendo um esforço, mas ainda se distrai com facilidade. Lembre-se que seu foco em sala de aula é essencial para o seu aprendizado.",
+                    "Seu comportamento está no caminho certo. Para um progresso mais rápido, tente se concentrar nas atividades e não se distrair com os colegas.",
+                    "Você tem potencial para melhorar seu comportamento. Tente se forçar a se manter focado nas atividades e a não atrapalhar os colegas.",
+                    "Seu comportamento está melhorando. A chave agora é a consistência. Tente se manter focado nas atividades todos os dias, nem que seja por 5 minutos.",
+                    "Você consegue se comportar, mas ainda se distrai com facilidade. Sugiro que você pratique a concentração com atividades variadas.",
+                    "Seu comportamento precisa ser mais consistente. Tente se concentrar nas atividades e respeitar a todos para que você possa progredir e os outros alunos também.",
+                    "Você está no caminho certo com o comportamento. O próximo passo é se concentrar mais e não se distrair com os colegas.",
+                    "Você já entende o básico, mas ainda se perde em conversas mais complexas. Sugiro que você pratique a concentração com atividades de um nível um pouco acima do seu.",
+                    "Seu comportamento está melhorando. Continue praticando e não se preocupe em ser perfeito, apenas em ser respeitoso e focado."
+                ],
+                [
+                    "Seu comportamento em sala de aula é satisfatório e você geralmente respeita a todos. Continue com essa atitude, pois ela contribui para um bom ambiente de aprendizado.",
+                    "Você demonstra um bom comportamento na maioria das situações. Continue a se dedicar a se concentrar e respeitar os colegas para aprimorar ainda mais.",
+                    "Sua atitude em sala de aula é satisfatória e você consegue acompanhar as atividades sem grandes problemas.",
+                    "Você se comporta bem. Continue praticando o respeito e a concentração para que você possa progredir.",
+                    "Sua atitude em sala de aula é boa e você raramente precisa de ajuda para se comportar. Continue assim!",
+                    "Você tem uma boa capacidade de se comportar e se concentrar em sala de aula. Para o próximo passo, tente usar uma variedade maior de vocabulário e estruturas.",
+                    "Seu comportamento é consistente e confiável. Continue praticando para dominar as nuances da fala, como entonação e ritmo.",
+                    "Ótimo trabalho com o comportamento! Você consegue se expressar bem em sala de aula. Continue assim!",
+                    "Você se comporta bem. Seu próximo desafio é se acostumar com diferentes sotaques e velocidades de fala.",
+                    "Seu comportamento é sólido. Você consegue pegar a ideia geral e muitos detalhes. Continue a praticar para aprimorar ainda mais."
+                ],
+                [
+                    "Sua atitude em sala de aula é muito boa. Você é uma pessoa respeitosa e focada, e sua presença é positiva para a turma.",
+                    "Você demonstra um comportamento de alto nível. É claro que você valoriza cada momento em sala de aula, e isso se reflete no seu desempenho.",
+                    "Sua atitude é ótima. Você é uma pessoa exemplar, sempre com foco e respeito. Parabéns!",
+                    "Você tem uma ótima atitude. Continue com esse hábito para solidificar seu conhecimento e tirar o máximo proveito das aulas.",
+                    "Seu comprometimento com o comportamento é muito bom. Continue com esse hábito para que você possa alcançar a fluência.",
+                    "Sua atitude em sala de aula é ótima. Continue a se dedicar para que ela se torne uma prioridade.",
+                    "Seu comportamento é importante para o seu desenvolvimento. Continue a se dedicar a ele para que você possa melhorar.",
+                    "Sua atitude em sala de aula é ótima. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem se comportado de forma muito boa. Continue assim para que você possa melhorar.",
+                    "Você tem se comportado com grande cuidado e atenção. Continue assim para que você possa melhorar."
+                ],
+                [
+                    "Seu comportamento é impecável. Você é um exemplo para a turma em todos os sentidos. Continue assim!",
+                    "Sua atitude é exemplar. Você é uma pessoa respeitosa e focada, e contribui para um ótimo ambiente de aprendizado.",
+                    "Você tem um comportamento impecável. Sua atitude é um grande diferencial e contribui para um ótimo ambiente de aprendizado. Continue assim!",
+                    "Seu comportamento é excelente. Você é uma pessoa respeitosa e focada em sala de aula. Sua atitude é um exemplo para todos.",
+                    "Você tem um comportamento impecável. Continue assim para que você possa alcançar a fluência.",
+                    "Sua atitude em sala de aula é excelente. Continue a se dedicar para que ela se torne uma prioridade.",
+                    "Seu comportamento é importante para o seu desenvolvimento. Continue a se dedicar a ele para que você possa melhorar.",
+                    "Sua atitude em sala de aula é excelente. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem se comportado de forma excelente. Continue assim para que você possa melhorar.",
+                    "Você tem se comportado com grande cuidado e atenção. Continue assim para que você possa melhorar."
+                ]
+            ],
+            languageUse: [
+                [
+                    "Você fala em português o tempo todo. A imersão é essencial, e o uso do idioma é uma responsabilidade sua. Fale inglês para progredir.",
+                    "O uso constante do português em sala de aula impede que você pratique o que aprende. Tente usar o inglês o tempo todo, mesmo que seja difícil.",
+                    "A falta de esforço em falar inglês em sala de aula está afetando seu desempenho. Para melhorar, é crucial que você se esforce para falar o máximo possível.",
+                    "Notei que você recorre ao português com muita frequência. Lembre-se que a sala de aula é o lugar para praticar e errar em inglês. Use o tempo para aprender.",
+                    "Seu progresso será muito maior se você se comprometer a falar apenas inglês. Que tal um desafio de se comunicar em inglês o tempo todo na aula?",
+                    "A prática constante é a chave para a fluência. Tente se comunicar em inglês o máximo possível.",
+                    "Seu uso de português em sala de aula é um problema. Lembre-se que o inglês é uma habilidade que precisa de prática diária. Vamos trabalhar juntos para resolver isso.",
+                    "Você tem dificuldade para se comunicar em inglês. O uso do idioma é a chave para o seu desenvolvimento. Sugiro que você fale mais inglês para melhorar.",
+                    "Seu uso de português em sala de aula é inconsistente. Tente se concentrar em usar o inglês o tempo todo para que você possa progredir.",
+                    "Você usa muito português em sala de aula. O uso do idioma é a chave para o seu desenvolvimento. Sugiro que você fale mais inglês para melhorar."
+                ],
+                [
+                    "Você tenta usar o inglês, mas ainda recorre ao português. Tente se forçar a usar o inglês o máximo possível para progredir mais rapidamente.",
+                    "Seu uso de inglês é inconsistente. É crucial que você se esforce para usá-lo o tempo todo, mesmo que seja com pequenas frases.",
+                    "Você usa o inglês em algumas situações, mas não em todas. Lembre-se que a prática contínua é a chave para o sucesso no idioma. Tente usar o inglês o tempo todo.",
+                    "Você está no caminho certo, mas ainda precisa de mais consistência com o uso do inglês. Lembre-se, a prática leva à perfeição. Tente usar o inglês o tempo todo.",
+                    "Seu uso de inglês é inconsistente. Tente se organizar para usá-lo o tempo todo. Lembre-se que a prática leva à perfeição.",
+                    "Você tem se esforçado, mas ainda tem dificuldade para usar o inglês o tempo todo. Tente se organizar para que ele se torne uma prioridade.",
+                    "O uso de inglês é importante para o seu desenvolvimento. Tente se organizar para que ele se torne uma prioridade.",
+                    "Seu uso de inglês é satisfatório, mas pode ser melhor. Tente usá-lo o tempo todo para que você possa melhorar.",
+                    "Você tem usado o inglês em algumas situações, mas ainda precisa de mais consistência. Lembre-se, a prática é a chave para o sucesso.",
+                    "Você tem usado o inglês em algumas situações. Continue assim, mas tente usá-lo o tempo todo para que você possa melhorar."
+                ],
+                [
+                    "Você fala inglês na maioria das vezes, mas ainda recorre ao português quando tem dificuldades. Continue se desafiando a se comunicar apenas em inglês para aprimorar.",
+                    "Você usa o inglês de forma satisfatória em sala de aula. Continue com essa atitude, pois ela contribui para um bom ambiente de aprendizado.",
+                    "Sua atitude em sala de aula é satisfatória e você consegue acompanhar as atividades sem grandes problemas.",
+                    "Você usa o inglês na maioria das vezes. Continue praticando para tornar o uso do idioma um hábito.",
+                    "Seu uso do inglês é bom e você raramente precisa de ajuda para se expressar. Continue assim!",
+                    "Você tem uma boa capacidade de usar o inglês e se comunicar. Para o próximo passo, tente usar uma variedade maior de vocabulário e estruturas.",
+                    "Seu uso do inglês é consistente e confiável. Continue praticando para dominar as nuances da fala, como entonação e ritmo.",
+                    "Ótimo trabalho com o uso do inglês! Você consegue se expressar bem em sala de aula. Continue assim!",
+                    "Você usa o inglês na maioria das vezes. Seu próximo desafio é se acostumar com diferentes sotaques e velocidades de fala.",
+                    "Seu uso do inglês é sólido. Você consegue pegar a ideia geral e muitos detalhes. Continue a praticar para aprimorar ainda mais."
+                ],
+                [
+                    "Você fala inglês quase o tempo todo, mas ainda recorre ao português de vez em quando. Continue a se desafiar para usar o inglês o tempo todo para aprimorar seu desempenho.",
+                    "Sua habilidade de usar o inglês é ótima. Você raramente recorre ao português, o que mostra seu comprometimento e dedicação com o aprendizado.",
+                    "Você usa o inglês com confiança e poucas vezes usa o português. Isso mostra seu comprometimento e dedicação com o aprendizado.",
+                    "Você tem uma ótima habilidade de usar o inglês. Você consegue se expressar de forma clara e seguir o ritmo de uma conversa fluida. Parabéns!",
+                    "Seu uso do inglês é um de seus pontos fortes. Você já se expressa com confiança e consegue se comunicar sobre a maioria dos temas.",
+                    "Excelente trabalho com o uso do inglês. Você consegue se expressar com grande precisão e confiança. Continue assim!",
+                    "Seu uso do inglês é impressionante. Você se comunica bem e consegue se expressar com grande fluência. Continue assim!",
+                    "Sua habilidade de usar o inglês é muito boa. Você consegue se expressar com grande confiança e precisão. Parabéns!",
+                    "Você demonstra uma habilidade de usar o inglês de alto nível. Você consegue se expressar com clareza e sem grandes dificuldades. Continue praticando para manter esse nível.",
+                    "Seu uso do inglês está em um nível muito bom. Você já consegue se expressar de forma fluida e com poucos erros. Continue o bom trabalho!"
+                ],
+                [
+                    "Você usa o inglês o tempo todo em sala de aula, o que é o ideal para o seu progresso. Sua imersão total no idioma é um exemplo para todos.",
+                    "Seu uso do inglês é impecável. Você se comunica com fluência e naturalidade, como um falante nativo. Parabéns!",
+                    "Você tem um domínio impressionante do inglês. Sua capacidade de se comunicar é notável e se reflete em sua proficiência.",
+                    "Sua habilidade de usar o inglês é excelente. Você se expressa com grande precisão e confiança, mesmo em situações desafiadoras.",
+                    "Você demonstra uma fluência perfeita. Continue assim, e você será um mestre do inglês.",
+                    "Seu uso do inglês é excelente. Você se expressa de forma fluida e com grande clareza. Continue assim!",
+                    "Seu nível de fluência é excelente. Você consegue se expressar com grande confiança. Continue a praticar para manter esse nível.",
+                    "Parabéns pelo seu nível de fluência. Você já fala inglês com fluência e confiança.",
+                    "Sua fluência é notável. Você se expressa com grande clareza. Continue a praticar para manter esse nível.",
+                    "Você tem um nível de fluência excepcional. Sua capacidade de falar inglês é um grande diferencial. Continue o bom trabalho!"
+                ]
+            ],
+            phoneUse: [
+                [
+                    "O uso do telefone em sala de aula é uma distração que prejudica seu aprendizado. É crucial que você se concentre nas atividades para não perder conteúdo.",
+                    "O uso do telefone está afetando sua capacidade de aprender e o ambiente de sala de aula. Precisamos conversar sobre como melhorar essa situação.",
+                    "Notei que você usa o telefone com frequência em sala. Lembre-se de que o foco é essencial para o seu aprendizado. Tente guardá-lo para a aula.",
+                    "O uso do telefone é uma área que precisamos abordar. A concentração nas atividades é fundamental para um bom ambiente de aprendizado.",
+                    "O uso do telefone em sala de aula é inconsistente. Tente se concentrar nas atividades e respeitar a todos para que você possa progredir e os outros alunos também.",
+                    "O uso do telefone é uma área que precisa de atenção. Lembre-se que seu uso afeta o ambiente de sala de aula e o aprendizado de todos. Vamos trabalhar nisso juntos.",
+                    "O uso do telefone é um problema sério. Por favor, dedique-se a se concentrar nas atividades para que você possa melhorar.",
+                    "Sua falta de compromisso com o comportamento é preocupante. Lembre-se que o uso do telefone afeta a sua nota final e o aprendizado de todos. Continue assim para que você possa melhorar.",
+                    "O uso do telefone é uma área que precisa de atenção. Lembre-se que seu uso afeta o ambiente de sala de aula e o aprendizado de todos. Vamos trabalhar nisso juntos.",
+                    "O uso do telefone em sala de aula é inconsistente. Tente se concentrar nas atividades e respeitar a todos para que você possa progredir e os outros alunos também."
+                ],
+                [
+                    "Você usa o telefone com frequência em sala, o que prejudica sua concentração. Tente se esforçar para se manter focado nas atividades e não se distrair com o telefone.",
+                    "Você está fazendo um esforço, mas ainda se distrai com o telefone. Lembre-se que seu foco em sala de aula é essencial para o seu aprendizado.",
+                    "O uso do telefone está no caminho certo. Para um progresso mais rápido, tente se concentrar nas atividades e não se distrair com o telefone.",
+                    "Você tem potencial para melhorar seu comportamento. Tente se forçar a se manter focado nas atividades e a não usar o telefone em sala de aula.",
+                    "O uso do telefone está melhorando. A chave agora é a consistência. Tente se manter focado nas atividades todos os dias, nem que seja por 5 minutos.",
+                    "Você consegue se concentrar, mas ainda se distrai com o telefone. Sugiro que você pratique a concentração com atividades variadas.",
+                    "O uso do telefone precisa ser mais consistente. Tente se concentrar nas atividades e respeitar a todos para que você possa progredir e os outros alunos também.",
+                    "Você está no caminho certo com o comportamento. O próximo passo é se concentrar mais e não se distrair com o telefone.",
+                    "Você já entende o básico, mas ainda se perde em conversas mais complexas. Sugiro que você pratique a concentração com atividades de um nível um pouco acima do seu.",
+                    "O uso do telefone está melhorando. Continue praticando e não se preocupe em ser perfeito, apenas em ser respeitoso e focado."
+                ],
+                [
+                    "O uso do telefone em sala de aula é satisfatório e você geralmente o usa apenas para atividades relevantes. Continue com essa atitude.",
+                    "Você demonstra um bom comportamento na maioria das situações. Continue a se dedicar a se concentrar e respeitar os colegas para aprimorar ainda mais.",
+                    "Sua atitude em sala de aula é satisfatória e você consegue acompanhar as atividades sem grandes problemas.",
+                    "Você se comporta bem. Continue praticando o respeito e a concentração para que você possa progredir.",
+                    "Sua atitude em sala de aula é boa e você raramente precisa de ajuda para se comportar. Continue assim!",
+                    "Você tem uma boa capacidade de se comportar e se concentrar em sala de aula. Para o próximo passo, tente usar uma variedade maior de vocabulário e estruturas.",
+                    "Seu comportamento é consistente e confiável. Continue praticando para dominar as nuances da fala, como entonação e ritmo.",
+                    "Ótimo trabalho com o comportamento! Você consegue se expressar bem em sala de aula. Continue assim!",
+                    "Você se comporta bem. Seu próximo desafio é se acostumar com diferentes sotaques e velocidades de fala.",
+                    "Seu comportamento é sólido. Você consegue pegar a ideia geral e muitos detalhes. Continue a praticar para aprimorar ainda mais."
+                ],
+                [
+                    "Você usa o telefone de forma muito consciente, somente quando necessário. Sua atenção e foco em sala de aula são notáveis e contribuem para o seu aprendizado.",
+                    "Seu uso do telefone é muito bom. Você raramente se distrai e utiliza o telefone apenas para atividades relevantes. Isso mostra seu comprometimento e dedicação.",
+                    "Você usa o telefone de forma muito consciente, somente quando necessário. Isso mostra seu comprometimento e dedicação com o aprendizado.",
+                    "Você tem uma ótima atitude. Continue com esse hábito para solidificar seu conhecimento e tirar o máximo proveito das aulas.",
+                    "Seu comprometimento com o comportamento é muito bom. Continue com esse hábito para que você possa alcançar a fluência.",
+                    "Sua atitude em sala de aula é ótima. Continue a se dedicar para que ela se torne uma prioridade.",
+                    "Seu comportamento é importante para o seu desenvolvimento. Continue a se dedicar a ele para que você possa melhorar.",
+                    "Sua atitude em sala de aula é ótima. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem se comportado de forma muito boa. Continue assim para que você possa melhorar.",
+                    "Você tem se comportado com grande cuidado e atenção. Continue assim para que você possa melhorar."
+                ],
+                [
+                    "Você não usa o telefone em sala de aula para atividades não relacionadas ao aprendizado, o que é um comportamento exemplar. Parabéns!",
+                    "O uso do telefone em sala de aula é impecável. Você é um exemplo para a turma em todos os sentidos. Continue assim!",
+                    "Sua atitude é exemplar. Você é uma pessoa respeitosa e focada, e contribui para um ótimo ambiente de aprendizado.",
+                    "Você tem um comportamento impecável. Sua atitude é um grande diferencial e contribui para um ótimo ambiente de aprendizado. Continue assim!",
+                    "Seu comportamento é excelente. Você é uma pessoa respeitosa e focada em sala de aula. Sua atitude é um exemplo para todos.",
+                    "Você tem um comportamento impecável. Continue assim para que você possa alcançar a fluência.",
+                    "Sua atitude em sala de aula é excelente. Continue a se dedicar para que ela se torne uma prioridade.",
+                    "Seu comportamento é importante para o seu desenvolvimento. Continue a se dedicar a ele para que você possa melhorar.",
+                    "Sua atitude em sala de aula é excelente. Continue a se esforçar para que você possa melhorar.",
+                    "Você tem se comportado de forma excelente. Continue assim para que você possa melhorar.",
+                    "Você tem se comportado com grande cuidado e atenção. Continue assim para que você possa melhorar."
+                ]
+            ]
+        };
+
+        const categories = {
+            vocabulary: "Vocabulário",
+            grammar: "Gramática",
+            listening: "Compreensão Auditiva",
+            reading: "Leitura",
+            speaking: "Conversação",
+            homework: "Tarefa de Casa",
+            attendance: "Frequência",
+            behavior: "Comportamento",
+            languageUse: "Uso de Inglês",
+            phoneUse: "Uso de Telefone"
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const slidersContainer = document.getElementById('sliders-container');
+            const reportCardText = document.getElementById('reportCardText');
+            const studentNameInput = document.getElementById('studentName');
+            const copyButton = document.getElementById('copyButton');
+            const historyContainer = document.getElementById('historyContainer');
+            const themeToggle = document.getElementById('themeToggle');
+            const allSliders = {};
+
+            function generateSliders() {
+                for (const key in categories) {
+                    const sliderGroup = document.createElement('div');
+                    sliderGroup.classList.add('slider-group');
+
+                    const label = document.createElement('label');
+                    label.setAttribute('for', key);
+                    label.textContent = categories[key];
+
+                    const slider = document.createElement('input');
+                    slider.type = 'range';
+                    slider.id = key;
+                    slider.min = 1;
+                    slider.max = 5;
+                    slider.value = 3;
+                    slider.step = 1;
+
+                    allSliders[key] = slider;
+
+                    sliderGroup.appendChild(label);
+                    sliderGroup.appendChild(slider);
+                    slidersContainer.appendChild(sliderGroup);
+                }
+            }
+
+            function generateReportCard() {
+                const studentName = studentNameInput.value.trim();
+                let reportText = "";
+
+                if (studentName) {
+                    reportText += `Boletim de Desempenho de ${studentName}\n\n`;
+                } else {
+                    reportText += "Boletim de Desempenho do Aluno\n\n";
+                }
+
+                for (const key in allSliders) {
+                    const sliderValue = parseInt(allSliders[key].value, 10);
+                    const categoryName = categories[key];
+                    const randomIndex = Math.floor(Math.random() * commentsData[key][sliderValue - 1].length);
+                    const comment = commentsData[key][sliderValue - 1][randomIndex];
+                    reportText += `**${categoryName}:** ${comment}\n\n`;
+                }
+
+                reportCardText.value = reportText.trim();
+                reportCardText.removeAttribute('readonly');
+            }
+
+            function copyAndGenerateNewReportCard() {
+                const textToCopy = reportCardText.value;
+                if (!textToCopy) return;
+
+                // Create a new history item
+                const historyItem = document.createElement('div');
+                historyItem.classList.add('history-item');
+                historyItem.textContent = textToCopy;
+                
+                const historyTitle = historyContainer.querySelector('h2');
+                historyContainer.insertBefore(historyItem, historyTitle.nextSibling);
+
+                // Copy to clipboard
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    copyButton.textContent = 'Copiado!';
+                    setTimeout(() => {
+                        copyButton.textContent = 'Copiar e Gerar Novo Boletim';
+                        generateReportCard();
+                    }, 1000);
+                }).catch(err => {
+                    console.error('Falha ao copiar:', err);
+                    copyButton.textContent = 'Erro ao Copiar!';
+                    setTimeout(() => {
+                        copyButton.textContent = 'Copiar e Gerar Novo Boletim';
+                    }, 1000);
+                });
+            }
+
+            function toggleDarkMode() {
+                document.body.classList.toggle('dark-mode');
+                const isDarkMode = document.body.classList.contains('dark-mode');
+                themeToggle.textContent = isDarkMode ? '🌙' : '☀️';
+                localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
+            }
+            
+            // Check for saved theme preference
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = '🌙';
+            } else {
+                themeToggle.textContent = '☀️';
+            }
+
+            generateSliders();
+
+            studentNameInput.addEventListener('input', generateReportCard);
+            for (const key in allSliders) {
+                allSliders[key].addEventListener('input', generateReportCard);
+            }
+
+            copyButton.addEventListener('click', copyAndGenerateNewReportCard);
+            themeToggle.addEventListener('click', toggleDarkMode);
+
+            // Initial generation
+            generateReportCard();
+        });
+    </script>
+</body>
+</html>

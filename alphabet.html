@@ -4,215 +4,427 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alphabet Countdown Chaos</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js CDN for audio generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <!-- Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* Apply Inter font to the whole body */
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f4;
-            transition: background-color 0.5s;
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom keyframes for the flashing red animation on low time */
+        @keyframes flash-red {
+            0% { background-color: #fca5a5; } /* Tailwind red-300 */
+            50% { background-color: #fef2f2; } /* Tailwind red-50 */
+            100% { background-color: #fca5a5; }
+        }
+        /* Class to apply the flashing animation */
+        .animate-flash-red {
+            animation: flash-red 0.5s infinite;
+        }
+        /* Hide scrollbar for better aesthetic on grid container if it overflows */
+        #game-container::-webkit-scrollbar {
+            display: none;
         }
         #game-container {
-            margin-top: 20px;
-        }
-        .letter-btn {
-            padding: 10px;
-            margin: 5px;
-            font-size: 20px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        .letter-btn:disabled {
-            background-color: gray;
-            cursor: not-allowed;
-        }
-        .unused-letter {
-            background-color: red !important;
-            color: white;
-        }
-        #timer {
-            font-size: 24px;
-            margin-top: 20px;
-        }
-        #message {
-            font-size: 30px;
-            font-weight: bold;
-            margin-top: 20px;
-        }
-        #reset-btn {
-            padding: 10px;
-            font-size: 20px;
-            margin-top: 20px;
-            cursor: pointer;
-            background-color: #ff5722;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        #score {
-            font-size: 24px;
-            margin-top: 20px;
-        }
-        #progress-bar-container {
-            width: 300px;
-            height: 20px;
-            background-color: #ddd;
-            margin: 20px auto;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        #progress-bar {
-            width: 100%;
-            height: 100%;
-            background-color: green;
-            transition: width 1s linear;
-        }
-        @keyframes flash {
-            0% { background-color: red; }
-            50% { background-color: white; }
-            100% { background-color: red; }
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
         }
     </style>
 </head>
-<body>
-    <h1>Alphabet Countdown Chaos</h1>
-    <button onclick="setDifficulty('easy')">Easy Mode</button>
-    <button onclick="setDifficulty('hard')">Hard Mode</button>
-    <div id="game-container"></div>
-    <div id="progress-bar-container">
-        <div id="progress-bar"></div>
-    </div>
-    <div id="timer">Time Left: 20s</div>
-    <div id="score">Score: 0</div>
-    <div id="message"></div>
-    <button id="reset-btn" onclick="resetGame()">Reset Game</button>
+<!--
+    The body is styled with Tailwind classes:
+    - bg-gray-900: Dark background
+    - text-white: White text color
+    - flex flex-col items-center justify-center: Centers content vertically and horizontally
+    - min-h-screen: Ensures body takes at least full viewport height
+    - p-4: Padding on all sides
+-->
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+    <!-- Game Title -->
+    <h1 class="text-5xl font-bold mb-8 text-indigo-400">Alphabet Countdown Chaos</h1>
 
-    <audio id="click-sound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
-    <audio id="win-sound" src="https://www.soundjay.com/misc/small-bell-ring-01.wav"></audio>
-    <audio id="lose-sound" src="https://www.soundjay.com/button/beep-10.wav"></audio>
-    <audio id="tick-sound" src="https://www.soundjay.com/button/beep-09.wav"></audio>
+    <!-- Difficulty Selection Buttons -->
+    <div class="flex space-x-4 mb-8">
+        <!-- Easy Mode Button -->
+        <button id="easy-btn" onclick="setDifficulty('easy')"
+                class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg
+                       transform transition duration-300 hover:scale-105 active:scale-95
+                       focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
+                aria-label="Set difficulty to easy">
+            Easy Mode
+        </button>
+        <!-- Hard Mode Button -->
+        <button id="hard-btn" onclick="setDifficulty('hard')"
+                class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg
+                       transform transition duration-300 hover:scale-105 active:scale-95
+                       focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75"
+                aria-label="Set difficulty to hard">
+            Hard Mode
+        </button>
+    </div>
+
+    <!-- Game Container for Letter Buttons -->
+    <!--
+        Uses a responsive grid layout:
+        - grid-cols-6: 6 columns on small screens
+        - md:grid-cols-9: 9 columns on medium screens
+        - lg:grid-cols-13: 13 columns on large screens
+        - gap-3: Spacing between grid items
+        - p-6: Padding inside the container
+        - bg-gray-800, rounded-xl, shadow-2xl: Styling for the container itself
+        - w-full max-w-4xl: Responsive width
+    -->
+    <div id="game-container" class="grid grid-cols-6 md:grid-cols-9 lg:grid-cols-13 gap-3 p-6 bg-gray-800 rounded-xl shadow-2xl mb-8 w-full max-w-4xl">
+        <!-- Letter buttons will be dynamically injected here by JavaScript -->
+    </div>
+
+    <!-- Progress Bar Container -->
+    <div id="progress-bar-container" class="w-full max-w-lg bg-gray-700 rounded-full h-4 mb-4 overflow-hidden shadow-inner">
+        <!-- Progress Bar (width controlled by JS, color by JS as well) -->
+        <div id="progress-bar" class="h-full rounded-full transition-all duration-1000 ease-linear"></div>
+    </div>
+
+    <!-- Timer and Score Display -->
+    <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8 mb-8">
+        <div id="timer" class="text-3xl font-semibold text-yellow-400">Time Left: 20s</div>
+        <div id="score" class="text-3xl font-semibold text-blue-400">Score: 0</div>
+    </div>
+
+    <!-- Message Display (e.g., "YOU WIN!" or "GAME OVER!") -->
+    <div id="message" class="text-4xl font-extrabold text-purple-400 mb-8 min-h-[4rem] flex items-center justify-center"></div>
+
+    <!-- Game Control Buttons (Pause/Resume, Reset, Play Again) -->
+    <div class="flex space-x-4 mb-8">
+        <button id="pause-btn" onclick="togglePause()"
+                class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-lg
+                       transform transition duration-300 hover:scale-105 active:scale-95
+                       focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"
+                aria-label="Pause/Resume game">
+            Pause
+        </button>
+        <button id="reset-btn" onclick="resetGame()"
+                class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg shadow-lg
+                       transform transition duration-300 hover:scale-105 active:scale-95
+                       focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75"
+                aria-label="Reset game">
+            Reset Game
+        </button>
+        <button id="play-again-btn" onclick="resetGame()"
+                class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg hidden
+                       transform transition duration-300 hover:scale-105 active:scale-95
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
+                aria-label="Play again">
+            Play Again
+        </button>
+    </div>
 
     <script>
+        // Game configuration and state variables
         const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        let timeLeft;
-        let timerInterval;
-        let usedLetters = new Set();
-        let score = 0;
-        let difficulty = 'easy';
+        let timeLeft; // Remaining time
+        let timerInterval; // Stores the interval ID for the countdown timer
+        let usedLetters = new Set(); // Stores letters already clicked
+        let score = 0; // Player's current score
+        let difficulty = 'easy'; // Current difficulty level ('easy' or 'hard')
+        let initialGameTime; // Stores the initial time for the current round, used for progress bar calculation
+        let gameStarted = false; // Flag to track if the game has started (first letter clicked)
+        let isPaused = false; // Flag to track if the game is paused
+        let audioContextStarted = false; // Flag to track if Tone.js audio context has been started
 
-        function startTimer() {
-            clearInterval(timerInterval); // Reset timer
-            timeLeft = difficulty === 'hard' ? 10 : 20;
-            document.getElementById('timer').innerText = `Time Left: ${timeLeft}s`;
-            document.body.style.animation = "none"; // Reset animation
-            updateProgressBar();
+        // Tone.js Synths for various game sounds
+        let clickSynth, winSynth, loseSynth, tickSynth;
 
+        // Get references to DOM elements for easier access and manipulation
+        const timerDisplay = document.getElementById('timer');
+        const scoreDisplay = document.getElementById('score');
+        const messageDisplay = document.getElementById('message');
+        const progressBar = document.getElementById('progress-bar');
+        const pauseButton = document.getElementById('pause-btn');
+        const playAgainButton = document.getElementById('play-again-btn');
+        const easyButton = document.getElementById('easy-btn');
+        const hardButton = document.getElementById('hard-btn');
+
+        /**
+         * Initializes Tone.js synths. This function is called after the audio context
+         * has been started by a user gesture.
+         */
+        function initializeAudio() {
+            if (clickSynth) return; // Prevent re-initialization
+
+            // Basic synthesizer for click sounds
+            clickSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.1 }
+            }).toDestination();
+
+            // PolySynth for win sounds (chord)
+            winSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sawtooth" },
+                envelope: { attack: 0.05, decay: 0.2, sustain: 0.1, release: 0.3 }
+            }).toDestination();
+
+            // PolySynth for lose sounds (descending chord)
+            loseSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.05, release: 0.2 }
+            }).toDestination();
+
+            // Simple synth for tick sounds
+            tickSynth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 }
+            }).toDestination();
+        }
+
+        /**
+         * Starts or resumes the countdown timer.
+         */
+        function startCountdown() {
+            clearInterval(timerInterval); // Clear any existing timer to prevent multiple timers running
+            isPaused = false; // Ensure game is not in a paused state
+            pauseButton.innerText = "Pause"; // Update pause button text
+            pauseButton.disabled = false; // Enable pause button
+
+            // Set up a new interval to decrement time every second
             timerInterval = setInterval(() => {
                 timeLeft--;
-                document.getElementById('timer').innerText = `Time Left: ${timeLeft}s`;
-                updateProgressBar();
+                timerDisplay.innerText = `Time Left: ${timeLeft}s`;
+                updateProgressBar(); // Update progress bar visually
 
-                if (timeLeft <= 5) {
-                    document.body.style.animation = "flash 0.5s infinite";
-                    document.getElementById('tick-sound').play();
+                // If time is low (5 seconds or less), start flashing background and play tick sound
+                if (timeLeft <= 5 && timeLeft > 0 && !isPaused) { // Only play tick if not paused
+                    document.body.classList.add('animate-flash-red');
+                    if (tickSynth) tickSynth.triggerAttackRelease("C3", "32n");
+                } else if (timeLeft <= 0 || timeLeft > 5) {
+                    // Stop flashing if time runs out or is no longer low
+                    document.body.classList.remove('animate-flash-red');
                 }
 
+                // Game Over condition
                 if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    document.body.style.animation = "none"; // Stop flashing
-                    document.getElementById('message').innerText = "GAME OVER!";
-                    highlightUnusedLetters();
-                    disableAllButtons();
-                    document.getElementById('lose-sound').play();
+                    clearInterval(timerInterval); // Stop the timer
+                    document.body.classList.remove('animate-flash-red'); // Ensure flashing stops
+                    messageDisplay.innerText = "GAME OVER! Final Score: " + score;
+                    playAgainButton.classList.remove('hidden'); // Show play again button
+                    highlightUnusedLetters(); // Highlight letters that weren't clicked
+                    disableAllButtons(); // Disable all interaction
+                    pauseButton.disabled = true; // Disable pause button
+                    gameStarted = false; // Reset game started flag
+                    if (loseSynth) loseSynth.triggerAttackRelease(["C3", "G#2"], "0.5"); // Play a lose chord
                 }
-            }, 1000);
+            }, 1000); // 1000 milliseconds = 1 second
         }
 
+        /**
+         * Toggles the pause state of the game.
+         */
+        function togglePause() {
+            if (!gameStarted) return; // Cannot pause if game hasn't started
+
+            if (isPaused) {
+                // If paused, resume the game
+                isPaused = false;
+                pauseButton.innerText = "Pause";
+                startCountdown(); // Resume countdown from current timeLeft
+            } else {
+                // If running, pause the game
+                isPaused = true;
+                pauseButton.innerText = "Resume";
+                clearInterval(timerInterval); // Stop the timer
+                document.body.classList.remove('animate-flash-red'); // Stop flashing while paused
+            }
+        }
+
+        /**
+         * Updates the visual progress bar based on `timeLeft`.
+         * Also changes the progress bar color from green to yellow to red as time depletes.
+         */
         function updateProgressBar() {
-            const progressBar = document.getElementById('progress-bar');
-            progressBar.style.width = `${(timeLeft / (difficulty === 'hard' ? 10 : 20)) * 100}%`;
+            const progress = (timeLeft / initialGameTime) * 100; // Calculate percentage of time left
+            progressBar.style.width = `${progress}%`; // Set width of the progress bar
+
+            // Dynamically change progress bar color based on remaining time percentage
+            progressBar.classList.remove('from-green-400', 'to-emerald-500', 'from-yellow-400', 'to-orange-500', 'from-red-400', 'to-rose-500'); // Clear existing gradient classes
+
+            if (progress > 60) {
+                progressBar.classList.add('bg-gradient-to-r', 'from-green-400', 'to-emerald-500'); // Green gradient for high time
+            } else if (progress > 30) {
+                progressBar.classList.add('bg-gradient-to-r', 'from-yellow-400', 'to-orange-500'); // Yellow/orange gradient for medium time
+            } else {
+                progressBar.classList.add('bg-gradient-to-r', 'from-red-400', 'to-rose-500'); // Red gradient for low time
+            }
         }
 
+        /**
+         * Disables all letter buttons to prevent further interaction.
+         */
         function disableAllButtons() {
             document.querySelectorAll('.letter-btn').forEach(btn => btn.disabled = true);
         }
 
+        /**
+         * Highlights letters that were not clicked by adding a distinct style.
+         */
         function highlightUnusedLetters() {
             document.querySelectorAll('.letter-btn').forEach(btn => {
                 if (!usedLetters.has(btn.innerText)) {
-                    btn.classList.add('unused-letter');
+                    // Apply Tailwind classes for a red background, white text, and full opacity
+                    btn.classList.add('bg-red-500', 'text-white', '!opacity-100');
+                    // Remove previous styling classes to ensure new styling is visible
+                    btn.classList.remove('bg-gray-700', 'hover:bg-indigo-600');
                 }
             });
         }
 
+        /**
+         * Handles a letter button click or key press.
+         * @param {string} letter - The letter that was clicked/pressed.
+         * @param {HTMLButtonElement} button - The actual button element that was interacted with.
+         */
         function handleLetterClick(letter, button) {
-            if (!usedLetters.has(letter)) {
-                usedLetters.add(letter);
-                button.disabled = true;
-                button.style.backgroundColor = 'gray';
-                document.getElementById('click-sound').play();
-                
-                score += timeLeft; // Score is based on remaining time
-                document.getElementById('score').innerText = `Score: ${score}`;
-                
-                startTimer(); // Reset timer every time a letter is clicked
-                checkWinCondition();
+            // Only process if the letter hasn't been used yet and game is not paused
+            if (!usedLetters.has(letter) && !isPaused) {
+                if (!audioContextStarted) {
+                    Tone.start(); // Start Tone.js audio context on first user interaction
+                    initializeAudio(); // Initialize synths after context starts
+                    audioContextStarted = true;
+                }
+
+                if (!gameStarted) {
+                    gameStarted = true; // Mark game as started
+                    startCountdown(); // Start the timer on first letter click
+                    pauseButton.disabled = false; // Enable pause button
+                }
+
+                usedLetters.add(letter); // Add letter to the set of used letters
+                button.disabled = true; // Disable the button
+                // Apply styling for a disabled/used button
+                button.classList.add('bg-gray-700', 'text-gray-400', 'cursor-not-allowed', 'opacity-70');
+                button.classList.remove('bg-indigo-700', 'hover:bg-indigo-600', 'shadow-md'); // Remove active styling
+                if (clickSynth) clickSynth.triggerAttackRelease("C5", "16n"); // Play click sound
+
+                score += timeLeft; // Add remaining time to the score
+                scoreDisplay.innerText = `Score: ${score}`; // Update score display
+
+                // Reset time for the next letter, only if game is still active
+                if (usedLetters.size < alphabet.length && gameStarted) {
+                    timeLeft = initialGameTime; // Reset time for the next letter
+                    startCountdown(); // Restart the countdown with new time
+                }
+
+                checkWinCondition(); // Check if all letters have been clicked
             }
         }
 
+        /**
+         * Checks if the player has won the game (all letters clicked).
+         */
         function checkWinCondition() {
             if (usedLetters.size === alphabet.length) {
-                clearInterval(timerInterval);
-                document.body.style.animation = "none"; // Stop flashing
-                document.getElementById('message').innerText = "YOU WIN!";
-                document.getElementById('win-sound').play();
+                clearInterval(timerInterval); // Stop the timer
+                document.body.classList.remove('animate-flash-red'); // Stop flashing
+                messageDisplay.innerText = `YOU WIN! Final Score: ${score}`;
+                playAgainButton.classList.remove('hidden'); // Show play again button
+                disableAllButtons(); // Disable all interaction
+                pauseButton.disabled = true; // Disable pause button
+                gameStarted = false; // Reset game started flag
+                if (winSynth) winSynth.triggerAttackRelease(["C4", "E4", "G4"], "1"); // Play a win chord
             }
         }
 
+        /**
+         * Resets the game to its initial state.
+         */
         function resetGame() {
-            usedLetters.clear();
-            document.getElementById('message').innerText = "";
-            document.getElementById('game-container').innerHTML = "";
-            createButtons();
-            clearInterval(timerInterval);
-            timeLeft = difficulty === 'hard' ? 10 : 20;
-            document.getElementById('timer').innerText = `Time Left: ${timeLeft}s`;
-            document.getElementById('score').innerText = "Score: 0";
-            score = 0;
-            document.body.style.animation = "none";
-            updateProgressBar();
+            usedLetters.clear(); // Clear all used letters
+            messageDisplay.innerText = ""; // Clear any previous messages
+            playAgainButton.classList.add('hidden'); // Hide play again button
+            document.getElementById('game-container').innerHTML = ""; // Clear existing letter buttons
+            createButtons(); // Re-create all letter buttons
+            clearInterval(timerInterval); // Clear the timer
+            isPaused = false; // Ensure game is not paused
+            pauseButton.innerText = "Pause"; // Reset pause button text
+            pauseButton.disabled = true; // Disable pause button initially
+
+            // Reset time based on current difficulty
+            initialGameTime = difficulty === 'hard' ? 10 : 20;
+            timeLeft = initialGameTime;
+            timerDisplay.innerText = `Time Left: ${timeLeft}s`; // Display initial time
+            scoreDisplay.innerText = "Score: 0";
+            score = 0; // Reset score
+            document.body.classList.remove('animate-flash-red'); // Remove flashing animation
+            updateProgressBar(); // Reset progress bar visual
+            gameStarted = false; // Game hasn't started yet
+            timerDisplay.innerText = "Click a letter to start!"; // Prompt user to start
         }
 
+        /**
+         * Dynamically creates and appends letter buttons to the game container.
+         */
         function createButtons() {
             const container = document.getElementById('game-container');
-            container.innerHTML = "";
+            container.innerHTML = ""; // Clear existing buttons before re-creating
             alphabet.forEach(letter => {
                 const button = document.createElement('button');
                 button.innerText = letter;
-                button.classList.add('letter-btn');
+                // Apply modern Tailwind styling to the letter buttons
+                button.classList.add(
+                    'letter-btn',
+                    'px-4', 'py-2', 'md:px-5', 'md:py-3', 'text-2xl', 'font-bold',
+                    'bg-indigo-700', 'text-white', 'rounded-lg', 'shadow-md',
+                    'transform', 'transition', 'duration-200', 'hover:scale-105', 'active:scale-95',
+                    'focus:outline-none', 'focus:ring-2', 'focus:ring-indigo-500', 'focus:ring-opacity-75'
+                );
+                // Assign click handler
                 button.onclick = () => handleLetterClick(letter, button);
+                // Add aria-label for accessibility
+                button.setAttribute('aria-label', `Click to select letter ${letter}`);
                 container.appendChild(button);
             });
         }
 
+        /**
+         * Sets the game difficulty and resets the game.
+         * @param {string} level - The difficulty level ('easy' or 'hard').
+         */
         function setDifficulty(level) {
             difficulty = level;
-            resetGame();
+            // Highlight the active difficulty button
+            easyButton.classList.remove('bg-green-700');
+            hardButton.classList.remove('bg-red-700');
+            if (level === 'easy') {
+                easyButton.classList.add('bg-green-700');
+            } else {
+                hardButton.classList.add('bg-red-700');
+            }
+            resetGame(); // Reset the game to apply the new difficulty
         }
 
+        /**
+         * Event listener for keyboard presses, allowing users to type letters.
+         */
         document.addEventListener('keydown', (event) => {
-            const letter = event.key.toUpperCase();
-            if (alphabet.includes(letter)) {
+            const letter = event.key.toUpperCase(); // Convert key to uppercase
+            // Check if the pressed key is an alphabet letter and game is not paused
+            if (alphabet.includes(letter) && !isPaused) {
+                // Find the corresponding button element
                 const button = [...document.querySelectorAll('.letter-btn')].find(btn => btn.innerText === letter);
+                // If button exists and is not disabled, simulate a click
                 if (button && !button.disabled) {
                     handleLetterClick(letter, button);
                 }
             }
         });
 
-        window.onload = resetGame; // Ensure game starts correctly
+        // Initialize the game when the window loads
+        window.onload = () => {
+            setDifficulty('easy'); // Set initial difficulty to easy
+            resetGame(); // Perform initial game reset
+        };
     </script>
 </body>
 </html>

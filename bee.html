@@ -303,7 +303,7 @@
                 </div>
                 <div class="flex flex-col items-center">
                     <span class="text-5xl font-extrabold text-orange-400">
-                         <svg class="w-16 h-16 text-orange-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6.92 14.88c.4.38.93.59 1.48.59.55 0 1.08-.21 1.48-.59l1.41-1.35c.42-.4.98-.63 1.58-.63.6 0 1.16.23 1.58.63l1.41 1.35c.4.38.93.59 1.48.59.55 0 1.08-.21 1.48-.59.88-.84 1.35-1.95 1.35-3.15 0-1.2-.47-2.31-1.35-3.15l-1.41-1.35c-.42-.4-.98-.63-1.58-.63-.6 0-1.16.23-1.58.63L10 8.16l-1.41-1.35c-.42-.4-.98-.63-1.58-.63-.6 0-1.16.23-1.58.63L5.27 8.16c-.88.84-1.35 1.95-1.35 3.15 0 1.2.47 2.31 1.35 3.15l1.41 1.35z"/></svg>
+                         <svg class="w-16 h-16 text-orange-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6.92 14.88c.4.38.93.59 1.48.59.55 0 1.08-.21 1.48-.59l1.41-1.35c.42-.4.98-.63 1.58-.63.6 0 1.16.23 1.58.63l1.41 1.35c.4.38.93.59 1.48.59.55 0 1.08-.21 1.48-.59.88-.84 1.35-1.95 1.35-3.15 0-1.2-.47-2.31-1.35-3.15l-1.41-1.35c-.42-.4-.98-.63-1.58-.63-.6 0-1.16.23-1.58.63L5.27 8.16c-.88.84-1.35 1.95-1.35 3.15 0 1.2.47 2.31 1.35 3.15l1.41 1.35z"/></svg>
                     </span>
                     <p id="bronze-medal" class="text-2xl font-semibold mt-2"></p>
                     <p class="text-lg text-gray-400">Bronze Medal</p>
@@ -769,7 +769,6 @@
             while(gameState.wordsUsed.has(word)) {
                 word = wordsForLevel[Math.floor(Math.random() * wordsForLevel.length)];
             }
-            gameState.wordsUsed.add(word);
             gameState.qualifyingWord = word.toLowerCase();
             
             elements.qualifyingPlayerName.textContent = `It's ${currentPlayer.name}'s turn! (Word ${wordNumber})`;
@@ -927,6 +926,8 @@
             const player1 = gameState.players[gameState.nextMatchupIndex];
             const player2 = gameState.players[gameState.nextMatchupIndex + 1];
 
+            gameState.currentWordLevelIndex = 0;
+
             // Select a random word for the first player to determine length
             let wordsForLevel = WORD_MAP[WORD_LEVELS[gameState.currentWordLevelIndex]];
             let word1 = wordsForLevel[Math.floor(Math.random() * wordsForLevel.length)];
@@ -1065,25 +1066,19 @@
                 winner = player2;
                 loser = player1;
             } else if (p1IsCorrect && p2IsCorrect) {
-                // Both are correct
-                if (result1.backspace !== result2.backspace) {
-                    // Tie-breaker 1: Fewer backspaces wins
-                    winner = result1.backspace < result2.backspace ? player1 : player2;
-                    loser = winner === player1 ? player2 : player1;
-                    tiebreakReason = 'Winner by fewer backspaces!';
-                } else if (Math.abs(result1.time - result2.time) >= 10000) {
-                    // Tie-breaker 2: 10-second minimum time difference
-                    winner = result1.time < result2.time ? player1 : player2;
-                    loser = winner === player1 ? player2 : player1;
-                    tiebreakReason = `Winner by faster time (${formatTime(Math.abs(result1.time - result2.time))} difference)!`;
-                } else if (gameState.currentWordLevelIndex < gameState.maxWordLevelIndex) {
-                    // Tie-breaker 3: Advance to next higher difficulty word
+                if (gameState.currentWordLevelIndex < gameState.maxWordLevelIndex) {
+                    // Advance to next higher difficulty word
                     gameState.currentWordLevelIndex++;
                     
                     // Same-length word logic for the tie-breaker round
                     const wordsForLevel = WORD_MAP[WORD_LEVELS[gameState.currentWordLevelIndex]];
-                    let newWord1 = wordsForLevel.find(w => !gameState.wordsUsed.has(w));
-                    if (!newWord1) newWord1 = wordsForLevel[0];
+                    let availableWords = wordsForLevel.filter(w => !gameState.wordsUsed.has(w));
+                    if (availableWords.length === 0) {
+                        // If all words at this level are used, reset the used words for this level only
+                        availableWords = wordsForLevel;
+                    }
+                    
+                    let newWord1 = availableWords[Math.floor(Math.random() * availableWords.length)];
                     gameState.wordsUsed.add(newWord1);
                     
                     const wordsOfSameLength = wordsForLevel.filter(word => word.length === newWord1.length && !gameState.wordsUsed.has(word));
@@ -1112,17 +1107,43 @@
                     clearInterval(gameState.stopwatch);
                     gameState.stopwatchStarted = false;
                     gameState.backspaceCount = 0;
-                    gameState.startTime = 0;
-                    elements.stopwatchDisplay.textContent = '00:00:00';
-                    elements.backspaceCountDisplay.textContent = '0';
-                    elements.mcWord.classList.add('hidden');
-                    elements.toggleWordButton.textContent = 'Show Word';
-                    return; // Exit the function to start the new round
+                    updateStopwatch();
+                    
+                    return;
                 } else {
-                    // Final Tie-breaker: Same difficulty, fastest time wins
-                    winner = result1.time < result2.time ? player1 : player2;
-                    loser = winner === player1 ? player2 : player1;
-                    tiebreakReason = 'Winner by fastest time!';
+                    const p1Distance = gameState.currentDuel.history[0].levenshteinDistance;
+                    const p2Distance = gameState.currentDuel.history[1].levenshteinDistance;
+                    const p1Backspaces = gameState.currentDuel.history[0].backspaceCount;
+                    const p2Backspaces = gameState.currentDuel.history[1].backspaceCount;
+                    const p1Time = gameState.currentDuel.history[0].timeMs;
+                    const p2Time = gameState.currentDuel.history[1].timeMs;
+                    
+                    // First tie-breaker: Levenshtein distance (lower is better)
+                    if (p1Distance < p2Distance) {
+                        winner = player1;
+                        loser = player2;
+                    } else if (p2Distance < p1Distance) {
+                        winner = player2;
+                        loser = player1;
+                    } else {
+                        // Second tie-breaker: backspaces (lower is better)
+                        if (p1Backspaces < p2Backspaces) {
+                            winner = player1;
+                            loser = player2;
+                        } else if (p2Backspaces < p1Backspaces) {
+                            winner = player2;
+                            loser = player1;
+                        } else {
+                            // Third tie-breaker: time (faster is better)
+                            if (p1Time < p2Time) {
+                                winner = player1;
+                                loser = player2;
+                            } else {
+                                winner = player2;
+                                loser = player1;
+                            }
+                        }
+                    }
                 }
             } else {
                 // Both are incorrect
@@ -1251,11 +1272,9 @@
             elements.roundTitle.textContent = `Round ${gameState.roundNumber}`;
             gameState.nextMatchupIndex = 0;
             
-            if (gameState.currentWordLevelIndex < gameState.maxWordLevelIndex) {
-                 gameState.currentWordLevelIndex++;
-            }
             
             shuffleArray(gameState.players);
+
             startNextDuel();
         }
 
@@ -1312,86 +1331,85 @@
         // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
             renderPlayerInputs();
-        });
+            
+            elements.playerCountInput.addEventListener('change', renderPlayerInputs);
+            elements.startButton.addEventListener('click', setupGame);
+            
+            elements.spellingInput.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    checkSpelling();
+                }
+            });
 
-        elements.playerCountInput.addEventListener('change', renderPlayerInputs);
-        elements.startButton.addEventListener('click', setupGame);
-        
-        elements.spellingInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                checkSpelling();
-            }
-        });
+            elements.qualifyingSpellingInput.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    submitQualifyingSpelling();
+                }
+            });
 
-        elements.qualifyingSpellingInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                submitQualifyingSpelling();
-            }
-        });
+            elements.submitButton.addEventListener('click', checkSpelling);
+            elements.qualifyingSubmitButton.addEventListener('click', submitQualifyingSpelling);
+            elements.startBracketButton.addEventListener('click', startGame);
 
-        elements.submitButton.addEventListener('click', checkSpelling);
-        elements.qualifyingSubmitButton.addEventListener('click', submitQualifyingSpelling);
-        elements.startBracketButton.addEventListener('click', startGame);
+            elements.nextDuelButton.addEventListener('click', continueTournament);
+            elements.playAgainButton.addEventListener('click', resetGame);
+            
+            elements.spellingInput.addEventListener('keydown', (event) => {
+                if (!gameState.stopwatchStarted) {
+                    gameState.stopwatchStarted = true;
+                    gameState.startTime = Date.now();
+                    gameState.stopwatch = setInterval(() => {
+                        const elapsed = Date.now() - gameState.startTime;
+                        elements.stopwatchDisplay.textContent = formatTime(elapsed);
+                    }, 1);
+                }
+                if (event.key === 'Backspace' || event.key === 'Delete') {
+                    gameState.backspaceCount++;
+                    elements.backspaceCountDisplay.textContent = gameState.backspaceCount;
+                }
+            });
 
-        elements.nextDuelButton.addEventListener('click', continueTournament);
-        elements.playAgainButton.addEventListener('click', resetGame);
-        
-        elements.spellingInput.addEventListener('keydown', (event) => {
-            if (!gameState.stopwatchStarted) {
-                gameState.stopwatchStarted = true;
-                gameState.startTime = Date.now();
-                gameState.stopwatch = setInterval(() => {
-                    const elapsed = Date.now() - gameState.startTime;
-                    elements.stopwatchDisplay.textContent = formatTime(elapsed);
-                }, 1);
-            }
-            if (event.key === 'Backspace' || event.key === 'Delete') {
-                gameState.backspaceCount++;
-                elements.backspaceCountDisplay.textContent = gameState.backspaceCount;
-            }
-        });
+            elements.qualifyingSpellingInput.addEventListener('keydown', (event) => {
+                 if (!gameState.stopwatchStarted) {
+                    gameState.stopwatchStarted = true;
+                    gameState.startTime = Date.now();
+                    gameState.stopwatch = setInterval(() => {
+                        const elapsed = Date.now() - gameState.startTime;
+                        elements.qualifyingStopwatch.textContent = formatTime(elapsed);
+                    }, 1);
+                }
+                if (event.key === 'Backspace' || event.key === 'Delete') {
+                    gameState.backspaceCount++;
+                    elements.qualifyingBackspaceCount.textContent = gameState.backspaceCount;
+                }
+            });
 
-        elements.qualifyingSpellingInput.addEventListener('keydown', (event) => {
-             if (!gameState.stopwatchStarted) {
-                gameState.stopwatchStarted = true;
-                gameState.startTime = Date.now();
-                gameState.stopwatch = setInterval(() => {
-                    const elapsed = Date.now() - gameState.startTime;
-                    elements.qualifyingStopwatch.textContent = formatTime(elapsed);
-                }, 1);
-            }
-            if (event.key === 'Backspace' || event.key === 'Delete') {
-                gameState.backspaceCount++;
-                elements.qualifyingBackspaceCount.textContent = gameState.backspaceCount;
-            }
-        });
+            elements.toggleWordButton.addEventListener('click', () => {
+                elements.mcWord.classList.toggle('hidden');
+                if (elements.mcWord.classList.contains('hidden')) {
+                    elements.toggleWordButton.textContent = 'Show Word';
+                } else {
+                    elements.toggleWordButton.textContent = 'Hide Word';
+                }
+            });
+            
+            elements.qualifyingToggleWordButton.addEventListener('click', () => {
+                elements.qualifyingMcWord.classList.toggle('hidden');
+                if (elements.qualifyingMcWord.classList.contains('hidden')) {
+                    elements.qualifyingToggleWordButton.textContent = 'Show Word';
+                } else {
+                    elements.qualifyingToggleWordButton.textContent = 'Hide Word';
+                }
+            });
 
-
-        elements.toggleWordButton.addEventListener('click', () => {
-            elements.mcWord.classList.toggle('hidden');
-            if (elements.mcWord.classList.contains('hidden')) {
-                elements.toggleWordButton.textContent = 'Show Word';
-            } else {
-                elements.toggleWordButton.textContent = 'Hide Word';
-            }
-        });
-        
-        elements.qualifyingToggleWordButton.addEventListener('click', () => {
-            elements.qualifyingMcWord.classList.toggle('hidden');
-            if (elements.qualifyingMcWord.classList.contains('hidden')) {
-                elements.qualifyingToggleWordButton.textContent = 'Show Word';
-            } else {
-                elements.qualifyingToggleWordButton.textContent = 'Hide Word';
-            }
-        });
-
-        elements.toggleTournamentLogButton.addEventListener('click', () => {
-            elements.tournamentLog.classList.toggle('hidden');
-            if (elements.tournamentLog.classList.contains('hidden')) {
-                elements.toggleTournamentLogButton.textContent = 'Show Tournament Log';
-            } else {
-                elements.toggleTournamentLogButton.textContent = 'Hide Tournament Log';
-            }
+            elements.toggleTournamentLogButton.addEventListener('click', () => {
+                elements.tournamentLog.classList.toggle('hidden');
+                if (elements.tournamentLog.classList.contains('hidden')) {
+                    elements.toggleTournamentLogButton.textContent = 'Show Tournament Log';
+                } else {
+                    elements.toggleTournamentLogButton.textContent = 'Hide Tournament Log';
+                }
+            });
         });
 
     </script>

@@ -120,10 +120,21 @@
         <!-- Step 1: Number of Students -->
         <div id="step1" class="match-card rounded-lg p-6 mb-6">
             <h2 class="text-2xl font-semibold mb-4 heading-font text-cyan-400">Initialize Tournament</h2>
-            <div class="flex items-center gap-4">
-                <label for="studentCount" class="text-gray-300">Number of competitors:</label>
-                <input type="number" id="studentCount" min="2" max="20" value="4" 
-                       class="bg-gray-800 border border-blue-500 rounded px-3 py-2 w-20 text-center text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+            <div class="space-y-4">
+                <div class="flex items-center gap-4">
+                    <label for="studentCount" class="text-gray-300">Number of competitors:</label>
+                    <input type="number" id="studentCount" min="2" max="20" value="4" 
+                           class="bg-gray-800 border border-blue-500 rounded px-3 py-2 w-20 text-center text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                </div>
+                <!-- Added tournament format selection -->
+                <div class="flex items-center gap-4">
+                    <label for="tournamentFormat" class="text-gray-300">Tournament format:</label>
+                    <select id="tournamentFormat" 
+                            class="bg-gray-800 border border-blue-500 rounded px-3 py-2 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                        <option value="single">Single Round-Robin (each pair plays once)</option>
+                        <option value="double">Double Round-Robin (each pair plays twice)</option>
+                    </select>
+                </div>
                 <button onclick="setupStudents()" 
                         class="btn-primary text-white px-6 py-3 rounded-lg font-medium">
                     Initialize System
@@ -174,6 +185,7 @@
         let currentMatchIndex = 0;
         let results = [];
         let playerLastMatch = {}; // Track when each player last played
+        let tournamentFormat = 'single';
 
         function playSound(type) {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -238,15 +250,19 @@
                 playerLastMatch[player] = -1;
             });
             
-            // Generate all possible matches
             const allMatches = [];
-            for (let i = 0; i < totalPlayers; i++) {
-                for (let j = i + 1; j < totalPlayers; j++) {
-                    allMatches.push({
-                        player1: playerList[i],
-                        player2: playerList[j],
-                        result: null
-                    });
+            const rounds = tournamentFormat === 'double' ? 2 : 1;
+            
+            for (let round = 0; round < rounds; round++) {
+                for (let i = 0; i < totalPlayers; i++) {
+                    for (let j = i + 1; j < totalPlayers; j++) {
+                        allMatches.push({
+                            player1: playerList[i],
+                            player2: playerList[j],
+                            result: null,
+                            round: round + 1
+                        });
+                    }
                 }
             }
             
@@ -289,6 +305,8 @@
         }
 
         function generateMatches() {
+            tournamentFormat = document.getElementById('tournamentFormat').value;
+            
             // Collect student names
             students = [];
             const inputs = document.querySelectorAll('#studentInputs input');
@@ -340,10 +358,11 @@
             }
 
             const match = matches[currentMatchIndex];
+            const roundText = match.round ? ` (Round ${match.round})` : '';
             matchContainer.innerHTML = `
                 <div class="cyber-border rounded-lg p-6">
                     <h3 class="text-xl font-semibold mb-6 text-center heading-font text-yellow-400">
-                        BATTLE ${currentMatchIndex + 1} OF ${matches.length}
+                        BATTLE ${currentMatchIndex + 1} OF ${matches.length}${roundText}
                     </h3>
                     <div class="flex items-center justify-center gap-6 mb-8">
                         <div class="text-center">
@@ -429,9 +448,12 @@
                 resultClass = 'text-yellow-400';
             }
             
+            const match = matches[currentMatchIndex];
+            const roundText = match && match.round ? ` (R${match.round})` : '';
+            
             matchDiv.innerHTML = `
                 <span class="${resultClass} font-semibold">${resultText}</span>
-                <span class="text-gray-400 text-sm">Battle ${currentMatchIndex + 1}</span>
+                <span class="text-gray-400 text-sm">Battle ${currentMatchIndex + 1}${roundText}</span>
             `;
             
             historyContainer.appendChild(matchDiv);
@@ -446,20 +468,37 @@
                 return a.name.localeCompare(b.name);
             });
 
+            const rankedResults = [];
+            let currentRank = 1;
+            
+            for (let i = 0; i < sortedResults.length; i++) {
+                const student = sortedResults[i];
+                
+                // If this student has different points than the previous, update rank
+                if (i > 0 && sortedResults[i-1].points !== student.points) {
+                    currentRank = i + 1;
+                }
+                
+                rankedResults.push({
+                    ...student,
+                    rank: currentRank
+                });
+            }
+
             const leaderboardContainer = document.getElementById('leaderboard');
             leaderboardContainer.innerHTML = `
                 <div class="space-y-3">
-                    ${sortedResults.map((student, index) => `
-                        <div class="leaderboard-item ${index === 0 ? 'winner-glow' : ''} rounded-lg p-4 flex justify-between items-center">
+                    ${rankedResults.map((student, index) => `
+                        <div class="leaderboard-item ${student.rank === 1 ? 'winner-glow' : ''} rounded-lg p-4 flex justify-between items-center">
                             <div class="flex items-center gap-4">
-                                <span class="font-bold text-2xl ${index === 0 ? 'text-yellow-400' : 'text-cyan-400'} neon-text">
-                                    #${index + 1}
+                                <span class="font-bold text-2xl ${student.rank === 1 ? 'text-yellow-400' : 'text-cyan-400'} neon-text">
+                                    #${student.rank}
                                 </span>
-                                <span class="font-semibold text-lg ${index === 0 ? 'text-yellow-200' : 'text-white'}">${student.name}</span>
-                                ${index === 0 ? '<span class="text-yellow-400">👑</span>' : ''}
+                                <span class="font-semibold text-lg ${student.rank === 1 ? 'text-yellow-200' : 'text-white'}">${student.name}</span>
+                                ${student.rank === 1 ? '<span class="text-yellow-400">👑</span>' : ''}
                             </div>
                             <div class="text-right">
-                                <div class="font-bold text-xl ${index === 0 ? 'text-yellow-400' : 'text-cyan-400'}">${student.points} PTS</div>
+                                <div class="font-bold text-xl ${student.rank === 1 ? 'text-yellow-400' : 'text-cyan-400'}">${student.points} PTS</div>
                                 <div class="text-sm text-gray-400">
                                     ${student.wins}W ${student.draws}D ${student.losses}L
                                 </div>

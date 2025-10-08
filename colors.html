@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COLOR MATCH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .cell {
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .cell.highlighted {
+            box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.6);
+        }
+
+        .cell.secret-revealed {
+            border: 3px solid gold;
+            box-shadow: 0 0 15px gold;
+        }
+
+        .cell.zone-3 {
+            box-shadow: inset 0 0 0 2px rgba(0, 255, 0, 0.5);
+        }
+
+        .cell.zone-2 {
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 0, 0.5);
+        }
+
+        .cell.zone-1 {
+            box-shadow: inset 0 0 0 2px rgba(255, 165, 0, 0.5);
+        }
+
+        .cell:hover {
+            opacity: 0.8;
+        }
+
+        .label-cell {
+            width: 32px;
+            height: 32px;
+            background-color: #000;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75rem;
+        }
+
+        .token {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 3px solid white;
+            position: absolute;
+            cursor: grab;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.7rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .token:active {
+            cursor: grabbing;
+        }
+
+        .token.placed {
+            cursor: pointer;
+        }
+
+        .labels-and-grid {
+            display: grid;
+            grid-template-columns: repeat(31, 32px);
+            grid-template-rows: repeat(17, 32px);
+            gap: 1px;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen flex flex-col items-center justify-center p-8">
+    <h1 class="text-5xl font-bold text-white mb-8 tracking-wider">
+        COLOR <span class="text-purple-400">MATCH</span>
+    </h1>
+
+    <div id="startMenu" class="bg-gradient-to-br from-slate-800 to-slate-900 p-12 rounded-2xl shadow-2xl border border-slate-700">
+        <h2 class="text-3xl font-bold text-white mb-8 text-center">Game Setup</h2>
+        
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold text-purple-300 mb-4 text-center">Number of Players</h3>
+            <div class="flex gap-4 justify-center">
+                <button class="player-btn bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-blue-500" onclick="selectPlayers(2)">2</button>
+                <button class="player-btn bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-blue-500" onclick="selectPlayers(3)">3</button>
+                <button class="player-btn bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-blue-500" onclick="selectPlayers(4)">4</button>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold text-purple-300 mb-4 text-center">Number of Rounds</h3>
+            <div class="flex gap-4 justify-center">
+                <button class="rounds-btn bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-purple-500" onclick="selectRounds(1)">1</button>
+                <button class="rounds-btn bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-purple-500" onclick="selectRounds(2)">2</button>
+                <button class="rounds-btn bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-purple-500" onclick="selectRounds(3)">3</button>
+                <button class="rounds-btn bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-purple-500" onclick="selectRounds(4)">4</button>
+                <button class="rounds-btn bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-purple-500" onclick="selectRounds(5)">5</button>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button id="startGameBtn" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-4 px-12 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed border border-green-500" onclick="startGame()" disabled>
+                START GAME
+            </button>
+        </div>
+    </div>
+
+    <div id="gameInterface" class="hidden w-full">
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-2xl border border-slate-700 mb-6">
+            <div class="flex flex-col items-center gap-4">
+                <button id="showChoicesBtn" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed border border-indigo-500" onclick="showChoices()">SHOW CHOICES</button>
+                
+                <div id="choicesContainer" class="hidden flex gap-6 flex-wrap justify-center"></div>
+                
+                <div class="text-2xl font-semibold text-purple-300 min-h-8" id="hintDisplay"></div>
+                <div class="text-xl text-white" id="gameInfo"></div>
+                
+                <button id="doneBtn" class="hidden bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-green-500" onclick="playerDone()">DONE</button>
+                <button id="revealBtn" class="hidden bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-yellow-500" onclick="revealSecret()">REVEAL</button>
+                <button id="nextRoundBtn" class="hidden bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 border border-blue-500" onclick="nextRound()">NEXT ROUND</button>
+            </div>
+        </div>
+
+        <div class="flex gap-4 justify-center mb-6 flex-wrap" id="scoreboard"></div>
+
+        <div class="w-full flex justify-center mb-12">
+            <div class="inline-block bg-black rounded-xl shadow-2xl p-4" style="position: relative;">
+                <div id="board"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+        const cols = Array.from({ length: 30 }, (_, i) => i + 1);
+
+        let gameState = {
+            numPlayers: 0,
+            totalRounds: 0,
+            players: [],
+            currentPlayer: 0,
+            clueGiver: 0,
+            round: 1,
+            phase: 'setup',
+            secretCoord: null,
+            choices: [],
+            tokens: [],
+            currentTokenBeingPlaced: null,
+            selectedPlayers: null,
+            selectedRounds: null,
+            draggedElement: null // Track the actual element being dragged
+        };
+
+        const playerColors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF'];
+
+        function getColor(row, col) {
+            const hue = (col / 30) * 360;
+            const lightness = 35 + (row / 15) * 30;
+            return `hsl(${hue}, 85%, ${lightness}%)`;
+        }
+
+        function selectPlayers(num) {
+            gameState.selectedPlayers = num;
+            document.querySelectorAll('.player-btn').forEach(btn => {
+                btn.classList.remove('ring-4', 'ring-white');
+            });
+            event.target.classList.add('ring-4', 'ring-white');
+            checkStartEnabled();
+        }
+
+        function selectRounds(num) {
+            gameState.selectedRounds = num;
+            document.querySelectorAll('.rounds-btn').forEach(btn => {
+                btn.classList.remove('ring-4', 'ring-white');
+            });
+            event.target.classList.add('ring-4', 'ring-white');
+            checkStartEnabled();
+        }
+
+        function checkStartEnabled() {
+            const startBtn = document.getElementById('startGameBtn');
+            if (gameState.selectedPlayers && gameState.selectedRounds) {
+                startBtn.disabled = false;
+            }
+        }
+
+        function startGame() {
+            gameState.numPlayers = gameState.selectedPlayers;
+            gameState.totalRounds = gameState.selectedRounds;
+            gameState.clueGiver = 0;
+            gameState.players = Array.from({ length: gameState.numPlayers }, (_, i) => ({
+                id: i,
+                name: `Player ${i + 1}`,
+                score: 0,
+                tokens: [
+                    { id: `p${i}t1`, placed: false, row: null, col: null },
+                    { id: `p${i}t2`, placed: false, row: null, col: null }
+                ]
+            }));
+
+            document.getElementById('startMenu').classList.add('hidden');
+            document.getElementById('gameInterface').classList.remove('hidden');
+            
+            createBoard();
+            updateScoreboard();
+            updateGameInfo();
+            document.getElementById('showChoicesBtn').disabled = false;
+        }
+
+        function updateScoreboard() {
+            const scoreboard = document.getElementById('scoreboard');
+            scoreboard.innerHTML = '';
+            
+            gameState.players.forEach((player, idx) => {
+                const div = document.createElement('div');
+                const isClueGiver = idx === gameState.clueGiver;
+                const isActive = idx === gameState.currentPlayer && gameState.phase.includes('placing');
+                
+                div.className = `bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-xl shadow-lg border-2 transition-all duration-300 ${
+                    isActive ? 'border-green-400 ring-2 ring-green-400' : 'border-slate-600'
+                }`;
+                
+                div.innerHTML = `
+                    <div class="font-bold text-lg mb-1" style="color: ${playerColors[idx]}">
+                        ${player.name}
+                        ${isClueGiver ? '<span class="text-yellow-400 text-sm ml-2">★ CLUE GIVER</span>' : ''}
+                    </div>
+                    <div class="text-2xl font-bold text-white">${player.score} <span class="text-sm text-slate-400">pts</span></div>
+                `;
+                scoreboard.appendChild(div);
+            });
+            
+            // Add round counter
+            const roundDiv = document.createElement('div');
+            roundDiv.className = 'bg-gradient-to-br from-purple-700 to-purple-800 p-4 rounded-xl shadow-lg border-2 border-purple-500';
+            roundDiv.innerHTML = `
+                <div class="font-bold text-lg text-purple-200">Round</div>
+                <div class="text-2xl font-bold text-white">${gameState.round} / ${gameState.totalRounds}</div>
+            `;
+            scoreboard.appendChild(roundDiv);
+        }
+
+        function updateGameInfo() {
+            const info = document.getElementById('gameInfo');
+            const clueGiverName = gameState.players[gameState.clueGiver].name;
+            
+            if (gameState.phase === 'setup') {
+                info.textContent = `${clueGiverName} (Clue Giver): Click SHOW CHOICES to begin`;
+            } else if (gameState.phase === 'choosing') {
+                info.textContent = `${clueGiverName} (Clue Giver): Select the secret coordinate`;
+            } else if (gameState.phase === 'clue1') {
+                info.textContent = `${clueGiverName} (Clue Giver): Give a 1-word hint to the players`;
+            } else if (gameState.phase === 'placing1') {
+                info.textContent = `${gameState.players[gameState.currentPlayer].name}: Place your first token, then click DONE`;
+            } else if (gameState.phase === 'clue2') {
+                info.textContent = `${clueGiverName} (Clue Giver): Give a 2-word hint to the players`;
+            } else if (gameState.phase === 'placing2') {
+                info.textContent = `${gameState.players[gameState.currentPlayer].name}: Place your second token, then click DONE`;
+            } else if (gameState.phase === 'reveal') {
+                info.textContent = 'Round complete! Check the scores';
+            }
+        }
+
+        function showChoices() {
+            gameState.choices = [];
+            for (let i = 0; i < 4; i++) {
+                const row = Math.floor(Math.random() * rows.length);
+                const col = Math.floor(Math.random() * cols.length);
+                gameState.choices.push({ row, col });
+            }
+
+            const container = document.getElementById('choicesContainer');
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+
+            gameState.choices.forEach((choice, idx) => {
+                const div = document.createElement('div');
+                div.className = 'bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-xl border-2 border-slate-600 hover:border-white cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg';
+                div.onclick = () => selectSecret(idx);
+                
+                const coord = `${rows[choice.row]}${choice.col + 1}`;
+                const color = getColor(choice.row, choice.col);
+                
+                div.innerHTML = `
+                    <div class="text-white font-bold text-lg mb-2">${coord}</div>
+                    <div class="w-20 h-20 rounded-lg border-2 border-white shadow-md" style="background-color: ${color}"></div>
+                `;
+                container.appendChild(div);
+            });
+
+            document.getElementById('showChoicesBtn').classList.add('hidden');
+            gameState.phase = 'choosing';
+            updateGameInfo();
+            
+            setTimeout(() => {
+                gameState.phase = 'placing1';
+                gameState.currentPlayer = gameState.clueGiver === 0 ? 1 : 0;
+                createTokensForCurrentPlayer(0);
+                updateScoreboard();
+                updateGameInfo();
+            }, 3000);
+        }
+
+        function selectSecret(choiceIdx) {
+            gameState.secretCoord = gameState.choices[choiceIdx];
+            document.getElementById('choicesContainer').classList.add('hidden');
+            
+            gameState.phase = 'clue1';
+            document.getElementById('hintDisplay').textContent = 'Hint 1: (Clue Giver speaks now)';
+            updateGameInfo();
+            
+            setTimeout(() => {
+                gameState.phase = 'placing1';
+                gameState.currentPlayer = gameState.clueGiver === 0 ? 1 : 0;
+                createTokensForCurrentPlayer(0);
+                updateScoreboard();
+                updateGameInfo();
+            }, 3000);
+        }
+
+        function createTokensForCurrentPlayer(tokenIndex) {
+            const player = gameState.players[gameState.currentPlayer];
+            const token = player.tokens[tokenIndex];
+            
+            let tokenEl = document.getElementById(token.id);
+            
+            if (!tokenEl) {
+                tokenEl = document.createElement('div');
+                tokenEl.className = 'token';
+                tokenEl.id = token.id;
+                tokenEl.style.backgroundColor = playerColors[gameState.currentPlayer];
+                tokenEl.textContent = tokenIndex + 1;
+                tokenEl.style.left = '50px';
+                tokenEl.style.top = '50px';
+                document.querySelector('#board').parentElement.appendChild(tokenEl);
+            }
+            
+            tokenEl.draggable = true;
+            tokenEl.style.cursor = 'grab';
+            
+            tokenEl.ondragstart = (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', token.id);
+                gameState.currentTokenBeingPlaced = token.id;
+                gameState.draggedElement = tokenEl; // Store reference to dragged element
+                tokenEl.style.opacity = '0.5'; // Visual feedback during drag
+            };
+            
+            tokenEl.ondragend = (e) => {
+                tokenEl.style.opacity = '1'; // Restore opacity after drag
+            };
+            
+            document.getElementById('doneBtn').classList.remove('hidden');
+        }
+
+        function playerDone() {
+            const player = gameState.players[gameState.currentPlayer];
+            const tokenIndex = gameState.phase === 'placing1' ? 0 : 1;
+            const token = player.tokens[tokenIndex];
+            
+            if (token.row === null || token.col === null) {
+                alert('Please place your token on the board first!');
+                return;
+            }
+            
+            token.placed = true;
+            document.getElementById('doneBtn').classList.add('hidden');
+            
+            if (gameState.phase === 'placing1') {
+                // Move to next player, skipping clue giver
+                do {
+                    gameState.currentPlayer++;
+                    if (gameState.currentPlayer >= gameState.numPlayers) {
+                        gameState.currentPlayer = 0;
+                    }
+                } while (gameState.currentPlayer === gameState.clueGiver);
+                
+                // Check if all non-clue-giver players have placed
+                const allPlaced = gameState.players.every((p, idx) => 
+                    idx === gameState.clueGiver || p.tokens[0].placed
+                );
+                
+                if (!allPlaced) {
+                    createTokensForCurrentPlayer(0);
+                    updateScoreboard();
+                    updateGameInfo();
+                    document.getElementById('doneBtn').classList.remove('hidden');
+                } else {
+                    gameState.phase = 'clue2';
+                    document.getElementById('hintDisplay').textContent = 'Hint 2: (Clue Giver gives 2-word hint now)';
+                    updateGameInfo();
+                    
+                    setTimeout(() => {
+                        gameState.phase = 'placing2';
+                        gameState.currentPlayer = gameState.clueGiver === 0 ? 1 : 0;
+                        createTokensForCurrentPlayer(1);
+                        updateScoreboard();
+                        updateGameInfo();
+                    }, 3000);
+                }
+            } else if (gameState.phase === 'placing2') {
+                // Move to next player, skipping clue giver
+                do {
+                    gameState.currentPlayer++;
+                    if (gameState.currentPlayer >= gameState.numPlayers) {
+                        gameState.currentPlayer = 0;
+                    }
+                } while (gameState.currentPlayer === gameState.clueGiver);
+                
+                // Check if all non-clue-giver players have placed
+                const allPlaced = gameState.players.every((p, idx) => 
+                    idx === gameState.clueGiver || p.tokens[1].placed
+                );
+                
+                if (!allPlaced) {
+                    createTokensForCurrentPlayer(1);
+                    updateScoreboard();
+                    updateGameInfo();
+                    document.getElementById('doneBtn').classList.remove('hidden');
+                } else {
+                    gameState.phase = 'reveal';
+                    document.getElementById('revealBtn').classList.remove('hidden');
+                    updateGameInfo();
+                }
+            }
+        }
+
+        function revealSecret() {
+            const secretCell = document.getElementById(`cell-${gameState.secretCoord.row}-${gameState.secretCoord.col}`);
+            secretCell.classList.add('secret-revealed');
+            
+            highlightScoringZones();
+            
+            let clueGiverPoints = 0;
+            
+            gameState.players.forEach((player, idx) => {
+                // Skip clue giver for token scoring
+                if (idx === gameState.clueGiver) return;
+                
+                player.tokens.forEach(token => {
+                    if (token.row !== null && token.col !== null) {
+                        const distance = Math.max(
+                            Math.abs(token.row - gameState.secretCoord.row),
+                            Math.abs(token.col - gameState.secretCoord.col)
+                        );
+                        
+                        if (distance === 0) {
+                            player.score += 3;
+                            clueGiverPoints += 1; // Clue giver gets 1 point
+                        } else if (distance === 1) {
+                            player.score += 2;
+                            clueGiverPoints += 1; // Clue giver gets 1 point
+                        } else if (distance === 2) {
+                            player.score += 1;
+                            // Clue giver gets 0 points for distance 2
+                        }
+                    }
+                });
+            });
+            
+            // Award points to clue giver
+            gameState.players[gameState.clueGiver].score += clueGiverPoints;
+            
+            updateScoreboard();
+            document.getElementById('revealBtn').classList.add('hidden');
+            document.getElementById('nextRoundBtn').classList.remove('hidden');
+        }
+
+        function highlightScoringZones() {
+            const sr = gameState.secretCoord.row;
+            const sc = gameState.secretCoord.col;
+            
+            for (let r = 0; r < rows.length; r++) {
+                for (let c = 0; c < cols.length; c++) {
+                    const distance = Math.max(Math.abs(r - sr), Math.abs(c - sc));
+                    const cell = document.getElementById(`cell-${r}-${c}`);
+                    
+                    if (distance === 1) {
+                        cell.classList.add('zone-3');
+                    } else if (distance === 2) {
+                        cell.classList.add('zone-2');
+                    } else if (distance === 3) {
+                        cell.classList.add('zone-1');
+                    }
+                }
+            }
+        }
+
+        function nextRound() {
+            document.querySelectorAll('.token').forEach(el => el.remove());
+            document.querySelectorAll('.cell').forEach(el => {
+                el.classList.remove('secret-revealed', 'zone-3', 'zone-2', 'zone-1', 'highlighted');
+            });
+            
+            gameState.players.forEach(player => {
+                player.tokens = [
+                    { id: `p${player.id}t1`, placed: false, row: null, col: null },
+                    { id: `p${player.id}t2`, placed: false, row: null, col: null }
+                ];
+            });
+            
+            gameState.round++;
+            
+            // Check if game is over
+            if (gameState.round > gameState.totalRounds) {
+                endGame();
+                return;
+            }
+            
+            // Rotate clue giver
+            gameState.clueGiver = (gameState.clueGiver + 1) % gameState.numPlayers;
+            
+            gameState.phase = 'setup';
+            gameState.currentPlayer = 0;
+            gameState.secretCoord = null;
+            gameState.choices = [];
+            
+            document.getElementById('hintDisplay').textContent = '';
+            document.getElementById('nextRoundBtn').classList.add('hidden');
+            document.getElementById('showChoicesBtn').classList.remove('hidden');
+            document.getElementById('showChoicesBtn').disabled = false;
+            
+            updateScoreboard();
+            updateGameInfo();
+        }
+
+        function endGame() {
+            const winner = gameState.players.reduce((max, player) => 
+                player.score > max.score ? player : max
+            );
+            
+            document.getElementById('gameInfo').innerHTML = `
+                <div class="text-3xl font-bold text-yellow-400 mb-4">GAME OVER!</div>
+                <div class="text-2xl text-white">Winner: <span style="color: ${playerColors[winner.id]}">${winner.name}</span> with ${winner.score} points!</div>
+            `;
+            
+            document.getElementById('nextRoundBtn').textContent = 'PLAY AGAIN';
+            document.getElementById('nextRoundBtn').onclick = () => location.reload();
+        }
+
+        function createBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            const grid = document.createElement('div');
+            grid.className = 'labels-and-grid';
+
+            const totalCols = 31;
+            const totalRows = 17;
+
+            for (let r = 0; r < totalRows; r++) {
+                for (let c = 0; c < totalCols; c++) {
+                    let element = document.createElement('div');
+
+                    if (c === 0 && r > 0) {
+                        element.className = 'label-cell';
+                        element.textContent = rows[r - 1];
+                    }
+                    else if (r === 0 && c > 0) {
+                        element.className = 'label-cell';
+                        element.textContent = c;
+                    }
+                    else if (r === 0 && c === 0) {
+                        element.className = 'label-cell';
+                    }
+                    else {
+                        const rowIdx = r - 1;
+                        const colIdx = c - 1;
+                        element.className = 'cell';
+                        element.id = `cell-${rowIdx}-${colIdx}`;
+                        element.style.backgroundColor = getColor(rowIdx, colIdx);
+                        
+                        element.ondragover = (e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                        };
+                        
+                        element.ondrop = (e) => {
+                            e.preventDefault();
+                            const tokenId = e.dataTransfer.getData('text/plain');
+                            placeToken(tokenId, rowIdx, colIdx);
+                        };
+                    }
+
+                    grid.appendChild(element);
+                }
+            }
+
+            board.appendChild(grid);
+        }
+
+        function placeToken(tokenId, row, col) {
+            const player = gameState.players[gameState.currentPlayer];
+            const tokenIndex = gameState.phase === 'placing1' ? 0 : 1;
+            const token = player.tokens[tokenIndex];
+            
+            if (token.id !== tokenId) return;
+            
+            document.querySelectorAll('.cell').forEach(el => el.classList.remove('highlighted'));
+            
+            token.row = row;
+            token.col = col;
+            
+            const tokenEl = gameState.draggedElement || document.getElementById(tokenId);
+            const cell = document.getElementById(`cell-${row}-${col}`);
+            const rect = cell.getBoundingClientRect();
+            const containerRect = document.querySelector('#board').parentElement.getBoundingClientRect();
+            
+            tokenEl.style.left = (rect.left - containerRect.left + 2) + 'px';
+            tokenEl.style.top = (rect.top - containerRect.top + 2) + 'px';
+            
+            for (let r = row - 1; r <= row + 1; r++) {
+                for (let c = col - 1; c <= col + 1; c++) {
+                    if (r >= 0 && r < rows.length && c >= 0 && c < cols.length) {
+                        const highlightCell = document.getElementById(`cell-${r}-${c}`);
+                        if (highlightCell) {
+                            highlightCell.classList.add('highlighted');
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -103,6 +103,11 @@
             </div>
         </div>
 
+        <div id="playerNamesContainer" class="mb-8 hidden">
+            <h3 class="text-xl font-semibold text-purple-300 mb-4 text-center">Player Names</h3>
+            <div id="playerNameInputs" class="flex flex-col gap-3 max-w-md mx-auto"></div>
+        </div>
+
         <div class="mb-8">
             <h3 class="text-xl font-semibold text-purple-300 mb-4 text-center">Number of Rounds</h3>
             <div class="flex gap-4 justify-center">
@@ -157,6 +162,7 @@
             currentPlayer: 0,
             clueGiver: 0,
             round: 1,
+            turnInRound: 0, // Track which turn within the round (0 to numPlayers-1)
             phase: 'setup',
             secretCoord: null,
             choices: [],
@@ -164,10 +170,10 @@
             currentTokenBeingPlaced: null,
             selectedPlayers: null,
             selectedRounds: null,
-            draggedElement: null // Track the actual element being dragged
+            draggedElement: null
         };
 
-        const playerColors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF'];
+        const playerColors = ['#EF4444', '#3B82F6', '#10B981', '#EAB308'];
 
         function getColor(row, col) {
             const hue = (col / 30) * 360;
@@ -181,6 +187,28 @@
                 btn.classList.remove('ring-4', 'ring-white');
             });
             event.target.classList.add('ring-4', 'ring-white');
+            
+            const container = document.getElementById('playerNamesContainer');
+            const inputsDiv = document.getElementById('playerNameInputs');
+            inputsDiv.innerHTML = '';
+            
+            for (let i = 0; i < num; i++) {
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'flex items-center gap-3';
+                inputGroup.innerHTML = `
+                    <div class="w-4 h-4 rounded-full" style="background-color: ${playerColors[i]}"></div>
+                    <input 
+                        type="text" 
+                        id="playerName${i}" 
+                        value="Player ${i + 1}" 
+                        class="flex-1 bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-purple-500 focus:outline-none"
+                        placeholder="Player ${i + 1}"
+                    />
+                `;
+                inputsDiv.appendChild(inputGroup);
+            }
+            
+            container.classList.remove('hidden');
             checkStartEnabled();
         }
 
@@ -204,9 +232,11 @@
             gameState.numPlayers = gameState.selectedPlayers;
             gameState.totalRounds = gameState.selectedRounds;
             gameState.clueGiver = 0;
+            gameState.turnInRound = 0; // Initialize turn counter
+            
             gameState.players = Array.from({ length: gameState.numPlayers }, (_, i) => ({
                 id: i,
-                name: `Player ${i + 1}`,
+                name: document.getElementById(`playerName${i}`).value || `Player ${i + 1}`,
                 score: 0,
                 tokens: [
                     { id: `p${i}t1`, placed: false, row: null, col: null },
@@ -462,13 +492,12 @@
                         
                         if (distance === 0) {
                             player.score += 3;
-                            clueGiverPoints += 1; // Clue giver gets 1 point
+                            clueGiverPoints += 1; // Clue giver gets 1 point per token in 3-point zone
                         } else if (distance === 1) {
                             player.score += 2;
-                            clueGiverPoints += 1; // Clue giver gets 1 point
+                            clueGiverPoints += 1; // Clue giver gets 1 point per token in 2-point zone
                         } else if (distance === 2) {
                             player.score += 1;
-                            // Clue giver gets 0 points for distance 2
                         }
                     }
                 });
@@ -495,8 +524,6 @@
                         cell.classList.add('zone-3');
                     } else if (distance === 2) {
                         cell.classList.add('zone-2');
-                    } else if (distance === 3) {
-                        cell.classList.add('zone-1');
                     }
                 }
             }
@@ -515,15 +542,19 @@
                 ];
             });
             
-            gameState.round++;
+            gameState.turnInRound++;
             
-            // Check if game is over
-            if (gameState.round > gameState.totalRounds) {
-                endGame();
-                return;
+            if (gameState.turnInRound >= gameState.numPlayers) {
+                gameState.round++;
+                gameState.turnInRound = 0;
+                
+                // Check if game is over
+                if (gameState.round > gameState.totalRounds) {
+                    endGame();
+                    return;
+                }
             }
             
-            // Rotate clue giver
             gameState.clueGiver = (gameState.clueGiver + 1) % gameState.numPlayers;
             
             gameState.phase = 'setup';
@@ -541,6 +572,10 @@
         }
 
         function endGame() {
+            if (gameState.secretCoord) {
+                highlightScoringZones();
+            }
+            
             const winner = gameState.players.reduce((max, player) => 
                 player.score > max.score ? player : max
             );

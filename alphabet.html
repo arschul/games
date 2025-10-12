@@ -3,428 +3,556 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alphabet Countdown Chaos</title>
-    <!-- Tailwind CSS CDN for modern styling -->
+    <title>Alphabet Countdown Chaos - 2 Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tone.js CDN for audio generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
-    <!-- Inter font from Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
-        /* Apply Inter font to the whole body */
-        body {
-            font-family: 'Inter', sans-serif;
+        /* Added neon glow effects for red and blue players */
+        @keyframes pulse-red {
+            0%, 100% { 
+                background-color: rgb(220, 38, 38);
+                box-shadow: 0 0 30px rgba(255, 0, 64, 0.5);
+            }
+            50% { 
+                background-color: rgb(185, 28, 28);
+                box-shadow: 0 0 50px rgba(255, 0, 64, 0.8);
+            }
         }
-        /* Custom keyframes for the flashing red animation on low time */
-        @keyframes flash-red {
-            0% { background-color: #fca5a5; } /* Tailwind red-300 */
-            50% { background-color: #fef2f2; } /* Tailwind red-50 */
-            100% { background-color: #fca5a5; }
+        @keyframes pulse-blue {
+            0%, 100% { 
+                background-color: rgb(37, 99, 235);
+                box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+            }
+            50% { 
+                background-color: rgb(29, 78, 216);
+                box-shadow: 0 0 50px rgba(0, 212, 255, 0.8);
+            }
         }
-        /* Class to apply the flashing animation */
-        .animate-flash-red {
-            animation: flash-red 0.5s infinite;
+        .pulse-red-bg {
+            animation: pulse-red 1s ease-in-out infinite;
         }
-        /* Hide scrollbar for better aesthetic on grid container if it overflows */
-        #game-container::-webkit-scrollbar {
-            display: none;
+        .pulse-blue-bg {
+            animation: pulse-blue 1s ease-in-out infinite;
         }
-        #game-container {
-            -ms-overflow-style: none; /* IE and Edge */
-            scrollbar-width: none; /* Firefox */
+        .neon-red {
+            box-shadow: 0 0 10px rgba(255, 0, 64, 0.5), 0 0 20px rgba(255, 0, 64, 0.3);
+        }
+        .neon-blue {
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5), 0 0 20px rgba(0, 212, 255, 0.3);
         }
     </style>
 </head>
-<!--
-    The body is styled with Tailwind classes:
-    - bg-gray-900: Dark background
-    - text-white: White text color
-    - flex flex-col items-center justify-center: Centers content vertically and horizontally
-    - min-h-screen: Ensures body takes at least full viewport height
-    - p-4: Padding on all sides
--->
-<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
-    <!-- Game Title -->
-    <h1 class="text-5xl font-bold mb-8 text-indigo-400">Alphabet Countdown Chaos</h1>
-
-    <!-- Difficulty Selection Buttons -->
-    <div class="flex space-x-4 mb-8">
-        <!-- Easy Mode Button -->
-        <button id="easy-btn" onclick="setDifficulty('easy')"
-                class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg
-                       transform transition duration-300 hover:scale-105 active:scale-95
-                       focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-                aria-label="Set difficulty to easy">
-            Easy Mode
-        </button>
-        <!-- Hard Mode Button -->
-        <button id="hard-btn" onclick="setDifficulty('hard')"
-                class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg
-                       transform transition duration-300 hover:scale-105 active:scale-95
-                       focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75"
-                aria-label="Set difficulty to hard">
-            Hard Mode
-        </button>
-    </div>
-
-    <!-- Game Container for Letter Buttons -->
-    <!--
-        Uses a responsive grid layout:
-        - grid-cols-6: 6 columns on small screens
-        - md:grid-cols-9: 9 columns on medium screens
-        - lg:grid-cols-13: 13 columns on large screens
-        - gap-3: Spacing between grid items
-        - p-6: Padding inside the container
-        - bg-gray-800, rounded-xl, shadow-2xl: Styling for the container itself
-        - w-full max-w-4xl: Responsive width
-    -->
-    <div id="game-container" class="grid grid-cols-6 md:grid-cols-9 lg:grid-cols-13 gap-3 p-6 bg-gray-800 rounded-xl shadow-2xl mb-8 w-full max-w-4xl">
-        <!-- Letter buttons will be dynamically injected here by JavaScript -->
-    </div>
-
-    <!-- Progress Bar Container -->
-    <div id="progress-bar-container" class="w-full max-w-lg bg-gray-700 rounded-full h-4 mb-4 overflow-hidden shadow-inner">
-        <!-- Progress Bar (width controlled by JS, color by JS as well) -->
-        <div id="progress-bar" class="h-full rounded-full transition-all duration-1000 ease-linear"></div>
-    </div>
-
-    <!-- Timer and Score Display -->
-    <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8 mb-8">
-        <div id="timer" class="text-3xl font-semibold text-yellow-400">Time Left: 20s</div>
-        <div id="score" class="text-3xl font-semibold text-blue-400">Score: 0</div>
-    </div>
-
-    <!-- Message Display (e.g., "YOU WIN!" or "GAME OVER!") -->
-    <div id="message" class="text-4xl font-extrabold text-purple-400 mb-8 min-h-[4rem] flex items-center justify-center"></div>
-
-    <!-- Game Control Buttons (Pause/Resume, Reset, Play Again) -->
-    <div class="flex space-x-4 mb-8">
-        <button id="pause-btn" onclick="togglePause()"
-                class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-lg
-                       transform transition duration-300 hover:scale-105 active:scale-95
-                       focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"
-                aria-label="Pause/Resume game">
-            Pause
-        </button>
-        <button id="reset-btn" onclick="resetGame()"
-                class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg shadow-lg
-                       transform transition duration-300 hover:scale-105 active:scale-95
-                       focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75"
-                aria-label="Reset game">
-            Reset Game
-        </button>
-        <button id="play-again-btn" onclick="resetGame()"
-                class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg hidden
-                       transform transition duration-300 hover:scale-105 active:scale-95
-                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
-                aria-label="Play again">
-            Play Again
-        </button>
-    </div>
+<body>
+    <div id="app"></div>
 
     <script>
-        // Game configuration and state variables
-        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        let timeLeft; // Remaining time
-        let timerInterval; // Stores the interval ID for the countdown timer
-        let usedLetters = new Set(); // Stores letters already clicked
-        let score = 0; // Player's current score
-        let difficulty = 'easy'; // Current difficulty level ('easy' or 'hard')
-        let initialGameTime; // Stores the initial time for the current round, used for progress bar calculation
-        let gameStarted = false; // Flag to track if the game has started (first letter clicked)
-        let isPaused = false; // Flag to track if the game is paused
-        let audioContextStarted = false; // Flag to track if Tone.js audio context has been started
+        const LETTER_VALUES = {
+            E: 1, T: 1, A: 1, O: 1, N: 1,
+            R: 2, I: 2, S: 2, H: 2, D: 2,
+            L: 3, F: 3, C: 3, M: 3, U: 3,
+            G: 4, Y: 4, P: 4, W: 4, B: 4,
+            V: 5, K: 5, J: 5, X: 5, Z: 5, Q: 5
+        };
 
-        // Tone.js Synths for various game sounds
-        let clickSynth, winSynth, loseSynth, tickSynth;
+        let gameState = 'menu'; // menu, playing, paused, gameover, challenge
+        let selectedTime = 20;
+        let bannedLetters = new Set();
+        let availableLetters = [];
+        let currentPlayer = 'red'; // 'red' or 'blue'
+        let lastPlayer = null; // Track who clicked the last letter
+        let redUsedLetters = new Set();
+        let blueUsedLetters = new Set();
+        let redScore = 0;
+        let blueScore = 0;
+        let timeLeft = 20;
+        let maxTime = 20;
+        let timerInterval = null;
+        let audioInitialized = false;
+        let manualEnd = false; // Track if game ended manually
 
-        // Get references to DOM elements for easier access and manipulation
-        const timerDisplay = document.getElementById('timer');
-        const scoreDisplay = document.getElementById('score');
-        const messageDisplay = document.getElementById('message');
-        const progressBar = document.getElementById('progress-bar');
-        const pauseButton = document.getElementById('pause-btn');
-        const playAgainButton = document.getElementById('play-again-btn');
-        const easyButton = document.getElementById('easy-btn');
-        const hardButton = document.getElementById('hard-btn');
-
-        /**
-         * Initializes Tone.js synths. This function is called after the audio context
-         * has been started by a user gesture.
-         */
-        function initializeAudio() {
-            if (clickSynth) return; // Prevent re-initialization
-
-            // Basic synthesizer for click sounds
-            clickSynth = new Tone.Synth({
-                oscillator: { type: "sine" },
-                envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.1 }
-            }).toDestination();
-
-            // PolySynth for win sounds (chord)
-            winSynth = new Tone.PolySynth(Tone.Synth, {
-                oscillator: { type: "sawtooth" },
-                envelope: { attack: 0.05, decay: 0.2, sustain: 0.1, release: 0.3 }
-            }).toDestination();
-
-            // PolySynth for lose sounds (descending chord)
-            loseSynth = new Tone.PolySynth(Tone.Synth, {
-                oscillator: { type: "triangle" },
-                envelope: { attack: 0.01, decay: 0.2, sustain: 0.05, release: 0.2 }
-            }).toDestination();
-
-            // Simple synth for tick sounds
-            tickSynth = new Tone.Synth({
-                oscillator: { type: "square" },
-                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 }
-            }).toDestination();
+        // Initialize audio context
+        function initAudio() {
+            if (!audioInitialized && typeof Tone !== 'undefined') {
+                audioInitialized = true;
+            }
         }
 
-        /**
-         * Starts or resumes the countdown timer.
-         */
-        function startCountdown() {
-            clearInterval(timerInterval); // Clear any existing timer to prevent multiple timers running
-            isPaused = false; // Ensure game is not in a paused state
-            pauseButton.innerText = "Pause"; // Update pause button text
-            pauseButton.disabled = false; // Enable pause button
+        // Play sound effects
+        function playSound(type) {
+            if (typeof Tone === 'undefined') return;
+            
+            try {
+                const oscillatorType = {
+                    'click': 'sine',
+                    'win': 'sawtooth',
+                    'lose': 'triangle',
+                    'tick': 'square'
+                }[type];
 
-            // Set up a new interval to decrement time every second
+                const synth = new Tone.Synth({
+                    oscillator: { type: oscillatorType }
+                }).toDestination();
+
+                const note = {
+                    'click': 'C5',
+                    'win': 'C6',
+                    'lose': 'C3',
+                    'tick': 'C4'
+                }[type];
+
+                const duration = type === 'tick' ? '32n' : '8n';
+                synth.triggerAttackRelease(note, duration);
+            } catch (e) {
+                console.error('Audio error:', e);
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(letter => !bannedLetters.has(letter));
+            availableLetters = alphabet;
+            redUsedLetters = new Set();
+            blueUsedLetters = new Set();
+            redScore = 0;
+            blueScore = 0;
+            currentPlayer = 'red';
+            lastPlayer = null; // Reset last player
+            timeLeft = selectedTime;
+            maxTime = selectedTime;
+            gameState = 'playing';
+            manualEnd = false; // Reset manual end flag
+            render();
+            startTimer();
+        }
+
+        // Toggle banned letter
+        function toggleBannedLetter(letter) {
+            if (bannedLetters.has(letter)) {
+                bannedLetters.delete(letter);
+            } else {
+                bannedLetters.add(letter);
+            }
+            render();
+        }
+
+        function handleLetterClick(letter) {
+            if (gameState !== 'playing') return;
+            
+            const currentUsedLetters = currentPlayer === 'red' ? redUsedLetters : blueUsedLetters;
+            if (currentUsedLetters.has(letter)) return;
+            if (!availableLetters.includes(letter)) return;
+
+            initAudio();
+            playSound('click');
+
+            const letterValue = LETTER_VALUES[letter];
+            const timeBonus = Math.floor(timeLeft);
+            const points = letterValue * timeBonus;
+
+            currentUsedLetters.add(letter);
+            if (currentPlayer === 'red') {
+                redScore += points;
+            } else {
+                blueScore += points;
+            }
+
+            lastPlayer = currentPlayer; // Track who clicked this letter
+
+            const totalUsedLetters = new Set([...redUsedLetters, ...blueUsedLetters]);
+            if (totalUsedLetters.size === availableLetters.length) {
+                gameState = 'gameover';
+                playSound('win');
+                stopTimer();
+                render();
+                return;
+            }
+
+            // Switch player and reset timer
+            currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+            timeLeft = selectedTime;
+            render();
+        }
+
+        // Timer functions
+        function startTimer() {
+            stopTimer();
             timerInterval = setInterval(() => {
                 timeLeft--;
-                timerDisplay.innerText = `Time Left: ${timeLeft}s`;
-                updateProgressBar(); // Update progress bar visually
-
-                // If time is low (5 seconds or less), start flashing background and play tick sound
-                if (timeLeft <= 5 && timeLeft > 0 && !isPaused) { // Only play tick if not paused
-                    document.body.classList.add('animate-flash-red');
-                    if (tickSynth) tickSynth.triggerAttackRelease("C3", "32n");
-                } else if (timeLeft <= 0 || timeLeft > 5) {
-                    // Stop flashing if time runs out or is no longer low
-                    document.body.classList.remove('animate-flash-red');
+                if (timeLeft <= 5) {
+                    playSound('tick');
                 }
-
-                // Game Over condition
                 if (timeLeft <= 0) {
-                    clearInterval(timerInterval); // Stop the timer
-                    document.body.classList.remove('animate-flash-red'); // Ensure flashing stops
-                    messageDisplay.innerText = "GAME OVER! Final Score: " + score;
-                    playAgainButton.classList.remove('hidden'); // Show play again button
-                    highlightUnusedLetters(); // Highlight letters that weren't clicked
-                    disableAllButtons(); // Disable all interaction
-                    pauseButton.disabled = true; // Disable pause button
-                    gameStarted = false; // Reset game started flag
-                    if (loseSynth) loseSynth.triggerAttackRelease(["C3", "G#2"], "0.5"); // Play a lose chord
+                    // Current player loses their turn, switch to other player
+                    playSound('lose');
+                    currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+                    timeLeft = selectedTime;
                 }
-            }, 1000); // 1000 milliseconds = 1 second
+                render();
+            }, 1000);
         }
 
-        /**
-         * Toggles the pause state of the game.
-         */
-        function togglePause() {
-            if (!gameStarted) return; // Cannot pause if game hasn't started
-
-            if (isPaused) {
-                // If paused, resume the game
-                isPaused = false;
-                pauseButton.innerText = "Pause";
-                startCountdown(); // Resume countdown from current timeLeft
-            } else {
-                // If running, pause the game
-                isPaused = true;
-                pauseButton.innerText = "Resume";
-                clearInterval(timerInterval); // Stop the timer
-                document.body.classList.remove('animate-flash-red'); // Stop flashing while paused
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
             }
         }
 
-        /**
-         * Updates the visual progress bar based on `timeLeft`.
-         * Also changes the progress bar color from green to yellow to red as time depletes.
-         */
-        function updateProgressBar() {
-            const progress = (timeLeft / initialGameTime) * 100; // Calculate percentage of time left
-            progressBar.style.width = `${progress}%`; // Set width of the progress bar
-
-            // Dynamically change progress bar color based on remaining time percentage
-            progressBar.classList.remove('from-green-400', 'to-emerald-500', 'from-yellow-400', 'to-orange-500', 'from-red-400', 'to-rose-500'); // Clear existing gradient classes
-
-            if (progress > 60) {
-                progressBar.classList.add('bg-gradient-to-r', 'from-green-400', 'to-emerald-500'); // Green gradient for high time
-            } else if (progress > 30) {
-                progressBar.classList.add('bg-gradient-to-r', 'from-yellow-400', 'to-orange-500'); // Yellow/orange gradient for medium time
-            } else {
-                progressBar.classList.add('bg-gradient-to-r', 'from-red-400', 'to-rose-500'); // Red gradient for low time
-            }
-        }
-
-        /**
-         * Disables all letter buttons to prevent further interaction.
-         */
-        function disableAllButtons() {
-            document.querySelectorAll('.letter-btn').forEach(btn => btn.disabled = true);
-        }
-
-        /**
-         * Highlights letters that were not clicked by adding a distinct style.
-         */
-        function highlightUnusedLetters() {
-            document.querySelectorAll('.letter-btn').forEach(btn => {
-                if (!usedLetters.has(btn.innerText)) {
-                    // Apply Tailwind classes for a red background, white text, and full opacity
-                    btn.classList.add('bg-red-500', 'text-white', '!opacity-100');
-                    // Remove previous styling classes to ensure new styling is visible
-                    btn.classList.remove('bg-gray-700', 'hover:bg-indigo-600');
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (gameState === 'playing') {
+                const letter = e.key.toUpperCase();
+                if (letter.match(/^[A-Z]$/)) {
+                    handleLetterClick(letter);
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    gameState = 'paused';
+                    stopTimer();
+                    render();
                 }
-            });
-        }
-
-        /**
-         * Handles a letter button click or key press.
-         * @param {string} letter - The letter that was clicked/pressed.
-         * @param {HTMLButtonElement} button - The actual button element that was interacted with.
-         */
-        function handleLetterClick(letter, button) {
-            // Only process if the letter hasn't been used yet and game is not paused
-            if (!usedLetters.has(letter) && !isPaused) {
-                if (!audioContextStarted) {
-                    Tone.start(); // Start Tone.js audio context on first user interaction
-                    initializeAudio(); // Initialize synths after context starts
-                    audioContextStarted = true;
-                }
-
-                if (!gameStarted) {
-                    gameStarted = true; // Mark game as started
-                    startCountdown(); // Start the timer on first letter click
-                    pauseButton.disabled = false; // Enable pause button
-                }
-
-                usedLetters.add(letter); // Add letter to the set of used letters
-                button.disabled = true; // Disable the button
-                // Apply styling for a disabled/used button
-                button.classList.add('bg-gray-700', 'text-gray-400', 'cursor-not-allowed', 'opacity-70');
-                button.classList.remove('bg-indigo-700', 'hover:bg-indigo-600', 'shadow-md'); // Remove active styling
-                if (clickSynth) clickSynth.triggerAttackRelease("C5", "16n"); // Play click sound
-
-                score += timeLeft; // Add remaining time to the score
-                scoreDisplay.innerText = `Score: ${score}`; // Update score display
-
-                // Reset time for the next letter, only if game is still active
-                if (usedLetters.size < alphabet.length && gameStarted) {
-                    timeLeft = initialGameTime; // Reset time for the next letter
-                    startCountdown(); // Restart the countdown with new time
-                }
-
-                checkWinCondition(); // Check if all letters have been clicked
-            }
-        }
-
-        /**
-         * Checks if the player has won the game (all letters clicked).
-         */
-        function checkWinCondition() {
-            if (usedLetters.size === alphabet.length) {
-                clearInterval(timerInterval); // Stop the timer
-                document.body.classList.remove('animate-flash-red'); // Stop flashing
-                messageDisplay.innerText = `YOU WIN! Final Score: ${score}`;
-                playAgainButton.classList.remove('hidden'); // Show play again button
-                disableAllButtons(); // Disable all interaction
-                pauseButton.disabled = true; // Disable pause button
-                gameStarted = false; // Reset game started flag
-                if (winSynth) winSynth.triggerAttackRelease(["C4", "E4", "G4"], "1"); // Play a win chord
-            }
-        }
-
-        /**
-         * Resets the game to its initial state.
-         */
-        function resetGame() {
-            usedLetters.clear(); // Clear all used letters
-            messageDisplay.innerText = ""; // Clear any previous messages
-            playAgainButton.classList.add('hidden'); // Hide play again button
-            document.getElementById('game-container').innerHTML = ""; // Clear existing letter buttons
-            createButtons(); // Re-create all letter buttons
-            clearInterval(timerInterval); // Clear the timer
-            isPaused = false; // Ensure game is not paused
-            pauseButton.innerText = "Pause"; // Reset pause button text
-            pauseButton.disabled = true; // Disable pause button initially
-
-            // Reset time based on current difficulty
-            initialGameTime = difficulty === 'hard' ? 10 : 20;
-            timeLeft = initialGameTime;
-            timerDisplay.innerText = `Time Left: ${timeLeft}s`; // Display initial time
-            scoreDisplay.innerText = "Score: 0";
-            score = 0; // Reset score
-            document.body.classList.remove('animate-flash-red'); // Remove flashing animation
-            updateProgressBar(); // Reset progress bar visual
-            gameStarted = false; // Game hasn't started yet
-            timerDisplay.innerText = "Click a letter to start!"; // Prompt user to start
-        }
-
-        /**
-         * Dynamically creates and appends letter buttons to the game container.
-         */
-        function createButtons() {
-            const container = document.getElementById('game-container');
-            container.innerHTML = ""; // Clear existing buttons before re-creating
-            alphabet.forEach(letter => {
-                const button = document.createElement('button');
-                button.innerText = letter;
-                // Apply modern Tailwind styling to the letter buttons
-                button.classList.add(
-                    'letter-btn',
-                    'px-4', 'py-2', 'md:px-5', 'md:py-3', 'text-2xl', 'font-bold',
-                    'bg-indigo-700', 'text-white', 'rounded-lg', 'shadow-md',
-                    'transform', 'transition', 'duration-200', 'hover:scale-105', 'active:scale-95',
-                    'focus:outline-none', 'focus:ring-2', 'focus:ring-indigo-500', 'focus:ring-opacity-75'
-                );
-                // Assign click handler
-                button.onclick = () => handleLetterClick(letter, button);
-                // Add aria-label for accessibility
-                button.setAttribute('aria-label', `Click to select letter ${letter}`);
-                container.appendChild(button);
-            });
-        }
-
-        /**
-         * Sets the game difficulty and resets the game.
-         * @param {string} level - The difficulty level ('easy' or 'hard').
-         */
-        function setDifficulty(level) {
-            difficulty = level;
-            // Highlight the active difficulty button
-            easyButton.classList.remove('bg-green-700');
-            hardButton.classList.remove('bg-red-700');
-            if (level === 'easy') {
-                easyButton.classList.add('bg-green-700');
-            } else {
-                hardButton.classList.add('bg-red-700');
-            }
-            resetGame(); // Reset the game to apply the new difficulty
-        }
-
-        /**
-         * Event listener for keyboard presses, allowing users to type letters.
-         */
-        document.addEventListener('keydown', (event) => {
-            const letter = event.key.toUpperCase(); // Convert key to uppercase
-            // Check if the pressed key is an alphabet letter and game is not paused
-            if (alphabet.includes(letter) && !isPaused) {
-                // Find the corresponding button element
-                const button = [...document.querySelectorAll('.letter-btn')].find(btn => btn.innerText === letter);
-                // If button exists and is not disabled, simulate a click
-                if (button && !button.disabled) {
-                    handleLetterClick(letter, button);
-                }
+            } else if (gameState === 'paused' && e.key === ' ') {
+                e.preventDefault();
+                gameState = 'playing';
+                startTimer();
+                render();
             }
         });
 
-        // Initialize the game when the window loads
-        window.onload = () => {
-            setDifficulty('easy'); // Set initial difficulty to easy
-            resetGame(); // Perform initial game reset
-        };
+        function openChallenge() {
+            gameState = 'challenge';
+            stopTimer();
+            render();
+        }
+
+        function handleChallengeCorrect() {
+            // Current player (who clicked ARE YOU SURE?) loses 10% rounded up
+            const penalty = Math.ceil((currentPlayer === 'red' ? redScore : blueScore) * 0.1);
+            if (currentPlayer === 'red') {
+                redScore = Math.max(0, redScore - penalty);
+            } else {
+                blueScore = Math.max(0, blueScore - penalty);
+            }
+            gameState = 'playing';
+            startTimer();
+            render();
+        }
+
+        function handleChallengeIncorrect() {
+            // Last player (who clicked the last letter) loses 10% rounded up
+            if (lastPlayer) {
+                const penalty = Math.ceil((lastPlayer === 'red' ? redScore : blueScore) * 0.1);
+                if (lastPlayer === 'red') {
+                    redScore = Math.max(0, redScore - penalty);
+                } else {
+                    blueScore = Math.max(0, blueScore - penalty);
+                }
+            }
+            gameState = 'playing';
+            startTimer();
+            render();
+        }
+
+        function endGame() {
+            manualEnd = true; // Mark as manual end
+            gameState = 'gameover';
+            playSound('win');
+            stopTimer();
+            render();
+        }
+
+        // Render function
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (gameState === 'menu') {
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-red-600 via-purple-600 to-blue-600 flex items-center justify-center p-4">
+                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border-4 border-purple-500">
+                            <h1 class="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-red-400 to-blue-400 bg-clip-text text-transparent">Alphabet Countdown Chaos</h1>
+                            <p class="text-center text-gray-300 mb-6">Red vs Blue - Click all letters before time runs out!</p>
+
+                            <div class="mb-8">
+                                <h2 class="text-xl font-semibold mb-4 text-white">Select Time Per Letter</h2>
+                                <div class="flex gap-4 justify-center">
+                                    ${[10, 20, 30].map(time => `
+                                        <button onclick="selectedTime = ${time}; render();" 
+                                            class="text-lg px-8 py-6 rounded-lg font-semibold transition-all ${
+                                                selectedTime === time 
+                                                    ? 'bg-purple-600 text-white neon-red' 
+                                                    : 'bg-gray-800 border-2 border-gray-600 text-gray-300 hover:border-purple-500'
+                                            }">
+                                            ${time}s
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <div class="mb-8">
+                                <h2 class="text-xl font-semibold mb-4 text-white">Ban Letters (Click to toggle)</h2>
+                                <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-3">
+                                    ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => `
+                                        <button onclick="toggleBannedLetter('${letter}')"
+                                            class="aspect-square rounded-xl font-bold text-2xl transition-all transform hover:scale-105 active:scale-95 shadow-lg relative ${
+                                                bannedLetters.has(letter)
+                                                    ? 'bg-red-600 text-white line-through neon-red'
+                                                    : 'bg-gray-800 hover:bg-gray-700 text-gray-200 border-2 border-gray-600'
+                                            }">
+                                            ${letter}
+                                            <span class="absolute bottom-1 right-1 text-xs opacity-60">${LETTER_VALUES[letter]}</span>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                                <p class="text-sm text-gray-400 mt-2 text-center">
+                                    ${bannedLetters.size > 0 
+                                        ? `${bannedLetters.size} letter${bannedLetters.size > 1 ? 's' : ''} banned`
+                                        : 'No letters banned'}
+                                </p>
+                            </div>
+
+                            <button onclick="startGame()" 
+                                ${bannedLetters.size === 26 ? 'disabled' : ''}
+                                class="w-full text-xl py-6 rounded-lg font-semibold bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-700 hover:to-blue-700 text-white transition-all neon-red ${
+                                    bannedLetters.size === 26 ? 'opacity-50 cursor-not-allowed' : ''
+                                }">
+                                Start Game
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (gameState === 'gameover') {
+                const winner = redScore > blueScore ? 'red' : blueScore > redScore ? 'blue' : 'tie';
+                const winnerColor = winner === 'red' ? 'text-red-400' : winner === 'blue' ? 'text-blue-400' : 'text-purple-400';
+                const winnerBg = winner === 'red' ? 'from-red-600 to-red-800' : winner === 'blue' ? 'from-blue-600 to-blue-800' : 'from-purple-600 to-purple-800';
+                
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br ${winnerBg} flex items-center justify-center p-4">
+                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 ${winner === 'red' ? 'border-red-500 neon-red' : winner === 'blue' ? 'border-blue-500 neon-blue' : 'border-purple-500'}">
+                            <h1 class="text-5xl font-bold mb-4 ${winnerColor}">
+                                ${winner === 'tie' ? '🤝 Tie Game!' : winner === 'red' ? '🔴 Red Wins!' : '🔵 Blue Wins!'}
+                            </h1>
+                            <div class="mb-6 space-y-3">
+                                <div class="bg-red-900/50 rounded-lg p-4 border-2 border-red-500">
+                                    <p class="text-red-400 font-semibold">Red Player</p>
+                                    <p class="text-3xl font-bold text-white">${redScore}</p>
+                                    <p class="text-sm text-gray-400">${redUsedLetters.size} / ${availableLetters.length} letters</p>
+                                </div>
+                                <div class="bg-blue-900/50 rounded-lg p-4 border-2 border-blue-500">
+                                    <p class="text-blue-400 font-semibold">Blue Player</p>
+                                    <p class="text-3xl font-bold text-white">${blueScore}</p>
+                                    <p class="text-sm text-gray-400">${blueUsedLetters.size} / ${availableLetters.length} letters</p>
+                                </div>
+                            </div>
+                            
+                            ${manualEnd ? `
+                                <div class="mb-6">
+                                    <h2 class="text-xl font-semibold mb-4 text-white">Letters Used</h2>
+                                    <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
+                                        ${availableLetters.map(letter => {
+                                            const usedByRed = redUsedLetters.has(letter);
+                                            const usedByBlue = blueUsedLetters.has(letter);
+                                            
+                                            let buttonClass = '';
+                                            if (usedByRed && usedByBlue) {
+                                                buttonClass = 'bg-purple-600 text-white border-2 border-purple-400';
+                                            } else if (usedByRed) {
+                                                buttonClass = 'bg-red-600 text-white border-2 border-red-400 neon-red';
+                                            } else if (usedByBlue) {
+                                                buttonClass = 'bg-blue-600 text-white border-2 border-blue-400 neon-blue';
+                                            } else {
+                                                buttonClass = 'bg-gray-700 text-gray-400 border-2 border-gray-600';
+                                            }
+                                            
+                                            return `
+                                                <div class="aspect-square rounded-lg font-bold text-xl flex items-center justify-center shadow-lg relative ${buttonClass}">
+                                                    ${letter}
+                                                    <span class="absolute bottom-0.5 right-0.5 text-xs opacity-60">${LETTER_VALUES[letter]}</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                    <p class="text-sm text-gray-400 mt-3">
+                                        <span class="text-red-400">■</span> Red used
+                                        <span class="ml-3 text-blue-400">■</span> Blue used
+                                        <span class="ml-3 text-purple-400">■</span> Both used
+                                        <span class="ml-3 text-gray-400">■</span> Unused
+                                    </p>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="flex gap-4">
+                                <button onclick="gameState = 'menu'; render();" 
+                                    class="flex-1 px-6 py-3 rounded-lg font-semibold bg-gray-800 border-2 border-gray-600 text-gray-300 hover:border-purple-500 transition-all">
+                                    Main Menu
+                                </button>
+                                <button onclick="startGame();" 
+                                    class="flex-1 px-6 py-3 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-all neon-red">
+                                    Play Again
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (gameState === 'paused') {
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-red-600 via-purple-600 to-blue-600 flex items-center justify-center p-4">
+                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 border-purple-500">
+                            <h1 class="text-4xl font-bold mb-4 text-white">⏸️ Paused</h1>
+                            <div class="mb-6 space-y-3">
+                                <div class="bg-red-900/50 rounded-lg p-3 border-2 border-red-500">
+                                    <p class="text-red-400 font-semibold">Red: ${redScore}</p>
+                                </div>
+                                <div class="bg-blue-900/50 rounded-lg p-3 border-2 border-blue-500">
+                                    <p class="text-blue-400 font-semibold">Blue: ${blueScore}</p>
+                                </div>
+                            </div>
+                            <button onclick="gameState = 'playing'; startTimer(); render();" 
+                                class="w-full px-6 py-3 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-all neon-red">
+                                Resume
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (gameState === 'challenge') {
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-yellow-600 via-orange-600 to-red-600 flex items-center justify-center p-4">
+                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 border-yellow-500">
+                            <h1 class="text-4xl font-bold mb-4 text-yellow-400">⚠️ Challenge!</h1>
+                            <p class="text-white text-lg mb-6">
+                                Was "${lastPlayer === 'red' ? '🔴 Red' : '🔵 Blue'}" player's last word valid?
+                            </p>
+                            <div class="mb-6 space-y-3">
+                                <div class="bg-red-900/50 rounded-lg p-3 border-2 border-red-500">
+                                    <p class="text-red-400 font-semibold">Red: ${redScore}</p>
+                                </div>
+                                <div class="bg-blue-900/50 rounded-lg p-3 border-2 border-blue-500">
+                                    <p class="text-blue-400 font-semibold">Blue: ${blueScore}</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-6">
+                                Penalty: 10% of score (rounded up)
+                            </p>
+                            <div class="space-y-3">
+                                <button onclick="handleChallengeCorrect();" 
+                                    class="w-full px-6 py-4 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-all text-lg">
+                                    ✓ CORRECT
+                                    <span class="block text-sm opacity-80">Challenger loses points</span>
+                                </button>
+                                <button onclick="handleChallengeIncorrect();" 
+                                    class="w-full px-6 py-4 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition-all text-lg">
+                                    ✗ INCORRECT
+                                    <span class="block text-sm opacity-80">Last player loses points</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (gameState === 'playing') {
+                const progressPercent = (timeLeft / maxTime) * 100;
+                const progressColor = progressPercent > 50 ? 'bg-green-500' : progressPercent > 25 ? 'bg-yellow-500' : 'bg-red-500';
+                const bgClass = currentPlayer === 'red' 
+                    ? (timeLeft <= 5 ? 'pulse-red-bg' : 'bg-gradient-to-br from-red-600 to-red-800')
+                    : (timeLeft <= 5 ? 'pulse-blue-bg' : 'bg-gradient-to-br from-blue-600 to-blue-800');
+                const playerColor = currentPlayer === 'red' ? 'text-red-400' : 'text-blue-400';
+                const playerBorder = currentPlayer === 'red' ? 'border-red-500' : 'border-blue-500';
+                const playerNeon = currentPlayer === 'red' ? 'neon-red' : 'neon-blue';
+                
+                app.innerHTML = `
+                    <div class="min-h-screen transition-colors duration-500 ${bgClass}">
+                        <div class="container mx-auto p-4 max-w-4xl">
+                            <div class="bg-gray-900 rounded-2xl shadow-2xl p-6 mb-6 border-4 ${playerBorder} ${playerNeon}">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h1 class="text-3xl font-bold ${playerColor}">
+                                            ${currentPlayer === 'red' ? '🔴 Red Player' : '🔵 Blue Player'}
+                                        </h1>
+                                        <p class="text-gray-400">
+                                            Remaining: <span class="font-bold ${playerColor} text-2xl">
+                                                ${availableLetters.length - (currentPlayer === 'red' ? redUsedLetters.size : blueUsedLetters.size)}
+                                            </span>
+                                            <span class="text-sm ml-2 text-gray-500">
+                                                / ${availableLetters.length} letters
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <div class="text-right space-y-2">
+                                        <div class="bg-red-900/50 rounded-lg px-4 py-2 border-2 border-red-500">
+                                            <p class="text-red-400 text-sm">Red</p>
+                                            <p class="text-2xl font-bold text-white">${redScore}</p>
+                                        </div>
+                                        <div class="bg-blue-900/50 rounded-lg px-4 py-2 border-2 border-blue-500">
+                                            <p class="text-blue-400 text-sm">Blue</p>
+                                            <p class="text-2xl font-bold text-white">${blueScore}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="w-full bg-gray-700 rounded-full h-4 mb-4 overflow-hidden">
+                                    <div class="h-full transition-all duration-1000 ${progressColor}" 
+                                        style="width: ${progressPercent}%"></div>
+                                </div>
+
+                                <div class="flex justify-between items-center">
+                                    <p class="text-2xl font-bold text-white">⏱️ ${timeLeft}s</p>
+                                    <div class="flex gap-3">
+                                        ${lastPlayer ? `
+                                            <button onclick="openChallenge();" 
+                                                class="px-6 py-2 rounded-lg font-semibold bg-yellow-600 border-2 border-yellow-500 text-white hover:bg-yellow-500 transition-all">
+                                                ARE YOU SURE?
+                                            </button>
+                                        ` : ''}
+                                        <button onclick="endGame();" 
+                                            class="px-6 py-2 rounded-lg font-semibold bg-red-700 border-2 border-red-500 text-white hover:bg-red-600 transition-all neon-red">
+                                            END GAME
+                                        </button>
+                                        <button onclick="gameState = 'paused'; stopTimer(); render();" 
+                                            class="px-6 py-2 rounded-lg font-semibold bg-gray-800 border-2 border-gray-600 text-gray-300 hover:border-purple-500 transition-all">
+                                            Pause
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-3">
+                                ${availableLetters.map(letter => {
+                                    const usedByRed = redUsedLetters.has(letter);
+                                    const usedByBlue = blueUsedLetters.has(letter);
+                                    const usedByCurrent = currentPlayer === 'red' ? usedByRed : usedByBlue;
+                                    
+                                    let buttonClass = '';
+                                    if (usedByRed && usedByBlue) {
+                                        buttonClass = 'bg-purple-600 text-white cursor-not-allowed border-2 border-purple-400';
+                                    } else if (usedByRed) {
+                                        buttonClass = 'bg-red-600 text-white cursor-not-allowed border-2 border-red-400 neon-red';
+                                    } else if (usedByBlue) {
+                                        buttonClass = 'bg-blue-600 text-white cursor-not-allowed border-2 border-blue-400 neon-blue';
+                                    } else {
+                                        buttonClass = `bg-gray-800 text-gray-200 hover:bg-gray-700 border-2 ${currentPlayer === 'red' ? 'border-red-500 hover:border-red-400' : 'border-blue-500 hover:border-blue-400'}`;
+                                    }
+                                    
+                                    return `
+                                        <button onclick="handleLetterClick('${letter}')"
+                                            ${usedByCurrent ? 'disabled' : ''}
+                                            class="aspect-square rounded-xl font-bold text-2xl transition-all transform hover:scale-105 active:scale-95 shadow-lg relative ${buttonClass}"
+                                            aria-label="Letter ${letter}">
+                                            ${letter}
+                                            <span class="absolute bottom-1 right-1 text-xs opacity-60">${LETTER_VALUES[letter]}</span>
+                                        </button>
+                                    `;
+                                }).join('')}
+                            </div>
+
+                            <div class="mt-6 bg-gray-900 rounded-2xl shadow-2xl p-4 text-center border-2 ${playerBorder}">
+                                <p class="text-gray-300">Click or type any letter before time runs out!</p>
+                                <p class="text-sm text-gray-500 mt-2">Score = Letter Value × Time Remaining</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initial render
+        render();
     </script>
 </body>
 </html>

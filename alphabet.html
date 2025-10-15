@@ -69,6 +69,7 @@
         let timerInterval = null;
         let audioInitialized = false;
         let manualEnd = false; // Track if game ended manually
+        let lastMove = null; // { letter, points, player }
 
         // Initialize audio context
         function initAudio() {
@@ -121,6 +122,7 @@
             maxTime = selectedTime;
             gameState = 'playing';
             manualEnd = false; // Reset manual end flag
+            lastMove = null; // Reset last move
             render();
             startTimer();
         }
@@ -157,6 +159,7 @@
             }
 
             lastPlayer = currentPlayer; // Track who clicked this letter
+            lastMove = { letter, points, player: currentPlayer };
 
             const totalUsedLetters = new Set([...redUsedLetters, ...blueUsedLetters]);
             if (totalUsedLetters.size === availableLetters.length) {
@@ -238,13 +241,15 @@
         }
 
         function handleChallengeIncorrect() {
-            // Last player (who clicked the last letter) loses 10% rounded up
-            if (lastPlayer) {
+            // Last player (who clicked the last letter) loses 10% penalty AND the points from their last move, and the letter becomes available again
+            if (lastPlayer && lastMove) {
                 const penalty = Math.ceil((lastPlayer === 'red' ? redScore : blueScore) * 0.1);
                 if (lastPlayer === 'red') {
-                    redScore = Math.max(0, redScore - penalty);
+                    redScore = Math.max(0, redScore - penalty - lastMove.points);
+                    redUsedLetters.delete(lastMove.letter);
                 } else {
-                    blueScore = Math.max(0, blueScore - penalty);
+                    blueScore = Math.max(0, blueScore - penalty - lastMove.points);
+                    blueUsedLetters.delete(lastMove.letter);
                 }
             }
             gameState = 'playing';
@@ -363,7 +368,7 @@
                                             }
                                             
                                             return `
-                                                <div class="aspect-square rounded-lg font-bold text-xl flex items-center justify-center shadow-lg relative ${buttonClass}">
+                                                <div class="aspect-square rounded-lg font-bold text-xl flex items-center justify-center shadow-lg relative ${buttonClass}" aria-label="Letter ${letter}">
                                                     ${letter}
                                                     <span class="absolute bottom-0.5 right-0.5 text-xs opacity-60">${LETTER_VALUES[letter]}</span>
                                                 </div>
@@ -429,7 +434,7 @@
                                 </div>
                             </div>
                             <p class="text-sm text-gray-400 mb-6">
-                                Penalty: 10% of score (rounded up)
+                                Penalty: 10% of score (rounded up) AND points from last move
                             </p>
                             <div class="space-y-3">
                                 <button onclick="handleChallengeCorrect();" 
@@ -440,7 +445,7 @@
                                 <button onclick="handleChallengeIncorrect();" 
                                     class="w-full px-6 py-4 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition-all text-lg">
                                     ✗ INCORRECT
-                                    <span class="block text-sm opacity-80">Last player loses points</span>
+                                    <span class="block text-sm opacity-80">Last player loses points and letter becomes available again</span>
                                 </button>
                             </div>
                         </div>

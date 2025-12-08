@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Five Lock Door Escape</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for visual polish and puzzle elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+        }
+        .puzzle-container {
+            min-height: 80vh;
+            background-color: #2d3748; /* Darker gray for the room/puzzle area */
+        }
+        .door-card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+            transition: transform 0.3s ease-in-out;
+        }
+        .lock-icon {
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .lock-icon:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        .key-icon {
+            transition: opacity 0.5s;
+        }
+        /* Custom animation for successful unlock */
+        @keyframes successful-unlock {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .unlocked-effect {
+            animation: successful-unlock 0.5s ease-in-out;
+        }
+        /* Styling for the Yellow Lock color selector */
+        .color-box {
+            width: 80px;
+            height: 80px;
+            border: 3px solid #cbd5e0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .keyboard-key {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.1s, transform 0.1s;
+            font-weight: bold;
+        }
+        .keyboard-key:hover {
+            background-color: #636b77;
+        }
+        .keyboard-key:active {
+            transform: scale(0.95);
+        }
+        .clicked-key {
+            background-color: #48bb78 !important; /* Green feedback */
+            color: #1a202c !important;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <div id="app" class="p-4 md:p-8 min-h-screen flex flex-col items-center">
+
+        <!-- Header and Inventory -->
+        <header class="w-full max-w-4xl mb-6 flex justify-between items-center bg-gray-700 p-4 rounded-xl shadow-lg">
+            <h1 class="text-xl md:text-3xl font-extrabold text-teal-300">The 5-Lock Chamber</h1>
+            <div id="inventory" class="flex space-x-2 p-2 bg-gray-800 rounded-lg">
+                <span class="text-sm font-semibold mr-2">Keys:</span>
+                <!-- Key placeholders -->
+                <div id="key-blue" class="key-icon w-6 h-6 rounded-full bg-blue-900 opacity-25" title="Blue Key"></div>
+                <div id="key-green" class="key-icon w-6 h-6 rounded-full bg-green-900 opacity-25" title="Green Key"></div>
+                <div id="key-yellow" class="key-icon w-6 h-6 rounded-full bg-yellow-900 opacity-25" title="Yellow Key"></div>
+                <div id="key-red" class="key-icon w-6 h-6 rounded-full bg-red-900 opacity-25" title="Red Key"></div>
+                <div id="key-purple" class="key-icon w-6 h-6 rounded-full bg-purple-900 opacity-25" title="Purple Key"></div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="w-full max-w-4xl p-6 rounded-xl puzzle-container flex flex-col items-center">
+            <!-- Content will be rendered here by JS -->
+        </main>
+
+        <!-- Message Box for Feedback -->
+        <div id="message-box" class="fixed top-0 inset-x-0 p-4 transition-transform duration-500 transform -translate-y-full z-50">
+            <div id="message-text" class="max-w-md mx-auto p-3 text-center rounded-lg shadow-2xl font-semibold"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Game State ---
+        let state = {
+            keys: {
+                blue: false,
+                green: false,
+                yellow: false,
+                red: false,
+                purple: false
+            },
+            currentView: 'door',
+            activeHint: null, // Stores the color of the puzzle whose hint is currently displayed
+            // State for the Purple Lock puzzle
+            purpleSequence: [],
+            purpleCorrectSequence: ['S', 'Z', 'T', 'F', 'E'],
+            // Colors for Yellow Lock
+            availableColors: ['red', 'blue', 'purple', 'green', 'yellow', 'orange', 'black'],
+            yellowInputColors: ['red', 'blue', 'purple', 'green'] // Initial state for 4 boxes
+        };
+
+        const mainContent = document.getElementById('main-content');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+
+        // --- Puzzle Hints (VAGUE GUIDANCE ONLY) ---
+        const PUZZLE_HINTS = {
+            blue: "Hint: The key word is four letters long and represents something intangible that always moves forward. Look up the Pig Pen cipher chart.",
+            green: "Hint: Did you learn how to count?",
+            yellow: "Hint: The poem lists colors using descriptive names. Match the descriptive words to the basic colors of the visible spectrum.",
+            red: "Hint: 'A isn't A. Move 4' means A becomes E. To decode the given word, you must write a new alphabet.",
+            purple: "Hint: The solution comes first. The clue is in the names of the numbers."
+        };
+
+        // --- Utility Functions ---
+
+        /** Shows a temporary message to the user. */
+        function showMessage(text, type = 'success') {
+            let bgColor = 'bg-teal-500';
+            let textColor = 'text-white';
+
+            if (type === 'error') {
+                bgColor = 'bg-red-500';
+                textColor = 'text-white';
+            } else if (type === 'neutral') {
+                bgColor = 'bg-gray-500';
+                textColor = 'text-white';
+            }
+
+            messageText.className = `max-w-md mx-auto p-3 text-center rounded-lg shadow-2xl font-semibold ${bgColor} ${textColor}`;
+            messageText.textContent = text;
+            messageBox.classList.remove('-translate-y-full');
+            messageBox.classList.add('translate-y-0');
+
+            // Hide after 3 seconds
+            setTimeout(() => {
+                messageBox.classList.remove('translate-y-0');
+                messageBox.classList.add('-translate-y-full');
+            }, 3000);
+        }
+
+        /** Updates the visual state of the inventory. */
+        function updateInventory() {
+            for (const color in state.keys) {
+                const keyElement = document.getElementById(`key-${color}`);
+                if (state.keys[color]) {
+                    // FIX: Ensure correct template literal syntax for class list
+                    keyElement.classList.remove(`bg-${color}-900`, 'opacity-25');
+                    keyElement.classList.add(`bg-${color}-400`, 'opacity-100', 'unlocked-effect'); // FIXED LINE HERE
+                } else {
+                    keyElement.classList.remove(`bg-${color}-400`, 'opacity-100', 'unlocked-effect');
+                    keyElement.classList.add(`bg-${color}-900`, 'opacity-25');
+                }
+            }
+        }
+
+        /** Handles collecting a key and checking for game win. */
+        function collectKey(color) {
+            if (state.keys[color]) {
+                showMessage(`You already have the ${color} key!`, 'neutral');
+                return;
+            }
+
+            state.keys[color] = true;
+            showMessage(`Key Found! The ${color.toUpperCase()} lock is now open.`, 'success');
+            updateInventory();
+            renderView('door');
+
+            // Check if all keys are collected
+            const allKeysCollected = Object.values(state.keys).every(hasKey => hasKey);
+            if (allKeysCollected) {
+                setTimeout(winGame, 500);
+            }
+        }
+
+        /** Handles the final win condition. */
+        function winGame() {
+            mainContent.innerHTML = `
+                <div class="text-center p-10 bg-gray-800 rounded-xl shadow-2xl border-4 border-teal-400">
+                    <h2 class="text-6xl font-black text-teal-400 mb-4">CONGRATULATIONS!</h2>
+                    <p class="text-2xl text-gray-200">The door swings open...</p>
+                    <p class="text-lg mt-4">You have mastered the puzzles and gained your freedom.</p>
+                </div>
+            `;
+            // Optional: Make the door disappear
+            document.getElementById('door-card')?.classList.add('hidden');
+        }
+
+        /** Toggles the hint visibility for the current puzzle view. */
+        function toggleHint(color) {
+            if (state.activeHint === color) {
+                state.activeHint = null; // Hide hint
+            } else {
+                state.activeHint = color; // Show hint
+            }
+            // Re-render the current view to apply the change
+            renderView(`${color}Puzzle`);
+        }
+
+        // --- Puzzle Logic ---
+
+        // BLUE LOCK (Pig Pen Cipher)
+        function checkBlueAnswer() {
+            const answer = document.getElementById('blue-input').value.trim().toLowerCase();
+            if (answer === 'time') {
+                collectKey('blue');
+            } else {
+                showMessage('Incorrect! Check your cipher translation.', 'error');
+            }
+        }
+
+        // GREEN LOCK (Picture Sequence)
+        function checkGreenAnswer() {
+            const answer = document.getElementById('green-input').value.trim();
+            if (answer === '563') {
+                collectKey('green');
+            } else {
+                showMessage('Incorrect sequence.', 'error');
+            }
+        }
+
+        // YELLOW LOCK (Color Sequence)
+        function cycleYellowColor(boxIndex, direction) {
+            const colors = state.availableColors;
+            let currentIndex = colors.indexOf(state.yellowInputColors[boxIndex]);
+
+            currentIndex += direction;
+            if (currentIndex < 0) {
+                currentIndex = colors.length - 1;
+            } else if (currentIndex >= colors.length) {
+                currentIndex = 0;
+            }
+
+            const newColor = colors[currentIndex];
+            state.yellowInputColors[boxIndex] = newColor;
+
+            // Update the UI
+            const boxElement = document.getElementById(`yellow-box-${boxIndex}`);
+            // Remove all existing Tailwind bg-colors and add the new one
+            boxElement.className = `color-box rounded-lg flex items-center justify-center bg-${newColor}-500`;
+            boxElement.title = newColor.charAt(0).toUpperCase() + newColor.slice(1);
+        }
+
+        function checkYellowAnswer() {
+            const correctSequence = ['blue', 'red', 'green', 'black'];
+            const currentSequence = state.yellowInputColors;
+
+            if (currentSequence.every((color, i) => color === correctSequence[i])) {
+                collectKey('yellow');
+            } else {
+                showMessage('The colors are wrong. Re-read the poem.', 'error');
+            }
+        }
+
+        // RED LOCK (Caesar Cipher)
+        function checkRedAnswer() {
+            const answer = document.getElementById('red-input').value.trim().toUpperCase();
+            // Encoded: EPIVX, Shift: +4 (A->E). Decode: Shift -4
+            if (answer === 'ALERT') {
+                collectKey('red');
+            } else {
+                showMessage('Incorrect decoding.', 'error');
+            }
+        }
+
+        // PURPLE LOCK (Interactive Keyboard)
+        function checkPurpleAnswer() {
+            // Function intentionally left empty as the sequence check is handled by handlePurpleKeyClick
+        }
+
+        function handlePurpleKeyClick(key) {
+            if (state.keys.purple) return; // Locked if already solved
+
+            // Add key to sequence and update UI
+            state.purpleSequence.push(key);
+            document.getElementById(key).classList.add('clicked-key');
+
+            // Show current sequence for player feedback
+            document.getElementById('purple-sequence-display').textContent = state.purpleSequence.join('');
+
+            // Check if sequence is complete
+            if (state.purpleSequence.length === state.purpleCorrectSequence.length) {
+                if (state.purpleSequence.join('') === state.purpleCorrectSequence.join('')) {
+                    collectKey('purple');
+                } else {
+                    showMessage('Incorrect sequence entered. Resetting input.', 'error');
+                    // Reset on error
+                    setTimeout(() => {
+                        resetPurplePuzzle();
+                    }, 1000);
+                }
+            } else if (state.purpleSequence.length > state.purpleCorrectSequence.length) {
+                 // Should not happen if check is immediate, but as a safeguard
+                resetPurplePuzzle();
+            }
+        }
+
+        function resetPurplePuzzle() {
+            state.purpleSequence = [];
+            document.querySelectorAll('.keyboard-key').forEach(el => el.classList.remove('clicked-key'));
+            document.getElementById('purple-sequence-display').textContent = '';
+            showMessage('Sequence cleared.', 'neutral');
+        }
+
+        // --- View Rendering ---
+
+        /** Renders the main door view. */
+        function renderDoorView() {
+            mainContent.innerHTML = `
+                <div id="door-card" class="door-card w-full max-w-lg bg-gray-900 rounded-3xl p-8 border-4 border-yellow-700 mt-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-bold text-yellow-400">The Locked Door</h2>
+                        <p class="text-gray-400">Five locks guard the way. Click a lock to attempt its challenge.</p>
+                    </div>
+
+                    <!-- Locks Display -->
+                    <div class="grid grid-cols-5 gap-4">
+                        <div class="flex flex-col items-center">
+                            <button onclick="renderView('bluePuzzle')"
+                                class="lock-icon p-4 rounded-full ${state.keys.blue ? 'bg-blue-400' : 'bg-blue-600'} hover:bg-opacity-80 transition duration-150"
+                                title="Blue Lock: Pig Pen Cipher">
+                                ${state.keys.blue ? '<span class="text-xl">✅</span>' : '<span class="text-xl">🔒</span>'}
+                            </button>
+                            <span class="text-xs mt-1 text-blue-400">BLUE</span>
+                        </div>
+
+                        <div class="flex flex-col items-center">
+                            <button onclick="renderView('greenPuzzle')"
+                                class="lock-icon p-4 rounded-full ${state.keys.green ? 'bg-green-400' : 'bg-green-600'} hover:bg-opacity-80 transition duration-150"
+                                title="Green Lock: Picture Sequence">
+                                ${state.keys.green ? '<span class="text-xl">✅</span>' : '<span class="text-xl">🔒</span>'}
+                            </button>
+                            <span class="text-xs mt-1 text-green-400">GREEN</span>
+                        </div>
+
+                        <div class="flex flex-col items-center">
+                            <button onclick="renderView('yellowPuzzle')"
+                                class="lock-icon p-4 rounded-full ${state.keys.yellow ? 'bg-yellow-400' : 'bg-yellow-600'} hover:bg-opacity-80 transition duration-150"
+                                title="Yellow Lock: Color Sequence">
+                                ${state.keys.yellow ? '<span class="text-xl">✅</span>' : '<span class="text-xl">🔒</span>'}
+                            </button>
+                            <span class="text-xs mt-1 text-yellow-400">YELLOW</span>
+                        </div>
+
+                        <div class="flex flex-col items-center">
+                            <button onclick="renderView('redPuzzle')"
+                                class="lock-icon p-4 rounded-full ${state.keys.red ? 'bg-red-400' : 'bg-red-600'} hover:bg-opacity-80 transition duration-150"
+                                title="Red Lock: Caesar Cipher">
+                                ${state.keys.red ? '<span class="text-xl">✅</span>' : '<span class="text-xl">🔒</span>'}
+                            </button>
+                            <span class="text-xs mt-1 text-red-400">RED</span>
+                        </div>
+
+                        <div class="flex flex-col items-center">
+                            <button onclick="renderView('purplePuzzle')"
+                                class="lock-icon p-4 rounded-full ${state.keys.purple ? 'bg-purple-400' : 'bg-purple-600'} hover:bg-opacity-80 transition duration-150"
+                                title="Purple Lock: Math/Keyboard Sequence">
+                                ${state.keys.purple ? '<span class="text-xl">✅</span>' : '<span class="text-xl">🔒</span>'}
+                            </button>
+                            <span class="text-xs mt-1 text-purple-400">PURPLE</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-gray-700 text-center">
+                        <p class="text-sm text-gray-500">Solve all five puzzles to unlock the final door.</p>
+                        ${Object.values(state.keys).every(k => k) ? 
+                            '<p class="text-2xl font-bold text-teal-400 mt-2 unlocked-effect">The Final Door is UNLOCKED!</p>' : ''}
+                    </div>
+                </div>
+            `;
+            state.currentView = 'door';
+            state.activeHint = null; // Clear hint state when leaving puzzle
+        }
+
+        /** Renders a generic puzzle structure. (Title and instructions removed) */
+        function renderPuzzleView(color, contentHTML, checkFn) {
+            const isHintVisible = state.activeHint === color;
+            const hintHTML = PUZZLE_HINTS[color];
+
+            mainContent.innerHTML = `
+                <div class="w-full max-w-3xl bg-gray-800 rounded-xl p-6 md:p-10 shadow-xl border-t-4 border-${color}-400">
+                    <!-- Title and Instructions removed as requested -->
+
+                    <div class="bg-gray-700 p-6 rounded-lg mb-6 shadow-inner">
+                        ${contentHTML}
+                    </div>
+
+                    ${!state.keys[color] ? `
+                        <div class="flex flex-col md:flex-row justify-between space-y-4 md:space-y-0 md:space-x-4">
+                            
+                            <!-- Hint Section (always visible, hint content toggled) -->
+                            <div class="flex flex-col w-full md:w-1/3">
+                                <button onclick="toggleHint('${color}')"
+                                    class="px-6 py-3 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-500 transition shadow-md">
+                                    ${isHintVisible ? 'Hide Hint' : 'Show Hint'}
+                                </button>
+                                <!-- Hint Content Box -->
+                                <div id="hint-area-${color}" class="${isHintVisible ? 'block' : 'hidden'} mt-4 p-4 rounded-lg bg-gray-900 border border-yellow-400 text-yellow-300 text-sm transition-all duration-500">
+                                    ${hintHTML}
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+                                <button onclick="renderView('door')"
+                                    class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 transition">
+                                    Back to Door
+                                </button>
+                                <button onclick="${checkFn}"
+                                    class="px-6 py-3 bg-${color}-500 text-white font-bold rounded-lg hover:bg-${color}-400 transition shadow-lg">
+                                    Submit Solution
+                                </button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="text-center">
+                            <p class="text-2xl font-bold text-teal-400 mb-4">Key Collected!</p>
+                            <button onclick="renderView('door')"
+                                class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 transition">
+                                Return to Door
+                            </button>
+                        </div>
+                    `}
+                </div>
+            `;
+            state.currentView = `${color}Puzzle`;
+
+            // If it's the yellow puzzle, initialize the colors
+            if (color === 'yellow') {
+                for(let i=0; i<4; i++) {
+                    cycleYellowColor(i, 0); // Initialize the visual boxes
+                }
+            }
+        }
+
+        /** Master view router */
+        function renderView(viewName) {
+            if (viewName === 'door') {
+                renderDoorView();
+                return;
+            }
+
+            // --- Blue Lock Puzzle (Pig Pen Cipher) ---
+            if (viewName === 'bluePuzzle') {
+                const content = `
+                    <div class="flex justify-center mb-4 p-4 bg-gray-900 rounded-lg">
+                        <!-- Placeholder image for the Pig Pen Cipher symbols for "TIME" -->
+                        <img src="https://raw.githubusercontent.com/arschul/games/refs/heads/main/Pictures/pigpen.png" alt="Pig Pen Cipher Symbols" class="rounded-lg">
+                    </div>
+                    <input type="text" id="blue-input" class="w-full p-3 rounded-lg bg-gray-900 text-white placeholder-gray-500" placeholder="Enter your answer (one word)">
+                `;
+                // Updated signature: Removed 'title' and 'instructions'
+                renderPuzzleView('blue', content, 'checkBlueAnswer()');
+                return;
+            }
+
+            // --- Green Lock Puzzle ---
+            if (viewName === 'greenPuzzle') {
+                const content = `
+                    <p class="text-lg text-yellow-300 font-mono mb-4 text-center">Identify the numerical sequence:</p>
+                    <div class="flex justify-around items-center space-x-4 mb-6 text-6xl">
+                        <!-- Using Emojis as placeholders for the pictures -->
+                        <span title="Horse">🐴</span>
+                        <span title="Monkey">🐒</span>
+                        <span title="Dog">🐕</span>
+                    </div>
+                    <input type="text" id="green-input" class="w-full p-3 rounded-lg bg-gray-900 text-white placeholder-gray-500" placeholder="Enter the 3-digit number" maxlength="3">
+                `;
+                // Updated signature: Removed 'title' and 'instructions'
+                renderPuzzleView('green', content, 'checkGreenAnswer()');
+                return;
+            }
+
+            // --- Yellow Lock Puzzle ---
+            if (viewName === 'yellowPuzzle') {
+                const content = `
+                    <p class="text-lg text-yellow-300 font-mono mb-4 text-center">The Poet's Desire:</p>
+                    <blockquote class="italic border-l-4 border-yellow-300 pl-4 text-gray-300 mb-6">
+                        "I want my cerulean horizon, crimson tides, viridian pastures, night sky."
+                    </blockquote>
+                    <p class="text-sm text-gray-400 mb-4 text-center">Set the boxes to the correct color sequence.</p>
+
+                    <div class="flex justify-center space-x-4">
+                        ${Array(4).fill(0).map((_, i) => `
+                            <div class="flex flex-col items-center space-y-2">
+                                <button onclick="cycleYellowColor(${i}, 1)" class="text-white text-lg hover:text-yellow-400">▲</button>
+                                <div id="yellow-box-${i}" class="color-box rounded-lg bg-red-500"></div>
+                                <button onclick="cycleYellowColor(${i}, -1)" class="text-white text-lg hover:text-yellow-400">▼</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                // Updated signature: Removed 'title' and 'instructions'
+                renderPuzzleView('yellow', content, 'checkYellowAnswer()');
+                return;
+            }
+
+            // --- Red Lock Puzzle ---
+            if (viewName === 'redPuzzle') {
+                const content = `
+                    <p class="text-lg text-yellow-300 font-mono mb-4 text-center">Encrypted Message:</p>
+                    <p class="text-xl italic border-l-4 border-yellow-300 pl-4 mb-2">"A isn't A. Move 4. EPIVX"</p>
+                    <input type="text" id="red-input" class="w-full p-3 rounded-lg bg-gray-900 text-white placeholder-gray-500" placeholder="Enter the decoded word (5 letters)">
+                `;
+                // Updated signature: Removed 'title' and 'instructions'
+                renderPuzzleView('red', content, 'checkRedAnswer()');
+                return;
+            }
+
+            // --- Purple Lock Puzzle ---
+            if (viewName === 'purplePuzzle') {
+                // Generate keyboard A-Z
+                const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                const keyboardHTML = Array.from(alphabet).map(letter => `
+                    <button id="${letter}" onclick="handlePurpleKeyClick('${letter}')" class="keyboard-key">
+                        ${letter}
+                    </button>
+                `).join('');
+
+                const content = `
+                    <!-- Displaying the equation as the explicit puzzle clue -->
+                    <p class="text-2xl font-bold text-teal-300 mb-4 text-center">10x17³ + 256x82 + 17x8</p>
+
+                    <div class="flex flex-col items-center mb-6">
+                        <p class="text-xl font-mono text-white mb-2">Current Sequence:</p>
+                        <div id="purple-sequence-display" class="h-8 w-48 text-center text-3xl font-bold text-yellow-300 border-b border-yellow-300"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-7 gap-2 justify-center p-4 bg-gray-900 rounded-lg mb-4">
+                        ${keyboardHTML}
+                    </div>
+
+                    <div class="flex justify-center">
+                        <button onclick="resetPurplePuzzle()" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition">
+                            Reset Sequence
+                        </button>
+                    </div>
+                `;
+                // Updated signature: Removed 'title' and 'instructions'
+                renderPuzzleView('purple', content, "checkPurpleAnswer()");
+                return;
+            }
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateInventory();
+            renderView('door');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Five Doors — Final</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  :root{--bg:#071024;--muted:#9aa6b2}
+  body{background:var(--bg);color:#e6eef8;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;margin:0}
+  .container{max-width:980px;margin:28px auto;padding:18px}
+  .doors-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  .door-btn{height:86px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer}
+  .door-btn.disabled{opacity:.38;cursor:not-allowed;filter:grayscale(.3)}
+  .card{background:#0b1320;padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+  .key-dot{width:18px;height:18px;border-radius:9999px;opacity:.25;transition:.2s}
+  .key-dot.active{opacity:1;transform:scale(1.08)}
+  .msg{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:60}
+  .poem-line{line-height:1.18}
+  .countdown{font-weight:800;color:#f97316}
+  .swatch:hover{transform:scale(1.12)}
+  @media(max-width:700px){.doors-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+    <h1 style="font-size:20px;font-weight:800;color:#38bdf8">Five Doors — Final</h1>
+
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="color:var(--muted);font-size:13px;margin-right:8px">Keys:</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px"><div id="key-1" class="key-dot" style="background:#06b6d4"></div><span style="font-size:12px;color:var(--muted)">1</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div id="key-2" class="key-dot" style="background:#f59e0b"></div><span style="font-size:12px;color:var(--muted)">2</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div id="key-3" class="key-dot" style="background:#7c3aed"></div><span style="font-size:12px;color:var(--muted)">3</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div id="key-4" class="key-dot" style="background:#fb7185"></div><span style="font-size:12px;color:var(--muted)">4</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div id="key-5" class="key-dot" style="background:#10b981"></div><span style="font-size:12px;color:var(--muted)">5</span></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="card">
+    <div style="margin-bottom:12px;color:var(--muted)">Choose a door.</div>
+
+    <!-- DOOR BUTTONS -->
+    <div class="doors-grid" style="margin-bottom:16px">
+      <button id="btn-1" class="door-btn" style="background:#06b6d4;color:#022022" onclick="openDoor(1)">Door 1</button>
+      <button id="btn-2" class="door-btn" style="background:#f59e0b;color:#2a1200" onclick="openDoor(2)">Door 2</button>
+      <button id="btn-3" class="door-btn" style="background:#7c3aed;color:#fff" onclick="openDoor(3)">Door 3</button>
+      <button id="btn-4" class="door-btn" style="background:#fb7185;color:#3b0710" onclick="openDoor(4)">Door 4</button>
+      <button id="btn-5" class="door-btn" style="background:#10b981;color:#052014" onclick="openDoor(5)">Door 5</button>
+    </div>
+
+    <div id="door-area" style="padding:22px;color:var(--muted)">
+      Choose a door to begin.
+    </div>
+  </main>
+</div>
+
+<div id="message" class="msg"></div>
+
+<script>
+/* ============================================================
+   GLOBAL STATE
+============================================================ */
+const state = {
+  keys:{1:false,2:false,3:false,4:false,5:false},
+
+  /* Door 1 */
+  door1Audio:null,
+
+  /* Door 4 */
+  door4Words:['CHAOS','ORDER','NOISE','PEACE','QUIET'],
+  door4Index:0,
+  door4CurrentStanza:null,
+  door4Instructions:[],
+  door4Step:0,
+  door4Timer:null,
+  door4TimeLeft:0,
+
+  /* Door 5 */
+  door5Verses:[
+    {lines:[
+      "A quiet street where blue petals fall,",
+      "a red coin swims across the dusk,",
+      "streetlamps hold a patient hush,",
+      "and someone folds the evening small."
+    ],pair:['blue','red'],result:'purple'},
+
+    {lines:[
+      "Early carts will trade the sun for rust,",
+      "red dust and yellow flags touch the road,",
+      "shadows tally coins of lead and lime,",
+      "and afternoons melt toward the market's throat."
+    ],pair:['red','yellow'],result:'orange'},
+
+    {lines:[
+      "A porcelain room where white light leans,",
+      "a red thread stitches quiet seams,",
+      "mirrors keep a softened face,",
+      "and the hour hums small, contented scenes."
+    ],pair:['white','red'],result:'pink'},
+
+    {lines:[
+      "A harbor where blue glass meets lemon trees,",
+      "boats hum like yellow coins in slow procession,",
+      "children find calm, soft mornings,",
+      "and the tide returns the softened impression."
+    ],pair:['blue','yellow'],result:'green'},
+
+    {lines:[
+      "A backlot where black tin learns to shine,",
+      "white dust settles like a cautious hush,",
+      "lamplight softens into the pavement,",
+      "and alleys fold the sound into a brush."
+    ],pair:['black','white'],result:'gray'}
+  ],
+  door5Order:[],
+  door5Pos:0,
+  selectedColor:null
+};
+
+const COLOR_OPTIONS=[
+  'red','blue','yellow','green','orange','purple',
+  'pink','brown','black','white','gray',
+  'cyan','magenta','lime','teal','maroon'
+];
+
+/* ============================================================
+   GENERIC HELPERS
+============================================================ */
+function showMessage(txt,level='info'){
+  const el=document.getElementById('message');
+  el.innerHTML=`<div style="
+    padding:10px 14px;
+    border-radius:8px;
+    background:${level==='error'?'#ef4444':'#06b6d4'};
+    color:#fff;">
+      ${txt}
+    </div>`;
+  setTimeout(()=>{el.innerHTML='';},2200);
+}
+
+function updateKeysUI(){
+  for(let i=1;i<=5;i++){
+    document.getElementById(`key-${i}`).classList.toggle('active',state.keys[i]);
+    const btn=document.getElementById(`btn-${i}`);
+    if(state.keys[i]){
+      btn.classList.add('disabled');
+      btn.disabled=true;
+      btn.innerHTML=`Door ${i} ✓`;
+    }
+  }
+
+  if(Object.values(state.keys).every(v=>v)){
+    document.getElementById('door-area').innerHTML=`
+      <div style="padding:28px;background:#064e3b;border-radius:12px;color:#d1fae5;text-align:center">
+        <div style="font-size:22px;font-weight:800">CONGRATULATIONS</div>
+        <div style="margin-top:8px">All five doors opened.</div>
+      </div>`;
+  }
+}
+
+function closeDoor(){
+  document.getElementById('door-area').innerHTML=
+    `<div style="padding:22px;color:var(--muted)">Choose a door to begin.</div>`;
+}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function capitalize(s){return s[0].toUpperCase()+s.slice(1)};
+
+/* ============================================================
+   ROUTER
+============================================================ */
+function openDoor(n){
+  if(state.keys[n]) return showMessage('Already solved');
+
+  if(n===1) return renderDoor1();
+  if(n===2) return renderDoor2();
+  if(n===3) return renderDoor3();
+  if(n===4) return renderDoor4();
+  if(n===5) return renderDoor5();
+}
+
+/* ============================================================
+   DOOR 1 — Audio Morse (Play / Stop)
+============================================================ */
+function renderDoor1(){
+  document.getElementById('door-area').innerHTML = `
+    <div style="padding:18px; display:flex; flex-direction:column; gap:12px;">
+
+      <div style="display:flex; gap:10px;">
+        <button id="d1-play" class="primary">Play</button>
+        <button id="d1-stop" class="ghost">Stop</button>
+      </div>
+
+      <input id="d1-in" type="text" autocomplete="off" />
+
+      <div style="display:flex; gap:10px; margin-top:4px;">
+        <button class="primary" onclick="checkDoor1()">Submit</button>
+        <button class="ghost" onclick="closeDoor()">Back</button>
+      </div>
+
+    </div>
+  `;
+
+  // Initialize audio if needed
+  if (!state.door1Audio) {
+    state.door1Audio = new Audio(
+      "https://github.com/arschul/games/raw/refs/heads/main/Pictures/morsecode_echo.wav"
+    );
+    state.door1Audio.loop = true;
+  }
+
+  document.getElementById('d1-play').onclick = async () => {
+    try {
+      await state.door1Audio.play();
+    } catch (err) {
+      showMessage("Tap again to allow audio", "error");
+    }
+  };
+
+  document.getElementById('d1-stop').onclick = () => {
+    state.door1Audio.pause();
+    state.door1Audio.currentTime = 0;
+  };
+}
+
+function checkDoor1(){
+  const v = document.getElementById('d1-in').value.trim().toUpperCase();
+  if (v === "ECHO") {
+    state.keys[1] = true;
+    updateKeysUI();
+    state.door1Audio.pause();
+    state.door1Audio.currentTime = 0;
+    showMessage("Unlocked");
+    closeDoor();
+  } else {
+    showMessage("Wrong", "error");
+  }
+}
+
+
+/* ============================================================
+   DOOR 2 — Dog + Cat
+============================================================ */
+function renderDoor2(){
+  document.getElementById('door-area').innerHTML=`
+    <div style="padding:18px">
+      <div>🐶 + 🐱 = 14</div>
+      <div>🐶 − 🐱 = 4</div>
+      <div style="margin-bottom:12px">I have two best friends.</div>
+
+      <input id="d2-in" type="text" autocomplete="off" style="margin-bottom:12px"/>
+
+      <div style="display:flex;gap:10px">
+        <button class="primary" onclick="checkDoor2()">Submit</button>
+        <button class="ghost" onclick="closeDoor()">Back</button>
+      </div>
+    </div>`;
+}
+function checkDoor2(){
+  if(document.getElementById('d2-in').value.trim()==="18"){
+    state.keys[2]=true;updateKeysUI();
+    showMessage("Unlocked");closeDoor();
+  }else showMessage("Wrong","error");
+}
+
+/* ============================================================
+   DOOR 3 — Alphabet scramble (HOLE missing)
+============================================================ */
+function renderDoor3(){
+  const exclude=new Set(['H','O','L','E']);
+  const letters=[];
+  for(let i=0;i<26;i++){
+    const ch=String.fromCharCode(65+i);
+    if(!exclude.has(ch)) letters.push(ch);
+  }
+  const areaW=Math.min(860,window.innerWidth-120);
+  const areaH=280;
+
+  const spans=letters.map(ch=>{
+    const left=Math.random()*(areaW-40);
+    const top=Math.random()*(areaH-28);
+    const size=12+Math.random()*18;
+    const op=(0.6+Math.random()*0.4).toFixed(2);
+    return `<span style="
+      position:absolute;left:${left}px;top:${top}px;
+      font-size:${size}px;color:rgba(255,255,255,${op})
+    ">${ch}</span>`
+  }).join('');
+
+  document.getElementById('door-area').innerHTML=`
+    <div style="padding:12px">
+      <div style="
+        position:relative;
+        height:${areaH}px;
+        background:#071127;
+        border-radius:8px;
+        margin-bottom:12px;
+        overflow:hidden;">
+        ${spans}
+      </div>
+
+      <input id="d3-in" type="text" autocomplete="off" style="margin-bottom:12px"/>
+
+      <div style="display:flex;gap:10px">
+        <button class="primary" onclick="checkDoor3()">Submit</button>
+        <button class="ghost" onclick="closeDoor()">Back</button>
+      </div>
+    </div>`;
+}
+
+function checkDoor3(){
+  if(document.getElementById('d3-in').value.trim().toUpperCase()==="HOLE"){
+    state.keys[3]=true;updateKeysUI();
+    showMessage("Unlocked");closeDoor();
+  }else showMessage("Wrong","error");
+}
+
+/* ---------- DOOR 4: letter extraction with directions & 10s timer ---------- */
+function renderDoor4(){
+  // choose current target word
+  let attempts = 0;
+  function pickStanzaThatContainsAllLetters(word) {
+    // For the word, check poem stanzas and return a stanza that contains every letter
+    const poems = {
+      'CHAOS': [
+        ["Tide breathes a crooked ledger", "spinning coins where names once were", "the map forgets its northern oath", "and every bell rings different from the last"],
+        ["A loose stitch in starless linen", "sparks colliding with ledgered dusk", "doors open where none were planned", "and shadows bargain with tomorrow"],
+        ["Paper cities fold into pockets", "wind writes new addresses on the skin", "a clock misplaces half its hours", "and the echo trades shoes with the noon"],
+        ["Broken looms weave sudden routes", "lanterns melt into the tide's palm", "voices climb like ladders of salt", "and the compass prefers to sleep"]
+      ],
+      'ORDER': [
+        ["Lines wake to their appointed seats", "numbers line up in patient rows", "the bell remembers each toll", "and the ledger rests without surprise"],
+        ["A square folds precisely at its corners", "calendars whisper the next page", "fences hold their names intact", "and maps file themselves in drawers"],
+        ["Keys hang by the same small hook", "letters follow one another in file", "the clock ticks the honors of rule", "and the room inhales in measured breaths"],
+        ["Banks of light are trimmed to edges", "patterns return to tidy halves", "the market pays in parables", "and the tide asks permission to move"]
+      ],
+      'NOISE': [
+        ["Cymbals bloom in concrete pockets", "paper shouts numbers down the lane", "sirens collect their morning mail", "and the kettle announces its departure"],
+        ["A chorus of forks disputes the soup", "ambassadors of static in the wires", "the radio auctions private thoughts", "and laughter drafts a ledger of beats"],
+        ["Horns carve maps into the rain", "the drum forgets the name of silence", "typewriters rehearse their own betrayals", "and footsteps hum a different song"],
+        ["Buzzing rooms compose a messy prayer", "stains of sound collect in the sill", "the clock coughs up broken tunes", "and the ceiling hums like a tired hive"]
+      ],
+      'PEACE': [
+        ["Dawn folds gently into a cup", "linen answers the call of tea", "birds keep minor confidences", "and the curtain remembers to breathe"],
+        ["Quiet hands mend the edges of noise", "a chair remembers how to hold feet", "the clock tips its hat and rests", "and a hush files itself into pockets"],
+        ["Letters go home to bed on time", "the sea hums a soft arithmetic", "lamps keep their small predictable glow", "and the day ties its laces slow"],
+        ["Footsteps are kind to the floor", "the window keeps its simple view", "maps lose their sharp corners", "and the sky mends its frayed hem"]
+      ],
+      'QUIET': [
+        ["A single spoon counts all mornings", "the road stitches its empty seam", "a single lamp keeps watch like a vow", "and the house keeps its small breath"],
+        ["Words fold like paper cranes", "the page listens before it speaks", "shadows shave their louder edges", "and the kettle whispers the time"],
+        ["A bell learns to keep a single ring", "windows keep their gaze inward", "the street forgets the footstep tally", "and the mailbox hums like a heart"],
+        ["The clock learns to lower its voice", "the sky tucks in its noisy stars", "the garden counts in quiet knots", "and the room remembers its center"]
+      ]
+    };
+
+    const stanzas = poems[word];
+    for (let s of stanzas) {
+      // check for each letter in word if it appears somewhere in stanza
+      const lowerStanza = s.map(l => l.toLowerCase());
+      let allFound = true;
+      for (const letter of word.toLowerCase()) {
+        let found = false;
+        for (let li=0; li<lowerStanza.length; li++){
+          if (lowerStanza[li].includes(letter)) { found = true; break; }
+        }
+        if (!found) { allFound = false; break; }
+      }
+      if (allFound) return s;
+    }
+    return null;
+  }
+
+  // find a stanza for the current target word; if none found, rotate word until found
+  let attemptsLimit = 6;
+  let currentWord = state.door4Words[state.door4Index];
+  let stanza = pickStanzaThatContainsAllLetters(currentWord);
+  while (!stanza && attemptsLimit-->0) {
+    state.door4Index = (state.door4Index + 1) % state.door4Words.length;
+    currentWord = state.door4Words[state.door4Index];
+    stanza = pickStanzaThatContainsAllLetters(currentWord);
+  }
+  if (!stanza) {
+    // fallback: show an informative message and lock the door temporarily (shouldn't happen with our stanzas)
+    document.getElementById('door-area').innerHTML = `<div style="padding:18px">Unable to prepare puzzle. Try again.</div>`;
+    return;
+  }
+
+  // Build instructions: for each letter in currentWord, find a random occurrence in the stanza
+  function findOccurrences(letter, stanzaLines) {
+    const occ = [];
+    const lower = letter.toLowerCase();
+    for (let li=0; li<stanzaLines.length; li++){
+      const words = stanzaLines[li].split(/\s+/).map(w => w.replace(/[^\w']/g,''));
+      for (let wi=0; wi<words.length; wi++){
+        const word = words[wi];
+        for (let cidx=0; cidx<word.length; cidx++){
+          if (word[cidx].toLowerCase() === lower) {
+            // positions are 1-based for user-facing instructions
+            occ.push({line: li+1, word: wi+1, letter: cidx+1, char: word[cidx]});
+          }
+        }
+      }
+    }
+    return occ;
+  }
+
+  const instructions = [];
+  const usedPositions = new Set();
+  for (const ch of currentWord) {
+    const occ = findOccurrences(ch, stanza);
+    // shuffle occ
+    for (let i=occ.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [occ[i],occ[j]]=[occ[j],occ[i]]; }
+    // find first occ not used
+    let chosen = null;
+    for (const o of occ) {
+      const key = `${o.line}-${o.word}-${o.letter}`;
+      if (!usedPositions.has(key)) { chosen = o; usedPositions.add(key); break; }
+    }
+    if (!chosen) {
+      // if none available (shouldn't happen), pick any occurrence (allow reuse)
+      if (occ.length>0) chosen = occ[0];
+      else {
+        // fail-safe: pick first letter of stanza line 1 word 1 letter 1
+        chosen = {line:1, word:1, letter:1, char: stanza[0].split(/\s+/)[0].replace(/[^\w']/g,'')[0] || 'a'};
+      }
+    }
+    instructions.push({line:chosen.line, word:chosen.word, letter:chosen.letter, expected: chosen.char});
+  }
+
+  // save in state
+  state.door4CurrentStanza = stanza;
+  state.door4Instructions = instructions;
+  state.door4Step = 0;
+
+  // render stanza plus instruction area
+  const html = `
+    <div style="padding:14px">
+      <div style="background:#071127;border-radius:8px;padding:12px;margin-bottom:12px">
+        ${stanza.map(line => `<div class="poem-line">${line}</div>`).join('')}
+      </div>
+
+      <div style="margin-bottom:8px">
+        <div style="font-weight:700">Instruction:</div>
+        <div id="d4-instruction" style="margin-top:6px;font-size:15px;color:#f8fafc"></div>
+        <div style="margin-top:6px">Time remaining: <span id="d4-timer" class="countdown">10</span>s</div>
+      </div>
+
+      <div style="margin-bottom:12px"><input id="d4-input" type="text" maxlength="1" autocomplete="off" /></div>
+
+      <div style="display:flex;gap:10px">
+        <button class="primary" onclick="submitDoor4Letter()">Submit</button>
+        <button class="ghost" onclick="abortDoor4()">Back</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('door-area').innerHTML = html;
+
+  // show first instruction and start timer
+  showDoor4Instruction();
+}
+
+function showDoor4Instruction() {
+  const idx = state.door4Step;
+  if (idx >= state.door4Instructions.length) {
+    // all letters collected — verify formed word
+    const letters = state.door4Instructions.map(i => i.got || i.expected);
+    const formed = letters.join('').toUpperCase();
+    const target = state.door4Words[state.door4Index].toUpperCase();
+    if (formed === target) {
+      state.keys[4] = true; updateKeysUI();
+      showMessage('Unlocked');
+      clearDoor4Timer();
+      closeDoor();
+    } else {
+      // fallback: rotate word and restart
+      rotateDoor4Word('Mismatch — rotating');
+    }
+    return;
+  }
+
+  const instr = state.door4Instructions[idx];
+  document.getElementById('d4-instruction').textContent = `Line ${instr.line} Word ${instr.word} Letter ${instr.letter}`;
+  // reset input
+  const input = document.getElementById('d4-input');
+  input.value = '';
+  input.focus();
+
+  // start 10-second timer
+  clearDoor4Timer();
+  state.door4TimeLeft = 10;
+  document.getElementById('d4-timer').textContent = state.door4TimeLeft;
+  state.door4TimerRef = setInterval(() => {
+    state.door4TimeLeft -= 1;
+    document.getElementById('d4-timer').textContent = state.door4TimeLeft;
+    if (state.door4TimeLeft <= 0) {
+      clearDoor4Timer();
+      rotateDoor4Word('Time ran out — word shifted');
+    }
+  }, 1000);
+}
+
+function submitDoor4Letter(){
+  if (!state.door4Instructions || state.door4Step >= state.door4Instructions.length) return;
+  const val = (document.getElementById('d4-input').value||'').trim();
+  if (!val) { showMessage('No letter', 'error'); return; }
+  // compare letter (case-insensitive) to expected char at that position
+  const instr = state.door4Instructions[state.door4Step];
+  if (val[0].toLowerCase() === instr.expected.toLowerCase()) {
+    // correct
+    instr.got = instr.expected;
+    state.door4Step += 1;
+    clearDoor4Timer();
+    if (state.door4Step >= state.door4Instructions.length) {
+      // all letters collected — verify the formed word
+      const letters = state.door4Instructions.map(i => i.got || i.expected);
+      const formed = letters.join('').toUpperCase();
+      const target = state.door4Words[state.door4Index].toUpperCase();
+      if (formed === target) {
+        state.keys[4] = true; updateKeysUI();
+        showMessage('Unlocked');
+        closeDoor();
+      } else {
+        rotateDoor4Word('Mismatch — word shifted');
+      }
+    } else {
+      // move to next letter
+      showMessage('Correct — next');
+      showDoor4Instruction();
+    }
+  } else {
+    // wrong letter -> rotate target word and restart
+    clearDoor4Timer();
+    rotateDoor4Word('Wrong letter — word shifted');
+  }
+}
+
+function clearDoor4Timer(){
+  if (state.door4TimerRef) { clearInterval(state.door4TimerRef); state.door4TimerRef = null; }
+}
+
+function rotateDoor4Word(msg){
+  showMessage(msg,'error');
+  state.door4Index = (state.door4Index + 1) % state.door4Words.length;
+  // re-render (this will find a stanza containing all letters, or keep rotating)
+  setTimeout(() => { renderDoor4(); }, 800);
+}
+
+function abortDoor4(){
+  clearDoor4Timer();
+  // discard current stanza/instructions
+  state.door4CurrentStanza = null;
+  state.door4Instructions = [];
+  state.door4Step = 0;
+  closeDoor();
+}
+
+
+/* ============================================================
+   DOOR 5 — Color swatch picker (final, working)
+============================================================ */
+function renderDoor5(){
+  if(!state.door5Order.length){
+    state.door5Order=shuffle([...Array(state.door5Verses.length).keys()]);
+    state.door5Pos=0;
+  }
+  const idx=state.door5Order[state.door5Pos];
+  const verse=state.door5Verses[idx];
+
+  const swatches = COLOR_OPTIONS.map(c => `
+    <div class="swatch"
+         data-color="${c}"
+         onclick="selectSwatch(this,'${c}')"
+         style="width:42px;height:42px;border-radius:6px;
+                border:2px solid rgba(255,255,255,0.25);
+                background:${c};cursor:pointer;">
+    </div>
+  `).join('');
+
+  document.getElementById('door-area').innerHTML=`
+    <div style="padding:14px">
+      <div style="color:#34d399;font-weight:700;margin-bottom:8px">The merge</div>
+
+      <div style="background:#071127;padding:12px;border-radius:8px;margin-bottom:14px">
+        ${verse.lines.map(l=>`<div class="poem-line">${l}</div>`).join('')}
+      </div>
+
+      <div id="swatch-area" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        ${swatches}
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="primary" onclick="checkDoor5()">Submit</button>
+        <button class="ghost" onclick="resetDoor5()">Reset</button>
+        <button class="ghost" onclick="closeDoor()">Back</button>
+      </div>
+    </div>
+  `;
+
+  state.selectedColor=null;
+}
+
+function selectSwatch(el,color){
+  document.querySelectorAll('.swatch').forEach(s=>{
+    s.style.outline='none';
+    s.style.transform='scale(1)';
+  });
+
+  el.style.outline='3px solid #fff';
+  el.style.transform='scale(1.18)';
+  state.selectedColor=color;
+}
+
+function checkDoor5(){
+  const chosen=(state.selectedColor||'').toLowerCase();
+  const idx=state.door5Order[state.door5Pos];
+  const verse=state.door5Verses[idx];
+
+  if(!chosen) return showMessage("Pick a color","error");
+
+  if(chosen===verse.result){
+    state.door5Pos++;
+    if(state.door5Pos>=state.door5Order.length){
+      state.keys[5]=true;updateKeysUI();
+      showMessage("Unlocked");closeDoor();
+    } else {
+      showMessage("Correct — next verse");
+      renderDoor5();
+    }
+  } else {
+    state.door5Order=shuffle([...Array(state.door5Verses.length).keys()]);
+    state.door5Pos=0;
+    showMessage("Wrong — reshuffled","error");
+    renderDoor5();
+  }
+}
+
+function resetDoor5(){
+  state.door5Order=shuffle([...Array(state.door5Verses.length).keys()]);
+  state.door5Pos=0;
+  showMessage("Verses reshuffled");
+  renderDoor5();
+}
+
+/* ============================================================ */
+updateKeysUI();
+</script>
+</body>
+</html>

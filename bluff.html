@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Word Bluff – Synthwave Edition</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          cobalt: '#1e3aff',
+          neonpink: '#ff2fdc',
+          deepbg: '#0b0e2a'
+        },
+        boxShadow: {
+          neon: '0 0 15px rgba(255,47,220,0.6)',
+          cobalt: '0 0 15px rgba(30,58,255,0.6)'
+        }
+      }
+    }
+  }
+</script>
+<style>
+  .flash { animation: flash 1s infinite; }
+  @keyframes flash {
+    0%,100% { background-color:#0b0e2a; }
+    50% { background-color:#1e3aff; }
+  }
+</style>
+</head>
+<body id="body" class="bg-deepbg text-white min-h-screen flex items-center justify-center">
+
+<div id="startScreen" class="w-full max-w-3xl p-6 border-4 border-cobalt rounded-xl shadow-cobalt">
+  <h1 class="text-4xl font-bold text-center mb-6 text-neonpink">WORD BLUFF</h1>
+
+  <div class="space-y-4">
+    <div>
+      <label class="block mb-1">Turn timer (seconds)</label>
+      <select id="timerSelect" class="w-full p-2 bg-black border-2 border-cobalt rounded">
+        <option value="20">20</option>
+        <option value="30">30</option>
+        <option value="40">40</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block mb-1">Number of players</label>
+      <select id="playerCount" class="w-full p-2 bg-black border-2 border-cobalt rounded"></select>
+    </div>
+
+    <div id="playerNames" class="space-y-2"></div>
+
+    <button id="startBtn" class="w-full mt-4 p-3 font-bold border-4 border-neonpink rounded shadow-neon hover:bg-neonpink hover:text-black">START GAME</button>
+  </div>
+</div>
+
+<div id="gameScreen" class="hidden w-full max-w-5xl p-6 border-4 border-neonpink rounded-xl shadow-neon">
+  <h2 id="turnTitle" class="text-2xl text-center mb-2"></h2>
+  <div id="timer" class="text-center text-xl mb-4"></div>
+
+  <div id="currentWord" class="text-center text-5xl font-bold tracking-widest mb-6">–</div>
+
+  <div id="letterControls" class="flex flex-wrap gap-3 justify-center mb-4">
+    <input id="letterInput" maxlength="1" class="w-24 text-center text-3xl bg-black border-4 border-cobalt rounded" />
+    <button id="addLetterBtn" class="px-4 py-2 border-4 border-cobalt rounded shadow-cobalt">ADD LETTER</button>
+    <button id="challengeBtn" class="px-4 py-2 border-4 border-neonpink rounded shadow-neon">WHAT'S THE WORD?</button>
+    <button id="giveUpBtn" class="px-4 py-2 border-4 border-red-500 rounded">GIVE UP</button>
+  </div>
+
+  <div id="challengeControls" class="hidden flex gap-4 justify-center mb-4">
+    <button id="validBtn" class="px-6 py-3 border-4 border-green-400 rounded">VALID</button>
+    <button id="invalidBtn" class="px-6 py-3 border-4 border-red-500 rounded">NOT VALID</button>
+  </div>
+
+  <div id="message" class="text-center text-lg mb-4"></div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div>
+      <h3 class="font-bold mb-2">Players</h3>
+      <div id="players" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </div>
+    <div>
+      <h3 class="font-bold mb-2">Used words</h3>
+      <div id="usedWords" class="bg-black border-2 border-cobalt rounded p-2 min-h-[120px]"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const body = document.getElementById('body');
+const startScreen = document.getElementById('startScreen');
+const gameScreen = document.getElementById('gameScreen');
+const playerCount = document.getElementById('playerCount');
+const playerNames = document.getElementById('playerNames');
+const startBtn = document.getElementById('startBtn');
+const timerSelect = document.getElementById('timerSelect');
+
+const turnTitle = document.getElementById('turnTitle');
+const timer = document.getElementById('timer');
+const currentWordDiv = document.getElementById('currentWord');
+const message = document.getElementById('message');
+const playersDiv = document.getElementById('players');
+const usedWordsDiv = document.getElementById('usedWords');
+
+const letterInput = document.getElementById('letterInput');
+const addLetterBtn = document.getElementById('addLetterBtn');
+const challengeBtn = document.getElementById('challengeBtn');
+const giveUpBtn = document.getElementById('giveUpBtn');
+const validBtn = document.getElementById('validBtn');
+const invalidBtn = document.getElementById('invalidBtn');
+const letterControls = document.getElementById('letterControls');
+const challengeControls = document.getElementById('challengeControls');
+
+for (let i = 2; i <= 16; i++) {
+  const o = document.createElement('option');
+  o.value = i;
+  o.textContent = i;
+  playerCount.appendChild(o);
+}
+playerCount.onchange = renderNames;
+renderNames();
+
+let players = [];
+let currentPlayer = 0;
+let lastLetterPlayer = null;
+let currentWord = '';
+let usedWords = [];
+let timerDuration = 30;
+let timeLeft = 0;
+let timerInterval = null;
+let inChallenge = false;
+
+function renderNames() {
+  playerNames.innerHTML = '';
+  for (let i = 0; i < playerCount.value; i++) {
+    const inp = document.createElement('input');
+    inp.id = 'p' + i;
+    inp.className = 'w-full p-2 bg-black border-2 border-cobalt rounded';
+    playerNames.appendChild(inp);
+  }
+}
+
+startBtn.onclick = () => {
+  players = [];
+  for (let i = 0; i < playerCount.value; i++) {
+    players.push({ name: document.getElementById('p' + i).value || 'Player ' + (i + 1), lives: 3, active: true });
+  }
+  timerDuration = Number(timerSelect.value);
+  currentPlayer = 0;
+  currentWord = '';
+  usedWords = [];
+  lastLetterPlayer = null;
+  startScreen.classList.add('hidden');
+  gameScreen.classList.remove('hidden');
+  updateTurn();
+};
+
+function updateTurn() {
+  body.classList.remove('flash');
+
+  // Always render players first so hearts are visually up to date
+  renderPlayers();
+
+  // Check winner ONLY after hearts are visually removed
+  const activePlayers = players.filter(p => p.active && p.lives > 0);
+  if (activePlayers.length === 1) {
+    const winner = activePlayers[0].name;
+    clearInterval(timerInterval);
+    turnTitle.innerHTML = '';
+    currentWordDiv.innerHTML = `
+      <div class="text-6xl font-extrabold text-neonpink animate-pulse mb-4">${winner}</div>
+      <div class="text-3xl tracking-widest text-cobalt">WINS</div>
+    `;
+    message.textContent = 'Game Over';
+    letterControls.classList.add('hidden');
+    challengeControls.classList.add('hidden');
+    body.classList.remove('flash');
+    return;
+  }
+
+  turnTitle.textContent = players[currentPlayer].name + ' is playing';
+  currentWordDiv.textContent = currentWord || '–';
+  letterInput.value = '';
+  letterInput.focus();
+  resetTimer();
+}
+
+function renderPlayers() {
+  playersDiv.innerHTML = '';
+  players.forEach((p, i) => {
+    if (!p.active) return;
+    const d = document.createElement('div');
+    d.className = 'p-3 border-4 ' + (i === currentPlayer ? 'border-neonpink' : 'border-cobalt');
+    d.innerHTML = `<strong>${p.name}</strong><div>${'❤️'.repeat(p.lives)}</div>`;
+    playersDiv.appendChild(d);
+  });
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timeLeft = timerDuration;
+  timer.textContent = '⏱ ' + timeLeft + 's';
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timer.textContent = '⏱ ' + timeLeft + 's';
+    if (timeLeft <= 5) body.classList.add('flash');
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timeoutLose();
+    }
+  }, 1000);
+}
+
+function nextPlayer() {
+  do {
+    currentPlayer = (currentPlayer + 1) % players.length;
+  } while (!players[currentPlayer].active);
+  updateTurn();
+}
+
+letterInput.addEventListener('input', () => {
+  letterInput.value = letterInput.value.toUpperCase();
+});
+
+letterInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') addLetterBtn.click();
+});
+
+addLetterBtn.onclick = () => {
+  if (inChallenge) return;
+  const l = letterInput.value.toUpperCase();
+  if (!/^[A-Z]$/.test(l)) return;
+  currentWord += l;
+  lastLetterPlayer = currentPlayer;
+  currentWordDiv.textContent = currentWord;
+  letterInput.value = '';
+  letterInput.focus();
+  nextPlayer();
+};
+
+giveUpBtn.onclick = () => {
+  if (!inChallenge) loseHeart(currentPlayer, players[currentPlayer].name + ' gave up');
+};
+
+challengeBtn.onclick = () => {
+  if (currentWord.length < 2 || lastLetterPlayer === null) return;
+  inChallenge = true;
+  clearInterval(timerInterval);
+  letterControls.classList.add('hidden');
+  challengeControls.classList.remove('hidden');
+  message.textContent = players[currentPlayer].name + ' challenges ' + players[lastLetterPlayer].name;
+};
+
+validBtn.onclick = () => loseHeart(currentPlayer, 'Challenge failed. Accuser loses a heart.');
+invalidBtn.onclick = () => loseHeart(lastLetterPlayer, 'Challenge successful. Accused loses a heart.');
+
+function timeoutLose() {
+  loseHeart(currentPlayer, players[currentPlayer].name + ' ran out of time');
+}
+
+function loseHeart(index, text) {
+  players[index].lives--;
+  if (players[index].lives <= 0) {
+    players[index].active = false;
+  }
+  message.textContent = text;
+  if (currentWord) usedWords.push(currentWord);
+  usedWordsDiv.innerHTML = usedWords.join('<br>');
+  resetAfterRound();
+}
+
+function resetAfterRound() {
+  inChallenge = false;
+  currentWord = '';
+  lastLetterPlayer = null;
+  letterControls.classList.remove('hidden');
+  challengeControls.classList.add('hidden');
+  body.classList.remove('flash');
+  nextPlayer();
+}
+</script>
+</body>
+</html>

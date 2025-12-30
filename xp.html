@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kids RPG XP Tracker</title>
+
+<style>
+:root {
+  --bg: #1e1e2e;
+  --panel: #2a2a40;
+  --border: #c9b458;
+  --accent: #6cf2c2;
+  --danger: #ff6b6b;
+  --text: #f4f4f4;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Trebuchet MS", Arial, sans-serif;
+}
+
+h1, h2, h3 { margin: 0 0 10px; }
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+button {
+  background: var(--panel);
+  color: var(--text);
+  border: 3px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+button:hover {
+  background: var(--border);
+  color: #000;
+}
+
+.kids {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.card {
+  background: var(--panel);
+  border: 4px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  width: 100%;
+}
+
+.xp-bar {
+  background: #111;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  height: 22px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #4ecdc4);
+  width: 0%;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+input[type=range] { flex: 1; }
+
+.value {
+  min-width: 32px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.perks {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.good { color: var(--accent); }
+.bad { color: var(--danger); }
+
+.config {
+  margin-top: 30px;
+}
+
+.hidden { display: none; }
+
+.level {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 2px dashed var(--border);
+}
+
+.perk-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.perk-row input[type=text] {
+  flex: 1;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="top">
+    <h1>🧙 Kids RPG XP Tracker</h1>
+    <button onclick="toggleConfig()">⚙️ Config</button>
+  </div>
+
+  <div class="kids" id="kids"></div>
+
+  <div class="config hidden" id="config">
+    <h2>Level Rules & Perks</h2>
+    <div id="levels"></div>
+  </div>
+</div>
+
+<script>
+const MAX_LEVEL = 10;
+
+const presetTimed = {
+  TV: [30,35,40,45,50,55,60,70,80,90],
+  GAME: [30,35,40,45,50,55,60,70,80,90],
+  YOUTUBE: [0,0,0,0,10,15,15,20,25,30]
+};
+
+const defaultData = {
+  kids: {
+    Samuel: { level: 1, xp: 0 },
+    Lucca: { level: 1, xp: 0 },
+    Pedro: { level: 1, xp: 0 }
+  },
+  perks: {}
+};
+
+function initPresets(d) {
+  for (let l = 1; l <= MAX_LEVEL; l++) {
+    d.perks[l] = [];
+    for (const key in presetTimed) {
+      d.perks[l].push({
+        text: key,
+        timed: true,
+        minutes: presetTimed[key][l-1]
+      });
+    }
+  }
+}
+
+function load() {
+  let d = JSON.parse(localStorage.getItem("kidsRPG"));
+  if (!d) {
+    d = structuredClone(defaultData);
+    initPresets(d);
+    save(d);
+  }
+  return d;
+}
+
+function save(d) {
+  localStorage.setItem("kidsRPG", JSON.stringify(d));
+}
+
+let data = load();
+
+function xpNeeded(level) {
+  let xp = 100;
+  for (let i = 2; i <= level; i++) xp = Math.ceil(xp * 1.05);
+  return xp;
+}
+
+function applyXP(name, delta) {
+  const k = data.kids[name];
+  k.xp += Number(delta);
+
+  while (k.xp >= xpNeeded(k.level) && k.level < MAX_LEVEL) {
+    k.xp -= xpNeeded(k.level);
+    k.level++;
+  }
+
+  while (k.xp < 0 && k.level > 1) {
+    k.level--;
+    k.xp += xpNeeded(k.level);
+  }
+
+  if (k.level === 1 && k.xp < 0) k.xp = 0;
+
+  save(data);
+  render();
+}
+
+function renderKids() {
+  const el = document.getElementById("kids");
+  el.innerHTML = "";
+
+  for (const name in data.kids) {
+    const k = data.kids[name];
+    const need = xpNeeded(k.level);
+    const pct = Math.min(100, (k.xp / need) * 100);
+
+    el.innerHTML += `
+      <div class="card">
+        <h2>${name}</h2>
+        <strong>Level ${k.level}</strong>
+        <div class="xp-bar"><div class="xp-fill" style="width:${pct}%"></div></div>
+        <small>${k.xp} / ${need} XP</small>
+
+        <div class="slider-row">
+          <button onclick="applyXP('${name}', -slider_${name}.value)">−</button>
+          <input type="range" id="slider_${name}" min="10" max="100" step="10" value="10"
+            oninput="value_${name}.textContent=this.value">
+          <span class="value" id="value_${name}">10</span>
+          <button onclick="applyXP('${name}', slider_${name}.value)">+</button>
+        </div>
+
+        <div class="perks">${renderPerks(k.level)}</div>
+      </div>
+    `;
+  }
+}
+
+/* 🔥 FIXED LOGIC HERE */
+function renderPerks(level) {
+  let timedMap = {};
+  let nonTimed = [];
+
+  for (let l = 1; l <= level; l++) {
+    for (const p of data.perks[l]) {
+      if (p.timed) {
+        timedMap[p.text] = p.minutes; // overwrite with highest level
+      } else {
+        nonTimed.push({ level: l, text: p.text });
+      }
+    }
+  }
+
+  let out = "";
+
+  // Timed perks → ONLY current value
+  for (const name in timedMap) {
+    out += `<div class="good">⏱ ${name}: ${timedMap[name]} min</div>`;
+  }
+
+  // Non-timed perks → unlock logic
+  for (let l = 1; l <= MAX_LEVEL; l++) {
+    for (const p of data.perks[l]) {
+      if (!p.timed) {
+        out += l <= level
+          ? `<div class="good">✅ ${p.text}</div>`
+          : `<div class="bad">❌ Can't ${p.text}</div>`;
+      }
+    }
+  }
+
+  return out || "<em>No perks</em>";
+}
+
+function toggleConfig() {
+  document.getElementById("config").classList.toggle("hidden");
+}
+
+function addRule(level) {
+  const text = document.getElementById(`rule_text_${level}`).value.trim();
+  const timed = document.getElementById(`rule_timed_${level}`).checked;
+  const minutes = Number(document.getElementById(`rule_min_${level}`).value);
+
+  if (!text) return;
+
+  data.perks[level].push({
+    text,
+    timed,
+    minutes: timed ? minutes || 0 : 0
+  });
+
+  save(data);
+  render();
+}
+
+function renderConfig() {
+  const el = document.getElementById("levels");
+  el.innerHTML = "";
+
+  for (let l = 1; l <= MAX_LEVEL; l++) {
+    el.innerHTML += `
+      <div class="level">
+        <h3>Level ${l}</h3>
+
+        ${data.perks[l].map((p,i)=>`
+          <div class="perk-row">
+            <span>${p.text} ${p.timed ? `(${p.minutes} min)` : ""}</span>
+            <button onclick="data.perks[${l}].splice(${i},1);save(data);render()">❌</button>
+          </div>
+        `).join("")}
+
+        <div class="perk-row">
+          <input type="text" id="rule_text_${l}" placeholder="New rule">
+          <label>
+            Timed <input type="checkbox" id="rule_timed_${l}">
+          </label>
+          <input type="number" id="rule_min_${l}" placeholder="min" style="width:60px">
+          <button onclick="addRule(${l})">➕</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function render() {
+  renderKids();
+  renderConfig();
+}
+
+render();
+</script>
+</body>
+</html>

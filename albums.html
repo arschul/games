@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Album of the Day</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .search-section {
+            background: #1a1a1a;
+            border: 3px solid #333;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 1.1rem;
+            background: #0a0a0a;
+            border: 3px solid #444;
+            border-radius: 12px;
+            color: #e0e0e0;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #667eea;
+        }
+
+        input[type="text"]::placeholder {
+            color: #666;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1a1a1a;
+            border: 3px solid #444;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .autocomplete-results.active {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .autocomplete-item:hover {
+            background: #252525;
+        }
+
+        .autocomplete-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #444;
+        }
+
+        .autocomplete-item-info {
+            flex: 1;
+        }
+
+        .autocomplete-item-title {
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .autocomplete-item-artist {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .selected-album {
+            display: none;
+            background: #252525;
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .selected-album.active {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .selected-album img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 3px solid #667eea;
+        }
+
+        .selected-album-info {
+            flex: 1;
+        }
+
+        .selected-album-title {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .selected-album-artist {
+            font-size: 1.1rem;
+            color: #999;
+        }
+
+        .selected-album-metadata {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        .metadata-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .metadata-label {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .tracklist-section {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .tracklist-section.active {
+            display: block;
+        }
+
+        .tracklist-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .tracklist {
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .track-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .track-item:last-child {
+            border-bottom: none;
+        }
+
+        .track-item:hover {
+            background: #1a1a1a;
+        }
+
+        .track-number {
+            color: #667eea;
+            font-weight: 700;
+            min-width: 30px;
+        }
+
+        .track-name {
+            flex: 1;
+            color: #e0e0e0;
+        }
+
+        .track-duration {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .song-selection {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .song-select-group {
+            background: #0a0a0a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .song-select-group label {
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .song-select-group select {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .song-select-group select:focus {
+            border-color: #667eea;
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .rating-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .rating-btn {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #444;
+            background: #0a0a0a;
+            color: #666;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .rating-btn:hover {
+            border-color: #667eea;
+            color: #fff;
+        }
+
+        .rating-btn.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: #fff;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px 20px;
+            font-size: 1rem;
+            background: #0a0a0a;
+            border: 3px solid #444;
+            border-radius: 12px;
+            color: #e0e0e0;
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            border-color: #667eea;
+        }
+
+        .date-input {
+            padding: 16px 20px;
+            font-size: 1.1rem;
+            background: #0a0a0a;
+            border: 3px solid #444;
+            border-radius: 12px;
+            color: #e0e0e0;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .date-input:focus {
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            font-size: 1.1rem;
+            font-weight: 900;
+            border: 3px solid #667eea;
+            background: #667eea;
+            color: #fff;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+            border-color: #764ba2;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #667eea;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: #fff;
+        }
+
+        .history-section {
+            margin-top: 40px;
+        }
+
+        .history-section h2 {
+            font-size: 2rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        /* Added filter controls styling */
+        .filters-section {
+            background: #1a1a1a;
+            border: 3px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #999;
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 12px;
+            background: #0a0a0a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .filter-select:focus {
+            border-color: #667eea;
+        }
+
+        .clear-filters-btn {
+            padding: 12px 20px;
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            white-space: nowrap;
+            align-self: flex-end;
+        }
+
+        .clear-filters-btn:hover {
+            background: #667eea;
+            color: #fff;
+        }
+
+        /* Added share button styling */
+        .share-btn {
+            background: transparent;
+            border: 2px solid #4ade80;
+            color: #4ade80;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+
+        .share-btn:hover {
+            background: #4ade80;
+            color: #0a0a0a;
+        }
+
+        .share-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .share-modal.active {
+            display: flex;
+        }
+
+        .share-modal-content {
+            background: #1a1a1a;
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .share-modal-title {
+            font-size: 1.5rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .share-text {
+            background: #0a0a0a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .share-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .copy-btn {
+            flex: 1;
+            padding: 12px;
+            background: #667eea;
+            border: none;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #764ba2;
+        }
+
+        .close-modal-btn {
+            padding: 12px 20px;
+            background: transparent;
+            border: 2px solid #666;
+            color: #666;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s;
+        }
+
+        .close-modal-btn:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        .history-list {
+            display: grid;
+            gap: 20px;
+        }
+
+        .history-item {
+            background: #1a1a1a;
+            border: 3px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .history-item:hover {
+            border-color: #667eea;
+        }
+
+        .history-item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #444;
+        }
+
+        .history-item-content {
+            flex: 1;
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            gap: 15px;
+        }
+
+        .history-item-title {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .history-item-artist {
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .history-item-date {
+            color: #667eea;
+            font-weight: 700;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .history-item-rating {
+            display: inline-block;
+            background: #667eea;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .history-item-comments {
+            color: #aaa;
+            line-height: 1.6;
+            margin-top: 10px;
+        }
+
+        .history-item-metadata {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .history-item-songs {
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .favorite-song {
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        .least-favorite-song {
+            color: #f87171;
+            font-weight: 700;
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: 2px solid #d63031;
+            color: #d63031;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+
+        .delete-btn:hover {
+            background: #d63031;
+            color: #fff;
+        }
+
+        .edit-btn {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .edit-btn:hover {
+            background: #667eea;
+            color: #fff;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .selected-album.active {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .history-item {
+                flex-direction: column;
+            }
+
+            .rating-container {
+                justify-content: center;
+            }
+
+            /* Mobile responsive filters */
+            .filters-section {
+                flex-direction: column;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .clear-filters-btn {
+                width: 100%;
+                align-self: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Album of the Day</h1>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Search for an album (artist - album name)..."
+                    autocomplete="off"
+                >
+                <div class="autocomplete-results" id="autocompleteResults"></div>
+            </div>
+
+            <div class="selected-album" id="selectedAlbum">
+                <img id="selectedAlbumImage" src="/placeholder.svg" alt="">
+                <div class="selected-album-info">
+                    <div class="selected-album-title" id="selectedAlbumTitle"></div>
+                    <div class="selected-album-artist" id="selectedAlbumArtist"></div>
+                    <div class="selected-album-metadata" id="selectedAlbumMetadata"></div>
+                </div>
+            </div>
+
+            <div class="tracklist-section" id="tracklistSection">
+                <div class="tracklist-title">Tracklist</div>
+                <div class="tracklist" id="tracklist"></div>
+            </div>
+
+            <div class="form-section" id="formSection">
+                <div class="song-selection" id="songSelection">
+                    <div class="song-select-group">
+                        <label for="favoriteSongSelect">Favorite</label>
+                        <select id="favoriteSongSelect">
+                            <option value="">Select favorite song...</option>
+                        </select>
+                    </div>
+                    <div class="song-select-group">
+                        <label for="leastFavoriteSongSelect">Least Favorite</label>
+                        <select id="leastFavoriteSongSelect">
+                            <option value="">Select least favorite song...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="dateInput">Date</label>
+                    <input type="date" id="dateInput" class="date-input">
+                </div>
+
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="rating-container" id="ratingContainer">
+                        <button class="rating-btn" data-rating="1">1</button>
+                        <button class="rating-btn" data-rating="2">2</button>
+                        <button class="rating-btn" data-rating="3">3</button>
+                        <button class="rating-btn" data-rating="4">4</button>
+                        <button class="rating-btn" data-rating="5">5</button>
+                        <button class="rating-btn" data-rating="6">6</button>
+                        <button class="rating-btn" data-rating="7">7</button>
+                        <button class="rating-btn" data-rating="8">8</button>
+                        <button class="rating-btn" data-rating="9">9</button>
+                        <button class="rating-btn" data-rating="10">10</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="commentsInput">Comments</label>
+                    <textarea id="commentsInput" placeholder="What did you think of this album?"></textarea>
+                </div>
+
+                <button class="btn" id="saveBtn">Save Album</button>
+                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h2>History</h2>
+            <!-- Added filters section -->
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label for="ratingFilter">Filter by Rating</label>
+                    <select id="ratingFilter" class="filter-select">
+                        <option value="">All Ratings</option>
+                        <option value="10">10</option>
+                        <option value="9">9</option>
+                        <option value="8">8</option>
+                        <option value="7">7</option>
+                        <option value="6">6</option>
+                        <option value="5">5</option>
+                        <option value="4">4</option>
+                        <option value="3">3</option>
+                        <option value="2">2</option>
+                        <option value="1">1</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="monthFilter">Filter by Month</label>
+                    <select id="monthFilter" class="filter-select">
+                        <option value="">All Months</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="genreFilter">Filter by Genre</label>
+                    <select id="genreFilter" class="filter-select">
+                        <option value="">All Genres</option>
+                    </select>
+                </div>
+                <button class="clear-filters-btn" id="clearFiltersBtn">Clear Filters</button>
+            </div>
+            
+            <div class="history-list" id="historyList">
+                <div class="empty-state">No albums tracked yet. Start by searching for an album above!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Added share modal -->
+    <div class="share-modal" id="shareModal">
+        <div class="share-modal-content">
+            <div class="share-modal-title">Share Album</div>
+            <div class="share-text" id="shareText"></div>
+            <div class="share-actions">
+                <button class="copy-btn" id="copyBtn">Copy to Clipboard</button>
+                <button class="close-modal-btn" id="closeModalBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'd59fd44a09af99fce508ac1fe38f4a49';
+        const STORAGE_KEY = 'albumOfTheDayData';
+        const TIMEZONE_OFFSET = -3;
+
+        let searchTimeout;
+        let selectedAlbumData = null;
+        let selectedRating = null;
+        let editingEntryId = null;
+        let albumTracks = [];
+
+        // Elements
+        const searchInput = document.getElementById('searchInput');
+        const autocompleteResults = document.getElementById('autocompleteResults');
+        const selectedAlbum = document.getElementById('selectedAlbum');
+        const formSection = document.getElementById('formSection');
+        const ratingContainer = document.getElementById('ratingContainer');
+        const saveBtn = document.getElementById('saveBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const historyList = document.getElementById('historyList');
+        const dateInput = document.getElementById('dateInput');
+        const commentsInput = document.getElementById('commentsInput');
+        const tracklistSection = document.getElementById('tracklistSection');
+        const tracklist = document.getElementById('tracklist');
+        const favoriteSongSelect = document.getElementById('favoriteSongSelect');
+        const leastFavoriteSongSelect = document.getElementById('leastFavoriteSongSelect');
+
+        const ratingFilter = document.getElementById('ratingFilter');
+        const monthFilter = document.getElementById('monthFilter');
+        const genreFilter = document.getElementById('genreFilter');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+        const shareModal = document.getElementById('shareModal');
+        const shareText = document.getElementById('shareText');
+        const copyBtn = document.getElementById('copyBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        let currentFilters = {
+            rating: '',
+            month: '',
+            genre: ''
+        };
+
+        function getTodayInTimezone() {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const localTime = new Date(utc + (3600000 * TIMEZONE_OFFSET));
+            return localTime.toISOString().split('T')[0];
+        }
+        
+        dateInput.value = getTodayInTimezone();
+
+        // Search functionality
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+
+            if (query.length < 2) {
+                autocompleteResults.classList.remove('active');
+                return;
+            }
+
+            searchTimeout = setTimeout(() => searchAlbums(query), 300);
+        });
+
+        async function searchAlbums(query) {
+            try {
+                const response = await fetch(
+                    `https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(query)}&api_key=${API_KEY}&format=json&limit=10`
+                );
+                const data = await response.json();
+
+                if (data.results && data.results.albummatches && data.results.albummatches.album) {
+                    displayAutocomplete(data.results.albummatches.album);
+                }
+            } catch (error) {
+                console.error('Error searching albums:', error);
+            }
+        }
+
+        function displayAutocomplete(albums) {
+            if (albums.length === 0) {
+                autocompleteResults.classList.remove('active');
+                return;
+            }
+
+            autocompleteResults.innerHTML = albums.map(album => {
+                const image = album.image.find(img => img.size === 'medium')?.['#text'] || album.image[0]?.['#text'] || '/placeholder.svg?height=60&width=60';
+                return `
+                    <div class="autocomplete-item" data-album='${JSON.stringify(album).replace(/'/g, "&apos;")}'>
+                        <img src="${image}" alt="${album.name}">
+                        <div class="autocomplete-item-info">
+                            <div class="autocomplete-item-title">${album.name}</div>
+                            <div class="autocomplete-item-artist">${album.artist}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            autocompleteResults.classList.add('active');
+
+            // Add click handlers
+            document.querySelectorAll('.autocomplete-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const albumData = JSON.parse(item.getAttribute('data-album'));
+                    selectAlbum(albumData);
+                });
+            });
+        }
+
+        async function selectAlbum(album) {
+            try {
+                const response = await fetch(
+                    `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY}&artist=${encodeURIComponent(album.artist)}&album=${encodeURIComponent(album.name)}&format=json`
+                );
+                const data = await response.json();
+                
+                if (data.album) {
+                    const albumData = data.album;
+                    albumTracks = albumData.tracks?.track ? (Array.isArray(albumData.tracks.track) ? albumData.tracks.track : [albumData.tracks.track]) : [];
+                    
+                    selectedAlbumData = {
+                        name: albumData.name,
+                        artist: albumData.artist,
+                        image: albumData.image.find(img => img.size === 'extralarge')?.['#text'] || albumData.image[0]?.['#text'] || '/placeholder.svg?height=120&width=120',
+                        mbid: albumData.mbid || '',
+                        url: albumData.url || '',
+                        tracks: albumTracks.length,
+                        genre: albumData.tags?.tag ? (Array.isArray(albumData.tags.tag) ? albumData.tags.tag.slice(0, 3).map(t => t.name).join(', ') : albumData.tags.tag.name) : 'Unknown'
+                    };
+                } else {
+                    selectedAlbumData = createBasicAlbumData(album);
+                    albumTracks = [];
+                }
+            } catch (error) {
+                console.error('Error fetching album details:', error);
+                selectedAlbumData = createBasicAlbumData(album);
+                albumTracks = [];
+            }
+
+            displaySelectedAlbum();
+        }
+
+        function createBasicAlbumData(album) {
+            return {
+                name: album.name,
+                artist: album.artist,
+                image: album.image.find(img => img.size === 'extralarge')?.['#text'] || album.image[0]?.['#text'] || '/placeholder.svg?height=120&width=120',
+                mbid: album.mbid || '',
+                url: album.url || '',
+                tracks: 0,
+                genre: 'Unknown'
+            };
+        }
+
+        function displaySelectedAlbum() {
+            document.getElementById('selectedAlbumImage').src = selectedAlbumData.image;
+            document.getElementById('selectedAlbumTitle').textContent = selectedAlbumData.name;
+            document.getElementById('selectedAlbumArtist').textContent = selectedAlbumData.artist;
+            
+            const metadataHTML = `
+                <div class="metadata-item">
+                    <span class="metadata-label">Genre:</span>
+                    <span>${selectedAlbumData.genre}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Tracks:</span>
+                    <span>${selectedAlbumData.tracks}</span>
+                </div>
+            `;
+            document.getElementById('selectedAlbumMetadata').innerHTML = metadataHTML;
+
+            if (albumTracks.length > 0) {
+                displayTracklist();
+                populateSongSelects();
+                tracklistSection.classList.add('active');
+            } else {
+                tracklistSection.classList.remove('active');
+                favoriteSongSelect.innerHTML = '<option value="">No tracks available</option>';
+                leastFavoriteSongSelect.innerHTML = '<option value="">No tracks available</option>';
+            }
+
+            selectedAlbum.classList.add('active');
+            formSection.classList.add('active');
+            autocompleteResults.classList.remove('active');
+            searchInput.value = '';
+        }
+
+        function displayTracklist() {
+            tracklist.innerHTML = albumTracks.map((track, index) => `
+                <div class="track-item">
+                    <div class="track-number">${index + 1}</div>
+                    <div class="track-name">${track.name}</div>
+                    ${track.duration ? `<div class="track-duration">${formatDuration(track.duration)}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function formatDuration(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function populateSongSelects() {
+            const options = albumTracks.map((track, index) => 
+                `<option value="${index}">${index + 1}. ${track.name}</option>`
+            ).join('');
+            
+            favoriteSongSelect.innerHTML = '<option value="">Select favorite song...</option>' + options;
+            leastFavoriteSongSelect.innerHTML = '<option value="">Select least favorite song...</option>' + options;
+        }
+
+        // Rating functionality
+        ratingContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('rating-btn')) {
+                document.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                selectedRating = parseInt(e.target.dataset.rating);
+            }
+        });
+
+        // Save functionality
+        saveBtn.addEventListener('click', () => {
+            if (!selectedAlbumData) {
+                alert('Please select an album first!');
+                return;
+            }
+
+            if (!selectedRating) {
+                alert('Please select a rating!');
+                return;
+            }
+
+            const favoriteSongIndex = favoriteSongSelect.value;
+            const leastFavoriteSongIndex = leastFavoriteSongSelect.value;
+
+            const entry = {
+                id: editingEntryId || Date.now(),
+                date: dateInput.value,
+                album: selectedAlbumData,
+                rating: selectedRating,
+                comments: commentsInput.value.trim(),
+                favoriteSong: favoriteSongIndex !== '' ? albumTracks[favoriteSongIndex]?.name || '' : '',
+                leastFavoriteSong: leastFavoriteSongIndex !== '' ? albumTracks[leastFavoriteSongIndex]?.name || '' : ''
+            };
+
+            if (editingEntryId) {
+                updateEntry(entry);
+                editingEntryId = null;
+            } else {
+                saveEntry(entry);
+            }
+            
+            resetForm();
+            loadHistory();
+        });
+
+        // Cancel functionality
+        cancelBtn.addEventListener('click', resetForm);
+
+        function resetForm() {
+            selectedAlbumData = null;
+            selectedRating = null;
+            editingEntryId = null;
+            albumTracks = [];
+            selectedAlbum.classList.remove('active');
+            formSection.classList.remove('active');
+            tracklistSection.classList.remove('active');
+            searchInput.value = '';
+            commentsInput.value = '';
+            dateInput.value = getTodayInTimezone();
+            favoriteSongSelect.innerHTML = '<option value="">Select favorite song...</option>';
+            leastFavoriteSongSelect.innerHTML = '<option value="">Select least favorite song...</option>';
+            document.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('selected'));
+            saveBtn.textContent = 'Save Album';
+        }
+
+        // LocalStorage functions
+        function saveEntry(entry) {
+            const data = getData();
+            data.push(entry);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function updateEntry(entry) {
+            const data = getData();
+            const index = data.findIndex(e => e.id === entry.id);
+            if (index !== -1) {
+                data[index] = entry;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+        }
+
+        function getData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function deleteEntry(id) {
+            if (!confirm('Are you sure you want to delete this entry?')) {
+                return;
+            }
+            const data = getData();
+            const filtered = data.filter(entry => entry.id !== id);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+            loadHistory();
+        }
+
+        function editEntry(id) {
+            const data = getData();
+            const entry = data.find(e => e.id === id);
+            if (!entry) return;
+
+            editingEntryId = id;
+            selectedAlbumData = entry.album;
+            
+            fetchAlbumForEdit(entry.album.artist, entry.album.name, entry);
+        }
+
+        async function fetchAlbumForEdit(artist, albumName, entry) {
+            try {
+                const response = await fetch(
+                    `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(albumName)}&format=json`
+                );
+                const data = await response.json();
+                
+                if (data.album && data.album.tracks?.track) {
+                    albumTracks = Array.isArray(data.album.tracks.track) ? data.album.tracks.track : [data.album.tracks.track];
+                } else {
+                    albumTracks = [];
+                }
+            } catch (error) {
+                console.error('Error fetching album for edit:', error);
+                albumTracks = [];
+            }
+
+            displaySelectedAlbum();
+            
+            // Populate form with existing data
+            dateInput.value = entry.date;
+            commentsInput.value = entry.comments || '';
+            
+            // Set rating
+            selectedRating = entry.rating;
+            document.querySelectorAll('.rating-btn').forEach(btn => {
+                if (parseInt(btn.dataset.rating) === entry.rating) {
+                    btn.classList.add('selected');
+                }
+            });
+
+            // Set song selections if tracks are available
+            if (albumTracks.length > 0) {
+                setTimeout(() => {
+                    if (entry.favoriteSong) {
+                        const favoriteIndex = albumTracks.findIndex(t => t.name === entry.favoriteSong);
+                        if (favoriteIndex !== -1) favoriteSongSelect.value = favoriteIndex;
+                    }
+                    if (entry.leastFavoriteSong) {
+                        const leastFavoriteIndex = albumTracks.findIndex(t => t.name === entry.leastFavoriteSong);
+                        if (leastFavoriteIndex !== -1) leastFavoriteSongSelect.value = leastFavoriteIndex;
+                    }
+                }, 100);
+            }
+
+            saveBtn.textContent = 'Update Album';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Load and display history
+        function loadHistory() {
+            const data = getData();
+            
+            if (data.length === 0) {
+                historyList.innerHTML = '<div class="empty-state">No albums tracked yet. Start by searching for an album above!</div>';
+                return;
+            }
+
+            populateFilters(data);
+
+            let filteredData = data;
+            
+            if (currentFilters.rating) {
+                filteredData = filteredData.filter(entry => entry.rating === parseInt(currentFilters.rating));
+            }
+            
+            if (currentFilters.month) {
+                filteredData = filteredData.filter(entry => {
+                    const entryMonth = entry.date.substring(0, 7);
+                    return entryMonth === currentFilters.month;
+                });
+            }
+            
+            if (currentFilters.genre) {
+                filteredData = filteredData.filter(entry => {
+                    const genreString = entry.album.genre || 'Unknown';
+                    const genres = genreString.split(',').map(g => g.trim().toLowerCase());
+                    return genres.includes(currentFilters.genre.toLowerCase());
+                });
+            }
+
+            if (filteredData.length === 0) {
+                historyList.innerHTML = '<div class="empty-state">No albums match your filters.</div>';
+                return;
+            }
+
+            // Sort by date descending
+            filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            historyList.innerHTML = filteredData.map(entry => `
+                <div class="history-item">
+                    <img src="${entry.album.image}" alt="${entry.album.name}">
+                    <div class="history-item-content">
+                        <div class="history-item-header">
+                            <div>
+                                <div class="history-item-title">${entry.album.name}</div>
+                                <div class="history-item-artist">${entry.album.artist}</div>
+                            </div>
+                            <div class="history-item-date">${new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        </div>
+                        <div class="history-item-rating">⭐ ${entry.rating}/10</div>
+                        ${entry.album.genre || entry.album.tracks ? `
+                            <div class="history-item-metadata">
+                                ${entry.album.genre ? `<span>Genre: ${entry.album.genre}</span>` : ''}
+                                ${entry.album.tracks ? `<span>${entry.album.tracks} tracks</span>` : ''}
+                            </div>
+                        ` : ''}
+                        ${entry.favoriteSong || entry.leastFavoriteSong ? `
+                            <div class="history-item-songs">
+                                ${entry.favoriteSong ? `<div>Favorite: <span class="favorite-song">${entry.favoriteSong}</span></div>` : ''}
+                                ${entry.leastFavoriteSong ? `<div>Least Favorite: <span class="least-favorite-song">${entry.leastFavoriteSong}</span></div>` : ''}
+                            </div>
+                        ` : ''}
+                        ${entry.comments ? `<div class="history-item-comments">${entry.comments}</div>` : ''}
+                        <div>
+                            <button class="share-btn" onclick="shareEntry(${entry.id})">Share</button>
+                            <button class="edit-btn" onclick="editEntry(${entry.id})">Edit</button>
+                            <button class="delete-btn" onclick="deleteEntry(${entry.id})">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function populateFilters(data) {
+            const months = [...new Set(data.map(entry => entry.date.substring(0, 7)))].sort().reverse();
+            monthFilter.innerHTML = '<option value="">All Months</option>' + 
+                months.map(month => {
+                    const [year, monthNum] = month.split('-');
+                    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                                       'July', 'August', 'September', 'October', 'November', 'December'];
+                    const monthName = `${monthNames[parseInt(monthNum) - 1]} ${year}`;
+                    return `<option value="${month}">${monthName}</option>`;
+                }).join('');
+
+            // Populate genres - split by comma and get distinct values
+            const allGenres = [];
+            data.forEach(entry => {
+                const genreString = entry.album.genre || 'Unknown';
+                const genres = genreString.split(',').map(g => g.trim());
+                allGenres.push(...genres);
+            });
+            const uniqueGenres = [...new Set(allGenres)].sort();
+            
+            genreFilter.innerHTML = '<option value="">All Genres</option>' + 
+                uniqueGenres.map(genre => `<option value="${genre}">${genre}</option>`).join('');
+        }
+
+        ratingFilter.addEventListener('change', (e) => {
+            currentFilters.rating = e.target.value;
+            loadHistory();
+        });
+
+        monthFilter.addEventListener('change', (e) => {
+            currentFilters.month = e.target.value;
+            loadHistory();
+        });
+
+        genreFilter.addEventListener('change', (e) => {
+            currentFilters.genre = e.target.value;
+            loadHistory();
+        });
+
+        clearFiltersBtn.addEventListener('click', () => {
+            currentFilters = { rating: '', month: '', genre: '' };
+            ratingFilter.value = '';
+            monthFilter.value = '';
+            genreFilter.value = '';
+            loadHistory();
+        });
+
+        function shareEntry(id) {
+            const data = getData();
+            const entry = data.find(e => e.id === id);
+            if (!entry) return;
+
+            const date = new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            
+            let shareContent = `🎵 Album of the Day - ${date}\n\n`;
+            shareContent += `${entry.album.name} by ${entry.album.artist}\n`;
+            shareContent += `Rating: ${entry.rating}/10 ⭐\n`;
+            
+            if (entry.album.genre) {
+                shareContent += `Genre: ${entry.album.genre}\n`;
+            }
+            
+            if (entry.favoriteSong) {
+                shareContent += `\nFavorite Track: ${entry.favoriteSong}\n`;
+            }
+            
+            if (entry.leastFavoriteSong) {
+                shareContent += `Least Favorite Track: ${entry.leastFavoriteSong}\n`;
+            }
+            
+            if (entry.comments) {
+                shareContent += `\nThoughts: ${entry.comments}\n`;
+            }
+
+            shareText.textContent = shareContent;
+            shareModal.classList.add('active');
+        }
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(shareText.textContent).then(() => {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                }, 2000);
+            });
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            shareModal.classList.remove('active');
+        });
+
+        shareModal.addEventListener('click', (e) => {
+            if (e.target === shareModal) {
+                shareModal.classList.remove('active');
+            }
+        });
+
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) {
+                autocompleteResults.classList.remove('active');
+            }
+        });
+
+        // Initial load
+        loadHistory();
+    </script>
+</body>
+</html>

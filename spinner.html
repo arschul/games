@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conversation Spinner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          },
+          colors: {
+            surface: '#0f1119',
+            card: '#181a27',
+            border: '#2a2d3e',
+            accent: '#6366f1',
+            accentLight: '#818cf8',
+            accentGlow: 'rgba(99, 102, 241, 0.25)',
+            mint: '#34d399',
+            mintGlow: 'rgba(52, 211, 153, 0.2)',
+            coral: '#f472b6',
+            coralGlow: 'rgba(244, 114, 182, 0.2)',
+            textPrimary: '#f1f5f9',
+            textSecondary: '#94a3b8',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f1119; overflow-x: hidden; }
+
+    .glow-accent { box-shadow: 0 0 40px rgba(99, 102, 241, 0.3), 0 0 80px rgba(99, 102, 241, 0.1); }
+    .glow-mint { box-shadow: 0 0 30px rgba(52, 211, 153, 0.3); }
+    .glow-coral { box-shadow: 0 0 30px rgba(244, 114, 182, 0.3); }
+
+    .spinner-text {
+      transition: opacity 0.05s;
+    }
+
+    .spinning .spinner-text {
+      animation: textBlur 0.1s infinite alternate;
+    }
+
+    @keyframes textBlur {
+      0% { filter: blur(0px); opacity: 1; }
+      100% { filter: blur(1.5px); opacity: 0.85; }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in-up { animation: fadeInUp 0.5s ease-out; }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
+      50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.5), 0 0 80px rgba(99, 102, 241, 0.2); }
+    }
+
+    .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+
+    @keyframes landed {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    .land-bounce { animation: landed 0.4s ease-out; }
+
+    .category-chip {
+      transition: all 0.2s ease;
+    }
+    .category-chip:hover {
+      transform: translateY(-2px);
+    }
+    .category-chip.active {
+      transform: translateY(-2px);
+    }
+
+    .stopwatch-ring {
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .bg-grid {
+      background-image:
+        linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .question-display {
+      min-height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-spin {
+      background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+      transition: all 0.3s ease;
+    }
+    .btn-spin:hover:not(:disabled) {
+      background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+    }
+    .btn-spin:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .counter-badge {
+      font-variant-numeric: tabular-nums;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #181a27; }
+    ::-webkit-scrollbar-thumb { background: #2a2d3e; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3d5e; }
+  </style>
+</head>
+<body class="bg-surface text-textPrimary font-sans min-h-screen bg-grid">
+
+  <!-- Header -->
+  <header class="w-full py-6 px-4 flex items-center justify-center">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      </div>
+      <h1 class="text-2xl font-display font-bold tracking-tight text-textPrimary">Conversation Spinner</h1>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 pb-12 flex flex-col gap-6">
+
+    <!-- Category Selector -->
+    <section class="fade-in-up">
+      <p class="text-sm font-medium text-textSecondary mb-3 uppercase tracking-wider">Choose a Category</p>
+      <div id="categoryContainer" class="flex flex-wrap gap-2"></div>
+    </section>
+
+    <!-- Question Spinner Card -->
+    <section class="bg-card border border-border rounded-2xl p-6 md:p-8 fade-in-up relative overflow-hidden" id="spinnerCard">
+      <!-- Decorative corner -->
+      <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-accentGlow to-transparent rounded-bl-full pointer-events-none"></div>
+
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-textSecondary" id="categoryLabel">Select a category to start</span>
+        </div>
+        <div class="counter-badge flex items-center gap-1.5 bg-surface border border-border rounded-lg px-3 py-1.5 text-xs font-medium text-textSecondary" id="counterBadge" style="display:none;">
+          <svg class="w-3.5 h-3.5 text-mint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <span id="questionCount">0 / 0</span> remaining
+        </div>
+      </div>
+
+      <!-- Question Display -->
+      <div class="question-display rounded-xl bg-surface border border-border p-6 md:p-8 mb-6 relative" id="questionBox">
+        <p class="spinner-text text-xl md:text-2xl font-display font-bold text-center text-balance leading-relaxed" id="questionText">
+          Pick a category and hit spin!
+        </p>
+      </div>
+
+      <!-- Spin Button -->
+      <div class="flex justify-center">
+        <button id="spinBtn" class="btn-spin text-white font-semibold text-lg px-10 py-3.5 rounded-xl flex items-center gap-3 disabled:opacity-50" disabled>
+          <svg class="w-5 h-5" id="spinIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span id="spinBtnText">Spin</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Stopwatch Card -->
+    <section class="bg-card border border-border rounded-2xl p-6 md:p-8 fade-in-up">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-coral" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm font-medium text-textSecondary uppercase tracking-wider">Speaking Timer</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center gap-5">
+        <!-- Timer Display -->
+        <div class="relative">
+          <svg class="w-44 h-44" viewBox="0 0 180 180">
+            <circle cx="90" cy="90" r="82" stroke="#2a2d3e" stroke-width="6" fill="none" />
+            <circle id="timerRing" class="stopwatch-ring" cx="90" cy="90" r="82" stroke="#f472b6" stroke-width="6" fill="none"
+              stroke-linecap="round" stroke-dasharray="515.22" stroke-dashoffset="0"
+              transform="rotate(-90 90 90)" />
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-4xl font-display font-bold text-textPrimary tabular-nums" id="timerDisplay">00:00</span>
+            <span class="text-xs text-textSecondary mt-1" id="timerLabel">min : sec</span>
+          </div>
+        </div>
+
+        <!-- Timer Controls -->
+        <div class="flex items-center gap-3">
+          <button id="timerStartBtn" class="flex items-center gap-2 bg-mint/10 border border-mint/30 text-mint font-medium px-5 py-2.5 rounded-xl hover:bg-mint/20 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Start
+          </button>
+          <button id="timerPauseBtn" class="flex items-center gap-2 bg-surface border border-border text-textSecondary font-medium px-5 py-2.5 rounded-xl hover:text-textPrimary hover:border-textSecondary/30 transition-colors" style="display:none;">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 4h4v16H6zm8 0h4v16h-4z" />
+            </svg>
+            Pause
+          </button>
+          <button id="timerResetBtn" class="flex items-center gap-2 bg-surface border border-border text-textSecondary font-medium px-5 py-2.5 rounded-xl hover:text-coral hover:border-coral/30 transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Reset
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- All Done Banner (hidden by default) -->
+    <section id="allDoneBanner" class="bg-card border border-mint/30 rounded-2xl p-6 text-center hidden">
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-12 h-12 rounded-full bg-mint/10 flex items-center justify-center">
+          <svg class="w-6 h-6 text-mint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <p class="text-lg font-display font-bold text-mint">All questions used!</p>
+        <p class="text-sm text-textSecondary">You have been through every question in this category. Pick another or reset.</p>
+        <button id="resetCategoryBtn" class="mt-2 bg-mint/10 border border-mint/30 text-mint font-medium px-5 py-2.5 rounded-xl hover:bg-mint/20 transition-colors text-sm">
+          Reset This Category
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ── QUESTIONS DATA ──
+    const questions = {
+      "General": [
+        "Skydiving or SCUBA Diving?","Cable or Streaming?","Live Theater or Movie?","Sunrise Yoga or Sunset Meditation?","Sculpture Garden or Mural Wall?","Horseback Riding or Cycling?","Astronomy or Astrology?","Football or Basketball?","Leader or Follower?","Birdsong or Ocean Waves?","Streaming or YouTube?","New Clothes or New Phone?","Big Party or Small Gathering?","Sweater or Hoodie?","Fiction or Nonfiction?","Postcard or Souvenir?","Headphones or Speakers?","Save or Spend?","Detective Novel or Fantasy Novel?","iOS or Android?","Flamenco or Tango?","TV Shows or Movies?","Meadow or Forest?","Film Photography or Digital Photography?","Train Ride or Bike Ride?","Ice Sculpture or Sand Sculpture?","Acoustic Guitar or Electric Guitar?","Sing or Dance?","Couch or Recliner?","Coffee Cup or Thermos?","Highway or Rural Road?","Lemonade Stand or Coffee Shop?","Folk Tales or Science Fiction?","Skydiving or Paragliding?","Sketching or Painting?","Campfire or Fireplace?","Bicycle or Skateboard?","Acoustic Music or Electronic Music?","Vinyl Records or Streaming Music?","Individual Sports or Team Sports?","Road Trip or Plane Trip?","Roller Derby or Figure Skating?","Amusement Park or Day at the Beach?","Drawing or Sculpting?","Money or Free Time?","Freelancer or Employee?","Used Bookstore or Brand-New Bookstore?","Text or Call?","Ocean or Mountains?","Marathon or Triathlon?","Roller Coaster or Ferris Wheel?","Honesty or Other's Feelings?","Historical Tour or Nature Hike?","Swimming or Sunbathing?","Sunflower or Rose?","What's worse: Laundry or Dishes?","Thrift Store or Retail Store?","Mac or PC?","Art Museum or Natural History Museum?","Aquarium or Aviary?","Wizard / Witches or Superheroes?","Cups in the cupboard: Right Side Up or Upside Down?","Train or Plane?","Online Gaming or Traditional Board Games?","Formal or Casual?","Mystery Novel or Sci-Fi Novel?","Waltz or Salsa?","City Skyline or Mountain Range?","Puppet Show or Magic Show?","Polka Dots or Stripes?","Sandalwood Scent or Vanilla Scent?","Folk or Hip Hop?","Card Game or Board Game?","Hardcover or Paperback?","Iced Coffee or Hot Coffee?","Console Gaming or PC Gaming?","Glasses or Contacts?","City or Countryside?","Cactus or Succulent?","Water Rafting or Kayaking?","Gas Car or Electric Car?","Winter Solstice or Summer Solstice?","Traditional Art or Digital Art?","Social Butterfly or Lone Wolf?","Roller Skates or Ice Skates?","Cash or Credit?","Canoe or Kayak?","City Marathon or Trail Run?","Hammock or Lawn Chair?","Natural Pool or Man-Made Pool?","Thrift Store Finds or High-End Purchases?","Fishing or Hunting?","Rain or Snow?","Yoga or Weightlifting?","Football or Soccer?","Marathon or Sprint?","While walking: Music or Podcasts?","E-Bike or Traditional Bicycle?","Movie at Home or Movie at the Theater?","Kite Flying or Frisbee Throwing?","Second-Hand Book or New Book?","Bonsai Tree or Oak Tree?","Morning Person or Night Owl?","Cardio or Weights?","Vertical Stripes or Horizontal Stripes?","High-tech or Low-tech?","Receive: Email or Letter?","Tablet or Computer?","Pop or Indie?","Ninjas or Pirates?","Jungle or Desert?","Public School or Home School?","Mountain Climbing or Cave Diving?","Motorcycle or Bicycle?","Passenger or Driver?","TV or Book?","Bubble Bath or Mud Bath?","Audiobook or Podcast?","Dog or Cat?","Canoeing or Rafting?","Drum Circle or Choir?","Form or Function?","Online Shopping or Shopping in a Store?","Most important in a partner: Intelligent or Funny?","Botanical Garden or Zoo?","Introvert or Extrovert?","Rock Garden or Flower Garden?","Trampoline or Bouncy Castle?","Nice Car or Nice Home Interior?","Blinds or Curtain?","Piano or Guitar?","Comic Book or Comic Strips?","Graffiti Art or Gallery Art?","Potted Plants or Wildflowers?","Snowball Fight or Sandcastle Building?","Working Alone or Working in a Team?","Bath or Shower?","Winter or Summer?","Classical Art or Modern Art?","Blue Jeans or Khakis?","Aquarium Visit or Museum Tour?","Black And White Photography or Color Photography?","Cave Exploration or Mountain Hiking?","Sneakers or Sandals?","Toilet paper: Over or Under?","Mobile Games or Console Games?","Fairy Lights or Neon Lights?","Traditional Medicine or Alternative Medicine?","Rushing Waterfall or Quiet Pond?","Handwritten Notes or Voice Recordings?","Public Library or Personal Book Collection?","Sunrise or Sunset?","Documentary or Action Film?","Coffee or Tea?","When sleeping: Fan or No Fan?","Vinyl Record or Audio Streaming?","Hot Tub or Pool?","Rock or Pop?","International Vacation or New Top of the Line TV?","Optimist or Pessimist?","Heavy Metal or Classical Music?","Analogue Watch or Smart Watch?","Debit or Credit?","Surfing or Snowboarding?","Handmade or Factory-Made?","Antique Shopping or Online Shopping?","Horror Movie or Comedy Movie?","Loud Laughter or Quiet Smile?","Camping or Binge-Watching Shows at Home?","Cabin in the Woods or Beach House?","Drive-in Movie or Movie theater?","Work Hard or Play Hard?","Palm Trees or Pine Trees?","Mountains or Beaches?","Car or Truck?","Public Transportation or Car?","Jogging or Hiking?","Rich Friend or Loyal Friend?","Local Tourism or International Travel?","Roller Coaster or Carousel?","Coke or Pepsi?","Science or the Arts?","Pen or Pencil?","Giraffe or Penguin?","Buy or Rent/Lease?","Left or Right?","Blue or Red?","Jump Up or Get Down?","Paintball or Lasertag?","Trusting or Skeptical?","Build or Destroy?","Adventure or Relaxation?","Lined Paper or Blank Paper?"
+      ],
+      "Funny": [
+        "Pigeon Chess Tournament or Squirrel Checkers Game?","Cheeseburger Hat or Hot Dog Shoes?","Synchronized Swimming on Land or Soccer in the Swimming Pool?","Moustache on a Cat or Sunglasses on a Dog?","Blindfolded Cake Baking or Blindfolded Salad Making?","Marshmallow Fight or Meatball Fight?","Toga Party or Ugly Sweater Party?","Belly Flop or Cannonball?","Underwater Basket Weaving or Skydiving Knitting?","Slippery Banana Peel Ballet or Roller Skate Tango?","Square-Dancing Flamingos or Breakdancing Octopuses?","Pillow Fortress or Blanket Maze?","Bubble-Wrap Popping Contest or Yodeling Contest?","Time Traveling Picnic or Space Travel BBQ?","Butter Massage or Tomato Soup Bath?","Werewolf or Were-Chicken?","Marshmallow Boxing or Jelly Wrestling?","Hula Hoops or Jump Ropes?","Juggling or Unicycling?","Llama Parade or Penguin Party?","Yawn or Hiccup?","Toothpaste Cake or Mouthwash Pie?","Meet Aliens or Develop Robots?","Zombies or Vampires?","Bathrobe Fashion Show or Pajama Red Carpet?","Invisible Cats or Rainbow-Colored Glowing Dogs?","Spaghetti Tree or Meatball Bush?","Time Travel Twice or Teleport Infinite Times?","Fly Swatter Fencing or Dustpan Curling?","Skiing on Water or Skiing on a Sand Dune?","Popcorn Rain or Candy Hail?","Yodeling or Beatboxing?","Selfie With a Ghost or Photo Bombing Bigfoot?","Pickle-Flavored Ice Cream or Bacon-Scented Candles?","Lava Lamp or Disco Ball?","Snowball Fight or Water Balloon Fight?","Rubber Ducks or Rubber Chickens?","Alphabet Soup Spelling Bee or Tic-Tac-Toe with Croutons?","Disco Ball or Lava Lamp?","Werewolves or Mummies?"
+      ],
+      "Food": [
+        "Sweet or Savory?","Garden Salad or Caesar Salad?","Pineapples or Coconuts?","Hot Chocolate or Iced Tea?","Vegan Diet or Carnivorous Diet?","Broccoli or Cauliflower?","Soup or Sandwich?","Homemade Cookies or Store-Bought Cookies?","Cake or Pie?","Dark Chocolate or White Chocolate?","Hot Dog or Corn Dog?","Spaghetti or Lasagna?","Hamburger or Taco?","Fruit Salad or Vegetable Stir-Fry?","Rainbow Sprinkles or Chocolate Chips?","Ketchup or Mayo?","Toast or Eggs?","Farmer's Market or Supermarket?","Smoothie or Milkshake?","Steak or Sushi?","Hard Shell Taco or Soft-Shell Taco?","Dine In or Delivery?","Meat or Vegetables?","Bakery or Butcher?","Pancakes or Waffles?","Homemade Bread or Bakery Bread?","Ice Cream Cone or Snow Cone?","At a movie: Candy or Popcorn?","Microwave or Oven?","Fine Dining or Fast Food?","Picnic in the Park or Rooftop Dinner?","High Tea or Casual Brunch?","International Cuisine or National Cuisine?","Moon Pies or Zebra Cakes?","Fancy Restaurant Mediocre Food or Delicious Food Rough Restaurant?","Crunchy or Chewy?","Presentation or Quantity?","Sweet BBQ or Savory BBQ?","Thai or Italian?","Small Menu or Big Menu?"
+      ],
+      "Deep": [
+        "Free Will or Destiny?","Humanity: Inherently Good or Inherently Evil?","Nature or Nurture?","Plan Ahead or Live in the Moment?","Ask for Permission or Ask for Forgiveness?","God or No God?","Pursuit of Individual Happiness or Personal Sacrifice for Betterment of Society?","Heart or Mind?","No Negative Emotions or Full Range of Emotions?","Physical Health or Mental Health?","Work or Family?","Freedom or Safety?","Comfort or Effort?","Settle or Search?","Fit In or Stand Out?","Friends or Extended Family?","Help Yourself or Help Others?","Jack of all Trades or Specialist?","Education or Life Experience?","Take Advice or Ignore Advice?"
+      ],
+      "Couples": [
+        "Open Communication or Keeping Some Secrets?","DIY Home Projects or Hiring Professionals?","Grocery Shopping or Meal Planning?","Splitting the Bill or Taking Turns to Pay?","Attend a Sports Event or Watch a Game at a Sports Bar?","Adopting a Pet or Having a Child?","Taking Turns Picking Movies or Watch Own Shows Separately?","Healthy Competition or Mutual Support?","Shared Calendar or Spontaneous Plans?","Subscription Box or One-Time Purchase?","Home Repair or Home Decoration?","Fitness Partners or Foodie Partners?","Frequent Small Arguments or Rare Big Disagreements?","Walking the Dog or Feeding the Pets?","His And Hers Items or Shared Items?","Trapeze Class or Rock Climbing?","Couple's Tattoos or Individual Tattoos?","Public Displays of Affection or Private Intimacy?","Social Media or Keeping Relationship Private?","Budgeting Together or Individual Finances?","Attend a Book Reading or Poetry Slam?","Breakfast in Bed or Dinner at the Table?","Joint Hobbies or Individual Hobbies?","Street Performance or Theater Play?","Splitting the Chores or Hiring a Housekeeper?","Stone Cottage or Glass Skyscraper?","Cooking Together or Cooking For Each Other?","Ghost Tour or Historical Walking Tour?","Couples Yoga or Dance Fitness Class?","Scavenger Hunt or Escape Room?","Gardening or Mowing the Lawn?","Pet Names or Using Real Names?","Double Dates or Hanging Out with Friends Separately?","Handwritten Love Letters or Sweet Texts?","Tandem Bike Ride or Gym Sessions Together?","Setting Relationship Goals or Going with the Flow?","Themed Costume Party or Masquerade Ball?","Date Nights or Staying in?","Big Wedding or Eloping?","Weekend Getaways or Day Trips?","Ice Skating or Roller Skating?","Snorkeling or Snowboarding?","Vacuuming or Cooking?","Romantic Restaurant or Hole in the Wall Restaurant?","Kayaking or Paddleboarding?","Watching TV Together or Reading Together?","Drive-In Movie or Outdoor Concert?","Visit An Aquarium or Planetarium?","Romantic Comedy or Action Thriller?","Shared Netflix Account or Separate Profiles?","Frequent Short Vacations or Occasional Long Vacations?","Same Side of the Booth or Across the Table?","Sleeping in or Early Riser?","Traditional Traditions or Creating New Traditions?","Flamenco or Breakdancing?","Surprise Parties or Planned Celebrations?","Comedy Club or Poetry Slam?","Hiking or Camping?","Botanical Garden or Zoo?","Salsa Dancing or Ballroom Dancing?","Home-Cooked Dinner or Take-Out?","Slow Dancing or Fast Dancing?","Movie Night or Game Night?","Stargazing or Watch the Sunrise?","Frequent Small Surprises or Occasional Grand Gestures?","Spaghetti Western or Kung-Fu Comedy?","Mini-Golf or Bowling?","Maintaining Friendships or Couple-Only Activities?","Making the Bed or Folding Clothes?","Sidewalk Cafe or Rooftop Bar?","Frequent Texting or Infrequent Texting?","Keeping Score or Not Keeping Track?","Horseback Riding or Bike Ride?","Working From Home or Commuting to Work?","Lavish Gifts or Heartfelt Homemade Gifts?","Cooking Class or Wine Tasting?","Matching Style or Individual Styles?","Couple's Therapy or Self-Help Books?","Spending Time with Family or Spending Time with Friends?","Carnival or Opera?"
+      ],
+      "Adults": [
+        "Beer or Wine?","Realistic Art or Surrealist Art?","Antique Furniture or Modern Furniture?","Oven or Grill?","Wine or Whiskey?","Camping or Glamping?","Hot Springs or Cold Plunge Pool?","Penthouse or Countryside Villa?","Formal Dinner or Casual Picnic?","Stone Pathway or Wooden Pathway?","Paperback or E-Reader?","Classical Ballet or Contemporary Dance?","Hard Cheese or Soft Cheese?","Wine And Cheese or Beer and Pretzels?","Tea Ceremony or Wine Tasting?","Marble Statue or Bronze Statue?","Art Deco or Minimalism?","Fresh Flowers or Silk Flowers?","Farmers Market or Flea Market?","Tap Dance or Ballet?","Terracotta Pot or Glass Vase?","Charcoal Grilling or Gas Grilling?","Backyard BBQ Area or Gourmet Kitchen?","Ceiling Fan or Tabletop / Floor Fan?","White Glove Service or Self-Service?","Fishing Boat or Luxury Yacht?","Crossword Puzzle or Sudoku?","Classical Music or Blues?","Cowabunga or Yabba Dabba Doo?","Cross-Country Skiing or Downhill Skiing?","Jazz Club or Piano Bar?","Art Auction or Garage Sale?","Bed And Breakfast or Luxury Hotel?","Couch Potato or Gym Rat?","Rare Book Collection or Wine Collection?","Real Estate or Stocks?","Opera or Jazz Club?","Casual Brunch or Formal Dinner?","Hot Air Balloon Ride or Helicopter Tour?","Caviar or Truffles?","Food Truck Hopping or Gourmet Food Tour?","Rural Living or Urban Living?","Summer Vacation or Winter Holiday?","Spa Retreat or Adventure Travel?","Wine Tasting or Brewery Tour?","Vintage Car or Electric Car?","Bouncing Castle for Adults or Treehouse for Adults?","Square Dance or River Dance?","Art Gallery or History Museum Visit?","Symphony or Rock Concert?","Skyscraper Apartment or Bungalow?","Morning Jog or Evening Walk?","In-Person Meeting or Video Conference?","Snorkeling or SCUBA Diving?","Aerobics or Yoga?","Online Newspaper or Print Newspaper?","Full Moon Beach Party or New Moon Rooftop Party?","Indoor Plants or Outdoor Garden?","Tent Camping or RV Camping?","Off the Rack Clothes or Designer Brands?","Instant Coffee or French Press?","Yacht or Private Jet?","Birdwatching or Stargazing?","Oil Painting or Sculpture?","Golf or NASCAR?","Jazz Band or Symphony Orchestra?","Luxury Car or Classic Car?","Weekend Getaway or Staycation?","Gourmet Dining or Street Food?","Physical Book or Kindle?","Black-Tie Gala or Cocktail Party?","Opera or Rock Concert?","Pottery Class or Glassblowing Class?","Manual or Automatic?","Past was Better or Future will be Better?","Farmers Market or Grocery Store?","Crystal Chandelier or Minimalist Light?","Cooking Class or Painting Class?","Live Theater or Comedy Show?","Electric or Gas Stovetop?"
+      ]
+    };
+
+    // ── STATE ──
+    const usedQuestions = {};
+    let currentCategory = null;
+    let isSpinning = false;
+
+    // Timer state
+    let timerInterval = null;
+    let timerSeconds = 0;
+    let timerRunning = false;
+
+    // ── DOM REFS ──
+    const categoryContainer = document.getElementById('categoryContainer');
+    const categoryLabel = document.getElementById('categoryLabel');
+    const questionText = document.getElementById('questionText');
+    const questionBox = document.getElementById('questionBox');
+    const spinBtn = document.getElementById('spinBtn');
+    const spinBtnText = document.getElementById('spinBtnText');
+    const spinIcon = document.getElementById('spinIcon');
+    const counterBadge = document.getElementById('counterBadge');
+    const questionCount = document.getElementById('questionCount');
+    const spinnerCard = document.getElementById('spinnerCard');
+    const allDoneBanner = document.getElementById('allDoneBanner');
+    const resetCategoryBtn = document.getElementById('resetCategoryBtn');
+
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerRing = document.getElementById('timerRing');
+    const timerStartBtn = document.getElementById('timerStartBtn');
+    const timerPauseBtn = document.getElementById('timerPauseBtn');
+    const timerResetBtn = document.getElementById('timerResetBtn');
+
+    // Category colors mapping
+    const categoryColors = {
+      "General": { bg: 'bg-accent/10', border: 'border-accent/40', text: 'text-accentLight', activeBg: 'bg-accent', activeText: 'text-white' },
+      "Funny": { bg: 'bg-coral/10', border: 'border-coral/40', text: 'text-coral', activeBg: 'bg-coral', activeText: 'text-white' },
+      "Food": { bg: 'bg-amber-500/10', border: 'border-amber-500/40', text: 'text-amber-400', activeBg: 'bg-amber-500', activeText: 'text-white' },
+      "Deep": { bg: 'bg-sky-500/10', border: 'border-sky-500/40', text: 'text-sky-400', activeBg: 'bg-sky-500', activeText: 'text-white' },
+      "Couples": { bg: 'bg-rose-500/10', border: 'border-rose-500/40', text: 'text-rose-400', activeBg: 'bg-rose-500', activeText: 'text-white' },
+      "Adults": { bg: 'bg-emerald-500/10', border: 'border-emerald-500/40', text: 'text-emerald-400', activeBg: 'bg-emerald-500', activeText: 'text-white' },
+    };
+
+    // ── INIT CATEGORIES ──
+    Object.keys(questions).forEach(cat => {
+      usedQuestions[cat] = new Set();
+      const colors = categoryColors[cat];
+      const btn = document.createElement('button');
+      btn.className = `category-chip ${colors.bg} border ${colors.border} ${colors.text} font-medium px-4 py-2 rounded-xl text-sm`;
+      btn.textContent = cat;
+      btn.dataset.category = cat;
+      btn.addEventListener('click', () => selectCategory(cat));
+      categoryContainer.appendChild(btn);
+    });
+
+    // ── SELECT CATEGORY ──
+    function selectCategory(cat) {
+      if (isSpinning) return;
+      currentCategory = cat;
+
+      // Update chips
+      document.querySelectorAll('.category-chip').forEach(chip => {
+        const c = chip.dataset.category;
+        const colors = categoryColors[c];
+        if (c === cat) {
+          chip.className = `category-chip ${colors.activeBg} ${colors.activeText} font-semibold px-4 py-2 rounded-xl text-sm active border border-transparent`;
+        } else {
+          chip.className = `category-chip ${colors.bg} border ${colors.border} ${colors.text} font-medium px-4 py-2 rounded-xl text-sm`;
+        }
+      });
+
+      categoryLabel.textContent = cat + ' Questions';
+      spinBtn.disabled = false;
+      counterBadge.style.display = 'flex';
+      allDoneBanner.classList.add('hidden');
+      updateCounter();
+
+      questionText.textContent = 'Hit spin to get a question!';
+      questionBox.classList.remove('land-bounce');
+    }
+
+    // ── UPDATE COUNTER ──
+    function updateCounter() {
+      if (!currentCategory) return;
+      const total = questions[currentCategory].length;
+      const used = usedQuestions[currentCategory].size;
+      const remaining = total - used;
+      questionCount.textContent = `${remaining} / ${total}`;
+    }
+
+    // ── GET RANDOM UNUSED QUESTION ──
+    function getRandomQuestion(cat) {
+      const all = questions[cat];
+      const used = usedQuestions[cat];
+      const available = all.filter((_, i) => !used.has(i));
+      if (available.length === 0) return null;
+      const idx = Math.floor(Math.random() * available.length);
+      const q = available[idx];
+      const originalIdx = all.indexOf(q);
+      used.add(originalIdx);
+      return q;
+    }
+
+    // ── SPIN ──
+    spinBtn.addEventListener('click', () => {
+      if (isSpinning || !currentCategory) return;
+
+      const total = questions[currentCategory].length;
+      const used = usedQuestions[currentCategory].size;
+      if (used >= total) {
+        allDoneBanner.classList.remove('hidden');
+        spinBtn.disabled = true;
+        return;
+      }
+
+      isSpinning = true;
+      spinBtn.disabled = true;
+      spinBtnText.textContent = 'Spinning...';
+      spinnerCard.classList.add('spinning');
+      questionBox.classList.remove('land-bounce');
+
+      const allQuestions = questions[currentCategory];
+      let spinCount = 0;
+      const totalSpins = 25 + Math.floor(Math.random() * 15);
+      let delay = 40;
+
+      function spinStep() {
+        const randomIdx = Math.floor(Math.random() * allQuestions.length);
+        questionText.textContent = allQuestions[randomIdx];
+
+        spinCount++;
+        if (spinCount < totalSpins) {
+          // Ease out: slow down towards the end
+          if (spinCount > totalSpins * 0.6) {
+            delay += 15;
+          }
+          if (spinCount > totalSpins * 0.8) {
+            delay += 30;
+          }
+          setTimeout(spinStep, delay);
+        } else {
+          // Land on the actual question
+          const finalQuestion = getRandomQuestion(currentCategory);
+          if (finalQuestion) {
+            questionText.textContent = finalQuestion;
+          }
+          spinnerCard.classList.remove('spinning');
+          questionBox.classList.add('land-bounce');
+          isSpinning = false;
+          spinBtnText.textContent = 'Spin';
+          updateCounter();
+
+          // Check if all used up
+          const nowUsed = usedQuestions[currentCategory].size;
+          if (nowUsed >= allQuestions.length) {
+            allDoneBanner.classList.remove('hidden');
+            spinBtn.disabled = true;
+          } else {
+            spinBtn.disabled = false;
+          }
+        }
+      }
+
+      spinStep();
+    });
+
+    // ── RESET CATEGORY ──
+    resetCategoryBtn.addEventListener('click', () => {
+      if (!currentCategory) return;
+      usedQuestions[currentCategory] = new Set();
+      allDoneBanner.classList.add('hidden');
+      spinBtn.disabled = false;
+      updateCounter();
+      questionText.textContent = 'Hit spin to get a question!';
+    });
+
+    // ── STOPWATCH ──
+    const RING_CIRCUMFERENCE = 515.22;
+    const MAX_TIMER_SECONDS = 300; // 5 minutes for the ring visual
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function updateTimerRing() {
+      const progress = Math.min(timerSeconds / MAX_TIMER_SECONDS, 1);
+      const offset = RING_CIRCUMFERENCE * (1 - progress);
+      timerRing.setAttribute('stroke-dashoffset', offset);
+
+      // Color shift as time goes on
+      if (timerSeconds > 180) {
+        timerRing.setAttribute('stroke', '#ef4444');
+      } else if (timerSeconds > 120) {
+        timerRing.setAttribute('stroke', '#f59e0b');
+      } else {
+        timerRing.setAttribute('stroke', '#f472b6');
+      }
+    }
+
+    function tickTimer() {
+      timerSeconds++;
+      timerDisplay.textContent = formatTime(timerSeconds);
+      updateTimerRing();
+    }
+
+    timerStartBtn.addEventListener('click', () => {
+      if (timerRunning) return;
+      timerRunning = true;
+      timerInterval = setInterval(tickTimer, 1000);
+      timerStartBtn.style.display = 'none';
+      timerPauseBtn.style.display = 'flex';
+    });
+
+    timerPauseBtn.addEventListener('click', () => {
+      timerRunning = false;
+      clearInterval(timerInterval);
+      timerStartBtn.style.display = 'flex';
+      timerPauseBtn.style.display = 'none';
+    });
+
+    timerResetBtn.addEventListener('click', () => {
+      timerRunning = false;
+      clearInterval(timerInterval);
+      timerSeconds = 0;
+      timerDisplay.textContent = '00:00';
+      timerRing.setAttribute('stroke-dashoffset', '0');
+      timerRing.setAttribute('stroke', '#f472b6');
+      timerStartBtn.style.display = 'flex';
+      timerPauseBtn.style.display = 'none';
+    });
+
+    // ── KEYBOARD SHORTCUT ──
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !isSpinning && currentCategory) {
+        e.preventDefault();
+        spinBtn.click();
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Role Play Roulette</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --card: #1e1e24;
+    --accent1: #f5c842;
+    --accent2: #e8553e;
+    --accent3: #4ec9b0;
+    --accent4: #c586c0;
+    --text: #f0eff4;
+    --muted: #7a7a8c;
+    --border: #2a2a35;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 1.5rem;
+    position: relative;
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent1) 0%, var(--accent2) 50%, var(--accent4) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem 4rem;
+  }
+
+  /* Controls */
+  .controls {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .controls label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .student-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .num-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+
+  .num-btn:hover { border-color: var(--accent1); color: var(--accent1); }
+  .num-btn.active { border-color: var(--accent1); background: var(--accent1); color: #000; }
+
+  .spin-btn {
+    margin-left: auto;
+    padding: 0.9rem 2.5rem;
+    background: var(--accent1);
+    color: #000;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spin-btn:hover { transform: scale(1.04); box-shadow: 0 0 30px rgba(245,200,66,0.4); }
+  .spin-btn:active { transform: scale(0.97); }
+  .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Slot machine area */
+  .slots {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .slot-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .slot-card.full-width { grid-column: 1 / -1; }
+
+  .slot-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .slot-card.location::before { background: linear-gradient(135deg, rgba(245,200,66,0.07), transparent); }
+  .slot-card.scenario::before { background: linear-gradient(135deg, rgba(232,85,62,0.07), transparent); }
+  .slot-card.roles::before { background: linear-gradient(135deg, rgba(78,201,176,0.07), transparent); }
+
+  .slot-card.revealed::before { opacity: 1; }
+
+  .slot-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .slot-card.location .slot-label { color: var(--accent1); }
+  .slot-card.scenario .slot-label { color: var(--accent2); }
+  .slot-card.roles .slot-label { color: var(--accent3); }
+
+  .slot-display {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    font-weight: 700;
+    line-height: 1.3;
+    min-height: 2.6rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .slot-display.spinning {
+    animation: flicker 0.08s infinite;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 1rem;
+  }
+
+  @keyframes flicker {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+  }
+
+  .slot-card.location .slot-display { color: var(--accent1); }
+  .slot-card.scenario .slot-display { color: var(--text); }
+  .slot-card.roles .slot-display { color: var(--accent3); }
+
+  .role-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .role-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1rem;
+  }
+
+  .role-badge {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .role-item:nth-child(1) .role-badge { background: rgba(78,201,176,0.2); color: var(--accent3); }
+  .role-item:nth-child(2) .role-badge { background: rgba(197,134,192,0.2); color: var(--accent4); }
+  .role-item:nth-child(3) .role-badge { background: rgba(245,200,66,0.2); color: var(--accent1); }
+
+  .role-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Placeholder state */
+  .placeholder {
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* Tip bar */
+  .tip-bar {
+    text-align: center;
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+  }
+
+  .tip-bar span { color: var(--accent1); }
+
+  /* Pulse on reveal */
+  @keyframes reveal-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.015); }
+    100% { transform: scale(1); }
+  }
+
+  .slot-card.pop { animation: reveal-pulse 0.4s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Role Play Roulette</h1>
+  <p>// spin to reveal place · scenario · roles</p>
+</header>
+
+<div class="container">
+  <div class="controls">
+    <div>
+      <label>Number of students</label>
+      <div class="student-selector" style="margin-top:0.5rem">
+        <button class="num-btn" data-n="2">2</button>
+        <button class="num-btn active" data-n="3">3</button>
+      </div>
+    </div>
+    <button class="spin-btn" id="spinBtn">⟳ &nbsp;SPIN</button>
+  </div>
+
+  <div class="slots">
+    <div class="slot-card location" id="cardLocation">
+      <div class="slot-label">📍 Location</div>
+      <div class="slot-display placeholder" id="displayLocation">press spin to begin</div>
+    </div>
+    <div class="slot-card scenario" id="cardScenario">
+      <div class="slot-label">🎭 Scenario</div>
+      <div class="slot-display placeholder" id="displayScenario">press spin to begin</div>
+    </div>
+    <div class="slot-card roles full-width" id="cardRoles">
+      <div class="slot-label">🎤 Roles</div>
+      <div class="slot-display placeholder" id="displayRoles">press spin to begin</div>
+    </div>
+  </div>
+
+  <div class="tip-bar">
+    Tip: press <span>SPIN</span> again to get a completely new scenario — every combination is unique!
+  </div>
+</div>
+
+<script>
+const DATA = {
+  places: [
+    {
+      name: "Restaurant",
+      roles2: [["Waiter","Customer"],["Chef","Food Critic"],["Manager","Unhappy Customer"],["Two Customers on a First Date"]],
+      roles3: [["Waiter","Customer","Manager"],["Chef","Waiter","Customer"],["Host","Two Customers"],["Customer","Waiter","Health Inspector"]],
+      scenarios: [
+        "Your order arrives completely wrong.",
+        "There is a hair in your soup.",
+        "The bill is much higher than expected.",
+        "A customer is celebrating a surprise birthday — it's not their birthday.",
+        "The restaurant is fully booked but a VIP walks in.",
+        "The kitchen runs out of the most popular dish.",
+        "A customer claims their food made them sick last week.",
+        "Two customers are arguing loudly over the last table by the window.",
+        "A customer wants to pay but left their wallet at home.",
+        "The waiter spills water all over a customer's laptop.",
+        "A customer refuses to leave after closing time.",
+        "A customer is allergic to something in their dish and just realised.",
+      ]
+    },
+    {
+      name: "Airport",
+      roles2: [["Check-in Agent","Passenger"],["Security Officer","Traveller"],["Gate Agent","Late Passenger"],["Customs Officer","Tourist"]],
+      roles3: [["Check-in Agent","Passenger","Supervisor"],["Pilot","Passenger","Flight Attendant"],["Gate Agent","Two Passengers"],["Lost & Found Agent","Two Siblings"]],
+      scenarios: [
+        "Your flight has been cancelled and there are no more seats today.",
+        "A passenger's bag is 5kg overweight and they refuse to pay the fee.",
+        "A traveller has lost their passport.",
+        "Security finds something suspicious in a passenger's bag — it's a souvenir.",
+        "Two passengers have been given the same seat number.",
+        "A passenger misses the boarding call because they fell asleep.",
+        "Someone's luggage has been sent to the wrong country.",
+        "A passenger is trying to bring a live lobster on the plane.",
+        "A child is travelling alone and seems very nervous.",
+        "A passenger refuses to turn off their phone during boarding.",
+      ]
+    },
+    {
+      name: "Hospital",
+      roles2: [["Doctor","Patient"],["Nurse","Patient"],["Receptionist","Patient"],["Pharmacist","Customer"]],
+      roles3: [["Doctor","Nurse","Patient"],["Receptionist","Doctor","Impatient Patient"],["Surgeon","Patient","Nervous Family Member"],["Nurse","Two Patients sharing a room"]],
+      scenarios: [
+        "A patient has been waiting 4 hours and demands to see a doctor immediately.",
+        "A doctor gives the wrong diagnosis and must correct it.",
+        "A patient is terrified of needles and needs a blood test.",
+        "The pharmacy has run out of a patient's critical medication.",
+        "A patient insists they found their cure on the internet.",
+        "Two patients accidentally swap their meal trays.",
+        "A doctor must deliver bad news as kindly as possible.",
+        "A patient refuses to follow the doctor's advice.",
+        "The hospital bill is shocking and the patient can't afford it.",
+        "A patient checks themselves out against medical advice.",
+      ]
+    },
+    {
+      name: "Supermarket",
+      roles2: [["Cashier","Customer"],["Store Manager","Shoplifting Suspect"],["Customer Service","Angry Customer"],["Two Customers fighting over the last item"]],
+      roles3: [["Cashier","Customer","Store Manager"],["Stock Worker","Two Customers"],["Customer Service Rep","Customer","Delivery Driver"],["Security Guard","Customer","Store Manager"]],
+      scenarios: [
+        "A customer's loyalty card doesn't work and they've accumulated a huge discount.",
+        "A product's price tag says one price but scans as another.",
+        "A customer tries to return expired food they bought 3 months ago.",
+        "Two customers grab the last turkey at the same time.",
+        "A customer complains loudly that there are too few checkout lanes open.",
+        "A child breaks an expensive item and the parent refuses to pay.",
+        "A customer claims they were short-changed.",
+        "Someone has abandoned a full cart of groceries blocking the aisle.",
+        "A customer wants to buy alcohol but forgot their ID.",
+        "A delivery of products has arrived and is blocking the emergency exit.",
+      ]
+    },
+    {
+      name: "Hotel",
+      roles2: [["Receptionist","Guest"],["Concierge","Tourist"],["Housekeeper","Guest"],["Hotel Manager","Unsatisfied Guest"]],
+      roles3: [["Receptionist","Guest","Manager"],["Concierge","Two Tourist Guests"],["Room Service Staff","Two Guests"],["Security Guard","Two Guests having a dispute"]],
+      scenarios: [
+        "A guest insists their reservation includes breakfast but it doesn't.",
+        "The room hasn't been cleaned when the guest arrives.",
+        "The hotel is overbooked and a guest must be turned away.",
+        "A guest complains about extreme noise from the room next door.",
+        "A guest finds a stranger sleeping in their bed.",
+        "The WiFi is down and a guest has an urgent work call.",
+        "A guest has locked themselves out of their room at 3am.",
+        "A guest checks in with a pet when the hotel is strictly no-pets.",
+        "A guest demands a refund for rain ruining their beach holiday.",
+        "The swimming pool has been closed and a guest is furious.",
+      ]
+    },
+    {
+      name: "School / Classroom",
+      roles2: [["Teacher","Student"],["Principal","Parent"],["Teacher","Parent"],["Two Classmates during a group project"]],
+      roles3: [["Teacher","Student","Parent"],["Principal","Teacher","Student"],["Librarian","Two Students"],["Teacher","Two Students in a conflict"]],
+      scenarios: [
+        "A student hasn't done their homework for the 5th time this week.",
+        "A parent accuses a teacher of favouring other students.",
+        "A student is caught cheating during an exam.",
+        "Two students have written the exact same essay — suspiciously so.",
+        "A student insists they deserve a higher grade.",
+        "A new exchange student doesn't understand the class rules.",
+        "A student falls asleep during an important lesson.",
+        "A parent disagrees strongly with a school policy.",
+        "A student has lost a very important permission slip.",
+        "A student is being bullied and finally tells a teacher.",
+      ]
+    },
+    {
+      name: "Bank",
+      roles2: [["Bank Teller","Customer"],["Financial Advisor","Client"],["Bank Manager","Angry Customer"],["Security Guard","Suspicious Person"]],
+      roles3: [["Teller","Customer","Manager"],["Financial Advisor","Two Clients (couple)"],["Teller","Customer","Security Guard"],["Manager","Teller","VIP Customer"]],
+      scenarios: [
+        "A customer's card has been frozen due to suspicious activity — it was them.",
+        "A customer wants to withdraw more cash than their balance allows.",
+        "Someone claims a charge they didn't make has appeared on their account.",
+        "A couple disagrees loudly in front of the advisor about an investment.",
+        "An elderly customer is convinced they've been scammed.",
+        "A customer is asking to take out a very large loan for a risky business idea.",
+        "The bank system is down and queues are forming outside.",
+        "A customer insists the ATM swallowed their card.",
+        "A new customer doesn't have the right documents to open an account.",
+        "A customer discovers their mortgage payment doubled without warning.",
+      ]
+    },
+    {
+      name: "Job Interview",
+      roles2: [["Interviewer","Applicant"],["HR Manager","Nervous Candidate"],["Two Candidates competing for the same job"]],
+      roles3: [["Interviewer","Applicant","HR Manager"],["Panel of Two Interviewers","Applicant"],["Receptionist","Two Candidates waiting"]],
+      scenarios: [
+        "The applicant is extremely overqualified and the interviewer is intimidated.",
+        "The candidate arrives 30 minutes late with a surprising excuse.",
+        "The applicant accidentally calls the interviewer by the wrong name.",
+        "A candidate's phone rings loudly — it's their current boss calling.",
+        "The job description was completely different from what was advertised.",
+        "A candidate admits they lied on their CV.",
+        "The interviewer forgets they already interviewed this candidate.",
+        "A candidate asks for a salary far above the advertised range.",
+        "The interviewer is clearly having a terrible day and is being short.",
+        "Two candidates are called in at the same time by mistake.",
+      ]
+    },
+    {
+      name: "Post Office",
+      roles2: [["Postal Worker","Customer"],["Customs Officer","Package Sender"],["Two Customers in a long queue"]],
+      roles3: [["Postal Worker","Manager","Frustrated Customer"],["Delivery Driver","Customer","Neighbour"],["Postal Worker","Two Customers"]],
+      scenarios: [
+        "A very important package has been lost.",
+        "A customer insists a parcel arrived damaged because of careless handling.",
+        "A customer wants to send something that is not allowed by post.",
+        "There is an enormous queue and only one window is open.",
+        "A package meant for someone else keeps arriving at a customer's address.",
+        "A customer refuses to pay customs duty on their parcel.",
+        "A package was delivered to a neighbour who refuses to give it back.",
+        "A customer needs a parcel to arrive tomorrow — it's guaranteed 3 days.",
+        "A very fragile item has been packed inside a normal envelope.",
+        "A customer insists the parcel was signed for but they weren't home.",
+      ]
+    },
+    {
+      name: "Gym",
+      roles2: [["Personal Trainer","Client"],["Gym Receptionist","New Member"],["Two Members fighting over equipment"]],
+      roles3: [["Personal Trainer","Client","Gym Manager"],["Receptionist","Two Members"],["Trainer","Client","Nutritionist"]],
+      scenarios: [
+        "A member is hogging the most popular machine for an hour.",
+        "A new member doesn't know how to use any of the equipment safely.",
+        "A client insists they've been following the plan perfectly but sees no results.",
+        "A member refuses to wipe down equipment after use.",
+        "Someone is giving unsolicited advice to other gym members.",
+        "A client wants to cancel their membership but is locked in a contract.",
+        "A member's locker has been broken into.",
+        "Two members have booked the same personal trainer at the same time.",
+        "A client wants to train despite the trainer saying they're injured.",
+        "A member is being too loud and other members are complaining.",
+      ]
+    },
+    {
+      name: "Taxi / Ride Share",
+      roles2: [["Driver","Passenger"],["Driver","Difficult Passenger"],["Two Passengers sharing a ride to different destinations"]],
+      roles3: [["Driver","Two Passengers"],["Driver","Passenger","Dispatcher on phone"],["Angry Passenger","Driver","Another Passenger"]],
+      scenarios: [
+        "The driver takes a much longer route than expected.",
+        "A passenger has left their bag in the car and calls the driver.",
+        "A passenger wants the driver to play specific music very loudly.",
+        "The driver is completely lost and won't admit it.",
+        "A passenger feels very car sick and needs to stop.",
+        "The ride app price surged massively and the passenger is furious.",
+        "A passenger wants to go to an extra stop not in the app.",
+        "The driver's car breaks down halfway through the journey.",
+        "A passenger is rude to the driver and another passenger intervenes.",
+        "A passenger insists the driver has the wrong car.",
+      ]
+    },
+    {
+      name: "Pharmacy",
+      roles2: [["Pharmacist","Customer"],["Pharmacist","Doctor on the phone"],["Two Customers disputing who was next in line"]],
+      roles3: [["Pharmacist","Customer","Doctor"],["Senior Pharmacist","Trainee Pharmacist","Customer"],["Pharmacist","Customer","Worried Family Member"]],
+      scenarios: [
+        "A customer tries to get prescription medication without a prescription.",
+        "A medication is out of stock and the customer desperately needs it today.",
+        "A customer insists a pharmacist gave them the wrong pills last week.",
+        "A customer confuses two similar medicines and almost takes the wrong one.",
+        "A customer wants advice on mixing their medications.",
+        "The prescription cannot be read because the doctor's handwriting is impossible.",
+        "A customer tries to return half-used medication for a refund.",
+        "A customer refuses to listen to safety advice about their medication.",
+        "A child has swallowed something and the parent panics at the counter.",
+        "A customer asks very personal health questions in a crowded pharmacy.",
+      ]
+    },
+    {
+      name: "Train Station",
+      roles2: [["Ticket Inspector","Passenger"],["Station Staff","Confused Tourist"],["Two Passengers in the wrong seats"]],
+      roles3: [["Inspector","Passenger","Guard"],["Staff","Two Tourists"],["Passenger","Ticket Seller","Inspector"]],
+      scenarios: [
+        "A passenger has the wrong ticket and the train is about to leave.",
+        "A tourist has bought a ticket to the wrong destination.",
+        "A train is severely delayed and passengers are becoming frustrated.",
+        "A passenger's seat reservation is in a broken seat.",
+        "A passenger has accidentally dropped their ticket on the tracks.",
+        "Two passengers have identical seat reservations for the same seat.",
+        "A group of loud passengers is disturbing others in a quiet carriage.",
+        "The last train home has been cancelled.",
+        "A passenger boards a train going the opposite direction.",
+        "A passenger refuses to move their luggage from a seat.",
+      ]
+    },
+    {
+      name: "Library",
+      roles2: [["Librarian","Visitor"],["Librarian","Noisy Student"],["Two Visitors arguing over the last copy of a book"]],
+      roles3: [["Head Librarian","Assistant","Visitor"],["Librarian","Two Students"],["Librarian","Student","Parent"]],
+      scenarios: [
+        "A visitor returns a book with pages torn out.",
+        "Someone is talking loudly on the phone and won't stop.",
+        "A student has returned a library book 6 months late.",
+        "A visitor insists a book they checked out is now on their record as lost.",
+        "Two people want to reserve the last study room at the same time.",
+        "A student needs a rare book but it's part of an exhibition.",
+        "A child has accidentally drawn in a library book.",
+        "Someone is sleeping in the library and refuses to wake up.",
+        "A visitor wants to borrow a book but has no library card.",
+        "The printer breaks down right before someone's deadline.",
+      ]
+    },
+    {
+      name: "Clothing Shop",
+      roles2: [["Shop Assistant","Customer"],["Store Manager","Customer requesting a refund"],["Two Customers eyeing the same item on sale"]],
+      roles3: [["Assistant","Customer","Manager"],["Fitting Room Attendant","Two Customers"],["Shop Assistant","Two Customers in a dispute"]],
+      scenarios: [
+        "A customer wants a refund for a dress they clearly wore at a party.",
+        "The sale price on the tag is different from what the till charges.",
+        "A customer is taking an unreasonable number of items into the fitting room.",
+        "A customer insists a shirt shrunk after one wash but it's dry-clean only.",
+        "A customer demands a discount because a seam is slightly loose.",
+        "There is only one item left and two customers arrive at the same time.",
+        "A customer is rude to a shop assistant in front of other shoppers.",
+        "A customer tries to swap price tags.",
+        "A customer brings back an item bought 2 years ago without a receipt.",
+        "The store is about to close and a customer is taking forever to decide.",
+      ]
+    },
+    {
+      name: "Dentist",
+      roles2: [["Dentist","Patient"],["Dental Receptionist","Late Patient"],["Dentist","Very Nervous Patient"]],
+      roles3: [["Dentist","Dental Nurse","Patient"],["Receptionist","Patient","Dentist"],["Dentist","Patient","Insurance Representative"]],
+      scenarios: [
+        "A patient is terrified and refuses to open their mouth.",
+        "A patient needs an expensive procedure and doesn't believe it's necessary.",
+        "A dentist has to break bad news about a patient's dental hygiene.",
+        "A patient claims the filling done last week has already fallen out.",
+        "A patient arrives and insists they have an appointment — they don't.",
+        "A patient is in severe pain but there are no available slots.",
+        "A patient has been sent a huge bill they weren't expecting.",
+        "A very fidgety child needs a check-up.",
+        "A patient insists they want the tooth removed without anaesthetic.",
+        "A patient keeps talking while the dentist is trying to work.",
+      ]
+    },
+    {
+      name: "Coffee Shop",
+      roles2: [["Barista","Customer"],["Café Manager","Barista"],["Two Regular Customers who both think the same seat is 'their' seat"]],
+      roles3: [["Barista","Customer","Manager"],["Barista","Two Customers"],["Café Owner","Barista","Health Inspector"]],
+      scenarios: [
+        "A customer complains their coffee is too cold but drank half of it.",
+        "The café has run out of oat milk and the customer reacts dramatically.",
+        "A customer's laptop takes up the whole counter and others need to sit.",
+        "A customer insists their loyalty card entitles them to a free large drink.",
+        "Two customers have both ordered the same rare special — it's the last one.",
+        "A customer claims their order was wrong and demands a replacement.",
+        "A barista accidentally gives a customer a coffee with the wrong name on it.",
+        "A customer is sitting for 5 hours with just one cup of water.",
+        "A customer orders 15 drinks for an office and changes the order multiple times.",
+        "A customer brings their own cup and wants a big discount.",
+      ]
+    },
+    {
+      name: "Estate Agent / Real Estate",
+      roles2: [["Estate Agent","Buyer"],["Landlord","Tenant"],["Agent","Seller who won't lower the price"]],
+      roles3: [["Agent","Buyer","Seller"],["Agent","Couple who disagree"],["Landlord","Two Tenant Applicants"]],
+      scenarios: [
+        "The flat is much smaller in person than in the photos.",
+        "A tenant discovers the landlord never fixed the heating as promised.",
+        "A buyer offers well below the asking price at the showing.",
+        "A tenant wants to keep a pet in a no-pets property.",
+        "A buyer falls in love with the house but their partner hates it.",
+        "The agent reveals a small detail about the property they hid in the listing.",
+        "A landlord tries to raise the rent with only 24 hours notice.",
+        "A buyer discovers there are serious damp problems after exchanging contracts.",
+        "A tenant refuses to leave after their lease has expired.",
+        "An agent shows a property that has already been sold.",
+      ]
+    },
+    {
+      name: "Mechanic / Garage",
+      roles2: [["Mechanic","Car Owner"],["Service Manager","Unhappy Customer"],["Two Customers arguing about whose car is first in the queue"]],
+      roles3: [["Mechanic","Apprentice","Customer"],["Service Manager","Mechanic","Customer"],["Receptionist","Customer","Mechanic"]],
+      scenarios: [
+        "The repair costs three times the original estimate.",
+        "The car breaks down again the day after being repaired.",
+        "A customer insists the mechanic caused new damage.",
+        "A car has been in the garage for two weeks and still isn't ready.",
+        "A customer doesn't understand the technical explanation and feels tricked.",
+        "A mechanic discovers the car is actually not safe to drive.",
+        "The wrong part was ordered and the car has to wait another week.",
+        "A customer refuses to pay until they see the old parts that were replaced.",
+        "A car is ready but the customer forgot to arrange collection.",
+        "A mechanic gives a quote over the phone that turns out to be wrong.",
+      ]
+    },
+    {
+      name: "Police Station",
+      roles2: [["Police Officer","Witness"],["Officer","Person filing a complaint"],["Detective","Suspect"]],
+      roles3: [["Officer","Witness","Suspect"],["Desk Sergeant","Officer","Member of Public"],["Detective","Two Witnesses with conflicting stories"]],
+      scenarios: [
+        "Someone reports their bicycle stolen — the officer recognises it as theirs.",
+        "A witness to an incident can't agree on what they saw.",
+        "A person wants to report a minor dispute but it's getting very complicated.",
+        "Someone insists a crime happened that the officer doesn't believe.",
+        "A person accidentally confesses to something unrelated while reporting something else.",
+        "Two neighbours are both accusing each other of the same thing.",
+        "A tourist reports a theft but can't speak much English.",
+        "Someone brings in lost property — the real owner arrives moments later.",
+        "A person is very upset and struggling to explain what happened.",
+        "An officer must tell someone their car has been impounded.",
+      ]
+    },
+    {
+      name: "At a Party",
+      roles2: [["Host","Uninvited Guest"],["Two Party Guests who don't know each other"],["Guest","Host whose party is running out of food"]],
+      roles3: [["Host","Two Guests"],["Guest","Host","Neighbour complaining about noise"],["Two Guests","Embarrassed Host"]],
+      scenarios: [
+        "An uninvited guest shows up and refuses to leave.",
+        "The neighbour arrives to complain about the noise.",
+        "Two guests who hate each other have both been invited.",
+        "A guest accidentally breaks the host's most prized possession.",
+        "The food runs out too early and guests are still arriving.",
+        "Someone brings a plus-one who wasn't invited.",
+        "A guest eats all the food without sharing.",
+        "The host realises they invited someone to the wrong date.",
+        "A guest starts giving a very long speech nobody asked for.",
+        "The music is too loud — or too quiet, depending who you ask.",
+      ]
+    },
+    {
+      name: "Vet Clinic",
+      roles2: [["Vet","Pet Owner"],["Receptionist","Anxious Owner"],["Vet","Owner who can't pay the bill"]],
+      roles3: [["Vet","Vet Nurse","Owner"],["Receptionist","Two Pet Owners both claiming to be first"],["Vet","Owner","Worried Child"]],
+      scenarios: [
+        "A pet owner refuses to believe their dog needs surgery.",
+        "An owner brings in a pet with a very strange problem.",
+        "The vet bill is enormous and the owner had no idea it would be this expensive.",
+        "An owner insists their pet is not sick even though it clearly is.",
+        "Two owners bring in the same breed of dog and get them mixed up.",
+        "A cat has escaped its carrier and is loose in the waiting room.",
+        "An owner insists on a second opinion right there in the clinic.",
+        "A pet is very well-behaved at home but impossible at the vet.",
+        "An owner asks the vet for advice about their own health.",
+        "A pet swallowed something it shouldn't have.",
+      ]
+    },
+    {
+      name: "Museum",
+      roles2: [["Museum Guide","Visitor"],["Security Guard","Visitor who touched an exhibit"],["Ticket Seller","Visitor trying to sneak in"]],
+      roles3: [["Guide","Two Visitors"],["Guard","Curator","Visitor"],["Ticket Desk Staff","Two Visitors with conflicting needs"]],
+      scenarios: [
+        "A visitor touches a priceless artefact and the alarm goes off.",
+        "A visitor insists that a label is factually wrong.",
+        "A group of school children is being too noisy and disturbing others.",
+        "A visitor tries to take a photo with a flash in a no-flash zone.",
+        "A visitor claims they left their bag inside and the museum has closed.",
+        "A visitor is giving their own 'tour' to other visitors — loudly and incorrectly.",
+        "A child gets separated from their group.",
+        "A visitor wants a refund because the main exhibit is under renovation.",
+        "A visitor falls asleep on a bench and a guard must wake them.",
+        "An artist claims one of the museum's pieces is actually theirs.",
+      ]
+    },
+    {
+      name: "Hairdresser / Barber",
+      roles2: [["Hairdresser","Client"],["Salon Manager","Unsatisfied Client"],["Two Clients arguing over whose appointment is earlier"]],
+      roles3: [["Hairdresser","Client","Manager"],["Stylist","Client","Next Client who is waiting"],["Receptionist","Two Clients with same appointment"]],
+      scenarios: [
+        "The client's hair turns out a completely different colour than agreed.",
+        "A client insists the cut is too short even though they approved it.",
+        "A client shows a photo of a style that is impossible with their hair type.",
+        "A stylist nicks a client's ear with scissors.",
+        "A client refuses to pay because they don't like the result.",
+        "A client wants an enormous change but the stylist is worried.",
+        "Two clients have been given the same appointment slot.",
+        "A client talks non-stop and the stylist can't focus.",
+        "A client has such tangled hair the appointment takes twice as long.",
+        "A client is horrified by what they see in the mirror midway through.",
+      ]
+    },
+  ]
+};
+
+let numStudents = 3;
+let isSpinning = false;
+
+// Init
+document.querySelectorAll('.num-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    numStudents = parseInt(btn.dataset.n);
+  });
+});
+
+document.getElementById('spinBtn').addEventListener('click', spin);
+
+function rand(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function spinText(el, finalText, duration, onDone) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  const scramble = () => {
+    let result = '';
+    for (let i = 0; i < Math.max(finalText.length, 8); i++) {
+      result += rand(chars.split(''));
+    }
+    return result;
+  };
+
+  el.classList.add('spinning');
+  el.classList.remove('placeholder');
+
+  const interval = setInterval(() => {
+    el.textContent = scramble();
+  }, 60);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    el.classList.remove('spinning');
+    el.textContent = finalText;
+    if (onDone) onDone();
+  }, duration);
+}
+
+function spin() {
+  if (isSpinning) return;
+  isSpinning = true;
+  document.getElementById('spinBtn').disabled = true;
+
+  // Pick a place
+  const place = rand(DATA.places);
+  const scenario = rand(place.scenarios);
+  const roles = numStudents === 2 ? rand(place.roles2) : rand(place.roles3);
+
+  const locEl = document.getElementById('displayLocation');
+  const scenEl = document.getElementById('displayScenario');
+  const rolesEl = document.getElementById('displayRoles');
+
+  const cardLoc = document.getElementById('cardLocation');
+  const cardScen = document.getElementById('cardScenario');
+  const cardRoles = document.getElementById('cardRoles');
+
+  [cardLoc, cardScen, cardRoles].forEach(c => {
+    c.classList.remove('revealed', 'pop');
+  });
+
+  // Staggered reveal
+  locEl.innerHTML = '';
+  locEl.classList.remove('placeholder');
+  spinText(locEl, place.name, 1200, () => {
+    cardLoc.classList.add('revealed', 'pop');
+    setTimeout(() => cardLoc.classList.remove('pop'), 400);
+  });
+
+  scenEl.innerHTML = '';
+  scenEl.classList.remove('placeholder');
+  setTimeout(() => {
+    spinText(scenEl, scenario, 1400, () => {
+      cardScen.classList.add('revealed', 'pop');
+      setTimeout(() => cardScen.classList.remove('pop'), 400);
+    });
+  }, 700);
+
+  rolesEl.innerHTML = '';
+  rolesEl.classList.remove('placeholder');
+  setTimeout(() => {
+    const tempEl = document.createElement('span');
+    tempEl.textContent = '';
+    rolesEl.appendChild(tempEl);
+    spinText(tempEl, '...', 1600, () => {
+      // Build role list
+      rolesEl.innerHTML = '';
+      const list = document.createElement('div');
+      list.className = 'role-list';
+      roles.forEach((role, i) => {
+        const item = document.createElement('div');
+        item.className = 'role-item';
+        item.innerHTML = `<div class="role-badge">S${i+1}</div><div class="role-name">${role}</div>`;
+        list.appendChild(item);
+      });
+      rolesEl.appendChild(list);
+      cardRoles.classList.add('revealed', 'pop');
+      setTimeout(() => cardRoles.classList.remove('pop'), 400);
+
+      // Done
+      setTimeout(() => {
+        isSpinning = false;
+        document.getElementById('spinBtn').disabled = false;
+      }, 200);
+    });
+  }, 1400);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animal Reveal — Team Challenge</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #ff4757;
+    --red-light: #ff6b81;
+    --red-bg: #fff0f1;
+    --blue: #1e90ff;
+    --blue-light: #74b9ff;
+    --blue-bg: #f0f7ff;
+    --card: #ffffff;
+    --text: #2d3436;
+    --shadow: rgba(0,0,0,0.12);
+    --T: 0.5s cubic-bezier(.4,0,.2,1);
+    --TC: var(--red);
+    --TB: var(--red-bg);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--TB);
+    min-height: 100vh;
+    transition: background var(--T);
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--TC) 12%, transparent) 0%, transparent 50%),
+      radial-gradient(circle at 90% 80%, color-mix(in srgb, var(--TC) 8%, transparent) 0%, transparent 50%);
+    pointer-events: none;
+    transition: background var(--T);
+    z-index: 0;
+  }
+  #app {
+    position: relative; z-index: 1;
+    max-width: 860px; margin: 0 auto;
+    padding: 16px;
+    min-height: 100vh;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  header { text-align: center; }
+  header h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    color: var(--TC);
+    text-shadow: 3px 3px 0 color-mix(in srgb, var(--TC) 20%, transparent);
+    transition: color var(--T), text-shadow var(--T);
+  }
+
+  .scoreboard { display: flex; gap: 10px; justify-content: center; }
+  .team-score {
+    flex: 1; max-width: 210px;
+    padding: 12px 18px;
+    border-radius: 18px;
+    background: var(--card);
+    box-shadow: 0 4px 20px var(--shadow);
+    display: flex; align-items: center; gap: 10px;
+    transition: all 0.3s;
+    border: 3px solid transparent;
+  }
+  .team-score.active-red  { border-color: var(--red);  box-shadow: 0 4px 24px rgba(255,71,87,0.3); }
+  .team-score.active-blue { border-color: var(--blue); box-shadow: 0 4px 24px rgba(30,144,255,0.3); }
+  .team-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+  .dot-red  { background: var(--red); }
+  .dot-blue { background: var(--blue); }
+  .team-name { font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text); }
+  .team-pts  { font-family: 'Fredoka One', cursive; font-size: 1.7rem; line-height: 1; color: var(--text); }
+
+  .turn-banner {
+    text-align: center;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.25rem;
+    padding: 9px 24px;
+    border-radius: 50px;
+    background: var(--TC);
+    color: white;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--TC) 40%, transparent);
+    transition: background var(--T), box-shadow var(--T);
+    align-self: center;
+  }
+
+  /* SETUP */
+  #setup-screen {
+    display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 30px 16px;
+  }
+  .setup-title { font-family: 'Fredoka One', cursive; font-size: 2.2rem; color: var(--text); text-align: center; }
+  .setup-title span { color: var(--red); }
+  .mode-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; width: 100%; max-width: 460px; }
+  .mode-btn {
+    padding: 20px 14px; border-radius: 20px; border: 3px solid #e0e0e0;
+    background: var(--card); cursor: pointer; text-align: center;
+    transition: all 0.2s; font-family: 'Nunito', sans-serif;
+  }
+  .mode-btn:hover { border-color: var(--TC); transform: translateY(-3px); box-shadow: 0 8px 24px var(--shadow); }
+  .mode-btn.selected { border-color: var(--TC); background: color-mix(in srgb, var(--TC) 8%, white); box-shadow: 0 8px 24px color-mix(in srgb, var(--TC) 25%, transparent); }
+  .mode-btn .mode-emoji { font-size: 1.9rem; display: block; margin-bottom: 5px; }
+  .mode-btn .mode-label { font-family: 'Fredoka One', cursive; font-size: 1.2rem; color: var(--text); display: block; }
+  .mode-btn .mode-desc  { font-size: 0.78rem; color: #888; }
+  .start-btn {
+    padding: 15px 46px; border-radius: 50px; border: none;
+    background: linear-gradient(135deg, var(--red), var(--red-light));
+    color: white; font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+    cursor: pointer; box-shadow: 0 8px 24px rgba(255,71,87,0.4);
+    transition: all 0.2s;
+  }
+  .start-btn:hover { transform: translateY(-3px) scale(1.05); }
+
+  /* GAME */
+  #game-screen { display: none; flex-direction: column; gap: 14px; align-items: center; }
+
+  /* ADJUSTER */
+  #adjuster-phase {
+    display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 520px;
+  }
+  .adj-title {
+    font-family: 'Fredoka One', cursive; font-size: 1.35rem; color: var(--text); text-align: center;
+  }
+  .adj-title small { display: block; font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.82rem; color: #888; margin-top: 2px; }
+
+  #animal-name-badge {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.6rem;
+    background: var(--card);
+    border-radius: 50px;
+    padding: 8px 28px;
+    box-shadow: 0 4px 16px var(--shadow);
+    border: 3px solid var(--TC);
+    color: var(--TC);
+    transition: border-color var(--T), color var(--T);
+    letter-spacing: 1px;
+  }
+
+  #adjuster-canvas-wrap {
+    width: 100%; max-width: 520px;
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 8px 32px var(--shadow);
+    background: #1a1a2e;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    position: relative;
+  }
+  #adjuster-canvas-wrap:active { cursor: grabbing; }
+  #adjCanvas { display: block; width: 100%; height: auto; }
+
+  .adj-controls {
+    width: 100%; max-width: 520px;
+    background: var(--card); border-radius: 16px;
+    padding: 16px 20px; box-shadow: 0 4px 16px var(--shadow);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row label { font-weight: 800; font-size: 0.84rem; color: #555; min-width: 72px; }
+  .slider-row input[type=range] {
+    flex: 1; accent-color: var(--TC); cursor: pointer;
+    transition: accent-color var(--T);
+  }
+  .slider-val { font-family: 'Fredoka One', cursive; font-size: 0.95rem; color: var(--TC); min-width: 44px; text-align: right; transition: color var(--T); }
+
+  .adj-btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    padding: 11px 20px; border-radius: 12px; border: none;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary { background: var(--TC); color: white; box-shadow: 0 4px 12px color-mix(in srgb, var(--TC) 40%, transparent); transition: background var(--T), box-shadow var(--T); }
+  .btn-secondary { background: #f0f0f0; color: #555; }
+  .btn-secondary:hover { background: #e0e0e0; }
+
+  /* PLAY */
+  #play-phase { display: none; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+
+  .grid-wrap {
+    width: 100%; max-width: 520px;
+    background: var(--card); border-radius: 24px;
+    padding: 10px; box-shadow: 0 8px 32px var(--shadow);
+  }
+  #gameCanvas {
+    display: block; width: 100%; height: auto;
+    border-radius: 14px; cursor: pointer;
+  }
+
+  .squares-pill {
+    background: var(--card); border-radius: 12px;
+    padding: 7px 20px; box-shadow: 0 2px 12px var(--shadow);
+    font-family: 'Fredoka One', cursive; font-size: 1.05rem; color: var(--text);
+  }
+  .squares-pill span { color: var(--TC); transition: color var(--T); }
+
+  .guess-area {
+    background: var(--card); border-radius: 20px;
+    padding: 14px 18px; box-shadow: 0 4px 20px var(--shadow);
+    width: 100%; max-width: 520px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .guess-area label { font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--TC); transition: color var(--T); }
+  .guess-row { display: flex; gap: 8px; }
+  .guess-input {
+    flex: 1; padding: 11px 15px; border-radius: 12px;
+    border: 2px solid #e0e0e0; font-family: 'Nunito', sans-serif;
+    font-size: 1rem; font-weight: 700; outline: none;
+    transition: border-color 0.2s; background: #fafafa;
+  }
+  .guess-input:focus { border-color: var(--TC); }
+  .btn-guess { background: var(--TC); color: white; box-shadow: 0 4px 12px color-mix(in srgb, var(--TC) 40%, transparent); transition: background var(--T), box-shadow var(--T); }
+  .btn-pass  { background: #f0f0f0; color: #666; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+  .btn-pass:hover { background: #e0e0e0; }
+  .feedback { min-height: 26px; text-align: center; font-weight: 700; font-size: 0.92rem; border-radius: 8px; padding: 3px 12px; transition: all 0.3s; }
+  .feedback.correct { color: #00b894; background: #e6fff9; }
+  .feedback.wrong   { color: #d63031; background: #fff5f5; }
+  .feedback.pass    { color: #636e72; background: #f5f5f5; }
+
+  /* WIN */
+  #win-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  #win-overlay.show { display: flex; }
+  .win-card {
+    background: white; border-radius: 32px;
+    padding: 44px 36px; text-align: center;
+    max-width: 400px; width: 90%;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+    animation: winPop 0.5s cubic-bezier(.175,.885,.32,1.275);
+  }
+  @keyframes winPop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  #winCanvas { display: block; margin: 0 auto 14px; border-radius: 16px; border: 3px solid #eee; }
+  .win-title { font-family: 'Fredoka One', cursive; font-size: 1.9rem; margin-bottom: 6px; }
+  .win-team-red  { color: var(--red); }
+  .win-team-blue { color: var(--blue); }
+  .win-points { font-size: 1rem; color: #636e72; margin-bottom: 20px; font-weight: 700; }
+  .win-scores { display: flex; gap: 14px; justify-content: center; margin-bottom: 24px; }
+  .win-score-item { padding: 10px 18px; border-radius: 14px; background: #f8f9fa; }
+  .ws-name { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .ws-pts  { font-family: 'Fredoka One', cursive; font-size: 1.9rem; }
+  .ws-red  { color: var(--red); }
+  .ws-blue { color: var(--blue); }
+  .win-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn-next { background: linear-gradient(135deg,#00b894,#00cec9); color:white; }
+  .btn-new  { background: linear-gradient(135deg,#636e72,#2d3436); color:white; }
+
+  .confetti-piece {
+    position: fixed; top: -10px;
+    animation: confettiFall linear forwards;
+    z-index: 200; border-radius: 2px;
+  }
+  @keyframes confettiFall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header><h1>🐾 Animal Reveal</h1></header>
+
+  <!-- SETUP -->
+  <div id="setup-screen">
+    <div class="setup-title">Choose <span>Difficulty</span></div>
+    <div class="mode-grid">
+      <button class="mode-btn" data-size="4" onclick="selectMode(this)">
+        <span class="mode-emoji">🌱</span><span class="mode-label">Easy</span><span class="mode-desc">4×4 · 16 squares</span>
+      </button>
+      <button class="mode-btn" data-size="5" onclick="selectMode(this)">
+        <span class="mode-emoji">🔥</span><span class="mode-label">Medium</span><span class="mode-desc">5×5 · 25 squares</span>
+      </button>
+      <button class="mode-btn" data-size="6" onclick="selectMode(this)">
+        <span class="mode-emoji">💀</span><span class="mode-label">Hard</span><span class="mode-desc">6×6 · 36 squares</span>
+      </button>
+      <button class="mode-btn" data-size="7" onclick="selectMode(this)">
+        <span class="mode-emoji">👑</span><span class="mode-label">Expert</span><span class="mode-desc">7×7 · 49 squares</span>
+      </button>
+    </div>
+    <button class="start-btn" onclick="startGame()">Let's Play! 🎉</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen">
+    <div class="scoreboard">
+      <div class="team-score" id="score-red">
+        <div class="team-dot dot-red"></div>
+        <div><div class="team-name">Team Red</div><div class="team-pts" id="pts-red">0</div></div>
+      </div>
+      <div class="team-score" id="score-blue">
+        <div class="team-dot dot-blue"></div>
+        <div><div class="team-name">Team Blue</div><div class="team-pts" id="pts-blue">0</div></div>
+      </div>
+    </div>
+
+    <div class="turn-banner" id="turn-banner">🔴 Team Red's Turn</div>
+
+    <!-- ADJUSTER PHASE -->
+    <div id="adjuster-phase">
+      <div class="adj-title">
+        Position the Animal
+        <small>Drag to pan · use sliders to zoom &amp; rotate · hit Cover It when ready!</small>
+      </div>
+      <div id="animal-name-badge"></div>
+      <div id="adjuster-canvas-wrap">
+        <canvas id="adjCanvas"></canvas>
+      </div>
+      <div class="adj-controls">
+        <div class="slider-row">
+          <label>🔍 Zoom</label>
+          <input type="range" id="sl-zoom" min="40" max="220" value="100" oninput="onSliderChange()">
+          <span class="slider-val" id="sv-zoom">100%</span>
+        </div>
+        <div class="slider-row">
+          <label>↔ X offset</label>
+          <input type="range" id="sl-x" min="-100" max="100" value="0" oninput="onSliderChange()">
+          <span class="slider-val" id="sv-x">0</span>
+        </div>
+        <div class="slider-row">
+          <label>↕ Y offset</label>
+          <input type="range" id="sl-y" min="-100" max="100" value="0" oninput="onSliderChange()">
+          <span class="slider-val" id="sv-y">0</span>
+        </div>
+        <div class="slider-row">
+          <label>🔄 Rotate</label>
+          <input type="range" id="sl-rot" min="-180" max="180" value="0" oninput="onSliderChange()">
+          <span class="slider-val" id="sv-rot">0°</span>
+        </div>
+        <div class="adj-btn-row">
+          <button class="btn btn-secondary" onclick="randomizeTransform()">🎲 Randomise</button>
+          <button class="btn btn-primary" onclick="coverIt()">Cover It! 🙈</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAY PHASE -->
+    <div id="play-phase">
+      <div class="squares-pill">Points if you guess now: <span id="squares-count">?</span></div>
+      <div class="grid-wrap"><canvas id="gameCanvas"></canvas></div>
+      <div class="guess-area">
+        <label>What animal is it?</label>
+        <div class="guess-row">
+          <input class="guess-input" id="guess-input" type="text" placeholder="Type your guess…" autocomplete="off">
+          <button class="btn btn-guess" onclick="submitGuess()">Guess!</button>
+          <button class="btn btn-pass" onclick="passGuess()">Pass</button>
+        </div>
+        <div class="feedback" id="feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WIN -->
+<div id="win-overlay">
+  <div class="win-card">
+    <canvas id="winCanvas" width="140" height="140"></canvas>
+    <div class="win-title" id="win-title">Team Red Got It!</div>
+    <div class="win-points" id="win-points">+12 points!</div>
+    <div class="win-scores">
+      <div class="win-score-item"><div class="ws-name ws-red">Team Red</div><div class="ws-pts ws-red" id="ws-red">0</div></div>
+      <div class="win-score-item"><div class="ws-name ws-blue">Team Blue</div><div class="ws-pts ws-blue" id="ws-blue">0</div></div>
+    </div>
+    <div class="win-actions">
+      <button class="btn btn-next" onclick="nextRound()">Next Animal 🐾</button>
+      <button class="btn btn-new"  onclick="newGame()">New Game 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── DATA ── */
+const ANIMALS = [
+  { emoji:'🐘', names:['elephant'] },
+  { emoji:'🦁', names:['lion'] },
+  { emoji:'🐯', names:['tiger'] },
+  { emoji:'🐻', names:['bear'] },
+  { emoji:'🦊', names:['fox'] },
+  { emoji:'🐼', names:['panda'] },
+  { emoji:'🦓', names:['zebra'] },
+  { emoji:'🦒', names:['giraffe'] },
+  { emoji:'🐸', names:['frog'] },
+  { emoji:'🐧', names:['penguin'] },
+  { emoji:'🦅', names:['eagle'] },
+  { emoji:'🐬', names:['dolphin'] },
+  { emoji:'🦈', names:['shark'] },
+  { emoji:'🐙', names:['octopus'] },
+  { emoji:'🦋', names:['butterfly'] },
+  { emoji:'🐢', names:['turtle','tortoise'] },
+  { emoji:'🦜', names:['parrot'] },
+  { emoji:'🐊', names:['crocodile','alligator'] },
+  { emoji:'🦦', names:['otter'] },
+  { emoji:'🦥', names:['sloth'] },
+  { emoji:'🦔', names:['hedgehog'] },
+  { emoji:'🐺', names:['wolf'] },
+  { emoji:'🦝', names:['raccoon'] },
+  { emoji:'🦩', names:['flamingo'] },
+  { emoji:'🦚', names:['peacock'] },
+  { emoji:'🐡', names:['pufferfish','blowfish'] },
+  { emoji:'🦑', names:['squid'] },
+  { emoji:'🐌', names:['snail'] },
+  { emoji:'🐝', names:['bee'] },
+  { emoji:'🐪', names:['camel'] },
+  { emoji:'🦙', names:['llama','alpaca'] },
+  { emoji:'🦫', names:['beaver'] },
+  { emoji:'🦘', names:['kangaroo'] },
+  { emoji:'🐐', names:['goat'] },
+  { emoji:'🐄', names:['cow'] },
+  { emoji:'🐖', names:['pig'] },
+  { emoji:'🐑', names:['sheep'] },
+  { emoji:'🦃', names:['turkey'] },
+  { emoji:'🦧', names:['orangutan'] },
+  { emoji:'🦍', names:['gorilla'] },
+  { emoji:'🐒', names:['monkey'] },
+  { emoji:'🐓', names:['rooster','chicken'] },
+  { emoji:'🦗', names:['cricket'] },
+  { emoji:'🦨', names:['skunk'] },
+  { emoji:'🐿️', names:['chipmunk','squirrel'] },
+];
+
+/* ── STATE ── */
+const CS = 480; // canvas size in logical pixels
+let gridSize    = 4;
+let currentTeam = 'red';
+let scores      = { red:0, blue:0 };
+let revealed    = [];
+let currentAnimal = null;
+let usedAnimals   = [];
+let totalCells    = 0;
+let roundOver       = false;
+let waitingForGuess = false; // true after a square is revealed, before guess/pass
+let emojiOffscreen = null; // baked image
+let tx = { zoom:100, x:0, y:0, rot:0 };
+let isDragging = false, dragSX, dragSY, dragOX, dragOY;
+
+/* ── SETUP ── */
+function selectMode(btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  gridSize = parseInt(btn.dataset.size);
+}
+
+function startGame() {
+  scores = { red:0, blue:0 };
+  usedAnimals = [];
+  currentTeam = 'red';
+  updateScoreUI();
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  startRound();
+}
+
+/* ── ROUND ── */
+function startRound() {
+  roundOver       = false;
+  waitingForGuess = false;
+  // buttons start disabled until a square is revealed
+  setTimeout(() => setGuessButtons(false), 0);
+  totalCells = gridSize * gridSize;
+  revealed   = new Array(totalCells).fill(false);
+
+  let pool = ANIMALS.filter(a => !usedAnimals.includes(a.emoji));
+  if (!pool.length) { usedAnimals = []; pool = [...ANIMALS]; }
+  currentAnimal = pool[Math.floor(Math.random() * pool.length)];
+  usedAnimals.push(currentAnimal.emoji);
+
+  // Random starting rotation (-60..+60, multiples of 5)
+  const rRot = (Math.floor(Math.random() * 25) - 12) * 5;
+  tx = { zoom: 90 + Math.floor(Math.random()*40), x:0, y:0, rot: rRot };
+
+  updateTurnUI();
+  clearFeedback();
+  document.getElementById('guess-input').value = '';
+  document.getElementById('adjuster-phase').style.display = 'flex';
+  document.getElementById('play-phase').style.display     = 'none';
+
+  // Init adjuster canvas
+  const adj = document.getElementById('adjCanvas');
+  adj.width  = CS;
+  adj.height = CS;
+  syncSliders();
+  renderAdjuster();
+
+  // Show the animal name for the positioning screen
+  const badge = document.getElementById('animal-name-badge');
+  const name  = currentAnimal.names[0];
+  badge.textContent = currentAnimal.emoji + '  ' + name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/* ── ADJUSTER ── */
+function renderAdjuster() {
+  const adj = document.getElementById('adjCanvas');
+  const ctx = adj.getContext('2d');
+
+  // Checker background
+  const sq = 30;
+  for (let gy = 0; gy < CS/sq; gy++)
+    for (let gx = 0; gx < CS/sq; gx++) {
+      ctx.fillStyle = (gx+gy)%2===0 ? '#1a1a2e' : '#16213e';
+      ctx.fillRect(gx*sq, gy*sq, sq, sq);
+    }
+
+  drawEmoji(ctx, CS, currentAnimal.emoji, tx);
+
+  // Faint grid guide
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  const cell = CS / gridSize;
+  for (let i = 1; i < gridSize; i++) {
+    ctx.beginPath(); ctx.moveTo(i*cell, 0);    ctx.lineTo(i*cell, CS);    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i*cell);    ctx.lineTo(CS, i*cell);    ctx.stroke();
+  }
+}
+
+function drawEmoji(ctx, size, emoji, t) {
+  const scale    = t.zoom / 100;
+  const fontSize = size * 0.78 * scale;
+  ctx.save();
+  ctx.translate(
+    size/2 + (t.x / 100) * size * 0.42,
+    size/2 + (t.y / 100) * size * 0.42
+  );
+  ctx.rotate(t.rot * Math.PI / 180);
+  ctx.font = `${fontSize}px serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, 0, 0);
+  ctx.restore();
+}
+
+function onSliderChange() {
+  tx.zoom = +document.getElementById('sl-zoom').value;
+  tx.x    = +document.getElementById('sl-x').value;
+  tx.y    = +document.getElementById('sl-y').value;
+  tx.rot  = +document.getElementById('sl-rot').value;
+  syncSliders();
+  renderAdjuster();
+}
+
+function syncSliders() {
+  ['zoom','x','y','rot'].forEach(k => {
+    document.getElementById('sl-'+k).value = tx[k];
+  });
+  document.getElementById('sv-zoom').textContent = Math.round(tx.zoom)+'%';
+  document.getElementById('sv-x').textContent    = Math.round(tx.x);
+  document.getElementById('sv-y').textContent    = Math.round(tx.y);
+  document.getElementById('sv-rot').textContent  = Math.round(tx.rot)+'°';
+}
+
+function randomizeTransform() {
+  tx.zoom = 80 + Math.floor(Math.random() * 80);
+  tx.x    = Math.round(Math.random() * 80 - 40);
+  tx.y    = Math.round(Math.random() * 80 - 40);
+  tx.rot  = Math.round(Math.random() * 360 - 180);
+  syncSliders();
+  renderAdjuster();
+}
+
+function initDrag() {
+  const wrap = document.getElementById('adjuster-canvas-wrap');
+  const pos  = e => e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+                               : { x: e.clientX, y: e.clientY };
+
+  wrap.addEventListener('mousedown',  e => { isDragging=true; const p=pos(e); dragSX=p.x; dragSY=p.y; dragOX=tx.x; dragOY=tx.y; });
+  wrap.addEventListener('touchstart', e => { isDragging=true; const p=pos(e); dragSX=p.x; dragSY=p.y; dragOX=tx.x; dragOY=tx.y; }, {passive:false});
+
+  const move = e => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const p  = pos(e);
+    const w  = wrap.offsetWidth;
+    tx.x = Math.max(-100, Math.min(100, dragOX + (p.x - dragSX) / w * 200));
+    tx.y = Math.max(-100, Math.min(100, dragOY + (p.y - dragSY) / w * 200));
+    syncSliders();
+    renderAdjuster();
+  };
+  wrap.addEventListener('mousemove',  move);
+  wrap.addEventListener('touchmove',  move, {passive:false});
+
+  const end = () => isDragging = false;
+  wrap.addEventListener('mouseup',    end);
+  wrap.addEventListener('mouseleave', end);
+  wrap.addEventListener('touchend',   end);
+}
+
+/* ── COVER IT ── */
+function coverIt() {
+  // Bake emoji into offscreen canvas
+  emojiOffscreen        = document.createElement('canvas');
+  emojiOffscreen.width  = CS;
+  emojiOffscreen.height = CS;
+  const ctx = emojiOffscreen.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CS, CS);
+  drawEmoji(ctx, CS, currentAnimal.emoji, tx);
+
+  document.getElementById('adjuster-phase').style.display = 'none';
+  document.getElementById('play-phase').style.display     = 'flex';
+
+  const gc     = document.getElementById('gameCanvas');
+  gc.width     = CS;
+  gc.height    = CS;
+  gc.onclick   = onGameClick;
+  renderGame();
+  updateSquaresLeft();
+}
+
+/* ── GAME CANVAS ── */
+function renderGame() {
+  const gc  = document.getElementById('gameCanvas');
+  const ctx = gc.getContext('2d');
+  ctx.clearRect(0, 0, CS, CS);
+  const cell = CS / gridSize;
+
+  for (let i = 0; i < totalCells; i++) {
+    const col = i % gridSize;
+    const row = Math.floor(i / gridSize);
+    const px  = col * cell;
+    const py  = row * cell;
+
+    if (revealed[i]) {
+      // Draw the exact slice of the baked emoji canvas
+      ctx.drawImage(emojiOffscreen, px, py, cell, cell, px, py, cell, cell);
+    } else {
+      // Solid dark tile — no gap at all
+      const isRed = currentTeam === 'red';
+      ctx.fillStyle = isRed ? '#3a0f1e' : '#0a1831';
+      ctx.fillRect(px, py, cell, cell);
+
+      // Subtle top-edge highlight
+      const g = ctx.createLinearGradient(px, py, px, py + cell * 0.4);
+      g.addColorStop(0, 'rgba(255,255,255,0.09)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(px, py, cell, cell);
+
+      // Number label
+      const fontSize = Math.max(10, Math.round(cell * 0.32));
+      ctx.font = `bold ${fontSize}px Nunito, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(i + 1, px + cell / 2, py + cell / 2);
+    }
+  }
+}
+
+function onGameClick(e) {
+  if (roundOver || waitingForGuess) return;
+  const gc   = document.getElementById('gameCanvas');
+  const rect = gc.getBoundingClientRect();
+  const sx   = CS / rect.width;
+  const sy   = CS / rect.height;
+  const mx   = (e.clientX - rect.left) * sx;
+  const my   = (e.clientY - rect.top)  * sy;
+  const cell = CS / gridSize;
+  const col  = Math.floor(mx / cell);
+  const row  = Math.floor(my / cell);
+  const idx  = row * gridSize + col;
+  if (idx < 0 || idx >= totalCells || revealed[idx]) return;
+  revealed[idx] = true;
+  waitingForGuess = true;
+  setGuessButtons(true);
+  updateSquaresLeft();
+  renderGame();
+  showFeedback('pass', '👆 Now guess the animal — or pass your turn!');
+  document.getElementById('guess-input').focus();
+}
+
+/* ── LOGIC ── */
+function squaresLeft() { return revealed.filter(r => !r).length; }
+function updateSquaresLeft() { document.getElementById('squares-count').textContent = squaresLeft(); }
+
+function switchTeam() {
+  currentTeam = currentTeam === 'red' ? 'blue' : 'red';
+  updateTurnUI();
+  renderGame();
+}
+
+function updateTurnUI() {
+  const r = currentTeam === 'red';
+  document.documentElement.style.setProperty('--TC', r ? 'var(--red)'    : 'var(--blue)');
+  document.documentElement.style.setProperty('--TB', r ? 'var(--red-bg)' : 'var(--blue-bg)');
+  document.getElementById('turn-banner').textContent = r ? '🔴 Team Red\'s Turn' : '🔵 Team Blue\'s Turn';
+  document.getElementById('score-red').classList.toggle('active-red',   r);
+  document.getElementById('score-red').classList.toggle('active-blue',  false);
+  document.getElementById('score-blue').classList.toggle('active-blue', !r);
+  document.getElementById('score-blue').classList.toggle('active-red',  false);
+}
+
+function updateScoreUI() {
+  document.getElementById('pts-red').textContent  = scores.red;
+  document.getElementById('pts-blue').textContent = scores.blue;
+}
+
+function setGuessButtons(enabled) {
+  document.getElementById('guess-input').disabled = !enabled;
+  document.querySelector('.btn-guess').disabled = !enabled;
+  document.querySelector('.btn-pass').disabled  = !enabled;
+}
+
+function submitGuess() {
+  if (roundOver || !waitingForGuess) return;
+  const input = document.getElementById('guess-input');
+  const guess = input.value.trim().toLowerCase();
+  if (!guess) return;
+  const ok = currentAnimal.names.some(n => n.toLowerCase() === guess);
+  if (ok) {
+    waitingForGuess = false;
+    const pts = squaresLeft();
+    scores[currentTeam] += pts;
+    updateScoreUI();
+    roundWon(currentTeam, pts);
+  } else {
+    showFeedback('wrong', '❌ Not quite! Turn passes to the other team.');
+    waitingForGuess = false;
+    setGuessButtons(false);
+    input.value = '';
+    setTimeout(() => { switchTeam(); clearFeedback(); }, 1200);
+  }
+}
+
+function passGuess() {
+  if (roundOver || !waitingForGuess) return;
+  const teamName = currentTeam === 'red' ? 'Team Red' : 'Team Blue';
+  showFeedback('pass', `⏭️ ${teamName} passed.`);
+  waitingForGuess = false;
+  setGuessButtons(false);
+  setTimeout(() => { switchTeam(); clearFeedback(); }, 900);
+}
+
+function showFeedback(type, msg) {
+  const el = document.getElementById('feedback');
+  el.className = 'feedback ' + type;
+  el.textContent = msg;
+}
+function clearFeedback() {
+  const el = document.getElementById('feedback');
+  el.className = 'feedback'; el.textContent = '';
+}
+
+function roundWon(team, pts) {
+  roundOver = true;
+  revealed.fill(true);
+  renderGame();
+  showFeedback('correct', `✅ Correct! +${pts} pts for Team ${team === 'red' ? 'Red 🔴' : 'Blue 🔵'}!`);
+  setTimeout(() => { showWinOverlay(team, pts); spawnConfetti(team); }, 600);
+}
+
+function showWinOverlay(team, pts) {
+  const wc  = document.getElementById('winCanvas');
+  const ctx = wc.getContext('2d');
+  ctx.clearRect(0, 0, 140, 140);
+  ctx.drawImage(emojiOffscreen, 0, 0, CS, CS, 0, 0, 140, 140);
+
+  const titleEl = document.getElementById('win-title');
+  titleEl.textContent = `Team ${team === 'red' ? 'Red' : 'Blue'} Got It!`;
+  titleEl.className   = 'win-title ' + (team === 'red' ? 'win-team-red' : 'win-team-blue');
+  document.getElementById('win-points').textContent = `${currentAnimal.emoji}  +${pts} points earned!`;
+  document.getElementById('ws-red').textContent  = scores.red;
+  document.getElementById('ws-blue').textContent = scores.blue;
+  document.getElementById('win-overlay').classList.add('show');
+}
+
+function nextRound() {
+  document.getElementById('win-overlay').classList.remove('show');
+  switchTeam();
+  startRound();
+}
+
+function newGame() {
+  document.getElementById('win-overlay').classList.remove('show');
+  document.getElementById('game-screen').style.display  = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  currentTeam = 'red';
+  document.documentElement.style.setProperty('--TC', 'var(--red)');
+  document.documentElement.style.setProperty('--TB', 'var(--red-bg)');
+}
+
+/* ── CONFETTI ── */
+function spawnConfetti(team) {
+  const colors = team === 'red'
+    ? ['#ff4757','#ff6b81','#ffd32a','#ff6348']
+    : ['#1e90ff','#74b9ff','#00cec9','#ffd32a'];
+  for (let i = 0; i < 70; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left            = Math.random()*100+'vw';
+    el.style.background      = colors[Math.floor(Math.random()*colors.length)];
+    el.style.width           = (7+Math.random()*9)+'px';
+    el.style.height          = (7+Math.random()*9)+'px';
+    el.style.animationDuration = (2+Math.random()*2)+'s';
+    el.style.animationDelay    = (Math.random()*0.6)+'s';
+    el.style.borderRadius      = Math.random()>0.5 ? '50%' : '3px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4500);
+  }
+}
+
+/* ── INIT ── */
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelector('.mode-btn[data-size="4"]').classList.add('selected');
+  document.getElementById('guess-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitGuess();
+  });
+  initDrag();
+});
+</script>
+</body>
+</html>

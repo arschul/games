@@ -725,6 +725,23 @@
         style="flex:1;background:rgba(153,0,0,0.3);border:2px solid #ff4444;color:white;font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px;text-align:center;padding:10px;border-radius:8px;outline:none;">
     </div>
     <button class="btn-start" onclick="startGame()">▶ START GAME</button>
+    <div style="margin-top:14px;">
+      <button onclick="showAnswerSheet()" style="background:none;border:1px solid rgba(255,215,0,0.3);color:rgba(255,215,0,0.6);font-family:'Nunito',sans-serif;font-weight:700;font-size:0.8rem;letter-spacing:2px;padding:8px 20px;border-radius:8px;cursor:pointer;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,215,0,0.7)';this.style.color='rgba(255,215,0,0.9)'" onmouseout="this.style.borderColor='rgba(255,215,0,0.3)';this.style.color='rgba(255,215,0,0.6)'">📋 View Questions &amp; Answers</button>
+    </div>
+  </div>
+</div>
+
+<!-- Answer Sheet (host reference) -->
+<div class="overlay" id="answerSheet" style="display:none;align-items:flex-start;padding:20px 0;">
+  <div style="background:var(--panel);border:2px solid var(--gold);border-radius:16px;max-width:700px;width:95%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 0 60px rgba(255,215,0,0.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;position:sticky;top:0;background:var(--panel);padding-bottom:12px;border-bottom:1px solid rgba(255,215,0,0.2);">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:2rem;color:var(--gold);letter-spacing:3px;">📋 Answer Sheet</div>
+        <div style="font-size:0.7rem;letter-spacing:2px;color:rgba(255,255,255,0.4);">ALL 100 QUESTIONS — HOST REFERENCE</div>
+      </div>
+      <button onclick="hideAnswerSheet()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);font-family:'Nunito',sans-serif;font-weight:800;font-size:0.9rem;padding:8px 16px;border-radius:8px;cursor:pointer;">✕ CLOSE</button>
+    </div>
+    <div id="answerSheetContent"></div>
   </div>
 </div>
 
@@ -914,7 +931,7 @@
   <!-- Question Area -->
   <div class="question-area">
     <div class="question-label">Survey Question</div>
-    <div class="question-text" id="questionText">Loading question...</div>
+    <div class="question-text" id="questionText">Loading question...<span id="qNumDiscreet" style="font-size:0.55rem;font-weight:400;opacity:0.25;margin-left:8px;letter-spacing:1px;vertical-align:middle;"></span></div>
     <div class="question-score" id="questionScore">0 pts</div>
   </div>
 
@@ -2069,7 +2086,11 @@ function loadQuestion() {
   peekMode = false;
 
   const qNum = currentPhase * QUESTIONS_PER_PHASE + questionInPhase + 1;
-  document.getElementById('questionText').textContent = q.q;
+  // Find global question number from ALL_QUESTIONS (for reference sheet lookup)
+  const globalQNum = ALL_QUESTIONS.indexOf(q) + 1;
+  document.getElementById('questionText').childNodes[0].nodeValue = q.q;
+  const numSpan = document.getElementById('qNumDiscreet');
+  if (numSpan) numSpan.textContent = globalQNum > 0 ? `#${globalQNum}` : '';
   document.getElementById('questionScore').textContent = '0 pts';
   document.getElementById('roundNum').textContent = qNum;
   document.getElementById('qCounter').textContent =
@@ -2165,7 +2186,7 @@ function addStrike() {
   initAudio();
 
   if (stealMode) {
-    // Steal failed — give points back to original team
+    // Steal failed — give points back to original team, then reveal all
     const originalTeam = activeTeam === 0 ? 1 : 0;
     if (currentPoints > 0) {
       scores[originalTeam] += currentPoints;
@@ -2177,7 +2198,8 @@ function addStrike() {
     showStrikeX();
     stealMode = false;
     document.getElementById('stealMode').classList.remove('active');
-    setTimeout(() => advanceQuestion(), 1200);
+    // Reveal all remaining answers so teams can see what they missed, then wait for host
+    setTimeout(() => revealAllSilent(), 1200);
     return;
   }
 
@@ -2231,6 +2253,67 @@ function revealAll() {
   document.getElementById('peekBtn').textContent = '👁 PEEK ANSWERS';
 }
 
+// Reveal all answers visually without awarding points (used for "see what you missed")
+function revealAllSilent() {
+  const q = phaseQuestions[currentPhase][questionInPhase];
+  const mult = getCurrentMultiplier();
+  q.answers.forEach((ans, i) => {
+    if (!answersRevealed[i]) {
+      answersRevealed[i] = true;
+      const card = document.getElementById(`ans-${i}`);
+      if (card) {
+        card.classList.add('revealed', 'disabled');
+        card.classList.remove('peeked');
+        card.querySelector('.answer-hidden').style.display = 'none';
+        const rev = card.querySelector('.answer-revealed');
+        rev.style.display = 'flex';
+        // Style missed answers differently — amber instead of green
+        card.style.background = 'linear-gradient(135deg, rgba(180,120,0,0.2), rgba(100,60,0,0.3))';
+        card.style.borderColor = 'rgba(255,180,0,0.5)';
+        card.querySelector('.answer-points').textContent = ans.pts * mult;
+      }
+    }
+  });
+  peekMode = false;
+  document.getElementById('peekBanner').classList.remove('active');
+  document.getElementById('peekBtn').classList.remove('peeking');
+  document.getElementById('peekBtn').textContent = '👁 PEEK ANSWERS';
+}
+
+// ============================================================
+// ANSWER SHEET (host reference)
+// ============================================================
+function showAnswerSheet() {
+  const content = document.getElementById('answerSheetContent');
+  content.innerHTML = '';
+
+  ALL_QUESTIONS.forEach((q, idx) => {
+    const block = document.createElement('div');
+    block.style.cssText = 'margin-bottom:18px;padding:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,215,0,0.15);border-radius:10px;';
+    block.innerHTML = `
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
+        <span style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:var(--gold);min-width:36px;">#${idx + 1}</span>
+        <span style="font-weight:800;font-size:0.95rem;color:#fff;line-height:1.4;">${q.q}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding-left:46px;">
+        ${q.answers.map((a, ai) => `
+          <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:rgba(255,255,255,0.75);padding:3px 8px;background:rgba(255,255,255,0.03);border-radius:4px;">
+            <span><span style="color:rgba(255,215,0,0.4);font-weight:700;margin-right:6px;">${ai + 1}.</span>${a.a}</span>
+            <span style="font-family:'Bebas Neue',cursive;font-size:1rem;color:var(--gold);">${a.pts}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    content.appendChild(block);
+  });
+
+  document.getElementById('answerSheet').style.display = 'flex';
+}
+
+function hideAnswerSheet() {
+  document.getElementById('answerSheet').style.display = 'none';
+}
+
 function togglePeek() {
   const q = phaseQuestions[currentPhase][questionInPhase];
   const mult = getCurrentMultiplier();
@@ -2263,14 +2346,34 @@ function togglePeek() {
 }
 
 function nextQuestion() {
-  if (stealMode) {
-    // Host skips during steal — original team keeps their points
-    const originalTeam = activeTeam === 0 ? 1 : 0;
-    if (currentPoints > 0) {
-      scores[originalTeam] += currentPoints;
+  // If there are unrevealed answers, reveal them first so teams can see what they missed
+  const allRevealed = answersRevealed.every(r => r);
+
+  if (!allRevealed) {
+    // Award any pending points first
+    if (stealMode) {
+      const originalTeam = activeTeam === 0 ? 1 : 0;
+      if (currentPoints > 0) { scores[originalTeam] += currentPoints; currentPoints = 0; updateScores(); }
+      stealMode = false;
+      document.getElementById('stealMode').classList.remove('active');
+    } else if (currentPoints > 0) {
+      scores[activeTeam] += currentPoints;
       currentPoints = 0;
       updateScores();
     }
+    // Reveal all without awarding points (already awarded above)
+    revealAllSilent();
+    // Swap button to "CONTINUE"
+    const btn = document.querySelector('.btn-next');
+    btn.textContent = 'CONTINUE ▶▶';
+    btn.onclick = () => { btn.textContent = 'NEXT QUESTION ▶'; btn.onclick = nextQuestion; advanceQuestion(); };
+    return;
+  }
+
+  // All already revealed — just advance
+  if (stealMode) {
+    const originalTeam = activeTeam === 0 ? 1 : 0;
+    if (currentPoints > 0) { scores[originalTeam] += currentPoints; currentPoints = 0; updateScores(); }
     stealMode = false;
   } else if (currentPoints > 0) {
     scores[activeTeam] += currentPoints;

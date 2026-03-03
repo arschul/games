@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EFL Oral Assessment</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f0e17;
+    --surface: #1a1825;
+    --surface2: #231f35;
+    --border: #2e2a42;
+    --accent: #ff6b6b;
+    --accent2: #ffd166;
+    --accent3: #06d6a0;
+    --accent4: #118ab2;
+    --accent5: #c77dff;
+    --text: #fffffe;
+    --text-muted: #a7a3bb;
+    --score-bg: #16141f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(199,125,255,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(255,107,107,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-header {
+    position: relative;
+    z-index: 1;
+    padding: 24px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: 1px solid var(--accent3);
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .student-select {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .student-select strong { color: var(--text); }
+
+  .count-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .count-btn {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .count-btn:hover { border-color: var(--accent5); color: var(--accent5); }
+  .count-btn.active { background: var(--accent5); border-color: var(--accent5); color: #fff; }
+
+  .weight-toggle {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .weight-toggle:hover { border-color: var(--accent2); color: var(--accent2); }
+  .weight-toggle.active { background: rgba(255,209,102,0.12); border-color: var(--accent2); color: var(--accent2); }
+
+  .export-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--accent3);
+    background: transparent;
+    color: var(--accent3);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+  }
+
+  .export-btn:hover { background: rgba(6,214,160,0.1); }
+
+  /* Weight Panel */
+  .weight-panel {
+    position: relative;
+    z-index: 1;
+    display: none;
+    padding: 20px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .weight-panel.visible { display: block; }
+
+  .weight-panel h3 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .weight-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .reset-weights-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.2s;
+  }
+
+  .reset-weights-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .weight-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 640px;
+  }
+
+  .weight-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .weight-row-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    width: 84px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+  }
+
+  .weight-slider-track {
+    position: relative;
+    flex: 1;
+    height: 8px;
+    background: var(--score-bg);
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+
+  .weight-slider-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    border-radius: 4px;
+    opacity: 0.8;
+    transition: width 0.05s;
+  }
+
+  .weight-slider-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    cursor: grab;
+    transition: box-shadow 0.1s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+
+  .weight-slider-thumb:active { cursor: grabbing; }
+  .weight-slider-thumb:hover { box-shadow: 0 0 0 5px rgba(255,255,255,0.1), 0 1px 4px rgba(0,0,0,0.4); }
+
+  .weight-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 500;
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .weight-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Main Grid */
+  .students-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 16px;
+    padding: 20px 24px;
+    transition: grid-template-columns 0.3s;
+  }
+
+  .students-grid.count-1 { grid-template-columns: 1fr; max-width: 700px; margin: 0 auto; }
+  .students-grid.count-2 { grid-template-columns: repeat(2, 1fr); }
+  .students-grid.count-3 { grid-template-columns: repeat(3, 1fr); }
+  .students-grid.count-4 { grid-template-columns: repeat(2, 1fr); }
+
+  /* Student Card */
+  .student-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .student-card:hover { border-color: #3d3960; }
+
+  .card-header {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .student-name-input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    outline: none;
+    width: 130px;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 2px;
+    transition: border-color 0.2s;
+  }
+
+  .student-name-input:focus { border-color: var(--accent5); }
+  .student-name-input::placeholder { color: var(--text-muted); font-weight: 400; }
+
+  .score-badge {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+  }
+
+  .score-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    line-height: 1;
+    transition: color 0.3s;
+  }
+
+  .score-denom {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  /* Sliders */
+  .sliders-section { padding: 14px 18px 10px; }
+
+  .criterion-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .criterion-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    width: 90px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+
+  .slider-track {
+    position: relative;
+    flex: 1;
+    height: 6px;
+    background: var(--score-bg);
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .slider-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.15s;
+  }
+
+  .slider-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    cursor: grab;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 0 0 0 rgba(255,255,255,0.2);
+  }
+
+  .slider-thumb:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.25); }
+  .slider-thumb:hover { box-shadow: 0 0 0 4px rgba(255,255,255,0.1); }
+
+  .slider-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 500;
+    width: 20px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Criterion colors */
+  .c-vocab   { --c: #ff6b6b; }
+  .c-grammar { --c: #ffd166; }
+  .c-pronun  { --c: #06d6a0; }
+  .c-fluency { --c: #118ab2; }
+  .c-task    { --c: #c77dff; }
+
+  .slider-fill   { background: var(--c); }
+  .slider-thumb  { background: var(--c); }
+  .slider-val    { color: var(--c); }
+  .criterion-label { }
+
+  /* Score bar */
+  .score-bar-wrap {
+    padding: 0 18px 14px;
+  }
+
+  .score-bar-bg {
+    height: 4px;
+    background: var(--score-bg);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s, background 0.3s;
+  }
+
+  /* Notes */
+  .notes-section {
+    padding: 0 18px 16px;
+  }
+
+  .notes-textarea {
+    width: 100%;
+    background: var(--score-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    padding: 10px 12px;
+    resize: vertical;
+    min-height: 70px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .notes-textarea:focus { border-color: var(--accent5); }
+  .notes-textarea::placeholder { color: var(--text-muted); }
+
+  /* Tick marks */
+  .tick-row {
+    display: flex;
+    padding: 0 0 2px 0;
+    position: relative;
+    margin-left: 100px;
+    margin-right: 30px;
+  }
+
+  .tick {
+    flex: 1;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem;
+    color: #3d3960;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Export modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 520px;
+    width: 90%;
+    position: relative;
+  }
+
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    margin-bottom: 16px;
+  }
+
+  .modal pre {
+    background: var(--score-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    color: var(--text-muted);
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  .modal-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+
+  .btn-copy {
+    padding: 8px 18px;
+    background: var(--accent3);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .btn-close {
+    padding: 8px 18px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+  }
+
+  .reset-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.2s;
+    margin-top: 0;
+  }
+
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  @media (max-width: 900px) {
+    .students-grid.count-3,
+    .students-grid.count-4 { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .students-grid.count-2,
+    .students-grid.count-3,
+    .students-grid.count-4 { grid-template-columns: 1fr; }
+    .app-header { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <h1>OralMark</h1>
+    <span>EFL Assessment</span>
+  </div>
+  <div class="header-controls">
+    <div class="student-select">
+      <strong>Students:</strong>
+      <div class="count-btns">
+        <button class="count-btn active" data-n="1">1</button>
+        <button class="count-btn" data-n="2">2</button>
+        <button class="count-btn" data-n="3">3</button>
+        <button class="count-btn" data-n="4">4</button>
+      </div>
+    </div>
+    <button class="weight-toggle" id="weightToggle">⚖ Weights</button>
+    <button class="export-btn" id="exportBtn">↗ Export</button>
+  </div>
+</header>
+
+<!-- Weight Panel -->
+<div class="weight-panel" id="weightPanel">
+  <div class="weight-panel-header">
+    <h3>Criterion Weights</h3>
+    <button class="reset-weights-btn" id="resetWeights">↺ Reset to 20%</button>
+  </div>
+  <div class="weight-rows" id="weightRows"></div>
+  <p class="weight-hint">Drag sliders · Weights auto-normalize to 100%</p>
+</div>
+
+<!-- Students Grid -->
+<div class="students-grid count-1" id="studentsGrid"></div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Assessment Results</h2>
+    <pre id="exportText"></pre>
+    <div class="modal-btns">
+      <button class="btn-copy" id="copyBtn">Copy to Clipboard</button>
+      <button class="btn-close" id="closeModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CRITERIA = [
+  { key: 'vocab',   label: 'Vocabulary', cls: 'c-vocab' },
+  { key: 'grammar', label: 'Grammar',    cls: 'c-grammar' },
+  { key: 'pronun',  label: 'Pronunc.',   cls: 'c-pronun' },
+  { key: 'fluency', label: 'Fluency',    cls: 'c-fluency' },
+  { key: 'task',    label: 'Task',       cls: 'c-task' },
+];
+
+const COLORS = {
+  vocab:   '#ff6b6b',
+  grammar: '#ffd166',
+  pronun:  '#06d6a0',
+  fluency: '#118ab2',
+  task:    '#c77dff',
+};
+
+const SCORE_COLORS = ['#ff4444','#ff6b6b','#ff9a3c','#ffd166','#e9f542','#a8e063','#56d364','#06d6a0','#0ad1e6','#c77dff'];
+
+// State
+let studentCount = 1;
+let weights = { vocab: 1, grammar: 1, pronun: 1, fluency: 1, task: 1 }; // raw, normalized later
+let students = [];
+let weightPanelVisible = false;
+
+function initStudents(n) {
+  const prev = students.slice();
+  students = [];
+  for (let i = 0; i < n; i++) {
+    students.push(prev[i] || {
+      name: '',
+      scores: { vocab: 5, grammar: 5, pronun: 5, fluency: 5, task: 5 },
+      notes: ''
+    });
+  }
+}
+
+function normalizedWeights() {
+  const sum = Object.values(weights).reduce((a,b) => a+b, 0);
+  const nw = {};
+  CRITERIA.forEach(c => nw[c.key] = weights[c.key] / sum);
+  return nw;
+}
+
+function calcScore(scores) {
+  const nw = normalizedWeights();
+  let s = 0;
+  CRITERIA.forEach(c => { s += scores[c.key] * nw[c.key]; });
+  return s; // 1-10
+}
+
+function scoreColor(s) {
+  const idx = Math.max(0, Math.min(9, Math.round(s) - 1));
+  return SCORE_COLORS[idx];
+}
+
+// Render
+function renderGrid() {
+  const grid = document.getElementById('studentsGrid');
+  grid.className = `students-grid count-${studentCount}`;
+  grid.innerHTML = '';
+  students.forEach((st, idx) => {
+    grid.appendChild(buildCard(st, idx));
+  });
+}
+
+function buildCard(st, idx) {
+  const card = document.createElement('div');
+  card.className = 'student-card';
+  card.dataset.idx = idx;
+
+  const score = calcScore(st.scores);
+  const pct = ((score - 1) / 9) * 100;
+  const color = scoreColor(score);
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div>
+        <input class="student-name-input" placeholder="Student ${idx+1} name" value="${st.name}" data-field="name">
+        <div class="score-label">Overall Score</div>
+      </div>
+      <div style="text-align:right">
+        <div class="score-badge">
+          <div class="score-value js-score" style="color:${color}">${score.toFixed(1)}</div>
+          <div>
+            <div class="score-denom">/10</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sliders-section">
+      <div class="tick-row">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<div class="tick">${n}</div>`).join('')}</div>
+      ${CRITERIA.map(c => buildSliderRow(c, st.scores[c.key])).join('')}
+    </div>
+    <div class="score-bar-wrap">
+      <div class="score-bar-bg"><div class="score-bar-fill js-bar" style="width:${pct}%;background:${color}"></div></div>
+    </div>
+    <div class="notes-section">
+      <textarea class="notes-textarea" placeholder="Notes for Student ${idx+1}…" data-field="notes">${st.notes}</textarea>
+    </div>
+  `;
+
+  // Name input
+  card.querySelector('[data-field="name"]').addEventListener('input', e => {
+    students[idx].name = e.target.value;
+  });
+
+  // Notes
+  card.querySelector('[data-field="notes"]').addEventListener('input', e => {
+    students[idx].notes = e.target.value;
+  });
+
+  // Sliders
+  CRITERIA.forEach(c => {
+    const track = card.querySelector(`.js-track-${c.key}`);
+    setupSlider(track, c.key, idx);
+  });
+
+  return card;
+}
+
+function buildSliderRow(c, val) {
+  const pct = ((val - 1) / 9) * 100;
+  return `
+  <div class="criterion-row ${c.cls}">
+    <div class="criterion-label">${c.label}</div>
+    <div class="slider-track js-track-${c.key}" data-key="${c.key}">
+      <div class="slider-fill" style="width:${pct}%"></div>
+      <div class="slider-thumb" style="left:${pct}%"></div>
+    </div>
+    <div class="slider-val js-val-${c.key}">${val}</div>
+  </div>`;
+}
+
+function setupSlider(track, key, cardIdx) {
+  if (!track) return;
+  const thumb = track.querySelector('.slider-thumb');
+  const fill  = track.querySelector('.slider-fill');
+  const valEl = track.closest('.sliders-section').querySelector(`.js-val-${key}`);
+
+  function updateFromX(x) {
+    const rect = track.getBoundingClientRect();
+    const pct  = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+    const val  = Math.round(pct * 9) + 1;
+    const displayPct = ((val - 1) / 9) * 100;
+    fill.style.width  = displayPct + '%';
+    thumb.style.left  = displayPct + '%';
+    valEl.textContent = val;
+    students[cardIdx].scores[key] = val;
+    updateCardScore(cardIdx);
+  }
+
+  function onMove(e) {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    updateFromX(x);
+  }
+
+  track.addEventListener('mousedown', e => {
+    updateFromX(e.clientX);
+    const onUp = () => document.removeEventListener('mousemove', onMove);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp, { once: true });
+  });
+
+  track.addEventListener('touchstart', e => {
+    updateFromX(e.touches[0].clientX);
+    const onUp = () => document.removeEventListener('touchmove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: true });
+    document.addEventListener('touchend', onUp, { once: true });
+  });
+}
+
+function updateCardScore(idx) {
+  const card = document.querySelector(`.student-card[data-idx="${idx}"]`);
+  if (!card) return;
+  const score = calcScore(students[idx].scores);
+  const pct   = ((score - 1) / 9) * 100;
+  const color = scoreColor(score);
+  card.querySelector('.js-score').textContent = score.toFixed(1);
+  card.querySelector('.js-score').style.color = color;
+  card.querySelector('.js-bar').style.width = pct + '%';
+  card.querySelector('.js-bar').style.background = color;
+}
+
+function updateAllScores() {
+  students.forEach((_, i) => updateCardScore(i));
+}
+
+// Weight Sliders
+const WKEYS = CRITERIA.map(c => c.key);
+const MIN_WEIGHT = 0.02;
+const MAX_WEIGHT = 0.80;
+
+function buildWeightRows() {
+  const container = document.getElementById('weightRows');
+  if (!container) return;
+  container.innerHTML = '';
+
+  CRITERIA.forEach(c => {
+    const nw = normalizedWeights();
+    const pct = nw[c.key] * 100;
+    const sliderPct = ((weights[c.key] - MIN_WEIGHT) / (MAX_WEIGHT - MIN_WEIGHT)) * 100;
+
+    const row = document.createElement('div');
+    row.className = 'weight-row';
+    row.dataset.key = c.key;
+    row.innerHTML = `
+      <div class="weight-row-label">${c.label}</div>
+      <div class="weight-slider-track js-wtrack" data-key="${c.key}">
+        <div class="weight-slider-fill" style="width:${sliderPct}%;background:${COLORS[c.key]}"></div>
+        <div class="weight-slider-thumb" style="left:${sliderPct}%;background:${COLORS[c.key]}"></div>
+      </div>
+      <div class="weight-pct js-wpct" style="color:${COLORS[c.key]}">${Math.round(pct)}%</div>
+    `;
+    container.appendChild(row);
+    setupWeightSlider(row.querySelector('.js-wtrack'), c.key);
+  });
+}
+
+function setupWeightSlider(track, key) {
+  function updateFromX(x) {
+    const rect = track.getBoundingClientRect();
+    const raw = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+    const newWeight = MIN_WEIGHT + raw * (MAX_WEIGHT - MIN_WEIGHT);
+    weights[key] = newWeight;
+    refreshWeightRows();
+    updateAllScores();
+  }
+
+  track.addEventListener('mousedown', e => {
+    updateFromX(e.clientX);
+    const onMove = mv => updateFromX(mv.clientX);
+    const onUp   = () => document.removeEventListener('mousemove', onMove);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp, { once: true });
+    e.preventDefault();
+  });
+
+  track.addEventListener('touchstart', e => {
+    updateFromX(e.touches[0].clientX);
+    const onMove = ev => updateFromX(ev.touches[0].clientX);
+    const onUp   = () => document.removeEventListener('touchmove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: true });
+    document.addEventListener('touchend', onUp, { once: true });
+  });
+}
+
+function refreshWeightRows() {
+  const nw = normalizedWeights();
+  CRITERIA.forEach(c => {
+    const track = document.querySelector(`.js-wtrack[data-key="${c.key}"]`);
+    if (!track) return;
+    const pct = nw[c.key] * 100;
+    const sliderPct = ((weights[c.key] - MIN_WEIGHT) / (MAX_WEIGHT - MIN_WEIGHT)) * 100;
+    track.querySelector('.weight-slider-fill').style.width = sliderPct + '%';
+    track.querySelector('.weight-slider-thumb').style.left = sliderPct + '%';
+    const label = track.nextElementSibling;
+    if (label) label.textContent = Math.round(pct) + '%';
+  });
+}
+
+function resetWeights() {
+  CRITERIA.forEach(c => { weights[c.key] = 1; });
+  refreshWeightRows();
+  updateAllScores();
+}
+
+function initWeightPanel() {
+  buildWeightRows();
+  const btn = document.getElementById('resetWeights');
+  btn.replaceWith(btn.cloneNode(true));
+  document.getElementById('resetWeights').addEventListener('click', resetWeights);
+}
+
+// Count buttons
+document.querySelectorAll('.count-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    studentCount = parseInt(btn.dataset.n);
+    initStudents(studentCount);
+    renderGrid();
+  });
+});
+
+// Weight toggle
+document.getElementById('weightToggle').addEventListener('click', () => {
+  weightPanelVisible = !weightPanelVisible;
+  document.getElementById('weightPanel').classList.toggle('visible', weightPanelVisible);
+  document.getElementById('weightToggle').classList.toggle('active', weightPanelVisible);
+  if (weightPanelVisible) { initWeightPanel(); }
+});
+
+// Export
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const nw = normalizedWeights();
+  const now = new Date().toLocaleString();
+  let text = `EFL ORAL ASSESSMENT — ${now}\n`;
+  text += `${'─'.repeat(50)}\n\n`;
+  text += `Weights: ${CRITERIA.map(c => `${c.label} ${Math.round(nw[c.key]*100)}%`).join(' | ')}\n\n`;
+
+  students.forEach((st, i) => {
+    const name = st.name || `Student ${i+1}`;
+    const score = calcScore(st.scores);
+    text += `${name}\n`;
+    text += `${'─'.repeat(30)}\n`;
+    CRITERIA.forEach(c => {
+      const bar = '█'.repeat(st.scores[c.key]) + '░'.repeat(10 - st.scores[c.key]);
+      text += `${c.label.padEnd(12)} ${bar} ${st.scores[c.key]}/10\n`;
+    });
+    text += `\nFINAL SCORE: ${score.toFixed(2)} / 10\n`;
+    if (st.notes) text += `\nNotes: ${st.notes}\n`;
+    text += '\n';
+  });
+
+  document.getElementById('exportText').textContent = text;
+  document.getElementById('modal').classList.add('visible');
+});
+
+document.getElementById('closeModal').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('visible');
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('exportText').textContent);
+  document.getElementById('copyBtn').textContent = '✓ Copied!';
+  setTimeout(() => { document.getElementById('copyBtn').textContent = 'Copy to Clipboard'; }, 2000);
+});
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('visible');
+});
+
+// Init
+initStudents(1);
+renderGrid();
+</script>
+</body>
+</html>

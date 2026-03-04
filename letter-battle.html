@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexicon Duel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:#0d0d12; --surf:#14141d; --surf2:#1c1c28; --bord:#26263a;
+  --p1:#e8b84b; --p1d:#e8b84b28; --p1b:#c89020;
+  --p2:#5ba3e8; --p2d:#5ba3e828; --p2b:#3a7fc8;
+  --txt:#eeeaf0; --muted:#6b6880;
+  --danger:#f06060; --ok:#50d890; --rare:#c266ff;
+  /* ability tile colors */
+  --hold-c:#ff8c42; --hold-b:#ff8c4230; /* orange - held tiles */
+  --curse-c:#00d4b4; --curse-b:#00d4b420; /* teal - cursed tiles */
+  --trap-c:#ff3d6b; --trap-b:#ff3d6b28; /* red - traps (when revealed) */
+  --renew-flash:#50d890;
+  --timer-ok:#50d890; --timer-warn:#e8b84b; --timer-danger:#f06060;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{background-color:var(--bg);color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+body{transition:background-color .6s ease}
+body.turn-p1{background-color:#141008}
+body.turn-p2{background-color:#08101a}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 50%,var(--turn-glow,#e8b84b0a),transparent 70%);pointer-events:none;z-index:0;transition:background .6s ease}
+body.turn-p1{--turn-glow:#e8b84b12}
+body.turn-p2{--turn-glow:#5ba3e812}
+
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:flex}
+
+/* ═══════════════ START SCREEN ═══════════════ */
+#start-screen{flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem;gap:1.6rem}
+.title-block{text-align:center}
+.eyebrow{font-size:.7rem;font-weight:500;letter-spacing:.35em;color:var(--muted);text-transform:uppercase;margin-bottom:.4rem}
+h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line-height:1;background:linear-gradient(130deg,var(--p1) 0%,#f5d98a 40%,var(--p2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.title-sub{font-size:.85rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-top:.5rem}
+.setup-card{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:1.6rem 1.8rem;width:100%;max-width:480px;display:flex;flex-direction:column;gap:1.2rem}
+.setup-label{font-size:.68rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);text-align:center}
+.player-inputs{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+.igrp{display:flex;flex-direction:column;gap:.35rem}
+.igrp label{font-size:.68rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.igrp.p1 label{color:var(--p1)} .igrp.p2 label{color:var(--p2)}
+.igrp input{background:var(--bg);border:1px solid var(--bord);color:var(--txt);font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:500;padding:.5rem .7rem;border-radius:8px;outline:none;transition:border-color .15s;width:100%}
+.igrp.p1 input:focus{border-color:var(--p1)} .igrp.p2 input:focus{border-color:var(--p2)}
+
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;align-items:end}
+
+.hp-group{display:flex;flex-direction:column;gap:.35rem;align-items:center}
+.hp-group label{font-size:.68rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:.6rem;background:var(--bg);border:1px solid var(--bord);border-radius:8px;padding:.25rem .5rem}
+.stepper button{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;transition:color .12s,background .12s}
+.stepper button:hover{color:var(--txt);background:var(--surf2)}
+.stepper-val{font-family:'DM Mono',monospace;font-size:1.25rem;font-weight:500;color:var(--txt);min-width:50px;text-align:center}
+
+.timer-group{display:flex;flex-direction:column;gap:.35rem;align-items:center}
+.timer-group label{font-size:.68rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.timer-pills{display:flex;gap:.4rem}
+.timer-pill{background:var(--bg);border:1px solid var(--bord);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;padding:.4rem .85rem;border-radius:20px;cursor:pointer;transition:all .15s}
+.timer-pill.active{background:var(--surf2);border-color:var(--p1);color:var(--p1)}
+
+.btn-start{background:linear-gradient(135deg,var(--p1),var(--p1b));border:none;color:#0d0d12;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;letter-spacing:.08em;padding:.82rem 2rem;cursor:pointer;border-radius:8px;transition:opacity .15s,transform .12s;text-transform:uppercase}
+.btn-start:hover{opacity:.88;transform:translateY(-1px)}
+
+/* ═══════════════ GAME SCREEN ═══════════════ */
+#game-screen{flex-direction:column;min-height:100vh;padding:.7rem .8rem;gap:.55rem}
+
+/* HP ROW */
+.hp-section{display:grid;grid-template-columns:1fr auto 1fr;gap:.7rem;align-items:center}
+.hp-wrap{display:flex;flex-direction:column;gap:.2rem}
+.hp-wrap.p2{align-items:flex-end}
+.hp-lbl{font-size:.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+.hp-wrap.p1 .hp-lbl{color:var(--p1)} .hp-wrap.p2 .hp-lbl{color:var(--p2)}
+.hp-name{font-size:.92rem;font-weight:700}
+.hp-wrap.p1 .hp-name{color:var(--p1)} .hp-wrap.p2 .hp-name{color:var(--p2)}
+.hp-nums{font-family:'DM Mono',monospace;font-size:1.3rem;font-weight:500;line-height:1}
+.hp-wrap.p1 .hp-nums{color:var(--p1)} .hp-wrap.p2 .hp-nums{color:var(--p2)}
+.hp-track{height:5px;background:var(--surf2);border-radius:3px;overflow:hidden;width:100%}
+.hp-fill{height:100%;border-radius:3px;transition:width .45s cubic-bezier(.4,0,.2,1)}
+.hp-wrap.p1 .hp-fill{background:linear-gradient(90deg,var(--p1b),var(--p1))}
+.hp-wrap.p2 .hp-fill{background:linear-gradient(90deg,var(--p2),#8ac8f8)}
+
+/* TURN + TIMER */
+.turn-center{display:flex;flex-direction:column;align-items:center;gap:.25rem}
+.turn-badge{text-align:center;padding:.35rem .7rem;background:var(--surf);border:1px solid var(--bord);border-radius:9px;white-space:nowrap}
+.turn-txt{font-size:.58rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.turn-name-el{font-size:.82rem;font-weight:700}
+.turn-name-el.p1{color:var(--p1)} .turn-name-el.p2{color:var(--p2)}
+
+.timer-display{font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:500;min-width:52px;text-align:center;transition:color .3s}
+.timer-display.ok{color:var(--timer-ok)} .timer-display.warn{color:var(--timer-warn)} .timer-display.danger{color:var(--timer-danger)}
+.timer-display.pulse{animation:pulse .5s ease infinite alternate}
+@keyframes pulse{from{opacity:1}to{opacity:.4}}
+
+/* ABILITIES BARS */
+.abilities-section{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.ability-bar{display:flex;gap:.35rem;align-items:center}
+.ability-bar.p2-bar{flex-direction:row-reverse}
+
+.ab-btn{background:var(--surf);border:1px solid var(--bord);color:var(--txt);font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.06em;padding:.32rem .55rem;border-radius:7px;cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap;position:relative}
+.ab-btn:hover:not(:disabled){background:var(--surf2);border-color:#44445a}
+.ab-btn:disabled{opacity:.3;cursor:not-allowed}
+.ab-btn.used{opacity:.22;cursor:not-allowed;text-decoration:line-through}
+
+/* ability button accent colors */
+.ab-btn.renew{border-color:#50d89055} .ab-btn.renew:hover:not(:disabled){border-color:var(--ok);color:var(--ok)}
+.ab-btn.defend{border-color:#5ba3e855} .ab-btn.defend:hover:not(:disabled){border-color:var(--p2);color:var(--p2)}
+.ab-btn.curse{border-color:#00d4b455} .ab-btn.curse:hover:not(:disabled){border-color:var(--curse-c);color:var(--curse-c)}
+.ab-btn.hold{border-color:#ff8c4255} .ab-btn.hold:hover:not(:disabled){border-color:var(--hold-c);color:var(--hold-c)}
+.ab-btn.trap{border-color:#ff3d6b55} .ab-btn.trap:hover:not(:disabled){border-color:var(--trap-c);color:var(--trap-c)}
+
+/* active glow on used-this-turn */
+.ab-btn.active-effect.renew{border-color:var(--ok);color:var(--ok);box-shadow:0 0 8px #50d89044}
+.ab-btn.renew-restored{animation:renewPop 2s ease;border-color:var(--ok)!important;color:var(--ok)!important}
+@keyframes renewPop{0%{box-shadow:0 0 0 var(--ok)}30%{box-shadow:0 0 18px #50d890,0 0 30px #50d89066}70%{box-shadow:0 0 10px #50d89044}100%{box-shadow:none}}
+.ab-btn.active-effect.defend{border-color:var(--p2);color:var(--p2);box-shadow:0 0 8px var(--p2d)}
+.ab-btn.active-effect.curse{border-color:var(--curse-c);color:var(--curse-c);box-shadow:0 0 8px #00d4b433}
+.ab-btn.active-effect.hold{border-color:var(--hold-c);color:var(--hold-c);box-shadow:0 0 8px #ff8c4233}
+.ab-btn.active-effect.trap{border-color:var(--trap-c);color:var(--trap-c);box-shadow:0 0 8px #ff3d6b33}
+
+.ab-spacer{flex:1}
+
+/* GRID */
+.grid-section{display:flex;justify-content:center}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;background:var(--surf2);padding:9px;border:1px solid var(--bord);border-radius:13px;box-shadow:inset 0 2px 8px #00000060}
+
+.cell{
+  width:clamp(52px,11vw,68px);
+  height:clamp(52px,11vw,68px);
+  background:linear-gradient(160deg,#22222e 0%,#14141d 50%,#0e0e18 100%);
+  border:none;
+  border-radius:9px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:transform .1s,box-shadow .15s,opacity .2s,filter .12s;
+  user-select:none;
+  position:relative;
+  overflow:hidden;
+  /* bevel: bright top-left edge, dark bottom-right */
+  box-shadow:
+    inset 0 1px 0 #ffffff14,
+    inset 1px 0 0 #ffffff0a,
+    inset 0 -1px 0 #00000060,
+    inset -1px 0 0 #00000040,
+    0 2px 4px #00000060,
+    0 1px 2px #00000080;
+}
+.cell::after{content:'';position:absolute;inset:0;border-radius:9px;pointer-events:none;opacity:0;transition:opacity .2s}
+/* inner shine gradient overlay */
+.cell::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:9px;
+  background:linear-gradient(135deg,#ffffff0a 0%,transparent 50%,#00000018 100%);
+  pointer-events:none;
+  z-index:0;
+}
+
+.cell:hover:not(.selected):not(.held){
+  transform:translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 #ffffff1e,
+    inset 1px 0 0 #ffffff0e,
+    inset 0 -1px 0 #00000060,
+    inset -1px 0 0 #00000040,
+    0 6px 12px #00000080,
+    0 2px 4px #00000060;
+  filter:brightness(1.12);
+}
+.cell.selected{transform:scale(.91) translateY(1px);
+  box-shadow:
+    inset 0 2px 4px #00000080,
+    inset 0 1px 0 #00000060,
+    0 1px 2px #00000040;
+}
+.cell.selected.p1-turn{box-shadow:inset 0 2px 4px #00000080,0 0 0 2px var(--p1),0 0 12px var(--p1d)}
+.cell.selected.p2-turn{box-shadow:inset 0 2px 4px #00000080,0 0 0 2px var(--p2),0 0 12px var(--p2d)}
+
+/* tile state overlays */
+.cell.held{border-color:var(--hold-c)!important;background:var(--hold-b)!important;cursor:not-allowed;opacity:.75}
+.cell.held::after{background:var(--hold-c);opacity:.08}
+.cell.cursed{border-color:var(--curse-c)!important;background:var(--curse-b)!important}
+.cell.cursed::after{background:var(--curse-c);opacity:.1}
+.cell.cursed.selected{border-color:var(--hold-c)!important;background:var(--hold-b)!important;box-shadow:0 0 12px #ff8c4244!important}
+.cell.cursed.selected .cell-letter{color:var(--hold-c)}
+.cell.trap-active{border-color:var(--trap-c)!important;background:var(--trap-b)!important;animation:trapFlash .6s ease}
+.cell.trap-reveal{border-color:var(--trap-c)!important;background:var(--trap-b)!important;box-shadow:0 0 16px var(--trap-c)!important;animation:trapPulse 1s ease infinite}
+@keyframes trapPulse{0%,100%{box-shadow:0 0 8px var(--trap-c)}50%{box-shadow:0 0 20px var(--trap-c),0 0 40px var(--trap-c)44}}
+@keyframes trapFlash{0%,100%{box-shadow:none}50%{box-shadow:0 0 14px var(--trap-c)}}
+
+.cell.replacing{animation:cellReplace .38s ease forwards}
+@keyframes cellReplace{0%{transform:scale(1);opacity:1}35%{transform:scale(.65) rotate(8deg);opacity:0}65%{transform:scale(1.12) rotate(-4deg);opacity:.6}100%{transform:scale(1) rotate(0);opacity:1}}
+
+.cell-letter{
+  font-family:'DM Mono',monospace;
+  font-size:clamp(1.35rem,2.8vw,1.7rem);
+  font-weight:700;
+  line-height:1;
+  position:relative;z-index:1;
+  letter-spacing:-.02em;
+  text-shadow:0 1px 0 #00000088,0 2px 4px #00000066;
+}
+.cell-score{font-size:.5rem;font-weight:600;color:var(--muted);margin-top:3px;position:relative;z-index:1;opacity:.8}
+.cell-tag{position:absolute;top:2px;right:3px;font-size:.46rem;font-weight:700;letter-spacing:.03em;opacity:.85;z-index:3}
+.cell-turns-tag{position:absolute;bottom:3px;right:4px;font-size:.48rem;font-weight:700;font-family:'DM Mono',monospace;color:#ffffff88;z-index:3;line-height:1}
+.cell-turns-tag::before{content:'×'}
+.cell-power-tag{position:absolute;top:2px;left:3px;font-size:.6rem;line-height:1;z-index:3}
+
+/* letter colors by type */
+.cell[data-rare=true] .cell-letter{color:var(--rare);text-shadow:0 0 8px #c266ff66,0 1px 0 #00000088}
+.cell[data-rare=true]{
+  background:linear-gradient(160deg,#1e1030 0%,#110d1a 50%,#0d0914 100%);
+  box-shadow:
+    inset 0 1px 0 #c266ff22,
+    inset 1px 0 0 #c266ff12,
+    inset 0 -1px 0 #00000070,
+    inset -1px 0 0 #00000050,
+    0 2px 6px #00000070,
+    0 0 0 1px #2e1e42;
+}
+.cell.cursed .cell-letter{color:var(--curse-c)}
+.cell.held .cell-letter{color:var(--hold-c)}
+
+/* WORD AREA */
+.word-section{display:flex;flex-direction:column;align-items:center;gap:.4rem}
+.word-display{min-height:46px;min-width:240px;max-width:460px;background:var(--surf);border:1px solid var(--bord);border-radius:9px;padding:.5rem .9rem;display:flex;align-items:center;justify-content:center;gap:1px;flex-wrap:wrap}
+.wl{font-family:'DM Mono',monospace;font-size:1.25rem;font-weight:500;padding:0 2px}
+.wl.rare{color:var(--rare)} .wl.normal{color:var(--txt)} .wl.cursed{color:var(--curse-c)} .wl.cursed-selected{color:var(--hold-c)}
+.word-ph{font-size:.82rem;color:var(--muted);font-style:italic}
+.dmg-preview{font-family:'DM Mono',monospace;font-size:.7rem;font-weight:500;color:var(--muted);min-height:1.1em;transition:color .2s}
+.dmg-preview.hot{color:var(--danger)}
+.word-actions{display:flex;gap:.45rem}
+
+.btn{font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.06em;padding:.46rem 1rem;border-radius:7px;border:1px solid;cursor:pointer;text-transform:uppercase;transition:all .12s}
+.btn-submit{background:var(--ok);border-color:var(--ok);color:#0d0d12}
+.btn-submit:hover{opacity:.85} .btn-submit:disabled{opacity:.28;cursor:not-allowed}
+.btn-clear{background:transparent;border-color:var(--bord);color:var(--muted)}
+.btn-clear:hover{border-color:#44445a;color:var(--txt)}
+
+/* STATUS EFFECTS DISPLAY */
+.effects-bar{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;min-height:24px;padding:.15rem 0}
+.eff-tag{font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.3rem .9rem;border-radius:20px;border:1px solid;text-transform:uppercase}
+.eff-tag.defend-tag{border-color:var(--p2);color:var(--p2);background:var(--p2d)}
+.eff-tag.curse-tag{border-color:var(--curse-c);color:var(--curse-c);background:var(--curse-b)}
+.eff-tag.hold-tag{border-color:var(--hold-c);color:var(--hold-c);background:var(--hold-b)}
+.eff-tag.trap-tag{border-color:var(--trap-c);color:var(--trap-c);background:var(--trap-b)}
+
+/* LOG */
+/* BATTLE CHRONICLE — split two-column */
+.log-section{border:1px solid var(--bord);border-radius:9px;flex:1;min-height:90px;max-height:155px;overflow:hidden;display:flex;flex-direction:column}
+.log-header{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #2a2010}
+.log-header-p1{font-size:.62rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#c89020;padding:.32rem .6rem;background:#1e1608}
+.log-header-p2{font-size:.62rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#5ba3e8;padding:.32rem .6rem;text-align:right;background:#08111a;border-left:1px solid #0e2035}
+.log-cols{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;min-height:0}
+.log-col{overflow-y:auto;padding:.3rem .45rem;display:flex;flex-direction:column;gap:2px}
+.log-col-p1{background:#1c1405}   /* rich dark amber */
+.log-col-p2{background:#050e1c;border-left:1px solid #0e1f35} /* rich dark blue */
+.log-col::-webkit-scrollbar{width:2px}
+.log-col::-webkit-scrollbar-thumb{background:#33301a;border-radius:2px}
+.log-col-p2::-webkit-scrollbar-thumb{background:#0e2035}
+/* individual log entries */
+.log-entry{display:flex;flex-direction:column;gap:1px;padding:.2rem .28rem;border-radius:4px}
+.log-entry:hover{background:#ffffff06}
+.log-word{font-family:'DM Mono',monospace;font-size:.74rem;font-weight:500;color:#e8d89a}
+.log-entry.p2-e .log-word{color:#9ecbf0}
+.log-meta{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;margin-top:1px}
+.log-fx{font-size:.58rem;color:#6b6840}
+.log-entry.p2-e .log-fx{color:#2a4a6b}
+.log-dmg{font-family:'DM Mono',monospace;font-size:.68rem;color:#f06060;font-weight:700}
+/* HP panel hit flash + shake */
+.hp-wrap.hit-flash-p1{animation:hitShakeP1 .55s ease forwards}
+.hp-wrap.hit-flash-p2{animation:hitShakeP2 .55s ease forwards}
+@keyframes hitShakeP1{
+  0%  {transform:translateX(0)}
+  12% {transform:translateX(-6px);filter:brightness(1.4) saturate(1.6)}
+  24% {transform:translateX(6px) ;filter:brightness(1.6) saturate(2)}
+  36% {transform:translateX(-5px);filter:brightness(1.5) saturate(1.8)}
+  50% {transform:translateX(4px) ;filter:brightness(1.3) saturate(1.4)}
+  65% {transform:translateX(-2px);filter:brightness(1.1)}
+  80% {transform:translateX(1px)}
+  100%{transform:translateX(0)  ;filter:none}
+}
+@keyframes hitShakeP2{
+  0%  {transform:translateX(0)}
+  12% {transform:translateX(6px) ;filter:brightness(1.4) saturate(1.6)}
+  24% {transform:translateX(-6px);filter:brightness(1.6) saturate(2)}
+  36% {transform:translateX(5px) ;filter:brightness(1.5) saturate(1.8)}
+  50% {transform:translateX(-4px);filter:brightness(1.3) saturate(1.4)}
+  65% {transform:translateX(2px) ;filter:brightness(1.1)}
+  80% {transform:translateX(-1px)}
+  100%{transform:translateX(0)  ;filter:none}
+}
+
+/* invisibility tile — sparkle appearance */
+.cell.pow-invis{border-color:#a8edea!important;background:#0a1e1e!important}
+.cell.pow-invis .cell-letter{color:#a8edea}
+/* shimmer border ring on invis tiles */
+.cell.pow-invis::before{
+  content:'✨';
+  position:absolute;
+  top:1px;left:3px;
+  font-size:.55rem;
+  z-index:3;
+  pointer-events:none;
+  animation:twinkle 1.5s ease-in-out infinite alternate;
+}
+@keyframes twinkle{from{opacity:.4;transform:scale(.8)}to{opacity:1;transform:scale(1.1)}}
+
+/* INVISIBILITY EFFECT — ALL cells fade together when grid has class */
+/* Cycle: 1s visible → 2s fade out → 2s fully invisible → 2s fade in → repeat */
+.grid.invis-active .cell{
+  animation:invisCycle 7s linear infinite;
+}
+@keyframes invisCycle{
+  0%     {opacity:1}
+  14.3%  {opacity:1}
+  42.9%  {opacity:0}
+  71.4%  {opacity:0}
+  100%   {opacity:1}
+}
+
+/* time distortion tile */
+.cell.pow-time{border-color:#9c88ff!important;background:#1a0d33!important}
+.cell.pow-time .cell-letter{color:#b8a9ff}
+
+/* TOAST */
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.82);background:var(--surf);border:1px solid var(--bord);border-radius:13px;padding:.9rem 1.6rem;text-align:center;pointer-events:none;opacity:0;z-index:100;transition:all .18s cubic-bezier(.34,1.56,.64,1);min-width:170px}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.toast-word{font-family:'DM Mono',monospace;font-size:1.35rem;font-weight:500;margin-bottom:.15rem}
+.toast-dmg{font-family:'DM Mono',monospace;font-size:1.9rem;font-weight:500;color:var(--danger)}
+.toast-bad{color:var(--danger);font-size:.82rem;font-style:italic;font-weight:500}
+.toast-skip{color:var(--muted);font-size:.82rem;font-style:italic}
+
+/* SKIP OVERLAY */
+.skip-overlay{position:fixed;inset:0;background:#0d0d12cc;display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+.skip-overlay.show{opacity:1;pointer-events:all}
+.skip-box{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:2rem 2.5rem;text-align:center;display:flex;flex-direction:column;gap:1rem}
+.skip-title{font-size:1.1rem;font-weight:700;color:var(--danger)}
+.skip-sub{font-size:.85rem;color:var(--muted)}
+
+/* GAME OVER */
+#gameover-screen{flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:1.4rem;text-align:center}
+.go-eye{font-size:.7rem;font-weight:600;letter-spacing:.35em;text-transform:uppercase;color:var(--muted)}
+.go-winner{font-size:clamp(2rem,6vw,3.8rem);font-weight:700;letter-spacing:-.02em;line-height:1}
+.go-winner.p1{color:var(--p1)} .go-winner.p2{color:var(--p2)}
+.go-sub{color:var(--muted);font-size:.88rem}
+/* two-column stats card */
+.go-stats{width:100%;max-width:560px;display:flex;flex-direction:column;gap:0;border-radius:14px;overflow:hidden;border:1px solid var(--bord)}
+.go-stats-cols{display:grid;grid-template-columns:1fr 1fr}
+.go-col{display:flex;flex-direction:column;padding:1.1rem 1.2rem;gap:.55rem}
+.go-col-p1{background:#1c1405}
+.go-col-p2{background:#050e1c;border-left:1px solid var(--bord)}
+.go-col-head{font-size:.65rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding-bottom:.4rem;border-bottom:1px solid}
+.go-col-p1 .go-col-head{color:var(--p1);border-color:#2e2008}
+.go-col-p2 .go-col-head{color:var(--p2);border-color:#0e1f35}
+.go-stat{display:flex;flex-direction:column;gap:.1rem}
+.go-stat-label{font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.go-stat-val{font-family:'DM Mono',monospace;font-size:1.25rem;font-weight:500;line-height:1}
+.go-col-p1 .go-stat-val{color:var(--p1)}
+.go-col-p2 .go-stat-val{color:var(--p2)}
+.go-footer{background:var(--surf);padding:.7rem 1.2rem;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bord)}
+.go-footer-label{font-size:.62rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.go-footer-val{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:500;color:var(--txt)}
+/* winner crown badge */
+.go-crown{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.25rem .7rem;border-radius:20px;margin-bottom:.2rem;display:inline-block}
+.go-crown.p1{background:var(--p1d);color:var(--p1);border:1px solid var(--p1)}
+.go-crown.p2{background:var(--p2d);color:var(--p2);border:1px solid var(--p2)}
+.btn-again{background:linear-gradient(135deg,var(--p1),var(--p1b));border:none;color:#0d0d12;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;letter-spacing:.08em;padding:.82rem 2.5rem;cursor:pointer;border-radius:8px;transition:opacity .15s,transform .12s;text-transform:uppercase}
+.btn-again:hover{opacity:.88;transform:translateY(-1px)}
+
+/* scrollbars handled per-column above */
+
+
+/* ═══ TOOLTIPS ═══ */
+[data-tip]{position:relative}
+[data-tip]::after{
+  content:attr(data-tip);
+  position:absolute;
+  bottom:calc(100% + 7px);
+  left:50%;
+  transform:translateX(-50%) scale(.9);
+  background:#1e1e2e;
+  color:#eeeaf0;
+  font-family:'DM Sans',sans-serif;
+  font-size:.68rem;
+  font-weight:500;
+  line-height:1.35;
+  white-space:pre;
+  padding:.4rem .65rem;
+  border-radius:7px;
+  border:1px solid #33334a;
+  box-shadow:0 4px 14px #00000080;
+  pointer-events:none;
+  opacity:0;
+  z-index:500;
+  transition:opacity .15s,transform .15s;
+  max-width:200px;
+  white-space:normal;
+  text-align:center;
+}
+[data-tip]::before{
+  content:'';
+  position:absolute;
+  bottom:calc(100% + 2px);
+  left:50%;
+  transform:translateX(-50%);
+  border:5px solid transparent;
+  border-top-color:#33334a;
+  pointer-events:none;
+  opacity:0;
+  z-index:501;
+  transition:opacity .15s;
+}
+[data-tip]:hover::after,[data-tip]:hover::before{opacity:1;transform:translateX(-50%) scale(1)}
+
+/* ═══ TILE POWERS ═══ */
+/* poison - dark green */
+.cell.pow-poison{border-color:#1a6b3a!important;background:#0d2e1a!important}
+.cell.pow-poison .cell-letter{color:#3ddc7a}
+/* extra damage - red */
+.cell.pow-xdmg{border-color:#c0392b!important;background:#2d0a0a!important}
+.cell.pow-xdmg .cell-letter{color:#ff6b6b}
+/* heal - light green */
+.cell.pow-heal{border-color:#27ae60!important;background:#0d2d1a!important}
+.cell.pow-heal .cell-letter{color:#2ecc71}
+/* explosive - orange-yellow */
+.cell.pow-boom{border-color:#e67e22!important;background:#2d1a00!important}
+.cell.pow-boom .cell-letter{color:#f39c12}
+/* small letters - dark grey */
+.cell.pow-small{border-color:#555!important;background:#1a1a1a!important}
+.cell.pow-small .cell-letter{color:#888}
+/* chaos gravity - pink */
+.cell.pow-chaos{border-color:#e91e8c!important;background:#2d0820!important}
+.cell.pow-chaos .cell-letter{color:#f06fc1}
+
+/* power icon tag in top-left corner */
+.cell-power-tag{position:absolute;top:2px;left:3px;font-size:.55rem;line-height:1;z-index:3}
+
+/* small letters effect on whole grid */
+.grid.tiny-letters .cell-letter{font-size:.45rem!important;transition:font-size .3s}
+
+/* chaos rotation classes */
+.cell.rot-90 .cell-letter{display:inline-block;transform:rotate(90deg)}
+.cell.rot-180 .cell-letter{display:inline-block;transform:rotate(180deg)}
+.cell.rot-270 .cell-letter{display:inline-block;transform:rotate(270deg)}
+.cell.flip-h .cell-letter{display:inline-block;transform:scaleX(-1)}
+.cell.flip-v .cell-letter{display:inline-block;transform:scaleY(-1)}
+
+/* poison status in effects bar */
+.eff-tag.poison-tag{border-color:#3ddc7a;color:#3ddc7a;background:#0d2e1a88}
+</style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div id="start-screen" class="screen active">
+  <div class="title-block">
+    <div class="eyebrow">A Game of Words &amp; War</div>
+    <h1>Lexicon Duel</h1>
+    <div class="title-sub">Forge words. Deal damage.</div>
+  </div>
+  <div class="setup-card">
+    <div class="setup-label">Battle Setup</div>
+    <div class="player-inputs">
+      <div class="igrp p1"><label>Player 1</label><input id="p1n" value="Champion" maxlength="14"></div>
+      <div class="igrp p2"><label>Player 2</label><input id="p2n" value="Challenger" maxlength="14"></div>
+    </div>
+    <div class="row-2">
+      <div class="hp-group">
+        <label>Starting HP</label>
+        <div class="stepper">
+          <button id="hp-dn">−</button>
+          <div class="stepper-val" id="hp-val">100</div>
+          <button id="hp-up">+</button>
+        </div>
+      </div>
+      <div class="timer-group">
+        <label>Turn Timer</label>
+        <div class="timer-pills">
+          <div class="timer-pill active" data-sec="60">1 min</div>
+          <div class="timer-pill" data-sec="120">2 min</div>
+          <div class="timer-pill" data-sec="180">3 min</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-start" id="start-btn">Begin the Duel</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" class="screen">
+  <!-- HP -->
+  <div class="hp-section">
+    <div class="hp-wrap p1" id="p1-hp-wrap">
+      <div class="hp-lbl">Player 1</div>
+      <div class="hp-name" id="p1-name-disp">—</div>
+      <div class="hp-nums"><span id="p1-hp-n">100</span> HP</div>
+      <div class="hp-track"><div class="hp-fill" id="p1-hp-f" style="width:100%"></div></div>
+    </div>
+    <div class="turn-center">
+      <div class="turn-badge">
+        <div class="turn-txt">Now Playing</div>
+        <div class="turn-name-el p1" id="turn-name-el">—</div>
+      </div>
+      <div class="timer-display ok" id="timer-disp">—</div>
+    </div>
+    <div class="hp-wrap p2" id="p2-hp-wrap">
+      <div class="hp-lbl">Player 2</div>
+      <div class="hp-name" id="p2-name-disp">—</div>
+      <div class="hp-nums"><span id="p2-hp-n">100</span> HP</div>
+      <div class="hp-track"><div class="hp-fill" id="p2-hp-f" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <!-- ABILITIES -->
+  <div class="abilities-section">
+    <!-- P1 abilities -->
+    <div class="ability-bar">
+      <button class="ab-btn renew" id="p1-renew" data-tip="🔄 Renew Replaces the entire board with fresh letters. Refills at half HP." data-p="1" data-ab="renew">🔄 Renew</button>
+      <button class="ab-btn defend" id="p1-defend" data-tip="🛡 Defend Halves the next attack you receive (rounds down)." data-p="1" data-ab="defend">🛡 Defend</button>
+      <button class="ab-btn curse" id="p1-curse" data-tip="☠ Curse Opponent's letter scores are halved next turn." data-p="1" data-ab="curse">☠ Curse</button>
+      <button class="ab-btn hold" id="p1-hold" data-tip="🔒 Hold Locks 3–6 random tiles. Opponent can't use them next turn." data-p="1" data-ab="hold">🔒 Hold</button>
+      <button class="ab-btn trap" id="p1-trap" data-tip="⚡ Trap Places 3 hidden traps. Each one hit costs opponent −5 damage." data-p="1" data-ab="trap">⚡ Trap</button>
+    </div>
+    <!-- P2 abilities -->
+    <div class="ability-bar p2-bar">
+      <button class="ab-btn renew" id="p2-renew" data-tip="🔄 Renew Replaces the entire board with fresh letters. Refills at half HP." data-p="2" data-ab="renew">🔄 Renew</button>
+      <button class="ab-btn defend" id="p2-defend" data-tip="🛡 Defend Halves the next attack you receive (rounds down)." data-p="2" data-ab="defend">🛡 Defend</button>
+      <button class="ab-btn curse" id="p2-curse" data-tip="☠ Curse Opponent's letter scores are halved next turn." data-p="2" data-ab="curse">☠ Curse</button>
+      <button class="ab-btn hold" id="p2-hold" data-tip="🔒 Hold Locks 3–6 random tiles. Opponent can't use them next turn." data-p="2" data-ab="hold">🔒 Hold</button>
+      <button class="ab-btn trap" id="p2-trap" data-tip="⚡ Trap Places 3 hidden traps. Each one hit costs opponent −5 damage." data-p="2" data-ab="trap">⚡ Trap</button>
+    </div>
+  </div>
+
+  <!-- EFFECTS STATUS -->
+  <div class="effects-bar" id="effects-bar"></div>
+
+  <!-- GRID -->
+  <div class="grid-section">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- WORD -->
+  <div class="word-section">
+    <div class="word-display" id="word-display"><span class="word-ph">Select letters to form a word</span></div>
+    <div class="dmg-preview" id="dmg-prev">—</div>
+    <div class="word-actions">
+      <button class="btn btn-clear" id="clear-btn">Clear</button>
+      <button class="btn btn-submit" id="submit-btn" disabled>Attack!</button>
+    </div>
+  </div>
+
+  <!-- LOG — two-column -->
+  <div class="log-section">
+    <div class="log-header">
+      <div class="log-header-p1" id="log-h-p1">P1</div>
+      <div class="log-header-p2" id="log-h-p2">P2</div>
+    </div>
+    <div class="log-cols">
+      <div class="log-col log-col-p1" id="log-p1"></div>
+      <div class="log-col log-col-p2" id="log-p2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover-screen" class="screen">
+  <div class="go-eye">Victory!</div>
+  <div class="go-winner" id="go-winner">—</div>
+  <div class="go-sub" id="go-sub">has won the duel</div>
+  <div class="go-stats" id="go-stats"></div>
+  <button class="btn-again" id="play-again-btn">Fight Again</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-word" id="tb-word"></div>
+  <div id="tb-body"></div>
+</div>
+
+<!-- SKIP OVERLAY -->
+<div class="skip-overlay" id="skip-overlay">
+  <div class="skip-box">
+    <div class="skip-title" id="skip-title">Time's Up!</div>
+    <div class="skip-sub" id="skip-sub">Turn skipped.</div>
+  </div>
+</div>
+
+<script>
+/* ═══════════ AUDIO ═══════════ */
+const AC=window.AudioContext||window.webkitAudioContext;
+let actx=null;
+function ac(){if(!actx)actx=new AC();if(actx.state==='suspended')actx.resume();return actx;}
+function tone(f,t,d,v=.14){try{const a=ac(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type=t;o.frequency.setValueAtTime(f,a.currentTime);g.gain.setValueAtTime(v,a.currentTime);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);o.start();o.stop(a.currentTime+d);}catch(e){}}
+function nburst(d,v,cut){try{const a=ac(),buf=a.createBuffer(1,a.sampleRate*d,a.sampleRate),dat=buf.getChannelData(0);for(let i=0;i<dat.length;i++)dat[i]=(Math.random()*2-1)*Math.pow(1-i/dat.length,2.5);const src=a.createBufferSource(),g=a.createGain(),fl=a.createBiquadFilter();fl.type='lowpass';fl.frequency.value=cut;src.buffer=buf;src.connect(fl);fl.connect(g);g.connect(a.destination);g.gain.setValueAtTime(v,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d);src.start();}catch(e){}}
+
+const SFX={
+  pick(){tone(480,'sine',.07,.1);setTimeout(()=>tone(620,'sine',.05,.07),25)},
+  drop(){tone(340,'sine',.06,.09)},
+  clear(){[300,255,210].forEach((f,i)=>setTimeout(()=>tone(f,'sine',.05,.08),i*30))},
+  check(){[330,392,494].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.1,.08),i*75))},
+  bad(){tone(180,'sawtooth',.07,.18);setTimeout(()=>tone(140,'square',.1,.15),70);setTimeout(()=>nburst(.15,.2,300),10)},
+  hit(d){const b=Math.max(55,130-d*1.1);nburst(.25,.45,200+d*1.5);setTimeout(()=>tone(b,'sawtooth',.14,.16),25);setTimeout(()=>tone(b*.65,'square',.18,.1),75)},
+  ok(d){(d>20?[523,659,784,1047]:[440,554,659]).forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.2,.12),i*28))},
+  sparkle(){[820,1020,1240,920].forEach((f,i)=>setTimeout(()=>tone(f,'sine',.06,.05),i*25))},
+  turn(){tone(660,'sine',.09,.09);setTimeout(()=>tone(880,'sine',.08,.07),85)},
+  start(){[261,329,392,523].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.28,.12),i*65))},
+  win(){[523,659,784,1047,784,1047,1318].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.32,.13),i*90))},
+  step(){tone(520,'sine',.04,.07)},
+  ability(){tone(700,'sine',.08,.1);setTimeout(()=>tone(900,'sine',.06,.08),40)},
+  skip(){[300,250,200].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',.12,.18),i*80))},
+  tick(){tone(880,'sine',.04,.06)},
+  tickdanger(){tone(660,'sawtooth',.05,.1)}
+};
+
+/* ═══════════ DATA ═══════════ */
+const BASE_SCORES={A:1,E:1,I:1,O:1,U:1,L:1,N:1,R:1,S:1,T:1,D:2,G:2,B:3,C:3,M:3,P:3,F:4,H:4,V:4,W:4,Y:4,K:5,J:8,X:8,Q:10,Z:10};
+const RARE=new Set(['J','K','Q','X','Z','V','W','Y','F','H']);
+const VOWELS=new Set(['A','E','I','O','U']);
+const POOL=[];
+const WGT={A:9,E:12,I:9,O:8,U:4,L:4,N:6,R:6,S:4,T:6,D:4,G:3,B:2,C:2,M:2,P:2,F:2,H:2,V:2,W:2,Y:2,K:1,J:1,X:1,Q:1,Z:1};
+for(const[l,w]of Object.entries(WGT))for(let i=0;i<w;i++)POOL.push(l);
+
+
+/* ═══════════ TILE POWERS ═══════════ */
+// G.powers[i] = null | {type, ...data}  — one per grid slot
+// types: 'poison','xdmg','heal','boom','small','chaos'
+
+const POWER_TYPES=['poison','xdmg','heal','boom','small','chaos','time','invis'];
+
+function genTilePowers(gridLen){
+  const powers=new Array(gridLen).fill(null);
+  for(let i=0;i<gridLen;i++){
+    if(Math.random()<0.05){
+      const t=POWER_TYPES[Math.floor(Math.random()*POWER_TYPES.length)];
+      powers[i]={type:t,turns:2};
+    }
+  }
+  return powers;
+}
+
+async function isValid(word){
+  if(word.length<2)return false;
+  try{return(await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`)).ok;}
+  catch(e){return word.length>=3;}
+}
+
+/* ═══════════ GAME STATE ═══════════ */
+let G={
+  grid:[],
+  powers:[],
+  p1Name:'',p2Name:'',
+  p1HP:100,p2HP:100,maxHP:100,
+  cur:1,sel:[],busy:false,
+  turnSecs:60,timerLeft:60,timerInt:null,
+  stats:{p1w:0,p1d:0,p2w:0,p2d:0},
+  poison:{1:[],2:[]},
+  pendingSmall:false,
+  pendingChaos:false,
+  pendingTimeDist:false,
+  pendingInvis:false,
+  invisActive:false,
+  chaosRotations:null,
+  turnSecsOverride:null,_thisTurnSecs:null,
+  // abilities: track used + pending effects
+  ab:{
+    1:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false},
+    2:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false}
+  },
+  // active effects applied TO each player (they receive these effects on their turn)
+  effects:{
+    1:{defend:false,cursed:false,held:[],traps:[]},  // p1's incoming
+    2:{defend:false,cursed:false,held:[],traps:[]}   // p2's incoming
+  },
+  // pending effects queued by current player for OPPONENT's next turn
+  pending:{
+    1:{curse:false,hold:false,trap:false},
+    2:{curse:false,hold:false,trap:false}
+  }
+};
+
+let startHP=100,turnSecs=60;
+
+function rnd(){return POOL[Math.floor(Math.random()*POOL.length)];}
+function vCount(g){return g.filter(l=>VOWELS.has(l)).length;}
+
+function countOf(g,l){return g.filter(x=>x===l).length;}
+function scoreOf(l){return BASE_SCORES[l]||1;}
+function gridOk(g,cand){
+  // GLOBAL: max 2 of any single letter
+  if(countOf(g,cand)>=2)return false;
+  // vowel: max 7 total
+  const vc=vCount(g);
+  if(VOWELS.has(cand)&&vc>=7)return false;
+  // 4-pt letters: F H V W Y — max 3 on board
+  if(scoreOf(cand)===4){
+    const fours=g.filter(l=>scoreOf(l)===4).length;
+    if(fours>=3)return false;
+  }
+  // 10-pt letters: Q Z — max 1
+  if(scoreOf(cand)===10){
+    const tens=g.filter(l=>scoreOf(l)===10).length;
+    if(tens>=1)return false;
+  }
+  return true;
+}
+
+function rndFiltered(g){
+  let l,tries=0;
+  do{l=rnd();tries++;}while(!gridOk(g,l)&&tries<80);
+  return l;
+}
+
+function genGrid(){
+  let g=[];
+  // seed with 4-5 distinct vowels, max 2 each
+  const va=['A','E','I','O','U'];
+  const vowelSeeds=shuffle([...va]).slice(0,4);
+  for(const v of vowelSeeds)g.push(v);
+  while(g.length<25){
+    const l=rndFiltered(g);
+    g.push(l);
+  }
+  for(let i=g.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[g[i],g[j]]=[g[j],g[i]];}
+  return g;
+}
+
+function repLetter(i){
+  // temporarily remove tile i so constraints check against remaining 24
+  const old=G.grid[i];
+  G.grid[i]='?';
+  const rest=G.grid.filter((_,idx)=>idx!==i);
+  let l,tries=0;
+  do{
+    l=rnd();tries++;
+    const vc=vCount(rest);
+    if(vc<3&&!VOWELS.has(l))continue; // need more vowels
+    if(!gridOk(rest,l)&&tries<80)continue;
+    break;
+  }while(tries<100);
+  G.grid[i]=l;
+  // new tile: 5% chance of spawning a power
+  if(Math.random()<0.05){
+    const t=POWER_TYPES[Math.floor(Math.random()*POWER_TYPES.length)];
+    G.powers[i]={type:t,turns:2};
+  } else {
+    G.powers[i]=null;
+  }
+}
+
+function enforceVowels(){
+  let v=vCount(G.grid);
+  // Add vowels if too few (min 4)
+  if(v<4){
+    const ci=G.grid.map((l,i)=>VOWELS.has(l)?null:i).filter(i=>i!==null);
+    // pick a vowel not already at count 2
+    const va=['A','E','I','O','U'];
+    const eligible=va.filter(vw=>countOf(G.grid,vw)<2);
+    if(eligible.length&&ci.length){
+      const p=ci[Math.floor(Math.random()*ci.length)];
+      G.grid[p]=eligible[Math.floor(Math.random()*eligible.length)];
+    }
+  }
+  v=vCount(G.grid);
+  // Remove excess vowels (max 7)
+  while(v>7){
+    const vi=G.grid.map((l,i)=>VOWELS.has(l)?i:null).filter(i=>i!==null);
+    const p=vi[Math.floor(Math.random()*vi.length)];
+    let c,t=0;do{c=rnd();t++;}while((VOWELS.has(c)||!gridOk(G.grid.filter((_,idx)=>idx!==p),c))&&t<60);
+    if(p!==undefined)G.grid[p]=c;
+    v--;
+  }
+  // Remove duplicate vowels exceeding 2
+  const va=['A','E','I','O','U'];
+  for(const vow of va){
+    const idxs=G.grid.map((l,i)=>l===vow?i:null).filter(i=>i!==null);
+    while(idxs.length>2){
+      const p=idxs.pop();
+      let c,t=0;do{c=rnd();t++;}while((VOWELS.has(c)||!gridOk(G.grid.filter((_,idx)=>idx!==p),c))&&t<60);
+      G.grid[p]=c;
+    }
+  }
+}
+
+function effectiveScore(i){
+  const base=BASE_SCORES[G.grid[i]]||1;
+  // if current player's own incoming "cursed" effect is active, scores halved
+  if(G.effects[G.cur].cursed) return Math.max(1,Math.floor(base/2));
+  return base;
+}
+
+function calcDmg(word,idx){
+  let base=0;
+  for(const i of idx)base+=effectiveScore(i);
+  let m=1,n=word.length;
+  if(n>=4)m+=.5;if(n>=6)m+=.75;if(n>=8)m+=1;if(n>=10)m+=1.5;
+  let dmg=Math.round(base*m);
+  // trap penalty: count how many selected tiles hit traps
+  const opp=G.cur===1?2:1;
+  let trapHits=0;
+  for(const i of idx){if(G.effects[opp].traps.includes(i))trapHits++;}
+  dmg=Math.max(0,dmg-(trapHits*5));
+  // defender halves
+  if(G.effects[opp].defend)dmg=Math.floor(dmg/2);
+  return{dmg,trapHits,defended:G.effects[opp].defend&&dmg>0,cursed:G.effects[G.cur].cursed};
+}
+
+/* ═══════════ UI HELPERS ═══════════ */
+function $$(id){return document.getElementById(id);}
+
+function renderGrid(){
+  const el=$$('grid');el.innerHTML='';
+  const ef=G.effects[G.cur]; // effects on current player (restrict held, show cursed)
+  G.grid.forEach((l,i)=>{
+    const c=document.createElement('div');
+    c.className='cell';
+    if(G.chaosRotations&&G.chaosRotations[i])c.classList.add(G.chaosRotations[i]);
+    const isHeld=ef.held.includes(i);
+    const isCursed=ef.cursed; // whole board cursed
+    const isRare=RARE.has(l)&&!isCursed;
+    c.dataset.rare=isRare?'true':'false';
+    if(isHeld)c.classList.add('held');
+    if(isCursed)c.classList.add('cursed');
+    if(G.sel.includes(i))c.classList.add('selected',`p${G.cur}-turn`);
+    // score display: show effective score
+    const sc=isCursed?Math.max(1,Math.floor((BASE_SCORES[l]||1)/2)):BASE_SCORES[l]||1;
+    const heldTag=isHeld?`<span class="cell-tag" style="color:var(--hold-c)">🔒</span>`:'';
+    const cursTag=isCursed?`<span class="cell-tag" style="color:var(--curse-c)">🔥</span>`:'';
+    // tile power
+    const pw=G.powers&&G.powers[i];
+    const pwClass=pw?` pow-${pw.type}`:'';
+    const pwIcons={poison:'☠️',xdmg:'⚔️',heal:'❤️',boom:'💥',small:'⭐',chaos:'🍎',time:'⏰',invis:'✨'};
+    const pwTips={
+      poison:'☠️ Poison\nOpponent takes −3 HP/turn\nfor 2–3 of their turns.',
+      xdmg:'⚔️ Extra Damage\nAdds +4 to +8 bonus\ndamage to this word.',
+      heal:'❤️ Heal\nRestores 5–10 HP\nto you.',
+      boom:'💥 Explosive\nAdds −5 to +10\nrandom bonus damage.',
+      small:'⭐ Small Letters\nOpponent sees tiny\nletters next turn.',
+      chaos:'🍎 Chaos Gravity\nAll letters randomly\nrotate next turn.',
+      time:'⏰ Time Distortion\nHalves the opponent\nnext turn timer.',
+      invis:'✨ Invisibility\nAll tiles slowly fade\nin and out next turn.'
+    };
+    const turnsLeft=pw&&pw.turns!=null?pw.turns:null;
+    const turnsTag=turnsLeft!=null?`<span class="cell-turns-tag">${turnsLeft}</span>`:'';
+    const pwTag=pw?`<span class="cell-power-tag" data-tip="${pwTips[pw.type]||pw.type}">${pwIcons[pw.type]}</span>${turnsTag}`:'';
+    if(pw&&!isHeld&&!isCursed)c.classList.add('pow-'+pw.type);
+    c.innerHTML=`${heldTag}${cursTag}${pwTag}<div class="cell-letter">${l}</div><div class="cell-score">${sc}pt</div>`;
+    c.addEventListener('click',()=>onCell(i));
+    el.appendChild(c);
+  });
+}
+
+function renderWord(){
+  const wd=$$('word-display'),dp=$$('dmg-prev');
+  if(!G.sel.length){
+    wd.innerHTML='<span class="word-ph">Select letters to form a word</span>';
+    dp.textContent='—';dp.className='dmg-preview';
+    $$('submit-btn').disabled=true;return;
+  }
+  const ef=G.effects[G.cur];
+  wd.innerHTML=G.sel.map(i=>{
+    const l=G.grid[i];
+    const cls=ef.cursed?'cursed':RARE.has(l)?'rare':'normal';
+    return`<span class="wl ${cls}">${l}</span>`;
+  }).join('');
+  const word=G.sel.map(i=>G.grid[i]).join('');
+  const {dmg,trapHits,defended,cursed}=calcDmg(word,G.sel);
+  let hint=`Est. damage: ${dmg}`;
+  if(cursed)hint+=' ☠';if(defended)hint+=' 🛡';if(trapHits)hint+=` ⚡×${trapHits}`;
+  dp.textContent=word.length>=2?hint:'Need 2+ letters';
+  dp.className='dmg-preview'+(word.length>=2?' hot':'');
+  $$('submit-btn').disabled=word.length<2;
+}
+
+function updateHP(){
+  const p1p=Math.max(0,G.p1HP/G.maxHP*100),p2p=Math.max(0,G.p2HP/G.maxHP*100);
+  $$('p1-hp-n').textContent=Math.max(0,G.p1HP);
+  $$('p2-hp-n').textContent=Math.max(0,G.p2HP);
+  $$('p1-hp-f').style.width=p1p+'%';
+  $$('p2-hp-f').style.width=p2p+'%';
+  // Re-enable Renew for a player when their HP drops to half, if they already used it
+  checkRenewRestore(1, G.p1HP);
+  checkRenewRestore(2, G.p2HP);
+}
+
+function checkRenewRestore(p, hp){
+  if(G.ab[p].renew && !G.ab[p].renewRestored && hp <= G.maxHP/2 && hp > 0){
+    G.ab[p].renew = false;        // re-enable
+    G.ab[p].renewRestored = true; // only do this once
+    updateAbilityButtons();
+    // flash the button to signal it's back
+    const btn = $$('p'+p+'-renew');
+    if(btn){ btn.classList.add('renew-restored'); setTimeout(()=>btn.classList.remove('renew-restored'),2000); }
+    // notify with a small toast
+    const pName=p===1?G.p1Name:G.p2Name;
+    showAbilityToast('🔄 RENEW RESTORED',`${pName} can Renew again!`);
+    SFX.ability();
+  }
+}
+
+function updateTurnUI(){
+  const tn=$$('turn-name-el');
+  tn.textContent=G.cur===1?G.p1Name:G.p2Name;
+  tn.className=`turn-name-el p${G.cur}`;
+  // tint entire background to current player's color
+  document.body.classList.toggle('turn-p1', G.cur===1);
+  document.body.classList.toggle('turn-p2', G.cur===2);
+  updateAbilityButtons();
+  renderEffectsBar();
+}
+
+function renderEffectsBar(){
+  const bar=$$('effects-bar');bar.innerHTML='';
+  const ef=G.effects[G.cur];
+  const opp=G.cur===1?2:1;
+  const oppName=opp===1?G.p1Name:G.p2Name;
+  // Show shield on the OPPONENT (defender) — visible to attacker so they know damage will be halved
+  if(G.effects[opp].defend)bar.innerHTML+=`<span class="eff-tag defend-tag">🛡 ${oppName} Shielded</span>`;
+  // Current player's incoming effects
+  if(ef.cursed)bar.innerHTML+=`<span class="eff-tag curse-tag">🔥 Letters Weakened</span>`;
+  if(ef.held.length)bar.innerHTML+=`<span class="eff-tag hold-tag">🔒 ${ef.held.length} Tiles Locked</span>`;
+  if(ef.traps.length)bar.innerHTML+=`<span class="eff-tag trap-tag">⚡ ${ef.traps.length} Traps Active</span>`;
+  // Poison stacks on current player
+  if(G.poison[G.cur].length){
+    const total=G.poison[G.cur].reduce((s,p)=>s+p.dmg,0);
+    const maxTurns=Math.max(...G.poison[G.cur].map(p=>p.turns));
+    bar.innerHTML+=`<span class="eff-tag poison-tag">☠️ Poison −${total}/turn (${maxTurns}t left)</span>`;
+  }
+}
+
+function updateAbilityButtons(){
+  [1,2].forEach(p=>{
+    ['renew','defend','curse','hold','trap'].forEach(ab=>{
+      const btn=$$('p'+p+'-'+ab);
+      if(!btn)return;
+      const isMyTurn=G.cur===p;
+      const used=G.ab[p][ab];
+      const pendingActive=!!(G.pending[p]&&G.pending[p][ab]);
+      btn.disabled=(!isMyTurn)||used||pendingActive;
+      btn.className=`ab-btn ${ab}`;
+      if(used)btn.classList.add('used');
+      else if(pendingActive)btn.classList.add('active-effect');
+    });
+  });
+}
+
+function addLog(p,word,dmg,fx){
+  const col=$$('log-p'+p);
+  const d=document.createElement('div');
+  d.className=`log-entry p${p}-e`;
+  const fxStr=fx.length?`<span class="log-fx">${fx.join(' ')}</span>`:'';
+  d.innerHTML=`<span class="log-word">${word}</span><div class="log-meta">${fxStr}<span class="log-dmg">−${dmg}</span></div>`;
+  col.insertBefore(d,col.firstChild);
+}
+
+function flashHit(victim){
+  // victim = player who RECEIVED damage
+  const el=victim===1?$$('p1-hp-wrap'):$$('p2-hp-wrap');
+  if(!el)return;
+  const cls=`hit-flash-p${victim}`;
+  el.classList.remove(cls);
+  void el.offsetWidth; // reflow to restart animation
+  el.classList.add(cls);
+  setTimeout(()=>el.classList.remove(cls),520);
+}
+
+function showToast(word,dmg,ok,extra=''){
+  const t=$$('toast');
+  $$('tb-word').textContent=word;
+  if(ok){
+    $$('tb-body').innerHTML=`<div class="toast-dmg">−${dmg} HP</div>${extra?`<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">${extra}</div>`:''}`;
+    t.style.borderColor='var(--danger)';
+  }else{
+    $$('tb-body').innerHTML=`<div class="toast-bad">${dmg===null?'Time\'s up!':'Not a valid word'}</div>`;
+    t.style.borderColor='var(--bord)';
+  }
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+/* ═══════════ TIMER ═══════════ */
+function startTimer(){startTimerWith(G.turnSecs);}
+
+function startTimerWith(secs){
+  clearInterval(G.timerInt);
+  G.timerLeft=secs;
+  G._thisTurnSecs=secs;
+  renderTimer();
+  G.timerInt=setInterval(()=>{
+    G.timerLeft--;
+    renderTimer();
+    if(G.timerLeft<=10&&G.timerLeft>0){G.timerLeft%2===0?SFX.tickdanger():SFX.tick();}
+    if(G.timerLeft<=0){clearInterval(G.timerInt);skipTurn();}
+  },1000);
+}
+
+function renderTimer(){
+  const el=$$('timer-disp');
+  const m=Math.floor(G.timerLeft/60),s=G.timerLeft%60;
+  el.textContent=m>0?`${m}:${s.toString().padStart(2,'0')}`:`${G.timerLeft}s`;
+  const pct=G.timerLeft/(G._thisTurnSecs||G.turnSecs);
+  if(pct>.5){el.className='timer-display ok';}
+  else if(pct>.25){el.className='timer-display warn';}
+  else{el.className='timer-display danger pulse';}
+}
+
+function stopTimer(){clearInterval(G.timerInt);}
+
+function skipTurn(){
+  if(G.busy)return;
+  SFX.skip();
+  const skippedName=G.cur===1?G.p1Name:G.p2Name;
+  $$('skip-title').textContent='Time\'s Up!';
+  $$('skip-sub').textContent=`${skippedName}'s turn is skipped.`;
+  const ov=$$('skip-overlay');ov.classList.add('show');
+  setTimeout(()=>{ov.classList.remove('show');nextTurn();},1800);
+}
+
+/* ═══════════ ABILITIES ═══════════ */
+function useAbility(p,ab){
+  if(G.cur!==p||G.ab[p][ab]||G.busy)return;
+  G.ab[p][ab]=true; // mark as used (one-time)
+  SFX.ability();
+  const opp=p===1?2:1;
+
+  switch(ab){
+    case 'renew':
+      // Refresh entire board with new letters
+      G.grid=genGrid();
+      G.powers=genTilePowers(G.grid.length);
+      G.chaosRotations=null;
+      G.invisActive=false;
+      $$('grid').classList.remove('invis-active');
+      enforceVowels();
+      G.sel=[];
+      renderGrid();renderWord();
+      showToast('RENEW',0,false,'Board refreshed!');
+      // override toast style
+      setTimeout(()=>{
+        const t=$$('toast');
+        $$('tb-word').textContent='🔄 RENEW';
+        $$('tb-body').innerHTML=`<div style="color:var(--ok);font-size:.9rem;margin-top:.2rem">Board Refreshed!</div>`;
+        t.style.borderColor='var(--ok)';
+        t.classList.add('show');
+        setTimeout(()=>t.classList.remove('show'),1400);
+      },0);
+      break;
+
+    case 'defend':
+      // Halve next incoming damage — applies to self
+      G.effects[p].defend=true;
+      showAbilityToast('🛡 DEFEND','Halves incoming damage');
+      break;
+
+    case 'curse':
+      // Queue: opponent's next turn, their letter scores are halved
+      G.pending[p].curse=true;
+      showAbilityToast('🔥 CURSE','Opponent\'s letters weakened next turn');
+      break;
+
+    case 'hold':
+      // Randomly lock 3-6 tiles on the shared grid for opponent's next turn
+      G.pending[p].hold=true;
+      showAbilityToast('🔒 HOLD','3–6 tiles will be locked next turn');
+      break;
+
+    case 'trap':
+      // Queue 3 hidden trap tiles for opponent
+      G.pending[p].trap=true;
+      showAbilityToast('⚡ TRAP','3 hidden traps set for next turn');
+      break;
+  }
+  updateAbilityButtons();
+  renderEffectsBar();
+}
+
+function showAbilityToast(name,desc){
+  const t=$$('toast');
+  $$('tb-word').textContent=name;
+  $$('tb-body').innerHTML=`<div style="color:var(--muted);font-size:.78rem;margin-top:.15rem">${desc}</div>`;
+  t.style.borderColor='var(--surf2)';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1300);
+}
+
+function applyPendingEffects(){
+  // Called at START of current player's turn
+  // Pending effects from OPPONENT that are queued get applied to current player
+  const opp=G.cur===1?2:1;
+  const ef=G.effects[G.cur];
+  const pend=G.pending[opp];
+
+  // Clear per-turn effects (curse/hold/traps only last 1 turn; defend persists until consumed)
+  ef.cursed=false;
+  ef.held=[];
+  ef.traps=[];
+  // ef.defend is intentionally NOT reset here — it stays until an attack consumes it
+
+  if(pend.curse){ef.cursed=true;pend.curse=false;}
+  if(pend.hold){
+    const count=3+Math.floor(Math.random()*4); // 3–6
+    const idxs=shuffle([...Array(25).keys()]).slice(0,count);
+    ef.held=idxs;
+    pend.hold=false;
+  }
+  if(pend.trap){
+    const idxs=shuffle([...Array(25).keys()]).slice(0,3);
+    ef.traps=idxs;
+    pend.trap=false;
+  }
+  // Defend doesn't need pending reset — it's instant on self
+}
+
+function consumeDefend(opp){
+  G.effects[opp].defend=false;
+}
+
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+
+/* ═════ DEBUG: press C to fill board with one of each power ═════ */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='c'&&e.key!=='C')return;
+  // only works during game screen
+  if(!$$('game-screen').classList.contains('active'))return;
+  const slots=shuffle([...Array(25).keys()]);
+  POWER_TYPES.forEach((t,idx)=>{
+    const slot=slots[idx];
+    G.powers[slot]={type:t,turns:2};
+  });
+  // clear remaining slots of powers so we don't have extras
+  slots.slice(POWER_TYPES.length).forEach(s=>{
+    // leave existing powers, only fill empty ones — actually don't touch
+  });
+  renderGrid();
+  showAbilityToast('🛠 DEBUG','One of each power placed!');
+});
+
+/* ═══════════ CELL CLICK ═══════════ */
+function onCell(i){
+  if(G.busy)return;
+  const ef=G.effects[G.cur];
+  if(ef.held.includes(i)){SFX.bad();return;} // blocked
+  const idx=G.sel.indexOf(i);
+  if(idx!==-1){if(idx===G.sel.length-1){G.sel.pop();SFX.drop();}}
+  else{G.sel.push(i);SFX.pick();}
+  renderGrid();renderWord();
+}
+
+function clearSel(){if(G.sel.length)SFX.clear();G.sel=[];renderGrid();renderWord();}
+
+/* ═══════════ SUBMIT WORD ═══════════ */
+async function submitWord(){
+  if(G.sel.length<2||G.busy)return;
+  G.busy=true;$$('submit-btn').disabled=true;
+  stopTimer();
+  const word=G.sel.map(i=>G.grid[i]).join('');
+  SFX.check();
+  const ok=await isValid(word);
+  if(!ok){
+    SFX.bad();showToast(word,0,false);
+    G.busy=false;$$('submit-btn').disabled=false;
+    startTimer();return;
+  }
+
+  const opp=G.cur===1?2:1;
+  const trapIndices=G.effects[opp].traps; // opponent's trap tiles
+
+  // If there are traps on the board, reveal ALL of them for 3 seconds first
+  if(trapIndices.length>0){
+    const cells=$$('grid').children;
+    // Reveal all trap tiles with a class
+    trapIndices.forEach(i=>{if(cells[i])cells[i].classList.add('trap-reveal');});
+    SFX.trapReveal&&SFX.trapReveal();
+    // After 3 seconds, resolve the attack
+    await new Promise(res=>setTimeout(res,3000));
+    trapIndices.forEach(i=>{if(cells[i])cells[i].classList.remove('trap-reveal');});
+  }
+
+  const{dmg,trapHits,defended,cursed}=calcDmg(word,G.sel);
+
+  // consume defend
+  if(defended)consumeDefend(opp);
+
+  // flash trap tiles that were actually hit
+  if(trapHits>0){
+    const cells=$$('grid').children;
+    G.sel.forEach(i=>{
+      if(trapIndices.includes(i)&&cells[i])cells[i].classList.add('trap-active');
+    });
+    setTimeout(()=>{G.sel.forEach(i=>{cells[i]?.classList.remove('trap-active');});},600);
+  }
+
+  // Collect powers from selected tiles BEFORE replacing them
+  const collectedPowers=[];
+  G.sel.forEach(i=>{if(G.powers[i])collectedPowers.push({idx:i,...G.powers[i]});});
+
+  const used=[...G.sel];
+  used.forEach(i=>repLetter(i));
+
+  const fxLog=[];
+  if(cursed)fxLog.push('🔥 Cursed');
+  if(defended)fxLog.push('🛡 Blocked');
+  if(trapHits)fxLog.push(`⚡×${trapHits}`);
+
+  // Apply collected tile powers
+  let bonusDmg=0,healAmt=0,boomVal=0;
+  let hasSmall=false,hasChaos=false;
+  for(const pw of collectedPowers){
+    if(pw.type==='xdmg'){
+      const v=4+Math.floor(Math.random()*5); // 4-8
+      bonusDmg+=v; fxLog.push(`⚔️+${v}`);
+    } else if(pw.type==='heal'){
+      const v=5+Math.floor(Math.random()*6); // 5-10
+      healAmt+=v; fxLog.push(`❤️+${v}`);
+    } else if(pw.type==='boom'){
+      const v=-5+Math.floor(Math.random()*16); // -5 to 10
+      boomVal+=v; fxLog.push(`💥${v>=0?'+':''}${v}`);
+    } else if(pw.type==='poison'){
+      const turns=2+Math.floor(Math.random()*2); // 2-3 turns
+      const poisonDmg=3;
+      G.poison[opp].push({dmg:poisonDmg,turns}); fxLog.push(`☠️${poisonDmg}×${turns}`);
+    } else if(pw.type==='small'){
+      hasSmall=true; fxLog.push('⭐ Tiny!');
+    } else if(pw.type==='chaos'){
+      hasChaos=true; fxLog.push('🍎 Chaos!');
+    } else if(pw.type==='time'){
+      G.pendingTimeDist=true; fxLog.push('⏰ Time!');
+    } else if(pw.type==='invis'){
+      G.pendingInvis=true; fxLog.push('✨ Invis!');
+    }
+  }
+  const totalDmg=Math.max(0,dmg+bonusDmg+boomVal);
+  const selfHeal=healAmt;
+  if(hasSmall)G.pendingSmall=true;
+  if(hasChaos)G.pendingChaos=true;
+
+  addLog(G.cur,word,totalDmg,fxLog);
+  if(G.cur===1){
+    G.p2HP-=totalDmg; if(selfHeal)G.p1HP=Math.min(G.maxHP,G.p1HP+selfHeal);
+    G.stats.p1w++;G.stats.p1d+=totalDmg;
+    if(totalDmg>0)flashHit(2);
+  } else {
+    G.p1HP-=totalDmg; if(selfHeal)G.p2HP=Math.min(G.maxHP,G.p2HP+selfHeal);
+    G.stats.p2w++;G.stats.p2d+=totalDmg;
+    if(totalDmg>0)flashHit(1);
+  }
+
+  let extra='';
+  if(cursed)extra+='🔥 Weakened ';if(defended)extra+='🛡 Halved ';if(trapHits)extra+=`⚡−${trapHits*5} `;
+  if(bonusDmg)extra+=`⚔️+${bonusDmg} `;if(boomVal)extra+=`💥${boomVal>=0?'+':''}${boomVal} `;
+  if(selfHeal)extra+=`❤️+${selfHeal} `;
+  SFX.ok(totalDmg);setTimeout(()=>SFX.hit(totalDmg),200);
+  showToast(word,totalDmg,true,extra.trim());
+
+  G.sel=[];
+  enforceVowels();
+  updateHP();
+  used.forEach(i=>{
+    const cells=$$('grid').children;
+    if(cells[i])cells[i].classList.add('replacing');
+    setTimeout(()=>cells[i]?.classList.remove('replacing'),450);
+  });
+  setTimeout(()=>SFX.sparkle(),220);
+
+  if(G.p1HP<=0||G.p2HP<=0){setTimeout(gameOver,800);G.busy=false;return;}
+  setTimeout(()=>{nextTurn();G.busy=false;},400);
+}
+
+/* ═══════════ TURN FLOW ═══════════ */
+function nextTurn(){
+  G.cur=G.cur===1?2:1;
+  G.sel=[];
+  // Tick down power tile lifetimes — expire after 0 turns
+  for(let i=0;i<G.powers.length;i++){
+    if(G.powers[i]){
+      G.powers[i].turns--;
+      if(G.powers[i].turns<=0) G.powers[i]=null;
+    }
+  }
+  applyPendingEffects();
+
+  // Apply poison damage to current player
+  let poisonTotal=0;
+  G.poison[G.cur]=G.poison[G.cur].filter(stack=>{
+    if(G.cur===1)G.p1HP-=stack.dmg; else G.p2HP-=stack.dmg;
+    poisonTotal+=stack.dmg;
+    stack.turns--;
+    return stack.turns>0;
+  });
+  if(poisonTotal>0){
+    updateHP();
+    flashHit(G.cur);
+    showAbilityToast(`☠️ Poison −${poisonTotal} HP`,'Poison damage applied!');
+    if(G.p1HP<=0||G.p2HP<=0){setTimeout(gameOver,600);return;}
+  }
+
+  // Apply small-letters effect to opponent's grid
+  const gridEl=$$('grid');
+  if(G.pendingSmall){
+    gridEl.classList.add('tiny-letters');
+    G.pendingSmall=false;
+    setTimeout(()=>gridEl.classList.remove('tiny-letters'),60000); // lasts 1 full turn
+  } else {
+    gridEl.classList.remove('tiny-letters');
+  }
+
+  // Apply chaos gravity
+  if(G.pendingChaos){
+    applyChaos();
+    G.pendingChaos=false;
+  } else {
+    G.chaosRotations=null;
+  }
+
+  SFX.turn();
+  updateTurnUI();
+  renderGrid();renderWord();
+  renderEffectsBar();
+  if(G.pendingTimeDist){
+    G.turnSecsOverride=Math.max(10,Math.floor(G.turnSecs/2));
+    G.pendingTimeDist=false;
+    showAbilityToast('⏰ Time Distorted!','Turn time halved!');
+    startTimerWith(G.turnSecsOverride);
+  } else {
+    G.turnSecsOverride=null;
+    startTimer();
+  }
+
+  // Apply invisibility — start fading cycle on opponent's grid tiles that have invis power
+  if(G.pendingInvis){
+    G.invisActive=true;
+    G.pendingInvis=false;
+    showAbilityToast('✨ Invisibility!','Letters fade in and out!');
+    setTimeout(activateInvisTiles, 80);
+  } else {
+    G.invisActive=false;
+    $$('grid').classList.remove('invis-active');
+  }
+}
+
+function activateInvisTiles(){
+  // Apply fade cycle to the whole grid
+  $$('grid').classList.add('invis-active');
+}
+
+function applyChaos(){
+  const rotations=['','rot-90','rot-180','rot-270','flip-h','flip-v'];
+  G.chaosRotations=G.grid.map(()=>rotations[Math.floor(Math.random()*rotations.length)]);
+}
+
+/* ═══════════ GAME OVER ═══════════ */
+function gameOver(){
+  stopTimer();
+  const w=G.p1HP<=0?2:1;
+  const wn=w===1?G.p1Name:G.p2Name,ln=w===1?G.p2Name:G.p1Name;
+  const go=$$('go-winner');go.textContent=wn;go.className=`go-winner p${w}`;
+  $$('go-sub').textContent=`has defeated ${ln}`;
+  const totalTurns=G.stats.p1w+G.stats.p2w;
+  const p1Acc=totalTurns>0?Math.round((G.stats.p1w/Math.max(1,G.stats.p1w+G.stats.p2w))*100)+'%':'—';
+  const avgDmg1=G.stats.p1w>0?Math.round(G.stats.p1d/G.stats.p1w):0;
+  const avgDmg2=G.stats.p2w>0?Math.round(G.stats.p2d/G.stats.p2w):0;
+  const p1FinalHP=Math.max(0,G.p1HP), p2FinalHP=Math.max(0,G.p2HP);
+  $$('go-stats').innerHTML=`
+    <div class="go-stats-cols">
+      <div class="go-col go-col-p1">
+        <div class="go-col-head">${w===1?'👑 ':''}${G.p1Name}</div>
+        <div class="go-stat"><div class="go-stat-label">Words Played</div><div class="go-stat-val">${G.stats.p1w}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${G.stats.p1d}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Avg / Word</div><div class="go-stat-val">${avgDmg1}</div></div>
+        <div class="go-stat"><div class="go-stat-label">HP Remaining</div><div class="go-stat-val">${p1FinalHP}</div></div>
+      </div>
+      <div class="go-col go-col-p2">
+        <div class="go-col-head">${w===2?'👑 ':''}${G.p2Name}</div>
+        <div class="go-stat"><div class="go-stat-label">Words Played</div><div class="go-stat-val">${G.stats.p2w}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${G.stats.p2d}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Avg / Word</div><div class="go-stat-val">${avgDmg2}</div></div>
+        <div class="go-stat"><div class="go-stat-label">HP Remaining</div><div class="go-stat-val">${p2FinalHP}</div></div>
+      </div>
+    </div>
+    <div class="go-footer">
+      <div><div class="go-footer-label">Total Turns</div><div class="go-footer-val">${totalTurns}</div></div>
+      <div><div class="go-footer-label">Most Damage</div><div class="go-footer-val" style="color:${G.stats.p1d>=G.stats.p2d?'var(--p1)':'var(--p2)'};">${G.stats.p1d>=G.stats.p2d?G.p1Name:G.p2Name}</div></div>
+      <div><div class="go-footer-label">Best Avg</div><div class="go-footer-val" style="color:${avgDmg1>=avgDmg2?'var(--p1)':'var(--p2)'};">${avgDmg1>=avgDmg2?G.p1Name:G.p2Name}</div></div>
+    </div>`;
+  SFX.win();
+  showScreen('gameover-screen');
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $$(id).classList.add('active');
+  if(id!=='game-screen'){
+    document.body.classList.remove('turn-p1','turn-p2');
+  }
+}
+
+/* ═══════════ INIT ═══════════ */
+
+// Timer pills
+document.querySelectorAll('.timer-pill').forEach(pill=>{
+  pill.addEventListener('click',()=>{
+    document.querySelectorAll('.timer-pill').forEach(p=>p.classList.remove('active'));
+    pill.classList.add('active');
+    turnSecs=parseInt(pill.dataset.sec);
+    SFX.step();
+  });
+});
+
+// HP stepper
+$$('hp-up').addEventListener('click',()=>{startHP=Math.min(500,startHP+10);$$('hp-val').textContent=startHP;SFX.step();});
+$$('hp-dn').addEventListener('click',()=>{startHP=Math.max(20,startHP-10);$$('hp-val').textContent=startHP;SFX.step();});
+
+// Ability buttons
+document.querySelectorAll('.ab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const p=parseInt(btn.dataset.p),ab=btn.dataset.ab;
+    useAbility(p,ab);
+  });
+});
+
+$$('start-btn').addEventListener('click',()=>{
+  const p1=$$('p1n').value.trim()||'Champion';
+  const p2=$$('p2n').value.trim()||'Challenger';
+  const _g=genGrid();
+  G={
+    grid:_g,
+    powers:genTilePowers(_g.length),
+    poison:{1:[],2:[]},pendingSmall:false,pendingChaos:false,pendingTimeDist:false,pendingInvis:false,invisActive:false,chaosRotations:null,turnSecsOverride:null,_thisTurnSecs:null,
+    p1Name:p1,p2Name:p2,
+    p1HP:startHP,p2HP:startHP,maxHP:startHP,
+    cur:1,sel:[],busy:false,
+    turnSecs:turnSecs,timerLeft:turnSecs,timerInt:null,
+    stats:{p1w:0,p1d:0,p2w:0,p2d:0},
+  poison:{1:[],2:[]},
+  pendingSmall:false,
+  pendingChaos:false,
+  pendingTimeDist:false,
+  pendingInvis:false,
+  invisActive:false,
+  chaosRotations:null,
+  turnSecsOverride:null,_thisTurnSecs:null,
+    ab:{1:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false},2:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false}},
+    effects:{1:{defend:false,cursed:false,held:[],traps:[]},2:{defend:false,cursed:false,held:[],traps:[]}},
+    pending:{1:{renew:false,defend:false,curse:false,hold:false,trap:false},2:{renew:false,defend:false,curse:false,hold:false,trap:false}}
+  };
+  $$('p1-name-disp').textContent=p1;
+  $$('p2-name-disp').textContent=p2;
+  $$('log-p1').innerHTML='';
+  $$('log-p2').innerHTML='';
+  $$('log-h-p1').textContent=p1;
+  $$('log-h-p2').textContent=p2;
+  updateHP();updateTurnUI();renderGrid();renderWord();
+  SFX.start();
+  showScreen('game-screen');
+  startTimer();
+});
+
+$$('clear-btn').addEventListener('click',clearSel);
+$$('submit-btn').addEventListener('click',submitWord);
+$$('play-again-btn').addEventListener('click',()=>{stopTimer();showScreen('start-screen');});
+</script>
+</body>
+</html>

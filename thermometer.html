@@ -1,646 +1,764 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>English Thermometer</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f8fafc;
-      margin: 0;
-      padding: 20px;
-      line-height: 1.6;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EFL Thermometer</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fdf6ec;
+    --card: #fff;
+    --accent: #ff6b35;
+    --accent2: #4ecdc4;
+    --accent3: #ffe66d;
+    --dark: #2d3436;
+    --shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--dark);
+    overflow-x: hidden;
+  }
 
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
+  /* SETUP SCREEN */
+  #setup {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100vh; padding: 24px;
+    animation: fadeIn .5s ease;
+  }
+  #setup h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  #setup .subtitle {
+    font-size: 1rem; color: #888;
+    margin-bottom: 32px; text-align: center;
+  }
+  .setup-card {
+    background: var(--card); border-radius: 24px;
+    padding: 32px; max-width: 720px; width: 100%;
+    box-shadow: var(--shadow);
+  }
+  .setup-card h2 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem; margin-bottom: 16px;
+    color: var(--dark);
+  }
+  .level-selector {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 32px;
+  }
+  .level-selector label { font-weight: 700; font-size: 1rem; }
+  .level-selector input[type=range] {
+    flex: 1; accent-color: var(--accent); height: 6px;
+  }
+  .level-display {
+    background: var(--accent); color: #fff;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem; width: 48px; height: 48px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
 
-    h1 {
-      color: #1e293b;
-      text-align: center;
-      font-size: 2.5rem;
-      margin-bottom: 2rem;
-    }
+  /* CEFR TABS */
+  .cefr-tabs {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .cefr-tab {
+    padding: 8px 20px; border-radius: 30px;
+    border: 2px solid #eee; background: #fff;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem; cursor: pointer;
+    transition: all .2s;
+  }
+  .cefr-tab[data-level="A1"] { border-color: #a8e6cf; color: #2d8f63; }
+  .cefr-tab[data-level="A1"].active { background: #a8e6cf; color: #145c3c; }
+  .cefr-tab[data-level="A2"] { border-color: #45c49a; color: #1a7a52; }
+  .cefr-tab[data-level="A2"].active { background: #45c49a; color: #fff; }
+  .cefr-tab[data-level="B1"] { border-color: #ffcc5c; color: #b87a00; }
+  .cefr-tab[data-level="B1"].active { background: #ffcc5c; color: #7a4e00; }
+  .cefr-tab[data-level="B2"] { border-color: #ff6f69; color: #c0392b; }
+  .cefr-tab[data-level="B2"].active { background: #ff6f69; color: #fff; }
 
-    h2 {
-      color: #334155;
-      font-size: 1.5rem;
-      margin: 1.5rem 0 1rem 0;
-    }
+  .cefr-description {
+    font-size: .85rem; color: #999; margin-bottom: 16px;
+    font-style: italic; min-height: 20px;
+  }
 
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e2e8f0;
-    }
+  .consequences-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px; margin-bottom: 24px;
+  }
+  .consequence-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 12px;
+    border: 2px solid #eee; cursor: pointer;
+    font-size: 0.85rem; font-weight: 600;
+    transition: all .2s;
+    user-select: none;
+  }
+  .consequence-item:hover { border-color: var(--accent2); background: #f0fdfb; }
+  .consequence-item.selected {
+    border-color: var(--accent2); background: #e0faf8;
+    color: #199f96;
+  }
+  .consequence-item .check {
+    width: 20px; height: 20px; border-radius: 6px;
+    border: 2px solid #ccc; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: .7rem;
+    transition: all .2s;
+  }
+  .consequence-item.selected .check {
+    background: var(--accent2); border-color: var(--accent2); color: #fff;
+  }
+  .selection-info {
+    text-align: center; font-size: .9rem; color: #888; margin-bottom: 20px;
+  }
+  .selection-info span { color: var(--accent); font-weight: 800; }
 
-    .thermometer-section {
-      text-align: center;
-    }
+  /* CEFR badge on challenge modal */
+  .cefr-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: .75rem; font-weight: 800; margin-bottom: 8px;
+    letter-spacing: .05em;
+  }
+  .cefr-badge.A1 { background: #a8e6cf; color: #1a6647; }
+  .cefr-badge.A2 { background: #45c49a; color: #fff; }
+  .cefr-badge.B1 { background: #ffcc5c; color: #7a4e00; }
+  .cefr-badge.B2 { background: #ff6f69; color: #fff; }
 
-    .thermometer-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 3rem;
-      margin: 2rem 0;
-    }
+  .start-btn {
+    width: 100%; padding: 18px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 16px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem; cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 4px 16px rgba(255,107,53,.4);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,107,53,.5); }
+  .start-btn:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; transform: none; }
 
-    .thermometer {
-      width: 60px;
-      height: 320px;
-      border-radius: 30px;
-      background: #e2e8f0;
-      position: relative;
-      overflow: hidden;
-      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
-    }
+  /* MAIN APP */
+  #app {
+    display: none; min-height: 100vh;
+    padding: 24px;
+    flex-direction: column; align-items: center;
+  }
+  #app.visible { display: flex; animation: fadeIn .5s ease; }
 
-    .fill {
-      position: absolute;
-      bottom: 0;
-      width: 100%;
-      height: 0%;
-      background: linear-gradient(to top, #ef4444, #f97316);
-      transition: height 0.3s ease-in-out;
-    }
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; max-width: 900px; margin-bottom: 24px;
+  }
+  .app-header h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.8rem; color: var(--accent);
+  }
+  .reset-btn {
+    padding: 8px 20px; background: #fff;
+    border: 2px solid #eee; border-radius: 12px;
+    font-family: 'Nunito', sans-serif; font-weight: 700;
+    font-size: .85rem; cursor: pointer;
+    transition: border-color .2s;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-    .thermometer-info {
-      text-align: left;
-    }
+  .main-layout {
+    display: flex; gap: 32px; align-items: flex-start;
+    width: 100%; max-width: 900px;
+    flex-wrap: wrap; justify-content: center;
+  }
 
-    .main-controls {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin: 1rem 0;
-      flex-wrap: wrap;
-    }
+  /* THERMOMETER */
+  .thermo-section {
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    flex-shrink: 0;
+  }
+  .thermo-wrap {
+    position: relative; width: 80px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .thermo-tube {
+    width: 36px; height: 300px;
+    background: #ffe0d5;
+    border-radius: 18px 18px 0 0;
+    border: 3px solid #ffb89f;
+    position: relative; overflow: hidden;
+    margin-bottom: -4px;
+  }
+  .thermo-fill {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, #ff3b3b, #ff6b35, #ffa500);
+    border-radius: 14px 14px 0 0;
+    transition: height .6s cubic-bezier(.34,1.56,.64,1);
+  }
+  .thermo-bulb {
+    width: 54px; height: 54px;
+    background: radial-gradient(circle at 35% 35%, #ff7f7f, #ff3b3b);
+    border-radius: 50%;
+    border: 3px solid #ffb89f;
+    box-shadow: 0 4px 12px rgba(255,59,59,.4);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fredoka One', cursive;
+    font-size: .8rem; color: #fff;
+    position: relative; z-index: 1;
+    transition: transform .3s;
+  }
+  .thermo-bulb.pulse { animation: bulbPulse .4s ease; }
 
-    .penalty-text {
-      font-size: 1.1rem;
-      color: #475569;
-      margin: 1rem 0;
-    }
+  .level-ticks {
+    position: absolute; right: -36px; top: 0; height: 300px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 8px 0;
+  }
+  .tick {
+    display: flex; align-items: center; gap: 4px;
+    font-size: .7rem; font-weight: 700; color: #aaa;
+    transition: color .3s;
+  }
+  .tick .line { width: 12px; height: 2px; background: #ddd; transition: background .3s; }
+  .tick.active { color: var(--accent); }
+  .tick.active .line { background: var(--accent); }
 
-    .stars-display {
-      font-size: 1.5rem;
-      color: #fbbf24;
-      margin: 1rem 0;
-      font-weight: bold;
-    }
+  .level-text {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem; color: #888; text-align: center;
+  }
+  .level-text span { color: var(--accent); font-size: 1.6rem; }
 
-    .level-display {
-      font-size: 1.2rem;
-      color: #059669;
-      margin: 0.5rem 0;
-      font-weight: bold;
-    }
+  /* BIG BUTTON */
+  .big-btn {
+    width: 160px; height: 160px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff8f65, var(--accent));
+    border: none; cursor: pointer;
+    box-shadow: 0 8px 32px rgba(255,107,53,.45), 0 0 0 0 rgba(255,107,53,.3);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px;
+    transition: transform .15s, box-shadow .15s;
+    flex-shrink: 0;
+  }
+  .big-btn:hover { transform: scale(1.05); }
+  .big-btn:active { transform: scale(.96); }
+  .big-btn .flag { font-size: 2.4rem; }
+  .big-btn .btn-label {
+    font-family: 'Fredoka One', cursive;
+    color: #fff; font-size: 1rem; line-height: 1.1; text-align: center;
+  }
+  .big-btn.shake { animation: shake .4s ease; }
 
-    button {
-      background: linear-gradient(135deg, #3b82f6, #1e40af);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 24px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin: 8px;
-    }
+  /* RIGHT PANEL */
+  .right-panel { flex: 1; min-width: 260px; max-width: 420px; }
+  .current-consequence {
+    background: var(--card); border-radius: 20px;
+    padding: 24px; box-shadow: var(--shadow);
+    margin-bottom: 20px; min-height: 120px;
+    display: flex; flex-direction: column; gap: 8px;
+    position: relative; overflow: hidden;
+  }
+  .current-consequence::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+  }
+  .consequence-label {
+    font-size: .8rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .1em; color: #aaa;
+  }
+  .consequence-text {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.25rem; color: var(--dark); line-height: 1.3;
+  }
+  .consequence-empty {
+    color: #ccc; font-size: 1rem; font-style: italic;
+    font-weight: 600; margin: auto 0;
+  }
+  .consequence-level-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #fff3ee; color: var(--accent);
+    padding: 4px 10px; border-radius: 20px;
+    font-weight: 800; font-size: .8rem;
+    width: fit-content;
+  }
 
-    button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
+  .history-panel {
+    background: var(--card); border-radius: 20px;
+    padding: 20px; box-shadow: var(--shadow);
+    max-height: 280px; overflow-y: auto;
+  }
+  .history-panel h3 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem; margin-bottom: 12px; color: #888;
+  }
+  .history-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid #f5f5f5;
+    font-size: .85rem; font-weight: 600;
+    animation: slideIn .3s ease;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-badge {
+    background: #fff3ee; color: var(--accent);
+    border-radius: 8px; padding: 2px 8px;
+    font-family: 'Fredoka One', cursive;
+    font-size: .85rem; flex-shrink: 0;
+  }
+  .history-empty { color: #ccc; font-style: italic; font-size: .9rem; }
 
-    button:active {
-      transform: translateY(0);
-    }
+  /* TOP METER */
+  .meter-bar {
+    width: 100%; max-width: 900px;
+    background: #ffe0d5; border-radius: 12px;
+    height: 14px; margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .meter-fill {
+    height: 100%; border-radius: 12px;
+    background: linear-gradient(90deg, #ffe66d, #ff6b35, #ff3b3b);
+    transition: width .6s cubic-bezier(.34,1.56,.64,1);
+  }
 
-    button.danger {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-    }
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 100;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 24px;
+    padding: 36px; max-width: 440px; width: 100%;
+    text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    animation: popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  .modal .emoji { font-size: 3.5rem; margin-bottom: 12px; }
+  .modal h2 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.8rem; color: var(--accent); margin-bottom: 8px;
+  }
+  .modal .challenge-text {
+    font-size: 1.1rem; font-weight: 700;
+    color: var(--dark); margin-bottom: 24px;
+    background: #fff3ee; padding: 16px; border-radius: 14px;
+    line-height: 1.4;
+  }
+  .modal-btn {
+    padding: 14px 40px;
+    background: var(--accent2); color: #fff;
+    border: none; border-radius: 14px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem; cursor: pointer;
+    transition: transform .15s;
+  }
+  .modal-btn:hover { transform: scale(1.04); }
 
-    button.success {
-      background: linear-gradient(135deg, #10b981, #059669);
-    }
+  /* COMPLETE MODAL */
+  .complete-modal { background: linear-gradient(135deg, #ffe66d, #ff6b35); }
+  .complete-modal h2 { color: #fff; }
+  .complete-modal .challenge-text { background: rgba(255,255,255,.4); }
 
-    button.warning {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-    }
-
-    button.star {
-      background: linear-gradient(135deg, #fbbf24, #f59e0b);
-      font-size: 18px;
-      padding: 12px 20px;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .timer-controls {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-      margin: 1rem 0;
-    }
-
-    .activity-timer {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #1e40af;
-      margin: 0 1rem;
-    }
-
-    .output {
-      background: #f1f5f9;
-      border-radius: 8px;
-      padding: 16px;
-      margin: 16px 0;
-      font-size: 16px;
-      color: #334155;
-      min-height: 50px;
-      white-space: pre-wrap;
-    }
-
-    .input-group {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: center;
-      margin: 1rem 0;
-    }
-
-    input {
-      padding: 10px;
-      border: 2px solid #e2e8f0;
-      border-radius: 6px;
-      font-size: 16px;
-      width: 200px;
-      text-align: center;
-    }
-
-    input:focus {
-      outline: none;
-      border-color: #3b82f6;
-    }
-
-    .difficulty-buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin: 1rem 0;
-    }
-
-    .difficulty-buttons button {
-      min-width: 120px;
-    }
-
-    .basic { background: linear-gradient(135deg, #10b981, #059669); }
-    .intermediate { background: linear-gradient(135deg, #f59e0b, #d97706); }
-    .advanced { background: linear-gradient(135deg, #ef4444, #dc2626); }
-
-    .word-requirement {
-      background: #dbeafe;
-      border: 1px solid #93c5fd;
-      border-radius: 8px;
-      padding: 12px;
-      margin: 1rem 0;
-      text-align: center;
-      color: #1e40af;
-      font-weight: 500;
-    }
-
-    .separator {
-      height: 1px;
-      background: #e2e8f0;
-      margin: 2rem 0;
-    }
-
-    @media (max-width: 768px) {
-      .thermometer-container {
-        flex-direction: column;
-        gap: 1.5rem;
-      }
-      
-      .difficulty-buttons {
-        flex-direction: column;
-        align-items: center;
-      }
-      
-      .timer-controls {
-        flex-wrap: wrap;
-      }
-
-      .main-controls {
-        justify-content: center;
-      }
-    }
-  </style>
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
+  @keyframes bulbPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+  @keyframes shake {
+    0%,100% { transform: translateX(0) rotate(0); }
+    20% { transform: translateX(-8px) rotate(-4deg); }
+    40% { transform: translateX(8px) rotate(4deg); }
+    60% { transform: translateX(-5px) rotate(-2deg); }
+    80% { transform: translateX(5px) rotate(2deg); }
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>English-Only Thermometer</h1>
 
-    <!-- Main Thermometer Section -->
-    <div class="card thermometer-section">
-      <div class="thermometer-container">
-        <div class="thermometer">
-          <div class="fill" id="fill"></div>
+<!-- SETUP -->
+<div id="setup">
+  <h1>🌡️ EFL Thermometer</h1>
+  <p class="subtitle">Speak English or the heat goes up! 🇧🇷➡️🇺🇸</p>
+  <div class="setup-card">
+    <h2>⚙️ How many levels?</h2>
+    <div class="level-selector">
+      <label>Levels:</label>
+      <input type="range" id="levelRange" min="1" max="10" value="5" oninput="updateLevelDisplay()">
+      <div class="level-display" id="levelDisplay">5</div>
+    </div>
+
+    <h2>🎓 Class CEFR level</h2>
+    <div class="cefr-tabs" id="cefrTabs">
+      <button class="cefr-tab active" data-level="A1" onclick="switchLevel('A1')">A1 — Beginner</button>
+      <button class="cefr-tab" data-level="A2" onclick="switchLevel('A2')">A2 — Elementary</button>
+      <button class="cefr-tab" data-level="B1" onclick="switchLevel('B1')">B1 — Intermediate</button>
+      <button class="cefr-tab" data-level="B2" onclick="switchLevel('B2')">B2 — Upper-Intermediate</button>
+    </div>
+    <p class="cefr-description" id="cefrDesc">Short, simple tasks — greetings, colours, numbers, basic questions.</p>
+    <h2>🎲 Pick exactly 10 challenges</h2>
+    <div class="selection-info">Selected: <span id="selCount">0</span> / 10</div>
+    <div class="consequences-grid" id="consequencesGrid"></div>
+    <button class="start-btn" id="startBtn" onclick="startApp()" disabled>🚀 Start Class!</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="app-header">
+    <h1>🌡️ EFL Thermometer</h1>
+    <button class="reset-btn" onclick="goBack()">← New Setup</button>
+  </div>
+  <div class="meter-bar"><div class="meter-fill" id="meterFill" style="width:0%"></div></div>
+  <div class="main-layout">
+    <div class="thermo-section">
+      <div class="thermo-wrap">
+        <div class="thermo-tube">
+          <div class="thermo-fill" id="thermoFill" style="height:0%"></div>
         </div>
-        <div class="thermometer-info">
-          <div class="main-controls">
-            <button onclick="increment()" class="danger">Portuguese Used 😬</button>
-            <button onclick="awardStar()" class="star">⭐ Award Star</button>
-          </div>
-          <div class="level-display" id="levelDisplay">Level: 0</div>
-          <div class="stars-display" id="starsDisplay">⭐ Stars: 0</div>
-          <div class="penalty-text" id="penaltyOutput">Status: Safe Zone</div>
-        </div>
+        <div class="thermo-bulb" id="thermoBulb">🌡️</div>
+        <div class="level-ticks" id="levelTicks"></div>
       </div>
+      <div class="level-text">Level <span id="currentLevelDisplay">0</span> / <span id="maxLevelDisplay">5</span></div>
+      <button class="big-btn" id="mainBtn" onclick="addLevel()">
+        <span class="flag">🇧🇷</span>
+        <span class="btn-label">Portuguese<br>spoken!</span>
+      </button>
     </div>
 
-    <div class="separator"></div>
-
-    <!-- Mini Oral Mission -->
-    <div class="card">
-      <h2>🎯 Mini Oral Mission</h2>
-      <button onclick="getRandomTopic()">Get Random Topic</button>
-      <div class="timer-controls">
-        <button onclick="startOralTimer()" class="success">▶️ Play</button>
-        <button onclick="pauseOralTimer()" class="warning">⏸️ Pause</button>
-        <button onclick="resetOralTimer()">🔄 Reset</button>
-        <div class="activity-timer" id="oralTimer">1:00</div>
+    <div class="right-panel">
+      <div class="current-consequence" id="currentConsequence">
+        <span class="consequence-empty">No challenge yet.<br>Keep speaking English! 💪</span>
       </div>
-      <div class="output" id="topicOutput"></div>
-    </div>
-
-    <!-- Partner Interview -->
-    <div class="card">
-      <h2>🗣️ Partner Interview Under Pressure</h2>
-      <button onclick="getRandomQuestions()">Get Interview Questions</button>
-      <div class="timer-controls">
-        <button onclick="startInterviewTimer()" class="success">▶️ Play</button>
-        <button onclick="pauseInterviewTimer()" class="warning">⏸️ Pause</button>
-        <button onclick="resetInterviewTimer()">🔄 Reset</button>
-        <div class="activity-timer" id="interviewTimer">2:00</div>
+      <div class="history-panel">
+        <h3>📋 Challenge History</h3>
+        <div id="historyList"><p class="history-empty">No challenges yet — great job!</p></div>
       </div>
-      <div class="output" id="questionsOutput"></div>
-    </div>
-
-    <!-- Creative Paragraph Section -->
-    <div class="card">
-      <h2>📝 Use 3 Words in a Creative Paragraph</h2>
-      <div class="word-requirement">
-        📏 Your paragraph should contain exactly 50 words
-      </div>
-      <div class="difficulty-buttons">
-        <button onclick="getWords('basic')" class="basic">Basic (A1)</button>
-        <button onclick="getWords('intermediate')" class="intermediate">Intermediate (A2-B1)</button>
-        <button onclick="getWords('advanced')" class="advanced">Advanced (B2)</button>
-      </div>
-      <div class="output" id="wordsOutput"></div>
-    </div>
-
-    <!-- Random Student Picker -->
-    <div class="card">
-      <h2>🎲 Random Student Picker</h2>
-      <div class="input-group">
-        <input type="number" id="studentCount" min="1" placeholder="Number of students">
-        <button onclick="pickStudent()">Pick Student</button>
-      </div>
-      <div class="output" id="studentOutput"></div>
     </div>
   </div>
+</div>
 
-  <script>
-    // Main thermometer variables
-    let portugueseCount = 0;
-    let stars = 0;
-    const fill = document.getElementById('fill');
-    const penaltyOutput = document.getElementById('penaltyOutput');
-    const starsDisplay = document.getElementById('starsDisplay');
-    const levelDisplay = document.getElementById('levelDisplay');
-    
-    // Activity timer variables
-    let oralTimer;
-    let oralMinutes = 1;
-    let oralSeconds = 0;
-    let oralRunning = false;
-    
-    let interviewTimer;
-    let interviewMinutes = 2;
-    let interviewSeconds = 0;
-    let interviewRunning = false;
+<!-- CHALLENGE MODAL -->
+<div class="modal-overlay" id="challengeModal">
+  <div class="modal">
+    <div class="emoji">😬</div>
+    <h2>Challenge Time!</h2>
+    <p class="consequence-label" id="modalLevel"></p>
+    <div class="challenge-text" id="modalChallenge"></div>
+    <button class="modal-btn" onclick="closeModal()">Got it! 👍</button>
+  </div>
+</div>
 
-    const penalties = [
-      "Teacher's Choice Words",
-      "Extra Homework Challenge",
-      "Mini Oral Mission (1 min)",
-      "No Personal Talk Time",
-      "Partner Interview Under Pressure",
-      "Use 3 Words in a Creative Paragraph",
-      "No Game, All Gain"
-    ];
+<!-- COMPLETE MODAL -->
+<div class="modal-overlay" id="completeModal">
+  <div class="modal complete-modal">
+    <div class="emoji">😔</div>
+    <h2>Oops… No Game Today</h2>
+    <div class="challenge-text">The thermometer hit max because too much Portuguese slipped in. No game this time — but that's okay! Every mistake is a step forward. Let's make a deal: next class, we speak English and we play. You've got this! 💪🏆</div>
+    <button class="modal-btn" onclick="closeCompleteModal()">We'll do better next time! 🌟</button>
+  </div>
+</div>
 
-    // Word pools for creative paragraph
-    const basicWords = [
-      "cat", "dog", "house", "car", "book", "water", "food", "happy", "sad", "big",
-      "small", "red", "blue", "green", "run", "walk", "eat", "drink", "sleep", "work",
-      "play", "love", "like", "good", "bad", "hot", "cold", "new", "old", "young",
-      "family", "friend", "school", "home", "day", "night", "sun", "moon", "tree", "flower",
-      "money", "time", "year", "week", "month", "today", "tomorrow", "yesterday", "morning", "evening",
-      "mother", "father", "sister", "brother", "child", "baby", "man", "woman", "boy", "girl",
-      "table", "chair", "bed", "door", "window", "phone", "computer", "television", "music", "movie",
-      "game", "sport", "ball", "bike", "bus", "train", "plane", "boat", "street", "city",
-      "country", "world", "sea", "river", "mountain", "park", "shop", "store", "market", "hospital",
-      "doctor", "teacher", "student", "job", "office", "kitchen", "bathroom", "garden", "animal", "bird"
-    ];
+<script>
+const CEFR_DATA = {
+  A1: {
+    desc: "Short, simple tasks — greetings, colours, numbers, basic questions.",
+    tasks: [
+      { emoji: "👋", text: "Say hello and goodbye using 3 different greetings in English" },
+      { emoji: "🎨", text: "Name 8 colours and point to something that colour in the room" },
+      { emoji: "🔢", text: "Count from 1 to 20 out loud, then count backwards from 10" },
+      { emoji: "🏠", text: "Name 5 rooms in a house and one object you find in each" },
+      { emoji: "👨‍👩‍👧", text: "Introduce your family using 'This is my…' and simple adjectives" },
+      { emoji: "🐕", text: "Name 8 animals and say where each one lives (farm, sea, jungle...)" },
+      { emoji: "📅", text: "Say all the days of the week and the months of the year in order" },
+      { emoji: "🌤️", text: "Describe today's weather using at least 3 English weather words" },
+      { emoji: "🍎", text: "Name 10 fruits or vegetables and say which ones you like" },
+      { emoji: "👕", text: "Describe what you're wearing today in simple English sentences" },
+      { emoji: "🕐", text: "Say the time on 5 different clocks shown by the teacher" },
+      { emoji: "🏫", text: "Name 8 objects in the classroom in English" },
+      { emoji: "❓", text: "Answer 'What's your name?', 'How old are you?' and 'Where are you from?'" },
+      { emoji: "🤸", text: "Name 5 body parts and mime an action using each one" },
+      { emoji: "🛒", text: "Say the price of 5 classroom objects as if you're in a shop" },
+      { emoji: "🍽️", text: "Name your 3 favourite foods and say 'I like…' or 'I don't like…'" },
+      { emoji: "🚗", text: "Name 6 means of transport in English" },
+      { emoji: "🔵", text: "Describe 3 objects using colour + shape + size (e.g. 'a big red circle')" },
+      { emoji: "📍", text: "Say where things are using: on, in, under, next to, behind" },
+      { emoji: "😊", text: "Express 5 emotions in English and make a face for each one" },
+      { emoji: "🌍", text: "Name 6 countries and say 'I'm from…' as if you were from each one" },
+      { emoji: "🔤", text: "Spell your full name, your best friend's name, and your street name" },
+      { emoji: "🎒", text: "Name everything inside your school bag in English" },
+      { emoji: "⬆️", text: "Use 'bigger', 'smaller', 'taller', 'shorter' to compare 5 pairs of things" },
+      { emoji: "🍕", text: "Order a meal at a restaurant using 'I'd like…' and 'Can I have…?'" },
+    ]
+  },
+  A2: {
+    desc: "Simple descriptions and familiar topics — routines, preferences, basic stories.",
+    tasks: [
+      { emoji: "⏰", text: "Describe your morning routine using at least 6 verbs in English" },
+      { emoji: "📸", text: "Pick a photo on your phone and describe who is in it and what they're doing" },
+      { emoji: "🤝", text: "Introduce yourself as if meeting a new English-speaking friend — name, age, city, hobbies" },
+      { emoji: "🛒", text: "Role-play buying 3 items in a shop, asking for the price and paying" },
+      { emoji: "🏖️", text: "Describe your last holiday or a holiday you'd love to take" },
+      { emoji: "🎵", text: "Name your favourite singer and say 3 things about them in English" },
+      { emoji: "👨‍👩‍👧", text: "Describe a member of your family — what they look like and what they do" },
+      { emoji: "🌦️", text: "Compare the weather today with yesterday using past and present tense" },
+      { emoji: "🎬", text: "Name a film you've seen and say what it's about in 3 sentences" },
+      { emoji: "🗺️", text: "Give simple directions from school to the nearest café or shop" },
+      { emoji: "🍳", text: "List the ingredients for a simple meal and explain briefly how to make it" },
+      { emoji: "📖", text: "Read 5 sentences from a simple English text aloud, clearly and slowly" },
+      { emoji: "🏆", text: "Say 2 things you're good at and 2 things you'd like to improve" },
+      { emoji: "🤸", text: "Describe your favourite sport or hobby and how often you do it" },
+      { emoji: "📞", text: "Role-play a phone call making a reservation at a restaurant" },
+      { emoji: "🌟", text: "Share one thing that happened to you recently using past tense" },
+      { emoji: "🎂", text: "Describe what you did on your last birthday" },
+      { emoji: "🧳", text: "Pack a suitcase for a beach trip — say each item out loud in English" },
+      { emoji: "💬", text: "Have a 1-minute small-talk conversation with a classmate in English" },
+      { emoji: "✉️", text: "Dictate a short message to a friend cancelling plans — in English" },
+      { emoji: "🌆", text: "Describe your neighbourhood using 'there is / there are'" },
+      { emoji: "🎯", text: "Say 3 things you did last weekend using simple past tense" },
+      { emoji: "🌍", text: "Name a country, say where it is, and share one fact about it" },
+      { emoji: "🐾", text: "Describe your pet (or dream pet) — appearance, personality, habits" },
+      { emoji: "📺", text: "Name your favourite TV show and say what it's about in English" },
+    ]
+  },
+  B1: {
+    desc: "Extended interaction on familiar topics — opinions, narratives, explanations.",
+    tasks: [
+      { emoji: "🎤", text: "Give a 1-minute speech on a topic the class chooses — no notes!" },
+      { emoji: "🎙️", text: "Interview a classmate for 2 minutes about their dream job" },
+      { emoji: "🧠", text: "Explain how something works (e.g. recycling, voting, the internet) in English" },
+      { emoji: "🗣️", text: "Share your opinion on social media: is it good or bad for teenagers?" },
+      { emoji: "📰", text: "Summarise a piece of news you read or heard recently — in English" },
+      { emoji: "🎭", text: "Act out a scene at a job interview with a classmate — in English only" },
+      { emoji: "🧩", text: "Explain what 3 common English idioms mean and use each in a sentence" },
+      { emoji: "🌍", text: "Describe a cultural difference between Brazil and an English-speaking country" },
+      { emoji: "🎬", text: "Describe a film's plot in English without saying the title — class must guess" },
+      { emoji: "📝", text: "Write and read aloud 5 sentences giving advice to a younger student" },
+      { emoji: "🔮", text: "Make 3 predictions about the future using 'will' and 'might'" },
+      { emoji: "🧳", text: "Plan a 3-day trip to an English-speaking city — itinerary and reasons" },
+      { emoji: "💬", text: "Retell a story or book you know well in English — at least 1 minute" },
+      { emoji: "🤔", text: "Answer 5 rapid-fire questions in English from the teacher without hesitating" },
+      { emoji: "📞", text: "Role-play a phone call dealing with a problem (wrong order, lost item, etc.)" },
+      { emoji: "🏆", text: "Describe the best day of your life in English with details and emotions" },
+      { emoji: "🌟", text: "Talk about a person who inspires you and explain why, in English" },
+      { emoji: "🎯", text: "Give 3 reasons why learning English is important — be persuasive!" },
+      { emoji: "🤣", text: "Tell a funny story that actually happened to you — in English" },
+      { emoji: "🚀", text: "You've just returned from another country — describe what surprised you most" },
+      { emoji: "🌈", text: "Compare life in a big city vs. a small town — give pros and cons" },
+      { emoji: "🏠", text: "Describe your dream home — where, what it looks like, why you'd love it" },
+      { emoji: "🧑‍🍳", text: "Explain how to cook your favourite dish step by step in English" },
+      { emoji: "📻", text: "Be a radio presenter — deliver a 1-minute news bulletin in English" },
+      { emoji: "🎪", text: "Perform a 45-second commercial for a made-up product — make it convincing!" },
+    ]
+  },
+  B2: {
+    desc: "Complex ideas, abstract topics, structured arguments — near-fluent interaction.",
+    tasks: [
+      { emoji: "🧠", text: "Give a 2-minute TED-style talk defending a position on any current topic" },
+      { emoji: "⚖️", text: "Debate both sides of a controversial issue (e.g. AI in schools) for 1 minute each" },
+      { emoji: "📊", text: "Explain a complex concept (e.g. inflation, climate policy) to the class in simple English" },
+      { emoji: "🎭", text: "Improvise a 2-minute scene with a partner based on a situation the class gives you" },
+      { emoji: "📝", text: "Dictate a well-structured short paragraph giving advice on a modern dilemma" },
+      { emoji: "🌍", text: "Analyse a cultural stereotype about Brazil and challenge or confirm it with evidence" },
+      { emoji: "🔍", text: "Explain the difference between 3 confusable English words and use each in context" },
+      { emoji: "💡", text: "Pitch a startup idea to the class in 90 seconds — product, market, and value" },
+      { emoji: "🎬", text: "Give a film critique — theme, characters, message — in 2 minutes" },
+      { emoji: "🤝", text: "Role-play a salary negotiation with a classmate — be professional and persuasive" },
+      { emoji: "📰", text: "React to a news headline the teacher shows — agree, disagree, and why" },
+      { emoji: "🧩", text: "Explain 3 advanced idioms or phrasal verbs and demonstrate them in mini-dialogues" },
+      { emoji: "🗳️", text: "Make a 90-second speech persuading the class to vote for a policy you believe in" },
+      { emoji: "🤔", text: "Speculate about the consequences of a hypothetical event using 'would/could/might'" },
+      { emoji: "🌐", text: "Compare how a global issue affects Brazil vs. another country — give your view" },
+      { emoji: "📖", text: "Read a short paragraph from a complex text aloud, then paraphrase it in your own words" },
+      { emoji: "🤖", text: "Argue for or against artificial intelligence replacing human jobs — 2 minutes" },
+      { emoji: "✈️", text: "Describe a cross-cultural misunderstanding (real or imagined) and what could have been done differently" },
+      { emoji: "🎙️", text: "Interview a classmate as if they were a famous expert in their dream field" },
+      { emoji: "🏆", text: "Give a 90-second acceptance speech for a fictional award, with humour and gratitude" },
+      { emoji: "🔮", text: "Speculate about what daily life will look like in 50 years — justify your predictions" },
+      { emoji: "🧑‍⚖️", text: "Present one side of an ethical dilemma (e.g. privacy vs. security) and defend it" },
+      { emoji: "📣", text: "Give constructive feedback to a classmate's presentation — diplomatically and in English" },
+      { emoji: "🌱", text: "Propose a realistic solution to an environmental problem and explain the trade-offs" },
+      { emoji: "🎪", text: "Improvise a 60-second product commercial using at least 3 persuasive language techniques" },
+    ]
+  }
+};
 
-    const intermediateWords = [
-      "adventure", "amazing", "beautiful", "challenge", "creative", "decision", "education", "experience", "fantastic", "generous",
-      "important", "incredible", "journey", "knowledge", "language", "memory", "natural", "opportunity", "perfect", "question",
-      "relationship", "situation", "technology", "understand", "vacation", "wonderful", "yesterday", "celebrate", "community", "culture",
-      "develop", "environment", "favorite", "government", "healthy", "imagine", "interesting", "kitchen", "library", "magazine",
-      "necessary", "organize", "popular", "quality", "restaurant", "society", "traditional", "university", "vegetable", "weather",
-      "accident", "business", "comfortable", "dangerous", "electricity", "furniture", "grocery", "holiday", "industry", "jewelry",
-      "landscape", "medicine", "neighborhood", "operation", "passenger", "quantity", "research", "schedule", "temperature", "umbrella",
-      "vacation", "website", "exercise", "yogurt", "zone", "apartment", "breakfast", "calendar", "dictionary", "envelope",
-      "factory", "garage", "highway", "internet", "jacket", "keyboard", "laundry", "microwave", "notebook", "ocean",
-      "package", "quarter", "recipe", "sandwich", "ticket", "uniform", "village", "weekend", "x-ray", "yellow"
-    ];
+const CEFR_DESCS = {
+  A1: "Short, simple tasks — greetings, colours, numbers, basic questions.",
+  A2: "Simple descriptions and familiar topics — routines, preferences, basic stories.",
+  B1: "Extended interaction on familiar topics — opinions, narratives, explanations.",
+  B2: "Complex ideas, abstract topics, structured arguments — near-fluent interaction."
+};
 
-    const advancedWords = [
-      "accomplish", "beneficial", "comprehensive", "demonstrate", "elaborate", "fundamental", "hypothesis", "inevitable", "justify", "knowledge",
-      "legitimate", "magnificent", "negotiate", "objective", "perspective", "questionnaire", "remarkable", "sophisticated", "tremendous", "unprecedented",
-      "versatile", "widespread", "extraordinary", "yield", "zealous", "abstract", "bureaucracy", "controversy", "dilemma", "entrepreneur",
-      "fluctuate", "genuine", "hierarchy", "implement", "jurisdiction", "kinetic", "legislation", "methodology", "narrative", "obsolete",
-      "paradigm", "qualitative", "resilience", "substantial", "theoretical", "ubiquitous", "vindicate", "welfare", "xenophobia", "yearning",
-      "zealot", "ambiguous", "benevolent", "conscientious", "deteriorate", "empirical", "facilitate", "gregarious", "homogeneous", "indigenous",
-      "jeopardize", "kinship", "lucrative", "meticulous", "negligible", "optimistic", "pragmatic", "quintessential", "reciprocal", "scrutinize",
-      "tangible", "unanimous", "vulnerable", "wholesome", "xenial", "youthful", "zestful", "articulate", "brevity", "cognitive",
-      "deliberate", "eloquent", "feasible", "gratitude", "harmonious", "integrity", "judicious", "kinetic", "lucid", "magnanimous",
-      "nuanced", "optimum", "prudent", "quandary", "rational", "serene", "tactful", "unbiased", "vivacious", "wisdom"
-    ];
+let selectedConsequences = [];
+let numLevels = 5;
+let currentLevel = 0;
+let history = [];
+let assignedChallenges = [];
+let currentCEFR = 'A1';
+let activeTasks = [];
 
-    // Topics for oral mission
-    const topics = [
-      "Your favorite food", "What you did last weekend", "A hobby you enjoy", "Your dream vacation",
-      "Describe your pet", "A movie you like", "Something you're good at", "Your best friend",
-      "A sport you like", "Your favorite app", "A holiday you love", "A game you like to play",
-      "Something funny that happened to you", "Describe your bedroom", "What's in your backpack",
-      "Your favorite teacher", "A subject you like at school", "Something you bought recently",
-      "Your favorite season", "A place you'd like to visit", "Your weekend routine",
-      "What you ate for breakfast", "Describe your school", "Your favorite song",
-      "A language you'd like to learn", "Your favorite animal", "A weird dream you had",
-      "What you usually do after school", "A TV show you watch", "Something you're afraid of",
-      "A tradition in your family", "What makes you laugh", "A time you were surprised",
-      "Your favorite color and why", "A book you've read", "What you would do with $1,000",
-      "Your ideal weekend", "The best gift you've received", "Your favorite drink",
-      "Something you want to learn", "What you'd do on a rainy day", "A skill you wish you had",
-      "What makes you happy", "Describe your ideal house", "A memory from childhood",
-      "Your morning routine", "A celebrity you admire", "The last thing you watched",
-      "Your favorite dessert", "Something you collect", "A job you'd like to try"
-    ];
+function updateLevelDisplay() {
+  numLevels = +document.getElementById('levelRange').value;
+  document.getElementById('levelDisplay').textContent = numLevels;
+}
 
-    // Interview questions
-    const interviewQuestions = [
-      "What's your favorite food?", "What do you like to do in your free time?", "Tell me about your weekend.",
-      "What's your favorite movie?", "Do you have any pets?", "What is your favorite subject in school?",
-      "What's something you're good at?", "What's your favorite game or app?", "What makes you laugh?",
-      "Who is your best friend and why?", "What did you eat today?", "What is your favorite holiday?",
-      "Describe your dream house.", "Do you prefer cats or dogs?", "What country would you like to visit?",
-      "What's your favorite sport?", "What's your favorite drink?", "Do you like reading books?",
-      "What's your favorite color and why?", "Do you play an instrument?", "What's your favorite song?",
-      "What's the best day of the week?", "What do you do after school?", "Do you enjoy drawing or painting?",
-      "What's a fun memory from school?", "What's your favorite cartoon?", "What's your favorite season?",
-      "What's something you've learned recently?", "What's your favorite app?", "What do you do on weekends?",
-      "What's your favorite snack?", "Do you like spicy food?", "What's your morning routine?",
-      "What do you do when you're bored?", "What's your favorite toy/game from childhood?",
-      "What's your favorite activity with friends?", "Describe your perfect day.", "Do you like to travel?",
-      "What do you usually eat for lunch?", "What's your favorite thing to wear?", "What language would you like to speak?",
-      "What's something that makes you nervous?", "Who do you admire?", "What makes a good friend?",
-      "What's your favorite dessert?", "What do you want to be in the future?", "Have you ever tried something new?",
-      "What's something that makes you happy?", "Describe your bedroom.", "What are you afraid of?"
-    ];
+function switchLevel(level) {
+  currentCEFR = level;
+  selectedConsequences = [];
+  document.querySelectorAll('.cefr-tab').forEach(t => t.classList.toggle('active', t.dataset.level === level));
+  document.getElementById('cefrDesc').textContent = CEFR_DESCS[level];
+  document.getElementById('selCount').textContent = 0;
+  document.getElementById('startBtn').disabled = true;
+  renderConsequencesGrid();
+}
 
-    // Main thermometer functions
-    function updateThermometer() {
-      let percent = Math.min((portugueseCount / (penalties.length * 2)) * 100, 100);
-      fill.style.height = percent + "%";
-    }
+function renderConsequencesGrid() {
+  const grid = document.getElementById('consequencesGrid');
+  grid.innerHTML = '';
+  activeTasks = CEFR_DATA[currentCEFR].tasks;
+  activeTasks.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'consequence-item';
+    div.dataset.index = i;
+    div.innerHTML = `<div class="check">✓</div><span>${c.emoji} ${c.text}</span>`;
+    div.onclick = () => toggleConsequence(i, div);
+    grid.appendChild(div);
+  });
+}
 
-    function updateDisplay() {
-      // Update level display
-      levelDisplay.innerText = `Level: ${portugueseCount}`;
-      
-      // Update stars display
-      starsDisplay.innerText = `⭐ Stars: ${stars}`;
-      
-      // Update penalty/status text
-      if (portugueseCount <= 0) {
-        penaltyOutput.innerText = "Status: Safe Zone ✅";
-      } else if (portugueseCount % 2 === 0 && portugueseCount !== 0) {
-        const penaltyIndex = (portugueseCount / 2) - 1;
-        if (penaltyIndex < penalties.length) {
-          penaltyOutput.innerText = `Penalty: ${penalties[penaltyIndex]}`;
-        } else {
-          penaltyOutput.innerText = `Penalty: 🚨 Maximum reached. Consequences continue!`;
-        }
-      } else {
-        penaltyOutput.innerText = `Portuguese Count: ${portugueseCount}`;
-      }
-    }
+function toggleConsequence(i, el) {
+  const idx = selectedConsequences.indexOf(i);
+  if (idx > -1) {
+    selectedConsequences.splice(idx, 1);
+    el.classList.remove('selected');
+  } else {
+    if (selectedConsequences.length >= 10) return;
+    selectedConsequences.push(i);
+    el.classList.add('selected');
+  }
+  document.getElementById('selCount').textContent = selectedConsequences.length;
+  document.getElementById('startBtn').disabled = selectedConsequences.length !== 10;
+}
 
-    function increment() {
-      // Always increase Portuguese count (fills thermometer)
-      portugueseCount++;
-      
-      // Remove a star if available (can't go negative)
-      if (stars > 0) {
-        stars--;
-        penaltyOutput.innerText = "⭐ Star removed + Level increased for Portuguese use!";
-      } else {
-        penaltyOutput.innerText = "Level increased for Portuguese use!";
-      }
-      
-      updateThermometer();
-      updateDisplay();
-      
-      // Reset message after 3 seconds
-      setTimeout(() => {
-        updateDisplay();
-      }, 3000);
-    }
+function startApp() {
+  numLevels = +document.getElementById('levelRange').value;
+  assignedChallenges = [...selectedConsequences].sort(() => Math.random() - .5).slice(0, numLevels);
+  currentLevel = 0;
+  history = [];
 
-    function awardStar() {
-      stars++;
-      penaltyOutput.innerText = "🌟 Star awarded by teacher!";
-      updateDisplay();
-      
-      // Reset message after 3 seconds
-      setTimeout(() => {
-        updateDisplay();
-      }, 3000);
-    }
+  document.getElementById('setup').style.display = 'none';
+  const app = document.getElementById('app');
+  app.classList.add('visible');
+  document.getElementById('maxLevelDisplay').textContent = numLevels;
+  renderTicks();
+  updateUI();
+}
 
-    // Oral timer functions
-    function startOralTimer() {
-      if (!oralRunning) {
-        oralRunning = true;
-        oralTimer = setInterval(() => {
-          if (oralSeconds === 0) {
-            if (oralMinutes === 0) {
-              pauseOralTimer();
-              alert("Time's up for Oral Mission!");
-              return;
-            } else {
-              oralMinutes--;
-              oralSeconds = 59;
-            }
-          } else {
-            oralSeconds--;
-          }
-          updateOralTimerDisplay();
-        }, 1000);
-      }
-    }
+function renderTicks() {
+  const container = document.getElementById('levelTicks');
+  container.innerHTML = '';
+  for (let i = numLevels; i >= 1; i--) {
+    const t = document.createElement('div');
+    t.className = 'tick';
+    t.id = `tick-${i}`;
+    t.innerHTML = `<div class="line"></div><span>${i}</span>`;
+    container.appendChild(t);
+  }
+}
 
-    function pauseOralTimer() {
-      oralRunning = false;
-      if (oralTimer) {
-        clearInterval(oralTimer);
-      }
-    }
+function addLevel() {
+  if (currentLevel >= numLevels) return;
+  currentLevel++;
+  const btn = document.getElementById('mainBtn');
+  btn.classList.add('shake');
+  setTimeout(() => btn.classList.remove('shake'), 400);
+  const bulb = document.getElementById('thermoBulb');
+  bulb.classList.add('pulse');
+  setTimeout(() => bulb.classList.remove('pulse'), 400);
+  updateUI();
+  const challenge = activeTasks[assignedChallenges[currentLevel - 1]];
+  history.unshift({ level: currentLevel, challenge });
+  renderHistory();
+  updateCurrentConsequence(challenge, currentLevel);
+  showChallengeModal(challenge, currentLevel);
+  if (currentLevel >= numLevels) {
+    setTimeout(() => {
+      document.getElementById('completeModal').classList.add('show');
+    }, 1200);
+  }
+}
 
-    function resetOralTimer() {
-      pauseOralTimer();
-      oralMinutes = 1;
-      oralSeconds = 0;
-      updateOralTimerDisplay();
-    }
+function updateUI() {
+  const pct = (currentLevel / numLevels) * 100;
+  document.getElementById('thermoFill').style.height = pct + '%';
+  document.getElementById('meterFill').style.width = pct + '%';
+  document.getElementById('currentLevelDisplay').textContent = currentLevel;
+  for (let i = 1; i <= numLevels; i++) {
+    const t = document.getElementById(`tick-${i}`);
+    if (t) t.classList.toggle('active', i <= currentLevel);
+  }
+  const bulb = document.getElementById('thermoBulb');
+  const hue = 200 - (currentLevel / numLevels) * 200;
+  bulb.style.background = `radial-gradient(circle at 35% 35%, hsl(${hue+20},90%,65%), hsl(${hue},90%,45%))`;
+}
 
-    function updateOralTimerDisplay() {
-      document.getElementById("oralTimer").innerText = 
-        `${String(oralMinutes).padStart(2, '0')}:${String(oralSeconds).padStart(2, '0')}`;
-    }
+function updateCurrentConsequence(c, level) {
+  const el = document.getElementById('currentConsequence');
+  el.innerHTML = `
+    <div class="consequence-label">📌 Latest Challenge</div>
+    <span class="cefr-badge ${currentCEFR}">${currentCEFR}</span>
+    <div class="consequence-level-badge">🌡️ Level ${level}</div>
+    <div class="consequence-text">${c.emoji} ${c.text}</div>
+  `;
+}
 
-    // Interview timer functions
-    function startInterviewTimer() {
-      if (!interviewRunning) {
-        interviewRunning = true;
-        interviewTimer = setInterval(() => {
-          if (interviewSeconds === 0) {
-            if (interviewMinutes === 0) {
-              pauseInterviewTimer();
-              alert("Time's up for Interview!");
-              return;
-            } else {
-              interviewMinutes--;
-              interviewSeconds = 59;
-            }
-          } else {
-            interviewSeconds--;
-          }
-          updateInterviewTimerDisplay();
-        }, 1000);
-      }
-    }
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (!history.length) { list.innerHTML = '<p class="history-empty">No challenges yet — great job!</p>'; return; }
+  list.innerHTML = history.map(h => `
+    <div class="history-item">
+      <span class="history-badge">Lvl ${h.level}</span>
+      <span class="cefr-badge ${currentCEFR}" style="font-size:.7rem;padding:1px 7px">${currentCEFR}</span>
+      <span>${h.challenge.emoji} ${h.challenge.text}</span>
+    </div>
+  `).join('');
+}
 
-    function pauseInterviewTimer() {
-      interviewRunning = false;
-      if (interviewTimer) {
-        clearInterval(interviewTimer);
-      }
-    }
+function showChallengeModal(c, level) {
+  document.getElementById('modalLevel').textContent = `Level ${level} reached · ${currentCEFR}`;
+  document.getElementById('modalChallenge').innerHTML = `<span class="cefr-badge ${currentCEFR}">${currentCEFR}</span><br>${c.emoji} ${c.text}`;
+  document.getElementById('challengeModal').classList.add('show');
+}
 
-    function resetInterviewTimer() {
-      pauseInterviewTimer();
-      interviewMinutes = 2;
-      interviewSeconds = 0;
-      updateInterviewTimerDisplay();
-    }
+function closeModal() {
+  document.getElementById('challengeModal').classList.remove('show');
+}
 
-    function updateInterviewTimerDisplay() {
-      document.getElementById("interviewTimer").innerText = 
-        `${String(interviewMinutes).padStart(2, '0')}:${String(interviewSeconds).padStart(2, '0')}`;
-    }
+function closeCompleteModal() {
+  document.getElementById('completeModal').classList.remove('show');
+  resetLevel();
+}
 
-    // Activity functions
-    function getRandomTopic() {
-      const topic = topics[Math.floor(Math.random() * topics.length)];
-      document.getElementById("topicOutput").innerText = `Topic: ${topic}`;
-    }
+function resetLevel() {
+  currentLevel = 0;
+  updateUI();
+  document.getElementById('currentConsequence').innerHTML = '<span class="consequence-empty">Reset! Can they do better this time? 💪</span>';
+}
 
-    function getRandomQuestions() {
-      const q1 = interviewQuestions[Math.floor(Math.random() * interviewQuestions.length)];
-      let q2;
-      do {
-        q2 = interviewQuestions[Math.floor(Math.random() * interviewQuestions.length)];
-      } while (q2 === q1);
-      document.getElementById("questionsOutput").innerText = `Pair asks and answers:\n1. ${q1}\n2. ${q2}`;
-    }
+function goBack() {
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+}
 
-    function getWords(difficulty) {
-      let wordPool;
-      let levelName;
-      
-      switch(difficulty) {
-        case 'basic':
-          wordPool = basicWords;
-          levelName = 'Basic (A1)';
-          break;
-        case 'intermediate':
-          wordPool = intermediateWords;
-          levelName = 'Intermediate (A2-B1)';
-          break;
-        case 'advanced':
-          wordPool = advancedWords;
-          levelName = 'Advanced (B2)';
-          break;
-      }
-      
-      const selectedWords = [];
-      const usedIndices = new Set();
-      
-      while (selectedWords.length < 3) {
-        const randomIndex = Math.floor(Math.random() * wordPool.length);
-        if (!usedIndices.has(randomIndex)) {
-          usedIndices.add(randomIndex);
-          selectedWords.push(wordPool[randomIndex]);
-        }
-      }
-      
-      document.getElementById("wordsOutput").innerText = 
-        `${levelName} Words:\n${selectedWords.join(', ')}\n\nCreate a 50-word paragraph using these three words!`;
-    }
+// Init
+document.getElementById('cefrDesc').textContent = CEFR_DESCS['A1'];
+renderConsequencesGrid();
+</script>
 
-    function pickStudent() {
-      const count = parseInt(document.getElementById("studentCount").value);
-      if (!count || count < 1) {
-        document.getElementById("studentOutput").innerText = "Please enter a valid number.";
-        return;
-      }
-      const student = Math.floor(Math.random() * count) + 1;
-      document.getElementById("studentOutput").innerText = `Selected student: #${student}`;
-    }
-
-    // Initialize
-    updateDisplay();
-    updateThermometer();
-    updateOralTimerDisplay();
-    updateInterviewTimerDisplay();
-  </script>
 </body>
 </html>

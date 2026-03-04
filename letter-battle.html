@@ -151,6 +151,14 @@ h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line
 .ab-spacer{flex:1}
 
 
+
+/* ═══ INVALID WORD OVERRIDE BAR ═══ */
+.invalid-bar{display:flex;align-items:center;gap:.7rem;margin-top:.3rem;animation:fadeSlideIn .2s ease}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.invalid-msg{font-size:.8rem;color:var(--danger);font-weight:600;font-style:italic}
+.btn-override{background:transparent;border:1px solid var(--danger);color:var(--danger);font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:700;letter-spacing:.05em;padding:.32rem .75rem;border-radius:7px;cursor:pointer;text-transform:uppercase;transition:all .12s}
+.btn-override:hover{background:var(--danger);color:#0d0d12}
+
 /* ═══ ARENA / WARRIORS ═══ */
 .arena-row{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%}
 .warrior-wrap{
@@ -732,6 +740,10 @@ h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line
     <div class="word-actions">
       <button class="btn btn-clear" id="clear-btn">Clear</button>
       <button class="btn btn-submit" id="submit-btn" disabled>Attack!</button>
+    </div>
+    <div class="invalid-bar" id="invalid-bar" style="display:none">
+      <span class="invalid-msg" id="invalid-msg">❌ Not recognized</span>
+      <button class="btn btn-override" id="override-btn">Accept anyway</button>
     </div>
   </div>
 
@@ -1360,6 +1372,7 @@ document.addEventListener('keydown',e=>{
 
 /* ═══════════ CELL CLICK ═══════════ */
 function onCell(i){
+  const bar=$$('invalid-bar');if(bar)bar.style.display='none';
   if(G.busy)return;
   const ef=G.effects[G.cur];
   if(ef.held.includes(i)){SFX.bad();return;} // blocked
@@ -1369,7 +1382,12 @@ function onCell(i){
   renderGrid();renderWord();
 }
 
-function clearSel(){if(G.sel.length)SFX.clear();G.sel=[];renderGrid();renderWord();}
+function clearSel(){
+  if(G.sel.length)SFX.clear();
+  G.sel=[];
+  const bar=$$('invalid-bar');if(bar)bar.style.display='none';
+  renderGrid();renderWord();
+}
 
 /* ═══════════ SUBMIT WORD ═══════════ */
 async function submitWord(){
@@ -1378,12 +1396,24 @@ async function submitWord(){
   stopTimer();
   const word=G.sel.map(i=>G.grid[i]).join('');
   SFX.check();
-  const ok=await isValid(word);
+  const ok=G._forceAccept||await isValid(word);
+  G._forceAccept=false;
   if(!ok){
-    SFX.bad();showToast(word,0,false);
-    G.busy=false;$$('submit-btn').disabled=false;
-    startTimer();return;
+    SFX.bad();
+    // Show invalid bar — timer keeps running, player can override
+    const bar=$$('invalid-bar');
+    if(bar){
+      $$('invalid-msg').textContent=`❌ "${word}" not recognized`;
+      bar.style.display='flex';
+    }
+    G.busy=false;
+    $$('submit-btn').disabled=false;
+    // Timer was stopped for the API check — resume it
+    startTimerWith(G.timerLeft);
+    return;
   }
+  // Hide invalid bar on successful word
+  const invBar=$$('invalid-bar');if(invBar)invBar.style.display='none';
 
   const opp=G.cur===1?2:1;
   const trapIndices=G.effects[G.cur].traps; // traps set against the current attacker
@@ -1790,6 +1820,13 @@ function updateWarriorHP(){
   if(img1) img1.classList.toggle('low-hp', G.p1HP/G.maxHP < 0.3);
   if(img2) img2.classList.toggle('low-hp', G.p2HP/G.maxHP < 0.3);
 }
+
+/* ═════ OVERRIDE BUTTON ═════ */
+$$('override-btn').addEventListener('click',()=>{
+  const bar=$$('invalid-bar');if(bar)bar.style.display='none';
+  G._forceAccept=true;
+  submitWord();
+});
 
 /* ═════ JS TOOLTIP SYSTEM ═════ */
 (function(){

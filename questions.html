@@ -761,13 +761,7 @@
       <div class="card-face card-back" id="cardBack">
         <div style="text-align:center; display:flex; flex-direction:column; align-items:center; gap:1rem; width:100%;">
           <div class="q-category-badge" style="background:rgba(204,93,232,0.12); border-color:#cc5de8; color:#cc5de8;">🔁 Follow-up</div>
-          <div id="followUpContent" style="width:100%; display:flex; align-items:center; justify-content:center;">
-            <div id="followUpSpinner" style="display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
-              <div class="spinner"></div>
-              <div style="font-size:0.85rem; color:#aaa; font-weight:600;">Generating follow-up…</div>
-            </div>
-            <div class="q-text" id="qTextBack" style="display:none; font-size:clamp(1.2rem,3vw,2rem);"></div>
-          </div>
+          <div class="q-text" id="qTextBack"></div>
           <div class="q-hint">tap card to flip back ↩</div>
         </div>
       </div>
@@ -1247,15 +1241,139 @@ function renderHistory() {
 function loadFromHistory(idx) {
   const item = questionHistory[idx];
   showQuestion(item.category, item.question, false);
-  // Restore cached follow-up if available
-  if (item.followUpText) {
-    setTimeout(() => {
-      currentQuestion.followUpReady = true;
-      currentQuestion.followUpText = item.followUpText;
-      document.getElementById('qTextBack').textContent = item.followUpText;
-    }, 100);
-  }
   closeHistory();
+}
+
+// ── CURATED FOLLOW-UPS PER CATEGORY
+const followUpsByCategory = {
+  "Light & Easy": [
+    "Has that always been true for you, or did something change your mind?",
+    "Would the people closest to you agree with that answer?",
+    "What's the story behind how you ended up that way?",
+    "If you could go back and do it differently, would you?",
+    "Does anyone in your life find that annoying or endearing?",
+    "What would your younger self think about that answer?",
+    "Is that something you picked up from someone, or did you figure it out on your own?",
+    "What's the best and worst part of that?",
+    "Has anyone ever called you out on that?",
+    "Do you think most people are the same way, or are you the odd one out?",
+  ],
+  "Personal Profile": [
+    "When did you first realize that about yourself?",
+    "Has that quality ever gotten you into trouble?",
+    "What's one situation where that trait really showed itself?",
+    "Do the people close to you see that same quality in you?",
+    "Is that something you've actively worked on, or is it just who you are?",
+    "How has that part of you changed over the last five years?",
+    "If you could dial that trait up or down, would you?",
+    "What's the downside of being that way?",
+    "Who in your life has the opposite trait — how do you get along?",
+    "Was there a moment that made you that way, or were you always like this?",
+  ],
+  "Preferences": [
+    "What would it take for something else to knock that off the top spot?",
+    "How did you discover that was your favourite?",
+    "Has your answer changed over the years?",
+    "Is there anyone who introduced you to that, or did you find it yourself?",
+    "What's a close second, and why does this one still win?",
+    "Would the people who know you best predict that answer?",
+    "Is there a memory tied to that preference?",
+    "What does that say about your personality, do you think?",
+    "Have you ever tried to get someone else into it?",
+    "What's the opposite of that preference — something you genuinely can't stand?",
+  ],
+  "Blast from the Past": [
+    "How does that memory make you feel now compared to when it happened?",
+    "Is there someone from that time you've lost touch with that you miss?",
+    "How much of who you are today traces back to that experience?",
+    "What would you tell your past self about that moment?",
+    "Did anyone else experience that with you — do you ever talk about it?",
+    "Is there something about that time you wish you'd appreciated more?",
+    "What's one thing that's completely different now compared to then?",
+    "Did that experience shape any decision you made later in life?",
+    "What detail from that memory stands out most vividly?",
+    "If you could relive one day from that period, which would you choose?",
+  ],
+  "Just Imagine": [
+    "What's stopping you from getting even a little closer to that in real life?",
+    "If you actually did that, what do you think would surprise you most?",
+    "Who would you want with you if that scenario came true?",
+    "What does that fantasy say about what you feel is missing right now?",
+    "How would the people in your life react if you told them that?",
+    "Has anything ever come close to that in real life?",
+    "What's the first thing that would go wrong in that scenario?",
+    "How long have you had that answer — is it a new thought or an old dream?",
+    "If you had to commit to it tomorrow, would you actually go through with it?",
+    "What's the version of that you could realistically make happen?",
+  ],
+  "Viewpoints": [
+    "Where does that belief come from — experience, upbringing, or something else?",
+    "Has something ever seriously challenged that view?",
+    "Do you hold that opinion strongly, or are you open to being convinced otherwise?",
+    "Is there someone in your life who completely disagrees — how do you handle it?",
+    "Has your view on this shifted over time?",
+    "What would it take to change your mind?",
+    "Is that a view you voice openly, or do you tend to keep it to yourself?",
+    "What's the strongest argument against your own position?",
+    "Do you think most people secretly agree with you, or are you in the minority?",
+    "Has holding that belief ever cost you anything — a relationship, an opportunity?",
+  ],
+  "Hard-Hitting": [
+    "Is that something you've made peace with, or does it still sit uneasily?",
+    "Have you ever told anyone else that before?",
+    "What would it take to actually change that part of your life?",
+    "Is there a version of you from five years ago who'd be surprised by that answer?",
+    "What's one step — however small — you could take toward that?",
+    "Who in your life knows that about you?",
+    "What's the fear underneath that answer?",
+    "Has a specific moment brought that belief into focus for you?",
+    "How does carrying that feel on a daily basis?",
+    "If time weren't a factor, would your answer change?",
+  ],
+  "From the Heart": [
+    "How long have you been carrying that?",
+    "Have you ever said that out loud to the person involved?",
+    "What would it feel like to fully let go of that?",
+    "Who in your life holds space for you to feel that way?",
+    "Has that feeling changed how you treat the people around you?",
+    "Is there something you wish someone had said or done differently?",
+    "What do you need right now that you're not getting?",
+    "Is that something you're actively working through, or is it on the back burner?",
+    "What would the most compassionate version of you say about that?",
+    "How did you get through the hardest part of it?",
+  ],
+  "Spiritually Speaking": [
+    "Was there a moment that crystallised that belief for you?",
+    "How has that view shaped the way you live day to day?",
+    "Is that something you arrived at yourself, or was it handed to you?",
+    "Do the people closest to you share that belief?",
+    "What's the part of that belief you find hardest to hold onto?",
+    "Has doubt ever threatened to unravel it?",
+    "What would you say to someone who held the opposite view?",
+    "Does that belief bring you comfort, challenge, or both?",
+    "How has your spiritual view changed from when you were younger?",
+    "Is there a question in that space you haven't found an answer to yet?",
+  ],
+  "Deep Dive": [
+    "How long have you sat with that question without a satisfying answer?",
+    "Is that a belief you hold with confidence, or more as a working theory?",
+    "What would change in your life if you got a clear answer to that?",
+    "Has anyone ever said something that genuinely moved the needle on that for you?",
+    "Do you find that question more unsettling or more energising?",
+    "Is there a version of that belief you used to hold that you've since let go of?",
+    "What's the most honest thing you can say about where you stand on it right now?",
+    "Who do you most want to have that conversation with?",
+    "Has a lived experience ever hit closer to an answer than any argument or book?",
+    "What would it mean for you personally if the opposite turned out to be true?",
+  ],
+};
+
+function getFollowUp(category, question) {
+  const pool = followUpsByCategory[category] || followUpsByCategory["Light & Easy"];
+  // Use a hash of the question string to pick consistently but vary across questions
+  let hash = 0;
+  for (let i = 0; i < question.length; i++) hash = (hash * 31 + question.charCodeAt(i)) | 0;
+  return pool[Math.abs(hash) % pool.length];
 }
 
 // ── CARD FLIP
@@ -1263,52 +1381,6 @@ function handleCardClick() {
   if (!currentQuestion) return;
   isFlipped = !isFlipped;
   document.getElementById('cardFlipper').classList.toggle('flipped', isFlipped);
-  // Kick off follow-up fetch the first time the card is flipped
-  if (isFlipped && !currentQuestion.followUpReady && !currentQuestion.followUpLoading) {
-    fetchFollowUp(currentQuestion.category, currentQuestion.question);
-  }
-}
-
-async function fetchFollowUp(category, question) {
-  currentQuestion.followUpLoading = true;
-
-  // Show spinner, hide text
-  document.getElementById('followUpSpinner').style.display = 'flex';
-  document.getElementById('qTextBack').style.display = 'none';
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: "You generate follow-up conversation questions. Given a conversation starter question and its category, produce a single follow-up question that deepens the conversation—digging into the why, exploring an implication, or pivoting to a related personal angle. Return ONLY the follow-up question text, no preamble, no quotes, no punctuation other than the question itself.",
-        messages: [{ role: "user", content: `Category: ${category}\nQuestion: ${question}\n\nFollow-up question:` }]
-      })
-    });
-
-    const data = await response.json();
-    const followUp = data.content?.[0]?.text?.trim() || "What made you feel that way?";
-
-    currentQuestion.followUpReady = true;
-    currentQuestion.followUpLoading = false;
-    currentQuestion.followUpText = followUp;
-
-    // Cache on matching history item
-    const histItem = questionHistory.find(h => h.question === currentQuestion.question);
-    if (histItem) histItem.followUpText = followUp;
-
-    document.getElementById('qTextBack').textContent = followUp;
-    document.getElementById('followUpSpinner').style.display = 'none';
-    document.getElementById('qTextBack').style.display = 'block';
-
-  } catch (err) {
-    currentQuestion.followUpLoading = false;
-    document.getElementById('qTextBack').textContent = "What made you feel that way?";
-    document.getElementById('followUpSpinner').style.display = 'none';
-    document.getElementById('qTextBack').style.display = 'block';
-  }
 }
 
 function showQuestion(category, question, addToHistory) {
@@ -1316,13 +1388,11 @@ function showQuestion(category, question, addToHistory) {
   isFlipped = false;
   document.getElementById('cardFlipper').classList.remove('flipped');
 
-  // Reset follow-up state
-  document.getElementById('followUpSpinner').style.display = 'flex';
-  document.getElementById('qTextBack').style.display = 'none';
-  document.getElementById('qTextBack').textContent = '';
+  // Pre-load follow-up instantly
+  document.getElementById('qTextBack').textContent = getFollowUp(category, question);
 
   setTimeout(() => {
-    currentQuestion = { category, question, followUpReady: false, followUpLoading: false };
+    currentQuestion = { category, question };
 
     document.getElementById('placeholder').style.display = 'none';
     const qc = document.getElementById('questionContent');

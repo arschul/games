@@ -1,745 +1,1151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>What Changed? Emoji Game</title>
-    <style>
-        /* General hidden class to ensure elements are hidden */
-        .hidden {
-            display: none !important; /* Using !important to ensure it overrides other display properties */
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Changed? — Emoji Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900;1,9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a14;
+    --surface: rgba(255,255,255,0.05);
+    --surface-hover: rgba(255,255,255,0.09);
+    --border: rgba(255,255,255,0.1);
+    --accent: #7c5cfc;
+    --accent2: #fc5c7d;
+    --accent3: #56ccf2;
+    --text: #f0eeff;
+    --text-muted: rgba(240,238,255,0.5);
+    --green: #43e97b;
+    --yellow: #f9cb28;
+    --red: #fc5c7d;
+    --radius: 20px;
+  }
 
-        body {
-            font-family: "Segoe UI Emoji", "Apple Color Emoji", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #f0f2f5;
-            margin: 0;
-            overflow: hidden;
-            transition: background-color 0.5s ease-in-out;
-        }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .game-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 900px; /* Increased max-width for widescreen */
-            width: 90%; /* Use percentage for responsiveness */
-            box-sizing: border-box;
-            position: relative;
-        }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
 
-        .screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
+  /* Animated background blobs */
+  .bg-blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.25;
+    pointer-events: none;
+    animation: blobFloat 12s ease-in-out infinite alternate;
+  }
+  .bg-blob-1 { width: 500px; height: 500px; background: var(--accent); top: -150px; left: -150px; animation-delay: 0s; }
+  .bg-blob-2 { width: 400px; height: 400px; background: var(--accent2); bottom: -100px; right: -100px; animation-delay: -4s; }
+  .bg-blob-3 { width: 300px; height: 300px; background: var(--accent3); top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: -8s; }
 
-        /* .screen.hidden is still needed for screen transitions */
-        .screen.hidden {
-            display: none;
-        }
+  @keyframes blobFloat {
+    0% { transform: translate(0,0) scale(1); }
+    100% { transform: translate(30px,20px) scale(1.1); }
+  }
 
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-        }
+  .game-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 860px;
+    padding: 20px;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
 
-        h2 {
-            color: #555;
-            margin-bottom: 20px;
-            font-size: 1.8em;
-        }
+  /* Glass card */
+  .glass-card {
+    background: rgba(15,14,30,0.7);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: var(--radius);
+    padding: 48px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
 
-        .difficulty-options, .game-options {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 400px;
-        }
+  .screen { display: none; flex-direction: column; align-items: center; gap: 24px; }
+  .screen.active { display: flex; animation: fadeSlideUp 0.4s cubic-bezier(.22,1,.36,1); }
 
-        .difficulty-btn,
-        .game-btn {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 1.2em;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.1s ease;
-            width: 100%;
-            max-width: 300px;
-            box-sizing: border-box;
-        }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
-        .difficulty-btn:hover,
-        .game-btn:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
+  /* Title */
+  .game-title {
+    font-family: 'Fraunces', serif;
+    font-size: 3.2em;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
 
-        .difficulty-btn:active,
-        .game-btn:active {
-            transform: translateY(0);
-        }
+  .game-subtitle {
+    font-size: 1em;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: -12px;
+    letter-spacing: 0.5px;
+  }
 
-        .game-btn:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
+  /* Difficulty buttons */
+  .diff-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    width: 100%;
+    margin-top: 8px;
+  }
 
-        .selector-group {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 5px;
-            width: 100%;
-            max-width: 300px;
-        }
+  .diff-btn {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+  }
 
-        .selector-group label {
-            font-size: 1em;
-            color: #555;
-            font-weight: bold;
-        }
+  .diff-btn:hover { background: var(--surface-hover); transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
 
-        .selector-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 1em;
-            background-color: white;
-            cursor: pointer;
-        }
+  .diff-btn.easy { border-color: rgba(67,233,123,0.4); }
+  .diff-btn.easy:hover { border-color: var(--green); box-shadow: 0 12px 30px rgba(67,233,123,0.15); }
+  .diff-btn.medium { border-color: rgba(249,203,40,0.4); }
+  .diff-btn.medium:hover { border-color: var(--yellow); box-shadow: 0 12px 30px rgba(249,203,40,0.15); }
+  .diff-btn.hard { border-color: rgba(252,92,125,0.4); }
+  .diff-btn.hard:hover { border-color: var(--red); box-shadow: 0 12px 30px rgba(252,92,125,0.15); }
 
-        .emoji-grid {
-            position: relative;
-            width: 100%;
-            min-height: 500px; /* Increased min-height for more space */
-            margin-bottom: 30px;
-            transition: opacity 0.5s ease-in-out;
-            overflow: hidden;
-            border: 1px dashed #ddd; /* Visual boundary for the grid */
-            box-sizing: border-box;
-        }
+  .diff-btn-icon { font-size: 2em; }
+  .diff-btn-label { font-family: 'Fraunces', serif; font-size: 1.1em; font-weight: 700; }
+  .diff-btn-sub { font-size: 0.78em; color: var(--text-muted); }
 
-        .emoji-grid.invisible {
-            opacity: 0;
-            pointer-events: none;
-        }
+  /* Settings row */
+  .settings-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    flex-wrap: wrap;
+  }
 
-        .emoji {
-            position: absolute;
-            font-size: 3em;
-            width: 60px; /* Fixed width for collision detection */
-            height: 60px; /* Fixed height for collision detection */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            user-select: none;
-            transition: left 0.5s ease, top 0.5s ease;
-            line-height: 1;
-            z-index: 1; /* Ensure emojis are above the grid border */
-        }
+  .setting-group {
+    flex: 1;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 
-        .controls {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            width: 100%;
-        }
+  .setting-label {
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
 
-        .timer-display {
-            font-size: 2em;
-            font-weight: bold;
-            color: #007bff;
-            margin-bottom: 15px;
-        }
+  .setting-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95em;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(240,238,255,0.4)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
 
-        .question-area {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
+  .setting-select:focus { border-color: var(--accent); }
+  .setting-select option { background: #1a1830; }
 
-        .question-text {
-            font-size: 1.5em;
-            color: #333;
-            font-weight: bold;
-            margin: 0;
-        }
+  /* Divider */
+  .divider { width: 100%; height: 1px; background: var(--border); }
 
-        .answer-text {
-            font-size: 1.3em;
-            color: #28a745;
-            font-weight: bold;
-            margin-top: 10px;
-        }
+  /* === GAME SCREEN === */
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
 
-        .game-over-text {
-            font-size: 2em;
-            color: #dc3545;
-            font-weight: bold;
-            margin-top: 30px;
-        }
+  .round-badge {
+    font-family: 'Fraunces', serif;
+    font-size: 0.9em;
+    font-weight: 700;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    letter-spacing: 0.5px;
+  }
 
-        @media (max-width: 768px) {
-            .game-container {
-                padding: 20px;
-                max-width: 90%;
-            }
-            h1 {
-                font-size: 2em;
-            }
-            .difficulty-btn,
-            .game-btn {
-                padding: 12px 20px;
-                font-size: 1em;
-            }
-            .emoji {
-                font-size: 2.5em;
-                width: 50px;
-                height: 50px;
-            }
-            .emoji-grid {
-                min-height: 350px;
-            }
-            .difficulty-options, .game-options {
-                flex-direction: column;
-                align-items: center;
-            }
-        }
+  /* Round progress bar */
+  .progress-track {
+    flex: 1;
+    margin: 0 16px;
+    height: 4px;
+    background: var(--surface);
+    border-radius: 2px;
+    overflow: hidden;
+  }
 
-        @media (max-width: 480px) {
-            .game-container {
-                padding: 15px;
-            }
-            h1 {
-                font-size: 1.8em;
-            }
-            .difficulty-btn,
-            .game-btn {
-                padding: 10px 15px;
-                font-size: 0.9em;
-            }
-            .emoji {
-                font-size: 2em;
-                width: 40px;
-                height: 40px;
-            }
-            .emoji-grid {
-                min-height: 280px;
-            }
-        }
-    </style>
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.5s cubic-bezier(.22,1,.36,1);
+  }
+
+  /* Circular timer */
+  .timer-wrap {
+    position: relative;
+    width: 64px;
+    height: 64px;
+  }
+
+  .timer-svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+  .timer-track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 4; }
+  .timer-ring { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.9s linear, stroke 0.3s; }
+
+  .timer-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-size: 1.3em;
+    font-weight: 700;
+  }
+
+  /* Emoji grid */
+  .emoji-grid {
+    position: relative;
+    width: 100%;
+    min-height: 420px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.02);
+    overflow: hidden;
+    transition: opacity 0.4s ease;
+  }
+
+  .emoji-grid.invisible { opacity: 0; pointer-events: none; }
+
+  .emoji {
+    position: absolute;
+    font-size: 2.6em;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    transition: left 0.6s cubic-bezier(.34,1.56,.64,1), top 0.6s cubic-bezier(.34,1.56,.64,1), opacity 0.4s ease, transform 0.4s ease;
+    animation: emojiPop 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  .emoji img { width: 1.2em; height: 1.2em; vertical-align: middle; }
+
+  @keyframes emojiPop {
+    from { opacity: 0; transform: scale(0.3) rotate(-10deg); }
+    to { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  .emoji.highlighted {
+    filter: drop-shadow(0 0 16px rgba(124,92,252,0.8));
+    animation: pulse 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.2); }
+  }
+
+  /* Phase banner */
+  .phase-banner {
+    font-family: 'Fraunces', serif;
+    font-size: 0.85em;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+  }
+
+  .phase-banner.phase-observe { background: rgba(86,204,242,0.1); border-color: rgba(86,204,242,0.3); color: var(--accent3); }
+  .phase-banner.phase-question { background: rgba(124,92,252,0.15); border-color: rgba(124,92,252,0.4); color: var(--accent); }
+  .phase-banner.phase-transition { background: rgba(249,203,40,0.1); border-color: rgba(249,203,40,0.3); color: var(--yellow); }
+
+  /* Question card */
+  .question-card {
+    width: 100%;
+    background: rgba(124,92,252,0.08);
+    border: 1px solid rgba(124,92,252,0.25);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    animation: fadeSlideUp 0.3s ease;
+  }
+
+  .question-text {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4em;
+    font-weight: 800;
+    text-align: center;
+    background: linear-gradient(135deg, var(--text), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Buttons */
+  .btn {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1em;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 32px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.1);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn:hover::after { opacity: 1; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #9b7cff);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(124,92,252,0.4);
+  }
+
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(124,92,252,0.5); }
+
+  .btn-go {
+    background: linear-gradient(135deg, var(--green), #38f9d7);
+    color: #0a2020;
+    box-shadow: 0 8px 24px rgba(67,233,123,0.35);
+    font-size: 1.2em;
+    padding: 16px 48px;
+  }
+
+  .btn-go:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(67,233,123,0.45); }
+
+  .btn-answer {
+    background: linear-gradient(135deg, var(--accent2), #f5a623);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(252,92,125,0.35);
+  }
+
+  .btn-answer:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(252,92,125,0.45); }
+
+  .btn-ghost {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* Answer reveal */
+  .answer-reveal {
+    width: 100%;
+    border-radius: 14px;
+    padding: 16px 24px;
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-size: 1.3em;
+    font-weight: 700;
+    background: rgba(67,233,123,0.1);
+    border: 1px solid rgba(67,233,123,0.3);
+    color: var(--green);
+    animation: fadeSlideUp 0.35s ease;
+  }
+
+  /* End screen */
+  .end-title {
+    font-family: 'Fraunces', serif;
+    font-size: 2.8em;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--green), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+  }
+
+  .score-display {
+    font-family: 'Fraunces', serif;
+    font-size: 5em;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .score-label { font-size: 0.85em; color: var(--text-muted); }
+
+  .round-history {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 0.9em;
+    animation: fadeSlideUp 0.3s ease both;
+  }
+
+  .history-row .round-num { color: var(--text-muted); font-size: 0.85em; }
+  .history-row .q-type { font-weight: 600; flex: 1; margin: 0 12px; }
+  .history-row .answer-badge {
+    font-size: 0.8em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(67,233,123,0.15);
+    border: 1px solid rgba(67,233,123,0.3);
+    color: var(--green);
+  }
+
+  .hidden { display: none !important; }
+
+  /* Confetti */
+  .confetti-piece {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 1000;
+    animation: confettiFall linear forwards;
+  }
+
+  @keyframes confettiFall {
+    to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* Emoji catalogue */
+  .catalogue {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .catalogue-title {
+    font-family: 'Fraunces', serif;
+    font-size: 0.85em;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .cat-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .cat-label {
+    font-size: 0.75em;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    min-width: 60px;
+  }
+
+  .cat-emojis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    font-size: 1.4em;
+    line-height: 1;
+  }
+
+  .cat-emojis img {
+    width: 24px;
+    height: auto;
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .glass-card { padding: 24px 20px; }
+    .game-title { font-size: 2.2em; }
+    .diff-grid { grid-template-columns: 1fr; }
+    .emoji { font-size: 2em; width: 46px; height: 46px; }
+    .emoji-grid { min-height: 300px; }
+  }
+</style>
 </head>
 <body>
-    <div class="game-container">
-        <div id="difficulty-screen" class="screen active">
-            <h1>Choose Difficulty</h1>
-            <div class="difficulty-options">
-                <button id="easy-btn" class="difficulty-btn">Easy (8-12 Emojis)</button>
-                <button id="medium-btn" class="difficulty-btn">Medium (13-16 Emojis)</button>
-                <button id="hard-btn" class="difficulty-btn">Hard (17-22 Emojis)</button>
-            </div>
-            <div class="game-options">
-                <div class="selector-group">
-                    <label for="timer-select">Timer Duration:</label>
-                    <select id="timer-select">
-                        <option value="10">10 Seconds</option>
-                        <option value="20">20 Seconds</option>
-                        <option value="30">30 Seconds</option>
-                        <option value="40">40 Seconds</option>
-                        <option value="50">50 Seconds</option>
-                        <option value="60">60 Seconds</option>
-                    </select>
-                </div>
-                <div class="selector-group">
-                    <label for="rounds-select">Number of Rounds:</label>
-                    <select id="rounds-select">
-                        <option value="3">3 Rounds</option>
-                        <option value="5" selected>5 Rounds</option>
-                        <option value="10">10 Rounds</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+<div class="bg-blob bg-blob-1"></div>
+<div class="bg-blob bg-blob-2"></div>
+<div class="bg-blob bg-blob-3"></div>
 
-        <div id="game-screen" class="screen hidden">
-            <h2 id="round-display">Round 1</h2>
-            <div class="timer-display" id="timer-display"></div>
-            <div id="emoji-grid" class="emoji-grid"></div>
-            <div class="controls">
-                <button id="go-btn" class="game-btn">GO</button>
-                <div id="question-area" class="hidden">
-                    <p class="question-text" id="question-text">WHAT CHANGED?</p>
-                    <button id="answer-btn" class="game-btn">ANSWER</button>
-                    <p id="answer-display" class="answer-text hidden" aria-live="polite"></p>
-                </div>
-            </div>
-            <p id="game-over-message" class="game-over-text hidden"></p>
-            <button id="play-again-btn" class="game-btn hidden">Play Again</button>
-        </div>
+<div class="game-wrapper">
+<div class="glass-card">
+
+  <!-- DIFFICULTY SCREEN -->
+  <div id="screen-difficulty" class="screen active">
+    <h1 class="game-title">What Changed?</h1>
+    <p class="game-subtitle">Spot the difference. Beat the clock. Trust your memory.</p>
+    <div class="divider"></div>
+    <div class="diff-grid">
+      <button class="diff-btn easy" id="btn-easy">
+        <span class="diff-btn-icon">🟢</span>
+        <span class="diff-btn-label">Easy</span>
+        <span class="diff-btn-sub">8–12 emojis</span>
+      </button>
+      <button class="diff-btn medium" id="btn-medium">
+        <span class="diff-btn-icon">🟡</span>
+        <span class="diff-btn-label">Medium</span>
+        <span class="diff-btn-sub">13–16 emojis</span>
+      </button>
+      <button class="diff-btn hard" id="btn-hard">
+        <span class="diff-btn-icon">🔴</span>
+        <span class="diff-btn-label">Hard</span>
+        <span class="diff-btn-sub">17–22 emojis</span>
+      </button>
+    </div>
+    <div class="settings-row">
+      <div class="setting-group">
+        <label class="setting-label">⏱ Timer Duration</label>
+        <select class="setting-select" id="sel-timer">
+          <option value="10">10 seconds</option>
+          <option value="20" selected>20 seconds</option>
+          <option value="30">30 seconds</option>
+          <option value="40">40 seconds</option>
+          <option value="60">60 seconds</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label class="setting-label">🎯 Rounds</label>
+        <select class="setting-select" id="sel-rounds">
+          <option value="3">3 rounds</option>
+          <option value="5" selected>5 rounds</option>
+          <option value="10">10 rounds</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label class="setting-label">🔀 Shuffle Mode</label>
+        <select class="setting-select" id="sel-shuffle">
+          <option value="0">Off</option>
+          <option value="1">On</option>
+        </select>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="catalogue" id="emoji-catalogue"></div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="screen-game" class="screen">
+    <div class="game-header">
+      <span class="round-badge" id="round-display">Round 1</span>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="timer-wrap">
+        <svg class="timer-svg" width="64" height="64" viewBox="0 0 64 64">
+          <circle class="timer-track" cx="32" cy="32" r="28"/>
+          <circle class="timer-ring" id="timer-ring" cx="32" cy="32" r="28" stroke="url(#timerGrad)"
+            stroke-dasharray="175.93" stroke-dashoffset="0"/>
+          <defs>
+            <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7c5cfc"/>
+              <stop offset="100%" stop-color="#fc5c7d"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="timer-text" id="timer-text">—</div>
+      </div>
     </div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const emojis = [
-                "😀", "😠", "😴", "😐", "😭", // Faces
-                "🐶", "🐱", "🐔", "🐟", "🐦", "🐍", "🐒", "🐝", "🐧", "🦁", // Animals
-                "🍓", "🍌", "🍉", "🍎", "🥑", // Fruits
-                "🚗", "⛵", "✈️", "🚲", "🛴", // Vehicles
-                "🔪", "🍴", "🍽️", "🥛", "☕", // Kitchen
-                "⬆️", "⬇️", "⬅️", "➡️", "✅", // Arrows/Symbols
-                "⚽", "⚾", "🏀", "🏐", "🎱", // Sports
-                "🍣", "🍗", "🍝", "🥣", "🌮", // Food
-                "🏄", "🏊", "🚴", "⛷️", "🧘", // Activities
-                "🌳", "⛰️", "🏖️", "🏜️", "🌋"  // Nature
-            ];
+    <div class="phase-banner" id="phase-banner">Get ready…</div>
+    <div id="emoji-grid" class="emoji-grid invisible"></div>
 
-            const emojiCategories = {
-                faces: ["😀", "😠", "😴", "😐", "😭"],
-                animals: ["🐶", "🐱", "🐔", "🐟", "🐦", "🐍", "🐒", "🐝", "🐧", "🦁"],
-                fruits: ["🍓", "🍌", "🍉", "🍎", "🥑"],
-                vehicles: ["🚗", "⛵", "✈️", "🚲", "🛴"],
-                kitchen: ["🔪", "🍴", "🍽️", "🥛", "☕"], // Renamed from 'objects' to 'kitchen'
-                symbols: ["⬆️", "⬇️", "⬅️", "➡️", "✅"],
-                sports: ["⚽", "⚾", "🏀", "🏐", "🎱"],
-                food: ["🍣", "🍗", "🍝", "🥣", "🌮"],
-                activities: ["🏄", "🏊", "🚴", "⛷️", "🧘"],
-                nature: ["🌳", "⛰️", "🏖️", "🏜️", "🌋"]
-            };
+    <div id="go-wrap">
+      <button class="btn btn-go" id="btn-go">GO →</button>
+    </div>
 
-            const addRemoveActionTypes = ["add_emoji", "remove_emoji"];
-            // 'count_total' is handled separately as it can always repeat
-            const specificOtherActionTypes = ["count_category"]; // Only count_category remains for non-repeating "other" questions
+    <div id="question-area" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;">
+      <div class="question-card">
+        <div class="question-text" id="question-text"></div>
+        <button class="btn btn-answer" id="btn-answer">Reveal Answer</button>
+      </div>
+      <div class="answer-reveal hidden" id="answer-display"></div>
+    </div>
+  </div>
 
+  <!-- END SCREEN -->
+  <div id="screen-end" class="screen">
+    <div class="end-title">Game Complete! 🎉</div>
+    <div class="score-display" id="end-score">0</div>
+    <div class="score-label">rounds completed</div>
+    <div class="round-history" id="round-history"></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+      <button class="btn btn-primary" id="btn-play-again">Play Again</button>
+      <button class="btn btn-ghost" id="btn-change-diff">Change Difficulty</button>
+    </div>
+  </div>
 
-            const difficultyScreen = document.getElementById("difficulty-screen");
-            const gameScreen = document.getElementById("game-screen");
-            const easyBtn = document.getElementById("easy-btn");
-            const mediumBtn = document.getElementById("medium-btn");
-            const hardBtn = document.getElementById("hard-btn");
-            const timerSelect = document.getElementById("timer-select");
-            const roundsSelect = document.getElementById("rounds-select");
-            const emojiGrid = document.getElementById("emoji-grid");
-            const goBtn = document.getElementById("go-btn");
-            const answerBtn = document.getElementById("answer-btn");
-            const roundDisplay = document.getElementById("round-display");
-            const timerDisplay = document.getElementById("timer-display");
-            const questionArea = document.getElementById("question-area");
-            const questionText = document.getElementById("question-text");
-            const answerDisplay = document.getElementById("answer-display");
-            const gameOverMessage = document.getElementById("game-over-message");
-            const playAgainBtn = document.getElementById("play-again-btn");
+</div>
+</div>
 
-            let currentDifficulty = "";
-            let numEmojis = 0;
-            let selectedTimerDuration = parseInt(timerSelect.value);
-            let totalRounds = parseInt(roundsSelect.value);
-            let currentEmojis = []; // State *after* potential change
-            let previousEmojis = []; // State *before* potential change (for comparison)
-            let round = 0;
-            let changedEmoji = "";
-            let changeType = ""; // 'added' or 'removed'
-            let currentActionType = "";
-            let currentQuestionDetails = {};
-            let correctAnswerValue = "";
-            let countdownInterval = null;
-            // To track unique "other" questions per game (e.g., "count_category:faces")
-            let usedOtherQuestionIdentifiers = new Set(); 
+<script>
+function emojiContent(e) { return e; }
 
-            // Approximate size of an emoji span including padding/margin
-            const EMOJI_WIDTH = 60;
-            const EMOJI_HEIGHT = 60;
-            const PADDING = 10; // Minimum space between emojis
+const ALL_EMOJIS = [
+  "😀","😠","😴","😐","😭","😎","🤩","🥹","😤","😇",
+  "🐶","🐱","🐔","🐟","🐦","🐍","🐒","🐝","🐧","🦁","🐸","🦊","🐻","🦋","🦄",
+  "🍓","🍌","🍉","🍎","🥑","🍇","🍑","🥝","🍋","🍒",
+  "🚗","⛵","✈️","🚲","🛴","🚀","🚁","🚂","🚕","🛸",
+  "⚽","⚾","🏀","🏐","🎱","🎾","🥊","🎯","🏆","🎳"
+];
 
-            const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const CATEGORIES = {
+  faces:    ["😀","😠","😴","😐","😭","😎","🤩","🥹","😤","😇"],
+  animals:  ["🐶","🐱","🐔","🐟","🐦","🐍","🐒","🐝","🐧","🦁","🐸","🦊","🐻","🦋","🦄"],
+  fruits:   ["🍓","🍌","🍉","🍎","🥑","🍇","🍑","🥝","🍋","🍒"],
+  vehicles: ["🚗","⛵","✈️","🚲","🛴","🚀","🚁","🚂","🚕","🛸"],
+  sports:   ["⚽","⚾","🏀","🏐","🎱","🎾","🥊","🎯","🏆","🎳"]
+};
 
-            const getUniqueRandomEmojis = (count, exclude = []) => {
-                const availableEmojis = emojis.filter((emoji) => !exclude.includes(emoji));
-                if (availableEmojis.length < count) {
-                    console.warn("Not enough unique emojis available for the requested count.");
-                    return availableEmojis; // Return all available if not enough
-                }
-                const shuffled = availableEmojis.sort(() => 0.5 - Math.random());
-                return shuffled.slice(0, count);
-            };
+// ─── Elements ──────────────────────────────────────────────────────
+const screenDiff = document.getElementById('screen-difficulty');
+const screenGame = document.getElementById('screen-game');
+const screenEnd  = document.getElementById('screen-end');
 
-            const generateNonOverlappingPositions = (emojisCount, containerWidth, containerHeight) => {
-                const positions = [];
-                const placedRects = []; // Store {x, y, width, height} of placed emojis
-                const EMOJI_SIZE_WITH_PADDING = EMOJI_WIDTH + PADDING;
+const btnEasy   = document.getElementById('btn-easy');
+const btnMedium = document.getElementById('btn-medium');
+const btnHard   = document.getElementById('btn-hard');
+const selTimer  = document.getElementById('sel-timer');
+const selRounds = document.getElementById('sel-rounds');
+const selShuffle= document.getElementById('sel-shuffle');
 
-                for (let i = 0; i < emojisCount; i++) {
-                    let newX, newY;
-                    let attempts = 0;
-                    const maxAttempts = 1000; // Increased attempts for better non-overlap
+const roundDisplay  = document.getElementById('round-display');
+const progressFill  = document.getElementById('progress-fill');
+const timerRing     = document.getElementById('timer-ring');
+const timerText     = document.getElementById('timer-text');
+const phaseBanner   = document.getElementById('phase-banner');
+const emojiGrid     = document.getElementById('emoji-grid');
+const goWrap        = document.getElementById('go-wrap');
+const btnGo         = document.getElementById('btn-go');
+const questionArea  = document.getElementById('question-area');
+const questionText  = document.getElementById('question-text');
+const btnAnswer     = document.getElementById('btn-answer');
+const answerDisplay = document.getElementById('answer-display');
 
-                    let foundPosition = false;
-                    while (attempts < maxAttempts) {
-                        newX = getRandomInt(0, containerWidth - EMOJI_WIDTH);
-                        newY = getRandomInt(0, containerHeight - EMOJI_HEIGHT);
+const endScore    = document.getElementById('end-score');
+const roundHistory= document.getElementById('round-history');
+const btnPlayAgain   = document.getElementById('btn-play-again');
+const btnChangeDiff  = document.getElementById('btn-change-diff');
 
-                        const newRect = {
-                            x: newX,
-                            y: newY,
-                            width: EMOJI_SIZE_WITH_PADDING,
-                            height: EMOJI_SIZE_WITH_PADDING
-                        };
+// ─── Audio ─────────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
 
-                        let overlaps = false;
-                        for (const placed of placedRects) {
-                            if (newRect.x < placed.x + placed.width &&
-                                newRect.x + newRect.width > placed.x &&
-                                newRect.y < placed.y + placed.height &&
-                                newRect.y + placed.height > placed.y) {
-                                overlaps = true;
-                                break;
-                            }
-                        }
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
 
-                        if (!overlaps) {
-                            positions.push({ x: newX, y: newY });
-                            placedRects.push(newRect);
-                            foundPosition = true;
-                            break; // Found a non-overlapping position
-                        }
-                        attempts++;
-                    }
-                    if (!foundPosition) {
-                        console.warn(`Failed to find non-overlapping position for emoji ${i + 1}. Placing randomly, may overlap.`);
-                        // Fallback: push a random position anyway
-                        newX = getRandomInt(0, containerWidth - EMOJI_WIDTH);
-                        newY = getRandomInt(0, containerHeight - EMOJI_HEIGHT);
-                        positions.push({ x: newX, y: newY });
-                        placedRects.push({ x: newX, y: newY, width: EMOJI_SIZE_WITH_PADDING, height: EMOJI_SIZE_WITH_PADDING });
-                    }
-                }
-                return positions;
-            };
+function playTone(freq, type, duration, vol = 0.25, delay = 0) {
+  try {
+    const ctx = getAudioCtx();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type; osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(vol, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.start(t); osc.stop(t + duration);
+  } catch(e) {}
+}
 
-            const displayEmojis = (emojisToDisplay) => {
-                emojiGrid.innerHTML = "";
-                requestAnimationFrame(() => {
-                    const containerWidth = emojiGrid.offsetWidth;
-                    const containerHeight = emojiGrid.offsetHeight;
+function sfxGo()      { playTone(440,'square',0.08,0.2); playTone(660,'square',0.12,0.2,0.09); }
+function sfxBeep()    { playTone(880,'sine',0.06,0.15); }
+function sfxUrgent()  { playTone(660,'sawtooth',0.12,0.18); }
+function sfxReveal()  { [523,659,784,1047].forEach((f,i)=>playTone(f,'sine',0.15,0.2,i*0.07)); }
+function sfxTransition(){ playTone(330,'triangle',0.2,0.15); }
 
-                    const positions = generateNonOverlappingPositions(emojisToDisplay.length, containerWidth, containerHeight);
+// ─── State ─────────────────────────────────────────────────────────
+let difficulty = '', numEmojis = 0, timerDuration = 20, totalRounds = 5, shuffleMode = false;
+let round = 0, prevEmojis = [], currEmojis = [];
+let actionType = '', changedEmoji = '', swappedEmojis = [], movedEmoji = '';
+let questionDetails = {}, correctAnswer = '';
+let countdownInterval = null, timerFull = 0;
+let usedCategories = new Set();
+let gameHistory = [];
 
-                    emojisToDisplay.forEach((emoji, index) => {
-                        const span = document.createElement("span");
-                        span.classList.add("emoji");
-                        span.textContent = emoji;
-                        span.style.left = `${positions[index].x}px`;
-                        span.style.top = `${positions[index].y}px`;
-                        emojiGrid.appendChild(span);
-                    });
-                });
-            };
+const EMOJI_W = 56, EMOJI_H = 56, PAD = 12;
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
 
-            const startGame = (difficulty) => {
-                currentDifficulty = difficulty;
-                round = 0; // Will be incremented in prepareRound
-                selectedTimerDuration = parseInt(timerSelect.value);
-                totalRounds = parseInt(roundsSelect.value);
-                usedOtherQuestionIdentifiers = new Set(); // Reset for new game
+// ─── Screens ───────────────────────────────────────────────────────
+function showScreen(el) {
+  [screenDiff, screenGame, screenEnd].forEach(s => { s.classList.remove('active'); s.style.display='none'; });
+  el.style.display = 'flex';
+  requestAnimationFrame(() => el.classList.add('active'));
+}
 
-                switch (difficulty) {
-                    case "easy":
-                        numEmojis = getRandomInt(8, 12);
-                        break;
-                    case "medium":
-                        numEmojis = getRandomInt(13, 16);
-                        break;
-                    case "hard":
-                        numEmojis = getRandomInt(17, 22);
-                        break;
-                }
+// ─── Emoji Catalogue ───────────────────────────────────────────────
+function buildCatalogue() {
+  const container = document.getElementById('emoji-catalogue');
+  if (!container) return;
+  const title = document.createElement('div');
+  title.className = 'catalogue-title';
+  title.textContent = 'Emojis in this game';
+  container.appendChild(title);
 
-                // Initial set of emojis for the very first round
-                previousEmojis = getUniqueRandomEmojis(numEmojis);
-                currentEmojis = [...previousEmojis]; // currentEmojis starts as same as previous for round 1
+  Object.entries(CATEGORIES).forEach(([name, items]) => {
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    const label = document.createElement('span');
+    label.className = 'cat-label';
+    label.textContent = name;
+    row.appendChild(label);
+    const emojisSpan = document.createElement('span');
+    emojisSpan.className = 'cat-emojis';
+    emojisSpan.innerHTML = items.map(e => emojiContent(e)).join(' ');
+    row.appendChild(emojisSpan);
+    container.appendChild(row);
+  });
+}
 
-                difficultyScreen.classList.add("hidden");
-                gameScreen.classList.remove("hidden");
+// ─── Positions ─────────────────────────────────────────────────────
+function genPositions(n) {
+  const W = emojiGrid.offsetWidth, H = emojiGrid.offsetHeight;
+  const placed = [], out = [];
+  const sz = EMOJI_W + PAD;
+  for (let i = 0; i < n; i++) {
+    let x, y, ok = false, tries = 0;
+    while (!ok && tries < 800) {
+      x = rand(0, W - EMOJI_W); y = rand(0, H - EMOJI_H);
+      ok = !placed.some(p => x < p.x+sz && x+sz > p.x && y < p.y+sz && y+sz > p.y);
+      tries++;
+    }
+    out.push({x, y}); placed.push({x, y});
+  }
+  return out;
+}
 
-                prepareRound(); // Start the first round setup
-            };
+// ─── Display emojis ────────────────────────────────────────────────
+function displayEmojis(list, highlight = []) {
+  emojiGrid.innerHTML = '';
+  requestAnimationFrame(() => {
+    const pos = genPositions(list.length);
+    list.forEach((e, i) => {
+      const span = document.createElement('span');
+      span.className = 'emoji';
+      if (highlight.includes(e)) span.classList.add('highlighted');
+      span.innerHTML = emojiContent(e);
+      span.style.left = pos[i].x + 'px';
+      span.style.top  = pos[i].y + 'px';
+      span.style.animationDelay = (i * 0.03) + 's';
+      emojiGrid.appendChild(span);
+    });
+  });
+}
 
-            const prepareRound = () => {
-                round++;
-                if (round > totalRounds) {
-                    endGame();
-                    return;
-                }
+// ─── Timer ─────────────────────────────────────────────────────────
+const CIRC = 175.93;
 
-                // Clear previous question/answer and timer display
-                questionArea.classList.add("hidden");
-                answerDisplay.classList.add("hidden");
-                timerDisplay.textContent = "Press GO to start round";
+function setTimerDisplay(t, total) {
+  timerText.textContent = t;
+  const frac = t / total;
+  timerRing.style.strokeDashoffset = CIRC * (1 - frac);
+  if (frac > 0.5) timerRing.style.stroke = 'url(#timerGrad)';
+  else if (frac > 0.25) timerRing.style.stroke = '#f9cb28';
+  else timerRing.style.stroke = '#fc5c7d';
+}
 
-                roundDisplay.textContent = `Round ${round} of ${totalRounds}`;
-                goBtn.disabled = false;
-                answerBtn.disabled = true;
+function startCountdown(duration, onEnd) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  timerFull = duration;
+  let t = duration;
+  setTimerDisplay(t, duration);
+  countdownInterval = setInterval(() => {
+    t--;
+    setTimerDisplay(t, duration);
+    if (t <= 3 && t > 0) sfxUrgent();
+    else if (t > 0) sfxBeep();
+    if (t <= 0) { clearInterval(countdownInterval); countdownInterval = null; onEnd(); }
+  }, 1000);
+}
 
-                // Determine the action for this round based on new rules
-                changedEmoji = "";
-                changeType = "";
-                currentQuestionDetails = {}; // Clear details for new round
+function stopTimer() { if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; } timerText.textContent = '—'; timerRing.style.strokeDashoffset = 0; }
 
-                let nextEmojisState = [...previousEmojis]; // Start with the state *before* this round's change
+// ─── Phase banner ──────────────────────────────────────────────────
+function setPhase(text, cls) {
+  phaseBanner.textContent = text;
+  phaseBanner.className = 'phase-banner ' + (cls || '');
+}
 
-                if (round === 1) {
-                    currentActionType = "add_emoji";
-                } else if (round === 2) {
-                    currentActionType = "remove_emoji";
-                } else if (round % 2 !== 0) { // Odd rounds (3, 5, etc.) -> "other" questions (count_category) or count_total
-                    let potentialQuestionIdentifiers = [];
+// ─── Game start ────────────────────────────────────────────────────
+function startGame(diff) {
+  difficulty = diff;
+  timerDuration = parseInt(selTimer.value);
+  totalRounds = parseInt(selRounds.value);
+  shuffleMode = selShuffle.value === '1';
+  usedCategories = new Set();
+  gameHistory = [];
+  round = 0;
+  numEmojis = diff === 'easy' ? rand(8,12) : diff === 'medium' ? rand(13,16) : rand(17,22);
+  prevEmojis = shuffle([...ALL_EMOJIS]).slice(0, numEmojis);
+  currEmojis = [...prevEmojis];
+  showScreen(screenGame);
+  prepareRound();
+}
 
-                    // 'count_total' can always be asked
-                    potentialQuestionIdentifiers.push("count_total");
+function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
 
-                    // Add count_category questions that haven't been asked for that specific category
-                    Object.keys(emojiCategories).forEach(categoryName => {
-                        const identifier = `count_category:${categoryName}`;
-                        if (!usedOtherQuestionIdentifiers.has(identifier)) {
-                            potentialQuestionIdentifiers.push(identifier);
-                        }
-                    });
+// ─── Round logic ───────────────────────────────────────────────────
+function pickActionType() {
+  const addRemove = ['add_emoji','remove_emoji'];
+  const counting  = ['count_total'];
+  const catOptions = Object.keys(CATEGORIES).filter(c => !usedCategories.has(c));
 
-                    if (potentialQuestionIdentifiers.length > 0) {
-                        const selectedIdentifier = potentialQuestionIdentifiers[getRandomInt(0, potentialQuestionIdentifiers.length - 1)];
+  if (round === 1) return 'add_emoji';
+  if (round === 2) return 'remove_emoji';
 
-                        if (selectedIdentifier === "count_total") {
-                            currentActionType = "count_total";
-                        } else if (selectedIdentifier.startsWith("count_category:")) {
-                            currentActionType = "count_category";
-                            currentQuestionDetails.category = selectedIdentifier.split(":")[1];
-                            usedOtherQuestionIdentifiers.add(selectedIdentifier); // Mark this specific question as used
-                        }
-                    } else {
-                        // Fallback if, against all odds, even 'count_total' is somehow not available or if the logic above fails
-                        currentActionType = addRemoveActionTypes[getRandomInt(0, addRemoveActionTypes.length - 1)];
-                        console.warn("Unexpected: No unique 'other' questions available. Falling back to add/remove.");
-                    }
+  // Odd rounds: observational or move/swap
+  if (round % 2 !== 0) {
+    const opts = [...counting];
+    if (catOptions.length) opts.push(...catOptions.map(c => 'count_category:'+c));
+    // Include move/swap
+    if (prevEmojis.length >= 2) opts.push('move_emoji', 'swap_emoji');
+    const pick = opts[rand(0, opts.length - 1)];
+    if (pick.startsWith('count_category:')) {
+      const cat = pick.split(':')[1];
+      usedCategories.add(cat);
+      return pick;
+    }
+    return pick;
+  }
 
-                } else { // Even rounds (4, 6, etc.) -> "add/remove" questions
-                    currentActionType = addRemoveActionTypes[getRandomInt(0, addRemoveActionTypes.length - 1)];
-                }
+  // Even rounds: add/remove or swap/move
+  const pool = [...addRemove, 'move_emoji', 'swap_emoji'];
+  return pool[rand(0, pool.length - 1)];
+}
 
-                // Apply changes if it's an add/remove action
-                if (currentActionType === "add_emoji") {
-                    const availableToAdd = emojis.filter((emoji) => !nextEmojisState.includes(emoji));
-                    if (availableToAdd.length > 0) {
-                        changedEmoji = availableToAdd[getRandomInt(0, availableToAdd.length - 1)];
-                        nextEmojisState.push(changedEmoji);
-                        changeType = "added";
-                    } else {
-                        // Fallback if no new emojis can be added, change action type
-                        currentActionType = "count_total"; // Fallback to a question type
-                        console.warn("No new emojis to add, switching to count_total.");
-                    }
-                } else if (currentActionType === "remove_emoji") {
-                    if (nextEmojisState.length > 1) { // Ensure at least one emoji remains
-                        const randomIndex = getRandomInt(0, nextEmojisState.length - 1);
-                        changedEmoji = nextEmojisState[randomIndex];
-                        nextEmojisState.splice(randomIndex, 1);
-                        changeType = "removed";
-                    } else {
-                        // Fallback if only one emoji left, change action type
-                        currentActionType = "count_total"; // Fallback to a question type
-                        console.warn("Only one emoji left, switching to count_total.");
-                    }
-                }
+function applyAction(type, base) {
+  let next = [...base];
+  changedEmoji = ''; swappedEmojis = []; movedEmoji = '';
 
-                currentEmojis = nextEmojisState; // This is the state *after* this round's change
+  if (type === 'add_emoji') {
+    const avail = ALL_EMOJIS.filter(e => !next.includes(e));
+    if (!avail.length) return { next, fallback: 'count_total' };
+    changedEmoji = avail[rand(0, avail.length - 1)];
+    next.push(changedEmoji);
+  } else if (type === 'remove_emoji') {
+    if (next.length <= 1) return { next, fallback: 'count_total' };
+    const idx = rand(0, next.length - 1);
+    changedEmoji = next[idx];
+    next.splice(idx, 1);
+  } else if (type === 'swap_emoji') {
+    if (next.length < 2) return { next, fallback: 'count_total' };
+    const i = rand(0, next.length - 1);
+    let j = rand(0, next.length - 2); if (j >= i) j++;
+    swappedEmojis = [next[i], next[j]];
+    // Swap is visual-only (positions swap), content unchanged
+    // We represent it as: in display, we re-render with highlight
+  } else if (type === 'move_emoji') {
+    if (next.length < 1) return { next, fallback: 'count_total' };
+    movedEmoji = next[rand(0, next.length - 1)];
+    // No array change; just a visual reposition
+  }
+  return { next, fallback: null };
+}
 
-                // Display the initial state (previousEmojis) but keep it invisible until GO
-                displayEmojis(previousEmojis);
-                emojiGrid.classList.add("invisible");
-            };
+function prepareRound() {
+  round++;
+  if (round > totalRounds) { endGame(); return; }
 
-            const startCountdown = (duration, onEndCallback) => {
-                let timeLeft = duration;
-                timerDisplay.textContent = `Time: ${timeLeft}s`;
-                if (countdownInterval) clearInterval(countdownInterval); // Clear any existing timer
+  roundDisplay.textContent = `Round ${round} of ${totalRounds}`;
+  progressFill.style.width = ((round - 1) / totalRounds * 100) + '%';
 
-                countdownInterval = setInterval(() => {
-                    timeLeft--;
-                    timerDisplay.textContent = `Time: ${timeLeft}s`;
-                    if (timeLeft <= 0) {
-                        clearInterval(countdownInterval);
-                        countdownInterval = null;
-                        onEndCallback();
-                    }
-                }, 1000);
-            };
+  stopTimer();
+  setPhase('Get ready…');
+  questionArea.style.display = 'none'; questionArea.classList.add('hidden');
+  answerDisplay.classList.add('hidden');
+  goWrap.style.display = 'flex';
+  btnGo.disabled = false;
+  btnAnswer.disabled = true;
+  emojiGrid.classList.add('invisible');
 
-            const handleGoClick = () => {
-                goBtn.disabled = true;
-                // Hide previous question/answer immediately when GO is clicked
-                questionArea.classList.add("hidden");
-                answerDisplay.classList.add("hidden");
+  // Determine this round's action
+  let rawType = pickActionType();
+  let catName = null;
+  if (rawType.startsWith('count_category:')) {
+    catName = rawType.split(':')[1];
+    rawType = 'count_category';
+    questionDetails = { category: catName };
+  } else {
+    questionDetails = {};
+  }
+  actionType = rawType;
 
-                emojiGrid.classList.remove("invisible"); // Make emojis visible for first observation
-                startCountdown(selectedTimerDuration, handleFirstObservationEnd);
-            };
+  // Apply changes
+  const { next, fallback } = applyAction(actionType, prevEmojis);
+  if (fallback) { actionType = fallback; }
+  currEmojis = next;
 
-            const handleFirstObservationEnd = () => {
-                emojiGrid.classList.add("invisible"); // Hide emojis
-                timerDisplay.textContent = "Comparing...";
+  // Precompute correct answer
+  switch (actionType) {
+    case 'add_emoji':    correctAnswer = changedEmoji; break;
+    case 'remove_emoji': correctAnswer = changedEmoji; break;
+    case 'swap_emoji':   correctAnswer = swappedEmojis.join(' ↔ '); break;
+    case 'move_emoji':   correctAnswer = movedEmoji; break;
+    case 'count_total':  correctAnswer = currEmojis.length; break;
+    case 'count_category': {
+      const catEmojis = CATEGORIES[questionDetails.category];
+      correctAnswer = currEmojis.filter(e => catEmojis.includes(e)).length;
+      break;
+    }
+  }
 
-                // After 5 seconds, show the second state and start the second timer
-                setTimeout(() => {
-                    // Display the *new* state of emojis (currentEmojis) with new random positions
-                    displayEmojis(currentEmojis);
+  // Show the BEFORE state
+  const displayBefore = shuffleMode ? shuffle([...prevEmojis]) : prevEmojis;
+  displayEmojis(displayBefore);
+  emojiGrid.classList.add('invisible');
+}
 
-                    // Conditional visibility for emojis during the second timer
-                    if (currentActionType === "add_emoji" || currentActionType === "remove_emoji") {
-                        emojiGrid.classList.remove("invisible"); // Make them visible for add/remove questions
-                    } else {
-                        // For 'other' questions (count_total, count_category), keep them invisible
-                        emojiGrid.classList.add("invisible"); // Ensure they remain invisible
-                    }
+// ─── GO ────────────────────────────────────────────────────────────
+btnGo.addEventListener('click', () => {
+  sfxGo();
+  btnGo.disabled = true;
+  goWrap.style.display = 'none';
+  emojiGrid.classList.remove('invisible');
+  setPhase('Memorise! 👀', 'phase-observe');
+  startCountdown(timerDuration, onFirstTimerEnd);
+});
 
-                    startCountdown(selectedTimerDuration, handleSecondObservationEnd);
+function onFirstTimerEnd() {
+  sfxTransition();
+  emojiGrid.classList.add('invisible');
+  setPhase('Changing…', 'phase-transition');
+  stopTimer();
+  timerText.textContent = '—';
 
-                    // Show question and enable answer button immediately when second timer starts
-                    answerBtn.disabled = false;
-                    questionArea.classList.remove("hidden");
+  setTimeout(() => {
+    // Show the AFTER state
+    let displayAfter, highlight = [];
+    if (actionType === 'add_emoji') {
+      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
+      highlight = [changedEmoji];
+    } else if (actionType === 'remove_emoji') {
+      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
+    } else if (actionType === 'swap_emoji') {
+      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
+      highlight = swappedEmojis;
+    } else if (actionType === 'move_emoji') {
+      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
+      highlight = [movedEmoji];
+    } else {
+      // Count questions: show SAME state, keep hidden
+      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
+    }
 
-                    // Set the question text and calculate correct answer based on currentActionType
-                    switch (currentActionType) {
-                        case "add_emoji":
-                            questionText.textContent = "WHAT EMOJI WAS ADDED?";
-                            correctAnswerValue = changedEmoji;
-                            break;
-                        case "remove_emoji":
-                            questionText.textContent = "WHAT EMOJI WAS REMOVED?";
-                            correctAnswerValue = changedEmoji;
-                            break;
-                        case "count_total":
-                            questionText.textContent = "HOW MANY EMOJIS ARE THERE NOW?";
-                            correctAnswerValue = currentEmojis.length;
-                            break;
-                        case "count_category":
-                            questionText.textContent = `HOW MANY ${currentQuestionDetails.category.toUpperCase()} EMOJIS ARE THERE?`;
-                            let count = 0;
-                            const categoryEmojis = emojiCategories[currentQuestionDetails.category];
-                            currentEmojis.forEach(emoji => {
-                                if (categoryEmojis.includes(emoji)) {
-                                    count++;
-                                }
-                            });
-                            correctAnswerValue = count;
-                            break;
-                    }
-                }, 5000); // 5 seconds transition delay
-            };
+    displayEmojis(displayAfter, []);
 
-            const handleSecondObservationEnd = () => {
-                emojiGrid.classList.add("invisible"); // Hide emojis again
-                // Question and answer button are already visible/enabled
-            };
+    const isVisual = ['add_emoji','remove_emoji','swap_emoji','move_emoji'].includes(actionType);
+    if (isVisual) emojiGrid.classList.remove('invisible');
+    else emojiGrid.classList.add('invisible');
 
-            const handleAnswer = () => {
-                answerBtn.disabled = true;
-                answerDisplay.classList.remove("hidden");
-                
-                let answerMessage = "";
-                switch (currentActionType) {
-                    case "add_emoji":
-                        answerMessage = `The ${correctAnswerValue} was added.`;
-                        break;
-                    case "remove_emoji":
-                        answerMessage = `The ${correctAnswerValue} was removed.`;
-                        break;
-                    case "count_total":
-                        answerMessage = `There are ${correctAnswerValue} emojis.`;
-                        break;
-                    case "count_category":
-                        answerMessage = `There are ${correctAnswerValue} ${currentQuestionDetails.category} emojis.`;
-                        break;
-                }
-                answerDisplay.textContent = answerMessage;
+    // Show question
+    setPhase('What changed? 🤔', 'phase-question');
+    questionArea.style.display = 'flex'; questionArea.classList.remove('hidden');
+    btnAnswer.disabled = false;
+    setQuestionText();
+    startCountdown(timerDuration, onSecondTimerEnd);
+  }, 2000);
+}
 
-                // Show the actual current state of emojis after the answer is revealed
-                emojiGrid.classList.remove("invisible");
-                displayEmojis(currentEmojis); // Re-display to ensure correct positions if not already
+function setQuestionText() {
+  const map = {
+    add_emoji:      'WHAT EMOJI WAS ADDED?',
+    remove_emoji:   'WHAT EMOJI WAS REMOVED?',
+    swap_emoji:     'WHICH TWO EMOJIS SWAPPED POSITIONS?',
+    move_emoji:     'WHICH EMOJI MOVED TO A NEW SPOT?',
+    count_total:    '🔢 HOW MANY EMOJIS ARE THERE?',
+    count_category: `🔢 HOW MANY ${(questionDetails.category || '').toUpperCase()} EMOJIS?`,
+  };
+  questionText.textContent = map[actionType] || 'WHAT CHANGED?';
+}
 
-                // Prepare for next round after a short delay
-                setTimeout(() => {
-                    // Set previousEmojis for the next round to be the current state
-                    previousEmojis = [...currentEmojis];
-                    prepareRound();
-                }, 3000); // 3 seconds to see the answer and new state
-            };
+function onSecondTimerEnd() {
+  emojiGrid.classList.add('invisible');
+  setPhase('Time\'s up! 🕐');
+}
 
-            const endGame = () => {
-                goBtn.disabled = true;
-                answerBtn.disabled = true;
-                questionArea.classList.add("hidden");
-                answerDisplay.classList.add("hidden");
-                timerDisplay.textContent = "";
-                gameOverMessage.classList.remove("hidden");
-                gameOverMessage.textContent = "Game Over! Well played!";
-                playAgainBtn.classList.remove("hidden");
-                emojiGrid.classList.add("hidden"); // Hide emoji grid at game over
-            };
+// ─── ANSWER ────────────────────────────────────────────────────────
+btnAnswer.addEventListener('click', () => {
+  sfxReveal();
+  btnAnswer.disabled = true;
+  stopTimer();
 
-            const resetGame = () => {
-                round = 0;
-                currentEmojis = [];
-                previousEmojis = [];
-                changedEmoji = "";
-                changeType = "";
-                currentActionType = "";
-                currentQuestionDetails = {};
-                correctAnswerValue = "";
-                if (countdownInterval) {
-                    clearInterval(countdownInterval);
-                    countdownInterval = null;
-                }
-                usedOtherQuestionIdentifiers = new Set(); // Reset used "other" questions for a new game
-                emojiGrid.classList.remove("invisible");
-                emojiGrid.classList.remove("hidden"); // Ensure grid is visible for next game
+  let msg = '';
+  switch (actionType) {
+    case 'add_emoji':      msg = `${emojiContent(correctAnswer)} was added!`; break;
+    case 'remove_emoji':   msg = `${emojiContent(correctAnswer)} was removed!`; break;
+    case 'swap_emoji':     msg = `${swappedEmojis.map(emojiContent).join(' ↔ ')} swapped!`; break;
+    case 'move_emoji':     msg = `${emojiContent(correctAnswer)} moved position!`; break;
+    case 'count_total':    msg = `There are ${correctAnswer} emojis!`; break;
+    case 'count_category': msg = `${correctAnswer} ${questionDetails.category} emoji${correctAnswer !== 1 ? 's' : ''}!`; break;
+  }
 
-                gameScreen.classList.add("hidden");
-                difficultyScreen.classList.remove("hidden");
-                gameOverMessage.classList.add("hidden");
-                playAgainBtn.classList.add("hidden");
-                answerDisplay.classList.add("hidden");
-                questionArea.classList.add("hidden");
-                goBtn.disabled = false;
-                answerBtn.disabled = true;
-            };
+  answerDisplay.innerHTML = msg;
+  answerDisplay.classList.remove('hidden');
 
-            // Event Listeners
-            easyBtn.addEventListener("click", () => startGame("easy"));
-            mediumBtn.addEventListener("click", () => startGame("medium"));
-            hardBtn.addEventListener("click", () => startGame("hard"));
-            timerSelect.addEventListener("change", (e) => selectedTimerDuration = parseInt(e.target.value));
-            roundsSelect.addEventListener("change", (e) => totalRounds = parseInt(e.target.value));
-            goBtn.addEventListener("click", handleGoClick);
-            answerBtn.addEventListener("click", handleAnswer);
-            playAgainBtn.addEventListener("click", resetGame);
-        });
-    </script>
+  // Reveal with highlights
+  let highlight = [];
+  if (actionType === 'add_emoji') highlight = [changedEmoji];
+  if (actionType === 'remove_emoji') highlight = [];
+  if (actionType === 'swap_emoji') highlight = swappedEmojis;
+  if (actionType === 'move_emoji') highlight = [movedEmoji];
+  if (actionType === 'count_category') {
+    highlight = currEmojis.filter(e => CATEGORIES[questionDetails.category]?.includes(e));
+  }
+
+  displayEmojis(currEmojis, highlight);
+  emojiGrid.classList.remove('invisible');
+
+  gameHistory.push({ round, actionType, answer: msg });
+
+  setTimeout(() => {
+    prevEmojis = [...currEmojis];
+    prepareRound();
+  }, 3000);
+});
+
+// ─── END GAME ──────────────────────────────────────────────────────
+function endGame() {
+  progressFill.style.width = '100%';
+  stopTimer();
+  spawnConfetti();
+  sfxReveal();
+
+  endScore.textContent = totalRounds;
+  roundHistory.innerHTML = '';
+  gameHistory.forEach((h, i) => {
+    const row = document.createElement('div');
+    row.className = 'history-row';
+    row.style.animationDelay = (i * 0.07) + 's';
+    const typeLabel = {
+      add_emoji:'Added emoji', remove_emoji:'Removed emoji',
+      swap_emoji:'Swapped emojis', move_emoji:'Moved emoji',
+      count_total:'Count total', count_category:'Count category'
+    }[h.actionType] || h.actionType;
+    row.innerHTML = `<span class="round-num">R${h.round}</span><span class="q-type">${typeLabel}</span><span class="answer-badge">${h.answer}</span>`;
+    roundHistory.appendChild(row);
+  });
+
+  showScreen(screenEnd);
+}
+
+// ─── Confetti ──────────────────────────────────────────────────────
+function spawnConfetti() {
+  const colors = ['#7c5cfc','#fc5c7d','#43e97b','#56ccf2','#f9cb28','#fff'];
+  for (let i = 0; i < 80; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti-piece';
+    c.style.cssText = `
+      left:${Math.random()*100}vw;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      width:${rand(6,12)}px; height:${rand(6,12)}px;
+      border-radius:${Math.random()>0.5?'50%':'2px'};
+      animation-duration:${(2+Math.random()*2).toFixed(2)}s;
+      animation-delay:${(Math.random()*0.8).toFixed(2)}s;
+      transform:rotate(${rand(0,360)}deg);
+    `;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 4000);
+  }
+}
+
+// ─── Nav ───────────────────────────────────────────────────────────
+btnEasy.addEventListener('click', () => startGame('easy'));
+btnMedium.addEventListener('click', () => startGame('medium'));
+btnHard.addEventListener('click', () => startGame('hard'));
+btnPlayAgain.addEventListener('click', () => startGame(difficulty));
+btnChangeDiff.addEventListener('click', () => { showScreen(screenDiff); });
+
+// Init
+buildCatalogue();
+showScreen(screenDiff);
+</script>
 </body>
 </html>

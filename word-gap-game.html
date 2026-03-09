@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Gap – EFL Classroom Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1923;
+    --surface: #1a2738;
+    --card: #1e2f45;
+    --accent: #ffcc00;
+    --accent2: #ff6b6b;
+    --accent3: #4ecdc4;
+    --accent4: #a78bfa;
+    --text: #f0f4f8;
+    --muted: #7a9ab8;
+    --correct: #2ecc71;
+    --wrong: #e74c3c;
+    --radius: 16px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── STARFIELD ── */
+  #stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    background: #fff;
+    animation: twinkle var(--d, 3s) ease-in-out infinite alternate;
+    opacity: 0.4;
+  }
+  @keyframes twinkle { to { opacity: 0.05; } }
+
+  /* ── SCREENS ── */
+  .screen { position: relative; z-index: 1; display: none; min-height: 100vh; padding: 24px; }
+  .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+  /* ── START SCREEN ── */
+  #startScreen { gap: 32px; }
+  .logo {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2.8rem, 8vw, 5rem);
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(255,204,0,0.5), 4px 4px 0 rgba(0,0,0,0.3);
+    letter-spacing: -1px;
+    text-align: center;
+    line-height: 1;
+  }
+  .logo span { color: var(--accent3); }
+  .tagline { color: var(--muted); font-size: 1rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; text-align: center; }
+
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    padding: 36px 40px;
+    width: min(480px, 100%);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .field-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .cefr-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .cefr-btn {
+    background: var(--card);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    padding: 14px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .cefr-btn:hover { border-color: var(--muted); transform: translateY(-2px); }
+  .cefr-btn.selected, .cefr-btn.selected-speed, .cefr-btn.selected-timer { border-color: var(--accent); background: rgba(255,204,0,0.12); color: var(--accent); }
+
+  .teams-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: center;
+  }
+  .teams-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 2px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    font-size: 1.4rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .teams-btn:hover { border-color: var(--accent3); background: rgba(78,205,196,0.15); }
+  #teamsDisplay {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.5rem;
+    color: var(--accent3);
+    min-width: 48px;
+    text-align: center;
+  }
+
+  .start-btn {
+    background: var(--accent);
+    color: #0f1923;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    padding: 16px 40px;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(255,204,0,0.35);
+    letter-spacing: 0.5px;
+    width: 100%;
+  }
+  .start-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(255,204,0,0.5); }
+  .start-btn:active { transform: translateY(0); }
+
+  /* ── GAME SCREEN ── */
+  #gameScreen { justify-content: flex-start; padding: 0; }
+
+  /* scoreboard */
+  #scoreboard {
+    width: 100%;
+    display: flex;
+    gap: 0;
+    flex-wrap: wrap;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .team-score {
+    flex: 1;
+    padding: 8px 10px 6px;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    transition: background 0.3s;
+    min-width: 70px;
+    position: relative;
+  }
+  .team-score:last-child { border-right: none; }
+  .team-score.active-team { background: rgba(255,204,0,0.08); }
+  .team-score .ts-name {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .team-score .ts-pts {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+  /* mini score bar under the points */
+  .ts-bar-wrap {
+    height: 4px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 2px;
+    margin-top: 5px;
+    overflow: hidden;
+  }
+  .ts-bar {
+    height: 100%;
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.5s cubic-bezier(.4,0,.2,1);
+  }
+  /* floating +pts popup */
+  .pts-popup {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    pointer-events: none;
+    animation: ptsPop 1.2s ease forwards;
+    z-index: 50;
+    white-space: nowrap;
+  }
+  @keyframes ptsPop {
+    0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    60%  { opacity: 1; transform: translateX(-50%) translateY(-28px) scale(1.2); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-48px) scale(0.8); }
+  }
+
+  /* sentence area */
+  #sentenceArea {
+    width: 100%;
+    padding: 28px 32px 20px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .round-info {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .sentence-text {
+    font-size: clamp(1.3rem, 3.5vw, 2rem);
+    font-weight: 700;
+    line-height: 1.5;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .gap-box {
+    display: inline-block;
+    background: rgba(255,204,0,0.15);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    padding: 2px 28px;
+    min-width: 120px;
+    color: var(--accent);
+    font-style: italic;
+    vertical-align: bottom;
+  }
+
+  /* word cloud area */
+  #wordArea {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .word-chip {
+    position: absolute;
+    background: var(--card);
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 40px;
+    padding: 10px 20px;
+    font-size: clamp(0.85rem, 2vw, 1.1rem);
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    will-change: transform;
+  }
+  .word-chip:hover {
+    border-color: var(--accent3);
+    background: rgba(78,205,196,0.15);
+    box-shadow: 0 4px 20px rgba(78,205,196,0.2);
+    z-index: 10;
+  }
+  .word-chip.correct-flash {
+    background: var(--correct) !important;
+    border-color: var(--correct) !important;
+    color: #fff !important;
+    transform: scale(1.25) !important;
+    box-shadow: 0 0 40px rgba(46,204,113,0.6) !important;
+    z-index: 20;
+  }
+  .word-chip.wrong-flash {
+    background: var(--wrong) !important;
+    border-color: var(--wrong) !important;
+    color: #fff !important;
+    transform: scale(0.88) !important;
+    z-index: 20;
+  }
+  .word-chip.revealed {
+    background: rgba(46,204,113,0.2) !important;
+    border-color: var(--correct) !important;
+    color: var(--correct) !important;
+  }
+  .word-chip.disabled { pointer-events: none; opacity: 0.5; }
+
+  /* turn banner */
+  #turnBanner {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+    background: var(--accent);
+    color: #0f1923;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    padding: 8px 28px;
+    border-radius: 40px;
+    box-shadow: 0 4px 20px rgba(255,204,0,0.4);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  /* feedback overlay */
+  #feedbackOverlay {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  #feedbackOverlay.show { opacity: 1; pointer-events: all; }
+  .feedback-box {
+    background: var(--surface);
+    border-radius: 24px;
+    padding: 48px 56px;
+    text-align: center;
+    box-shadow: 0 16px 64px rgba(0,0,0,0.5);
+    transform: scale(0.9);
+    transition: transform 0.25s;
+    max-width: 400px;
+    width: 90%;
+  }
+  #feedbackOverlay.show .feedback-box { transform: scale(1); }
+  .feedback-emoji { font-size: 4rem; margin-bottom: 12px; }
+  .feedback-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+  .feedback-title.correct-title { color: var(--correct); }
+  .feedback-title.wrong-title { color: var(--wrong); }
+  .feedback-sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 24px; }
+  .feedback-word {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.5rem;
+    color: var(--accent);
+    background: rgba(255,204,0,0.1);
+    padding: 8px 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: inline-block;
+  }
+  .next-btn {
+    background: var(--accent3);
+    color: #0f1923;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    padding: 13px 40px;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 16px rgba(78,205,196,0.35);
+  }
+  .next-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(78,205,196,0.5); }
+
+  /* ── WRONG ANSWER COUNTDOWN BAR ── */
+  #wrongCountdown {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 7px;
+    background: rgba(255,255,255,0.07);
+    z-index: 300;
+    display: none;
+  }
+  #wrongCountdownFill {
+    height: 100%;
+    width: 0%;
+    background: var(--wrong);
+    transition: width 5s linear;
+  }
+  #wrongCountdownLabel {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.9rem;
+    color: var(--wrong);
+    z-index: 301;
+    opacity: 0.8;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  /* ── END SCREEN ── */
+  #endScreen {
+    justify-content: flex-start !important;
+    overflow-y: auto;
+    padding: 32px 24px 64px;
+    gap: 0;
+    align-items: center;
+  }
+  .end-logo {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(255,204,0,0.4), 3px 3px 0 rgba(0,0,0,0.3);
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .end-logo span { color: var(--accent3); }
+  .word-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto 28px;
+  }
+  .cloud-word {
+    font-family: 'Fredoka One', cursive;
+    border-radius: 40px;
+    padding: 5px 16px;
+    white-space: nowrap;
+    animation: floatWord var(--fd, 3s) ease-in-out infinite alternate;
+    animation-delay: var(--fdel, 0s);
+  }
+  @keyframes floatWord {
+    from { transform: translateY(0px) rotate(var(--fr, -2deg)); }
+    to   { transform: translateY(-7px) rotate(var(--fr2, 2deg)); }
+  }
+  .podium {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    justify-content: center;
+    margin: 0 auto 20px;
+    width: 100%;
+    max-width: 500px;
+  }
+  .podium-place {
+    text-align: center;
+    background: var(--surface);
+    border-radius: 12px 12px 0 0;
+    padding: 20px 16px 16px;
+    min-width: 90px;
+    flex: 1;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .podium-place.first { height: 160px; background: rgba(255,204,0,0.12); border-color: var(--accent); }
+  .podium-place.second { height: 120px; background: rgba(78,205,196,0.08); border-color: var(--accent3); }
+  .podium-place.third { height: 90px; background: rgba(167,139,250,0.08); border-color: var(--accent4); }
+  .podium-place .place-num {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2rem;
+    line-height: 1;
+  }
+  .podium-place.first .place-num { color: var(--accent); }
+  .podium-place.second .place-num { color: var(--accent3); }
+  .podium-place.third .place-num { color: var(--accent4); }
+  .podium-place .place-name { font-size: 0.7rem; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
+  .podium-place .place-score { font-family: 'Fredoka One', cursive; font-size: 1.4rem; margin-top: 4px; }
+  .all-scores-table {
+    width: 100%;
+    max-width: 400px;
+    border-collapse: collapse;
+    margin-bottom: 28px;
+  }
+  .all-scores-table tr { border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .all-scores-table td { padding: 9px 14px; font-size: 0.9rem; color: var(--text); }
+  .all-scores-table td.rank { color: var(--muted); font-size: 0.8rem; width: 28px; }
+  .all-scores-table td.pts { text-align: right; font-family: 'Fredoka One', cursive; font-size: 1.15rem; }
+  .play-again-btn {
+    background: var(--accent);
+    color: #0f1923;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    padding: 14px 48px;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(255,204,0,0.35);
+    flex-shrink: 0;
+  }
+  .play-again-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,204,0,0.5); }
+
+  /* ── TEAM WORD BREAKDOWN ── */
+  .breakdown-section {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 28px;
+  }
+  .breakdown-section h3 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(255,255,255,0.08);
+  }
+  .breakdown-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.85rem;
+  }
+  .breakdown-word {
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.95rem;
+    min-width: 80px;
+  }
+  .breakdown-sentence {
+    flex: 1;
+    color: var(--muted);
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .breakdown-pts {
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.95rem;
+    min-width: 52px;
+    text-align: right;
+  }
+  .breakdown-miss { opacity: 0.45; }
+
+  /* confetti canvas */
+  #confettiCanvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 500;
+    display: none;
+  }
+
+  /* ── TIMER BAR ── */
+  #timerBar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.07);
+    position: relative;
+    flex-shrink: 0;
+  }
+  #timerFill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, var(--correct), var(--accent), var(--accent2));
+    transform-origin: left;
+    transition: width 1s linear;
+  }
+  #timerNum {
+    position: absolute;
+    right: 8px;
+    top: -22px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  #timerNum.urgent { color: var(--wrong); animation: pulse 0.5s ease infinite alternate; }
+  @keyframes pulse { to { transform: scale(1.2); } }
+
+  /* color variety for chips */
+  .word-chip:nth-child(3n) { border-color: rgba(167,139,250,0.25); }
+  .word-chip:nth-child(5n) { border-color: rgba(255,107,107,0.25); }
+  .word-chip:nth-child(7n) { border-color: rgba(78,205,196,0.25); }
+</style>
+</head>
+<body>
+
+<!-- Starfield -->
+<div id="stars"></div>
+
+<!-- ── START SCREEN ── -->
+<div id="startScreen" class="screen active">
+  <div class="logo">Word<span>Gap</span> ✦</div>
+  <div class="tagline">EFL Classroom Challenge</div>
+
+  <div class="setup-card">
+    <div>
+      <div class="field-label">CEFR Level</div>
+      <div class="cefr-grid">
+        <button class="cefr-btn" data-level="A1">A1</button>
+        <button class="cefr-btn selected" data-level="A2">A2</button>
+        <button class="cefr-btn" data-level="B1">B1</button>
+        <button class="cefr-btn" data-level="B2">B2</button>
+        <button class="cefr-btn" data-level="C1">C1</button>
+        <button class="cefr-btn" data-level="C2">C2</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Word Speed</div>
+      <div class="cefr-grid" style="grid-template-columns:repeat(3,1fr)">
+        <button class="cefr-btn speed-btn" data-speed="slow">🐢 Slow</button>
+        <button class="cefr-btn speed-btn selected-speed" data-speed="medium">🐇 Medium</button>
+        <button class="cefr-btn speed-btn" data-speed="fast">⚡ Fast</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Timer</div>
+      <div class="cefr-grid" style="grid-template-columns:repeat(3,1fr)">
+        <button class="cefr-btn timer-btn" data-timer="30">😌 30s</button>
+        <button class="cefr-btn timer-btn selected-timer" data-timer="20">😤 20s</button>
+        <button class="cefr-btn timer-btn" data-timer="10">😰 10s</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Number of Teams</div>
+      <div class="teams-row">
+        <button class="teams-btn" id="teamsDown">−</button>
+        <div id="teamsDisplay">2</div>
+        <button class="teams-btn" id="teamsUp">+</button>
+      </div>
+    </div>
+    <button class="start-btn" id="startBtn">▶ START GAME</button>
+  </div>
+</div>
+
+<!-- ── GAME SCREEN ── -->
+<div id="gameScreen" class="screen">
+  <div id="scoreboard"></div>
+  <div id="timerBar">
+    <div id="timerFill"></div>
+    <div id="timerNum">20</div>
+  </div>
+  <div id="sentenceArea">
+    <div class="round-info" id="roundInfo">ROUND 1 OF 10</div>
+    <div class="sentence-text" id="sentenceText"></div>
+  </div>
+  <div id="wordArea"></div>
+  <div id="turnBanner"></div>
+</div>
+
+<canvas id="confettiCanvas"></canvas>
+
+<!-- ── END SCREEN ── -->
+<div id="endScreen" class="screen">
+  <div class="end-logo">Game<span>Over</span> ✦</div>
+  <div class="word-cloud" id="wordCloud"></div>
+  <div class="podium" id="podium"></div>
+  <div id="allScores"></div>
+  <div id="teamBreakdown"></div>
+  <button class="play-again-btn" onclick="showStart()">▶ Play Again</button>
+</div>
+
+<div id="wrongCountdown"><div id="wrongCountdownFill"></div></div>
+<div id="wrongCountdownLabel"></div>
+
+<!-- Feedback overlay -->
+<div id="feedbackOverlay">
+  <div class="feedback-box">
+    <div class="feedback-emoji" id="fbEmoji"></div>
+    <div class="feedback-title" id="fbTitle"></div>
+    <div class="feedback-sub" id="fbSub"></div>
+    <div class="feedback-word" id="fbWord"></div>
+    <button class="next-btn" id="fbNext">Next Question →</button>
+  </div>
+</div>
+
+<script>
+// ── STARFIELD ──
+(function(){
+  const s = document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const el = document.createElement('div');
+    el.className = 'star';
+    const sz = Math.random()*2.5+0.5;
+    el.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${(Math.random()*4+2).toFixed(1)}s;animation-delay:${(Math.random()*5).toFixed(1)}s`;
+    s.appendChild(el);
+  }
+})();
+
+// ── SENTENCE DATA ──
+const SENTENCES = {
+  A1: [
+    { s: "I ___ a student.", w: "am" },
+    { s: "She ___ coffee every morning.", w: "drinks" },
+    { s: "The cat is ___ the table.", w: "on" },
+    { s: "They ___ to school by bus.", w: "go" },
+    { s: "He ___ a red car.", w: "has" },
+    { s: "We ___ happy today.", w: "are" },
+    { s: "The book is ___ the bag.", w: "in" },
+    { s: "I ___ pizza for dinner.", w: "eat" },
+    { s: "She ___ a teacher.", w: "is" },
+    { s: "The dog ___ under the chair.", w: "sits" },
+    { s: "They ___ English at school.", w: "learn" },
+    { s: "My name ___ Maria.", w: "is" },
+    { s: "He ___ football on Saturdays.", w: "plays" },
+    { s: "I ___ two brothers.", w: "have" },
+    { s: "The shop is ___ the bank.", w: "near" },
+    { s: "She ___ in a big house.", w: "lives" },
+    { s: "We ___ lunch at twelve.", w: "eat" },
+    { s: "The bird ___ in the tree.", w: "sings" },
+    { s: "I am ___ after school today.", w: "tired" },
+    { s: "He ___ his hands before eating.", w: "washes" },
+    { s: "They ___ TV in the evening.", w: "watch" },
+    { s: "My friend is very ___.", w: "funny" },
+    { s: "I ___ to music on my phone.", w: "listen" },
+    { s: "The children ___ in the park.", w: "play" },
+    { s: "She ___ a letter to her mum.", w: "writes" },
+    { s: "He ___ up at seven o'clock.", w: "gets" },
+    { s: "We ___ English every day.", w: "study" },
+    { s: "The water is very ___.", w: "cold" },
+    { s: "I ___ not like spiders.", w: "do" },
+    { s: "She ___ to the market on Friday.", w: "goes" },
+    { s: "The children ___ school at three.", w: "leave" },
+    { s: "He ___ a sandwich for lunch.", w: "eats" },
+    { s: "My sister is very ___.", w: "tall" },
+    { s: "We ___ in the city centre.", w: "live" },
+    { s: "I ___ a shower every morning.", w: "take" },
+    { s: "The flowers ___ beautiful.", w: "are" },
+    { s: "She ___ her homework after school.", w: "does" },
+    { s: "He ___ the bus to work.", w: "takes" },
+    { s: "They ___ in a small flat.", w: "live" },
+    { s: "I ___ swim very well.", w: "can" },
+    { s: "I ___ my teeth twice a day.", w: "brush" },
+    { s: "The train ___ at nine o'clock.", w: "leaves" },
+    { s: "They ___ a dog and two cats.", w: "have" },
+    { s: "My mother ___ very well.", w: "cooks" },
+    { s: "He ___ his bed every morning.", w: "makes" },
+    { s: "The baby is ___ right now.", w: "sleeping" },
+    { s: "She ___ not eat meat.", w: "does" },
+    { s: "We ___ playing football in the garden.", w: "are" },
+    { s: "He ___ his phone on the table.", w: "puts" },
+    { s: "I ___ speak a little English.", w: "can" },
+  ],
+  A2: [
+    { s: "I ___ going to visit Paris next summer.", w: "am" },
+    { s: "She ___ been to Japan twice.", w: "has" },
+    { s: "They ___ watching TV when I arrived.", w: "were" },
+    { s: "He ___ finish work early yesterday.", w: "could" },
+    { s: "We ___ to the cinema last Friday.", w: "went" },
+    { s: "She ___ her keys on the bus.", w: "lost" },
+    { s: "I ___ usually cook dinner on weekdays.", w: "don't" },
+    { s: "He ___ harder than anyone in the class.", w: "works" },
+    { s: "They ___ getting married next spring.", w: "are" },
+    { s: "She ___ a new job last month.", w: "found" },
+    { s: "I ___ never eaten sushi before.", w: "have" },
+    { s: "We ___ in London for five years before we moved.", w: "lived" },
+    { s: "He ___ been learning English since he was ten.", w: "has" },
+    { s: "The weather ___ much better yesterday.", w: "was" },
+    { s: "I ___ meet you at the station.", w: "will" },
+    { s: "She ___ already finished the report.", w: "has" },
+    { s: "We ___ going to buy a new flat.", w: "are" },
+    { s: "He ___ not want to come with us.", w: "did" },
+    { s: "They ___ the game by two points.", w: "won" },
+    { s: "I ___ waiting for an hour before she arrived.", w: "was" },
+    { s: "She ___ to speak to the manager.", w: "wants" },
+    { s: "We ___ go shopping if you like.", w: "can" },
+    { s: "He ___ born in Buenos Aires.", w: "was" },
+    { s: "I ___ had a headache since this morning.", w: "have" },
+    { s: "They ___ not at home when I called.", w: "were" },
+    { s: "She ___ very happy about the news.", w: "looked" },
+    { s: "I ___ the train to the airport.", w: "caught" },
+    { s: "He ___ like going to the gym.", w: "doesn't" },
+    { s: "We ___ our holiday in Greece last year.", w: "spent" },
+    { s: "She ___ the dishes while he cooked.", w: "washed" },
+    { s: "I ___ send you the document by email.", w: "will" },
+    { s: "They ___ planning a surprise party.", w: "are" },
+    { s: "He ___ to work before the sun rose.", w: "got" },
+    { s: "I ___ already told him about the meeting.", w: "have" },
+    { s: "She ___ speak three languages fluently.", w: "can" },
+    { s: "We ___ lunch together every Thursday.", w: "have" },
+    { s: "He ___ the door and walked inside.", w: "opened" },
+    { s: "I ___ really enjoy the concert last night.", w: "did" },
+    { s: "She ___ a text message while driving.", w: "sent" },
+    { s: "We ___ need to book tickets in advance.", w: "should" },
+    { s: "He ___ the right answer in the end.", w: "found" },
+    { s: "I ___ not sure what to choose.", w: "am" },
+    { s: "They ___ waiting outside for a long time.", w: "were" },
+    { s: "She ___ a blue dress to the party.", w: "wore" },
+    { s: "We ___ the city on a guided tour.", w: "explored" },
+    { s: "He ___ like the food at the restaurant.", w: "didn't" },
+    { s: "I ___ to call you back later.", w: "need" },
+    { s: "They ___ their bags and left the hotel.", w: "packed" },
+    { s: "She ___ on the phone for two hours.", w: "was" },
+    { s: "We ___ see the mountains from the window.", w: "could" },
+  ],
+  B1: [
+    { s: "She ___ have told me about the change.", w: "should" },
+    { s: "By the time I arrived, they ___ already left.", w: "had" },
+    { s: "I wish I ___ more time to study.", w: "had" },
+    { s: "The project ___ be finished by the end of the week.", w: "will" },
+    { s: "He suggested ___ a different approach.", w: "trying" },
+    { s: "Despite the rain, they ___ the match.", w: "won" },
+    { s: "I ___ rather stay home tonight.", w: "would" },
+    { s: "She ___ used to living alone.", w: "got" },
+    { s: "The results ___ announced last Tuesday.", w: "were" },
+    { s: "He apologised ___ being so rude.", w: "for" },
+    { s: "I ___ forward to hearing from you.", w: "look" },
+    { s: "The film was so boring that I ___ asleep.", w: "fell" },
+    { s: "She ___ to have worked very hard.", w: "seems" },
+    { s: "We managed to ___ the museum before it closed.", w: "visit" },
+    { s: "If I ___ you, I would accept the offer.", w: "were" },
+    { s: "He ___ convinced that he was right.", w: "was" },
+    { s: "They ___ the deadline despite the problems.", w: "met" },
+    { s: "I ___ like to make a complaint.", w: "would" },
+    { s: "She ___ been working on this for months.", w: "has" },
+    { s: "The report ___ submitted by Friday.", w: "must" },
+    { s: "He ___ to the question he was asked.", w: "replied" },
+    { s: "We ___ a great time at the festival.", w: "had" },
+    { s: "She ___ her mind at the last minute.", w: "changed" },
+    { s: "I ___ not have done it without your help.", w: "could" },
+    { s: "The building ___ built in the eighteenth century.", w: "was" },
+    { s: "He kept ___ the same mistake.", w: "making" },
+    { s: "She ___ him not to worry about it.", w: "told" },
+    { s: "We need to ___ into account all the risks.", w: "take" },
+    { s: "He was too tired ___ concentrate.", w: "to" },
+    { s: "The news ___ everyone by surprise.", w: "took" },
+    { s: "I ___ prefer to travel by train.", w: "would" },
+    { s: "She ___ feeling better after the rest.", w: "was" },
+    { s: "They ___ the situation carefully.", w: "considered" },
+    { s: "He ___ down the wrong road by mistake.", w: "drove" },
+    { s: "I can ___ afford to buy a new car.", w: "barely" },
+    { s: "She ___ out the fire before it spread.", w: "put" },
+    { s: "We were ___ to hear about your promotion.", w: "delighted" },
+    { s: "He ___ the opportunity to speak publicly.", w: "took" },
+    { s: "The company ___ its prices last quarter.", w: "raised" },
+    { s: "She had ___ time to read the full report.", w: "little" },
+    { s: "I ___ the impression he was unhappy.", w: "got" },
+    { s: "They ___ their best to solve the issue.", w: "did" },
+    { s: "He ___ the job offer after much thought.", w: "accepted" },
+    { s: "We ___ up late talking about our plans.", w: "stayed" },
+    { s: "She ___ into tears when she heard the news.", w: "burst" },
+    { s: "I should have ___ more attention in the meeting.", w: "paid" },
+    { s: "He was ___ of the noise outside.", w: "aware" },
+    { s: "The argument ___ from a simple misunderstanding.", w: "arose" },
+    { s: "She ___ a strong argument for the changes.", w: "made" },
+    { s: "I can't ___ to the party this weekend.", w: "come" },
+  ],
+  B2: [
+    { s: "The experiment ___ unexpected results.", w: "yielded" },
+    { s: "She was ___ by the scale of the project.", w: "overwhelmed" },
+    { s: "He ___ every opportunity to improve.", w: "seized" },
+    { s: "The decision was ___ after lengthy debate.", w: "reached" },
+    { s: "I would sooner resign ___ accept those terms.", w: "than" },
+    { s: "The theory has yet to be ___ conclusively.", w: "proven" },
+    { s: "She made a ___ effort to stay calm.", w: "conscious" },
+    { s: "His remarks were ___ as an insult.", w: "perceived" },
+    { s: "The proposal ___ considerable opposition.", w: "faced" },
+    { s: "He ___ the contract despite reservations.", w: "signed" },
+    { s: "The evidence ___ a more complex picture.", w: "suggests" },
+    { s: "She was reluctant to ___ the blame.", w: "accept" },
+    { s: "The policy had numerous ___ consequences.", w: "unintended" },
+    { s: "He spoke with ___ authority on the matter.", w: "considerable" },
+    { s: "The report ___ a number of key findings.", w: "highlighted" },
+    { s: "She ___ her position with strong evidence.", w: "supported" },
+    { s: "The situation ___ immediate action.", w: "required" },
+    { s: "He ___ to reach an agreement with the team.", w: "failed" },
+    { s: "The building was ___ due to safety concerns.", w: "demolished" },
+    { s: "She ___ the significance of the discovery.", w: "recognised" },
+    { s: "The data ___ a downward trend.", w: "reveals" },
+    { s: "He was ___ to the harsh conditions.", w: "exposed" },
+    { s: "The committee ___ a new set of guidelines.", w: "adopted" },
+    { s: "She ___ her findings at the conference.", w: "presented" },
+    { s: "The accident ___ a full investigation.", w: "prompted" },
+    { s: "He ___ a significant role in the project.", w: "played" },
+    { s: "The results were ___ by independent experts.", w: "verified" },
+    { s: "She refused to ___ under pressure.", w: "buckle" },
+    { s: "The campaign ___ widespread public support.", w: "attracted" },
+    { s: "He was ___ to leadership from an early age.", w: "drawn" },
+    { s: "The issue ___ further discussion.", w: "merits" },
+    { s: "She ___ a careful balance between the two.", w: "struck" },
+    { s: "The study ___ a link between diet and health.", w: "established" },
+    { s: "He ___ strong reservations about the plan.", w: "expressed" },
+    { s: "The legislation was ___ by parliament.", w: "passed" },
+    { s: "She has a ___ understanding of the subject.", w: "thorough" },
+    { s: "The company ___ a new marketing strategy.", w: "launched" },
+    { s: "He ___ the problem from a different angle.", w: "approached" },
+    { s: "The findings ___ previous assumptions.", w: "challenged" },
+    { s: "She ___ herself as a leading voice in the field.", w: "positioned" },
+    { s: "The report was ___ by a team of specialists.", w: "compiled" },
+    { s: "He ___ to the urgency of the matter.", w: "responded" },
+    { s: "The trend ___ a shift in public opinion.", w: "reflects" },
+    { s: "She was ___ with the quality of the work.", w: "impressed" },
+    { s: "The programme ___ significant improvements.", w: "achieved" },
+    { s: "He ___ the implications of the decision.", w: "understood" },
+    { s: "The evidence ___ the original hypothesis.", w: "supports" },
+    { s: "She ___ forward a compelling argument for reform.", w: "put" },
+    { s: "The agreement was ___ after months of talks.", w: "finalised" },
+    { s: "He ___ from a distinguished academic background.", w: "comes" },
+  ],
+  C1: [
+    { s: "The legislation ___ to address systemic inequality.", w: "purports" },
+    { s: "Her argument ___ on several unverified assumptions.", w: "hinges" },
+    { s: "The phenomenon ___ careful scholarly scrutiny.", w: "warrants" },
+    { s: "He was ___ to take on such a difficult task.", w: "reluctant" },
+    { s: "The evidence ___ any simple explanation.", w: "defies" },
+    { s: "She ___ great store by intellectual honesty.", w: "sets" },
+    { s: "The outcome was anything ___ straightforward.", w: "but" },
+    { s: "He ___ the consequences with striking accuracy.", w: "foresaw" },
+    { s: "The theory has been ___ by subsequent research.", w: "corroborated" },
+    { s: "She ___ herself as an authority on the subject.", w: "positioned" },
+    { s: "The proposal was met with ___ scepticism.", w: "considerable" },
+    { s: "He ___ his argument with meticulous precision.", w: "articulated" },
+    { s: "The findings ___ several established assumptions.", w: "undermine" },
+    { s: "She was at ___ to explain her reasoning.", w: "pains" },
+    { s: "The debate ___ far deeper divisions than expected.", w: "revealed" },
+    { s: "His tone was ___ with barely concealed contempt.", w: "laced" },
+    { s: "The report ___ light on an overlooked issue.", w: "sheds" },
+    { s: "She ___ the distinction with admirable clarity.", w: "drew" },
+    { s: "The policy was ___ amid considerable controversy.", w: "enacted" },
+    { s: "He managed to ___ the core argument effectively.", w: "refute" },
+    { s: "The text ___ a number of implicit assumptions.", w: "embeds" },
+    { s: "She ___ the theoretical framework with considerable rigour.", w: "elaborated" },
+    { s: "The project was ___ by a lack of resources.", w: "hampered" },
+    { s: "He ___ to the complexity of the situation.", w: "alluded" },
+    { s: "The reforms were ___ as insufficient by critics.", w: "dismissed" },
+    { s: "She ___ the argument in broader terms.", w: "framed" },
+    { s: "The initiative ___ beyond its original scope.", w: "expanded" },
+    { s: "He ___ little patience for vague generalisations.", w: "had" },
+    { s: "The contradictions in the text ___ further analysis.", w: "invite" },
+    { s: "She ___ the validity of the original findings into question.", w: "called" },
+    { s: "The committee ___ the proposal as premature.", w: "regarded" },
+    { s: "He ___ his position at the end of the debate.", w: "qualified" },
+    { s: "The argument ___ on shaky empirical foundations.", w: "rests" },
+    { s: "She was ___ to acknowledge her earlier errors.", w: "unwilling" },
+    { s: "The research ___ a gap in current understanding.", w: "identifies" },
+    { s: "He ___ a nuanced reading of the source material.", w: "offered" },
+    { s: "The discourse ___ a number of tacit assumptions.", w: "contains" },
+    { s: "She ___ the implications of the data carefully.", w: "examined" },
+    { s: "The legislation ___ to fill a long-standing gap.", w: "seeks" },
+    { s: "He ___ the significance of his own contribution.", w: "underestimated" },
+    { s: "The critics ___ the work as derivative.", w: "condemned" },
+    { s: "She ___ the narrative with great skill.", w: "constructed" },
+    { s: "The paper ___ a novel theoretical perspective.", w: "advances" },
+    { s: "He was ___ for his uncompromising stance.", w: "known" },
+    { s: "The pattern ___ across multiple data sets.", w: "recurs" },
+    { s: "She ___ the argument in an original direction.", w: "took" },
+    { s: "The study ___ a wealth of empirical evidence.", w: "draws" },
+    { s: "He ___ that the matter deserved more attention.", w: "contended" },
+    { s: "The analysis ___ several contradictory tendencies.", w: "exposes" },
+    { s: "She ___ an unusually lucid account of events.", w: "gave" },
+  ],
+  C2: [
+    { s: "The argument ___ on a fundamental conceptual error.", w: "founders" },
+    { s: "Her thesis ___ several competing epistemological frameworks.", w: "synthesises" },
+    { s: "He was not ___ to engage with the counterargument.", w: "averse" },
+    { s: "The text ___ between irony and genuine conviction.", w: "oscillates" },
+    { s: "The evidence ___ earlier interpretations obsolete.", w: "renders" },
+    { s: "She ___ rhetorical dexterity throughout the debate.", w: "displayed" },
+    { s: "His conclusions ___ well beyond the available data.", w: "extrapolate" },
+    { s: "The paradox ___ at the heart of her argument.", w: "lies" },
+    { s: "The analysis ___ assumptions that deserve scrutiny.", w: "harbours" },
+    { s: "She ___ the implicit logic of the opposing view.", w: "dismantled" },
+    { s: "His prose ___ an almost oppressive density.", w: "achieves" },
+    { s: "The distinction ___ to the crux of the matter.", w: "goes" },
+    { s: "She was ___ for her incisive critical judgements.", w: "renowned" },
+    { s: "The theory ___ under sustained empirical scrutiny.", w: "collapses" },
+    { s: "He ___ a hitherto unacknowledged contradiction.", w: "exposed" },
+    { s: "The narrative ___ the very assumptions it critiques.", w: "enacts" },
+    { s: "Her argument ___ a careful and precise dismantling.", w: "requires" },
+    { s: "The framing ___ the ideological stakes considerably.", w: "raises" },
+    { s: "He ___ the nuances with considerable dexterity.", w: "navigated" },
+    { s: "The discourse ___ to conceal its own premises.", w: "tends" },
+    { s: "She was ___ to the full complexity of the problem.", w: "alert" },
+    { s: "The claim ___ a range of unstated presuppositions.", w: "entails" },
+    { s: "His critique lays ___ the ideological underpinnings of the text.", w: "bare" },
+    { s: "The work ___ beyond mere aesthetic appreciation.", w: "aspires" },
+    { s: "She ___ the epistemological status of the claim.", w: "questioned" },
+    { s: "He ___ a more nuanced position in his later work.", w: "adopted" },
+    { s: "The irony ___ on itself in the final passage.", w: "turns" },
+    { s: "Her argument ___ from imprecise use of terminology.", w: "suffers" },
+    { s: "The concept ___ careful philosophical unpacking.", w: "demands" },
+    { s: "He was ___ in his refusal to concede the point.", w: "steadfast" },
+    { s: "The inquiry ___ assumptions that are rarely made explicit.", w: "surfaces" },
+    { s: "She ___ a deeply counterintuitive conclusion.", w: "reached" },
+    { s: "The passage ___ with epistemological ambiguity.", w: "bristles" },
+    { s: "He ___ a sustained engagement with the primary text.", w: "demonstrated" },
+    { s: "The argument ___ its own internal contradictions.", w: "reveals" },
+    { s: "She ___ the prevailing orthodoxy in her field.", w: "challenged" },
+    { s: "His prose ___ a disconcerting rhetorical ease.", w: "displays" },
+    { s: "The essay ___ with remarkable dialectical subtlety.", w: "proceeds" },
+    { s: "She ___ between philosophical rigour and readability.", w: "balances" },
+    { s: "The concept is ___ without invoking its context.", w: "unintelligible" },
+    { s: "He was ___ in his refusal to simplify the argument.", w: "scrupulous" },
+    { s: "The text ___ a dissonance that the author never resolves.", w: "harbours" },
+    { s: "Her critique ___ at the intersection of ethics and politics.", w: "operates" },
+    { s: "The evidence ___ a more troubling interpretation.", w: "admits" },
+    { s: "He ___ the fallacy at the root of the consensus.", w: "identified" },
+    { s: "The distinction ___ closer examination.", w: "repays" },
+    { s: "She ___ a hitherto neglected theoretical tradition.", w: "recuperates" },
+    { s: "His reading ___ the apparent unity of the text.", w: "fractures" },
+    { s: "The argument ___ its force from accumulated examples.", w: "derives" },
+    { s: "She ___ every claim with rigorous and verifiable documentation.", w: "substantiates" },
+  ]
+};
+
+// ── DISTRACTOR GENERATOR ──
+function makeDistractors(word, count) {
+  const w = word.toLowerCase();
+  const distractors = new Set();
+
+  const addIf = (v) => { if(v && v !== w && v.length > 0 && v.length < 16) distractors.add(v); };
+
+  for(let i=0;i<=w.length;i++) for(let c of 'aeioulnrst') addIf(w.slice(0,i)+c+w.slice(i));
+  for(let i=0;i<w.length;i++) addIf(w.slice(0,i)+w.slice(i+1));
+  for(let i=0;i<w.length;i++) for(let c of 'aeioulnrst') addIf(w.slice(0,i)+c+w.slice(i+1));
+  for(let i=0;i<w.length;i++) addIf(w.slice(0,i)+w[i]+w[i]+w.slice(i+1));
+  for(let i=0;i<w.length-1;i++) addIf(w.slice(0,i)+w[i+1]+w[i]+w.slice(i+2));
+
+  const homophones = {
+    there:['their',"they're"],their:['there',"they're"],"they're":['there','their'],
+    to:['too','two'],too:['to','two'],two:['to','too'],
+    your:["you're"],"you're":['your'],its:["it's"],"it's":['its'],
+    hear:['here'],here:['hear'],made:['maid'],bare:['bear'],bear:['bare'],
+    right:['write','rite'],write:['right','rite'],no:['know'],know:['no'],
+    new:['knew'],knew:['new'],see:['sea'],sea:['see'],by:['buy','bye'],buy:['by','bye'],
+    wear:['where','ware'],where:['wear','ware'],are:['our'],our:['are'],
+    been:['bean'],bean:['been'],for:['four','fore'],four:['for','fore'],
+    one:['won'],won:['one'],some:['sum'],sum:['some'],would:['wood'],wood:['would'],
+    was:['waz','wass'],were:["we're",'wer'],have:['halve'],had:['add'],
+    went:['vent','lent'],want:['wont'],got:['gott'],has:['haz'],does:['dose'],
+  };
+  if(homophones[w]) homophones[w].forEach(h=>addIf(h));
+
+  const suffixes = [
+    [/ed$/,'ing'],[/ing$/,'ed'],[/s$/,''],[/$/,'s'],[/$/,'ed'],[/$/,'ing'],
+    [/ly$/,''],[/$/,'ly'],[/er$/,'est'],[/est$/,'er'],[/tion$/,'sion'],[/sion$/,'tion'],
+    [/ise$/,'ize'],[/ize$/,'ise'],[/ent$/,'ant'],[/ant$/,'ent'],
+    [/ence$/,'ance'],[/ance$/,'ence'],
+  ];
+  for(const [pat,rep] of suffixes) if(pat.test(w)) addIf(w.replace(pat,rep));
+  if(w.length>1) addIf(w[0].toUpperCase()+w.slice(1));
+
+  let arr = [...distractors].filter(d=>d!==w);
+  arr.sort(()=>Math.random()-0.5);
+  arr.sort((a,b)=>Math.abs(a.length-w.length)-Math.abs(b.length-w.length));
+  let chosen = arr.slice(0,count);
+  while(chosen.length < count) {
+    const i = Math.floor(Math.random()*Math.max(w.length,1));
+    const c = 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random()*26)];
+    const v = w.slice(0,i)+c+w.slice(i+1);
+    if(v!==w && !chosen.includes(v)) chosen.push(v);
+    else chosen.push(w+'x'+chosen.length);
+  }
+  return chosen;
+}
+
+// ── STATE ──
+let state = {
+  level: 'A2',
+  teams: 2,
+  speed: 'medium',
+  timerSecs: 20,
+  scores: [],
+  currentTeam: 0,
+  sentences: [],
+  sentenceIdx: 0,
+  totalRounds: 10,
+  correctWord: '',
+  answered: false,
+  history: [],   // [{word, sentence, teamIdx, pts, correct}]
+};
+
+// chip physics particles
+let particles = [];
+let animFrame = null;
+let timerInterval = null;
+let timerRemaining = 0;
+
+const SPEED_MAP = { slow: 0.3, medium: 0.7, fast: 1.5 };
+
+// ── START SCREEN CONTROLS ──
+document.querySelectorAll('.cefr-btn:not(.speed-btn):not(.timer-btn)').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.cefr-btn:not(.speed-btn):not(.timer-btn)').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.level = btn.dataset.level;
+    playSound('select');
+  });
+});
+
+document.querySelectorAll('.speed-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('selected-speed'));
+    btn.classList.add('selected-speed');
+    state.speed = btn.dataset.speed;
+    playSound('select');
+  });
+});
+
+document.querySelectorAll('.timer-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.timer-btn').forEach(b=>b.classList.remove('selected-timer'));
+    btn.classList.add('selected-timer');
+    state.timerSecs = parseInt(btn.dataset.timer);
+    playSound('select');
+  });
+});
+
+let teamsCount = 2;
+document.getElementById('teamsDown').onclick=()=>{ if(teamsCount>1){teamsCount--;document.getElementById('teamsDisplay').textContent=teamsCount; playSound('click');} };
+document.getElementById('teamsUp').onclick=()=>{ if(teamsCount<8){teamsCount++;document.getElementById('teamsDisplay').textContent=teamsCount; playSound('click');} };
+
+document.getElementById('startBtn').onclick = startGame;
+document.getElementById('fbNext').onclick = nextQuestion;
+
+function startGame() {
+  state.teams = teamsCount;
+  state.scores = Array.from({length:teamsCount},(_,i)=>({name:`Team ${i+1}`,score:0}));
+  state.currentTeam = 0;
+  const pool = [...SENTENCES[state.level]];
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  state.sentences = pool.slice(0, state.totalRounds);
+  state.sentenceIdx = 0;
+  state.history = [];
+  showScreen('gameScreen');
+  buildScoreboard();
+  loadQuestion();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function buildScoreboard() {
+  const sb = document.getElementById('scoreboard');
+  const colors = ['#ffcc00','#4ecdc4','#ff6b6b','#a78bfa','#f9ca24','#6ab04c','#e17055','#74b9ff'];
+  sb.innerHTML = state.scores.map((t,i)=>`
+    <div class="team-score ${i===state.currentTeam?'active-team':''}" id="ts-${i}">
+      <div class="ts-name" style="color:${colors[i]}">${t.name}</div>
+      <div class="ts-pts" style="color:${colors[i]}" id="ts-pts-${i}">${t.score}</div>
+      <div class="ts-bar-wrap"><div class="ts-bar" id="ts-bar-${i}" style="background:${colors[i]}"></div></div>
+    </div>
+  `).join('');
+}
+
+function updateScoreboard(ptsEarned, teamIdx) {
+  const colors = ['#ffcc00','#4ecdc4','#ff6b6b','#a78bfa','#f9ca24','#6ab04c','#e17055','#74b9ff'];
+  const maxScore = Math.max(...state.scores.map(s=>s.score), 1);
+  state.scores.forEach((t,i)=>{
+    const el = document.getElementById('ts-'+i);
+    if(!el) return;
+    el.querySelector('.ts-pts').textContent = t.score;
+    el.className = 'team-score'+(i===state.currentTeam?' active-team':'');
+    const bar = document.getElementById('ts-bar-'+i);
+    if(bar) bar.style.width = Math.round(t.score / maxScore * 100)+'%';
+  });
+  // floating +pts popup on scoring team
+  if(ptsEarned && teamIdx != null) {
+    const el = document.getElementById('ts-'+teamIdx);
+    if(el) {
+      const pop = document.createElement('div');
+      pop.className = 'pts-popup';
+      pop.style.color = colors[teamIdx];
+      pop.textContent = '+'+ptsEarned;
+      el.appendChild(pop);
+      setTimeout(()=>pop.remove(), 1300);
+    }
+  }
+}
+
+function loadQuestion() {
+  stopTimer();
+  stopMotion();
+  if(state.sentenceIdx >= state.sentences.length) { showEnd(); return; }
+  const q = state.sentences[state.sentenceIdx];
+  state.correctWord = q.w;
+  state.answered = false;
+
+  document.getElementById('roundInfo').textContent =
+    `ROUND ${state.sentenceIdx+1} OF ${state.sentences.length}  ·  ${state.scores[state.currentTeam].name}'s TURN`;
+
+  const parts = q.s.split('___');
+  document.getElementById('sentenceText').innerHTML =
+    parts[0] + `<span class="gap-box">___</span>` + (parts[1]||'');
+
+  const distractors = makeDistractors(q.w, 19);
+  const all = [...distractors, q.w];
+  all.sort(()=>Math.random()-0.5);
+  placeWords(all);
+  updateScoreboard();
+  showTurnBanner(state.scores[state.currentTeam].name);
+  startTimer();
+}
+
+// ── PHYSICS MOTION ──
+function placeWords(words) {
+  const area = document.getElementById('wordArea');
+  area.innerHTML = '';
+  particles = [];
+
+  const areaW = area.clientWidth || window.innerWidth;
+  const areaH = area.clientHeight || (window.innerHeight - 220);
+  const chipW = 130, chipH = 44, margin = 10;
+  const placed = [];
+
+  function overlaps(x,y) {
+    return placed.some(p=>!(x+chipW+margin<p.x || x>p.x+chipW+margin || y+chipH+margin<p.y || y>p.y+chipH+margin));
+  }
+
+  const spd = SPEED_MAP[state.speed];
+
+  words.forEach((word, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'word-chip';
+    chip.textContent = word;
+    chip.dataset.word = word;
+
+    let x, y, attempts = 0;
+    do {
+      x = Math.random()*(areaW - chipW - 20) + 10;
+      y = Math.random()*(areaH - chipH - 20) + 10;
+      attempts++;
+    } while(overlaps(x,y) && attempts < 100);
+
+    placed.push({x,y});
+
+    const angle = Math.random() * Math.PI * 2;
+    const speed = spd * (0.6 + Math.random() * 0.8);
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+
+    chip.style.left = x+'px';
+    chip.style.top = y+'px';
+    chip.style.opacity = '0';
+    chip.style.transition = `opacity 0.3s ease ${(idx*0.035).toFixed(2)}s`;
+
+    chip.addEventListener('click', ()=>handleAnswer(chip, word));
+    area.appendChild(chip);
+
+    requestAnimationFrame(()=>{ chip.style.opacity='1'; });
+
+    // Use real rendered size once available, fall back to estimate
+    const p = { el: chip, x, y, vx, vy, w: chipW, h: chipH };
+    particles.push(p);
+
+    // Measure real size after layout
+    requestAnimationFrame(()=>{
+      const r = chip.getBoundingClientRect();
+      if(r.width > 0) { p.w = r.width; p.h = r.height; }
+    });
+  });
+
+  startMotion(area);
+}
+
+function startMotion(area) {
+  if(animFrame) cancelAnimationFrame(animFrame);
+
+  function tick() {
+    const aW = area.clientWidth;
+    const aH = area.clientHeight;
+    const n = particles.length;
+
+    // Move all particles
+    for(const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // Wall bounce
+      if(p.x < 0)          { p.x = 0;         p.vx =  Math.abs(p.vx); }
+      if(p.x + p.w > aW)   { p.x = aW - p.w;  p.vx = -Math.abs(p.vx); }
+      if(p.y < 0)          { p.y = 0;          p.vy =  Math.abs(p.vy); }
+      if(p.y + p.h > aH)   { p.y = aH - p.h;  p.vy = -Math.abs(p.vy); }
+    }
+
+    // Chip-vs-chip AABB collision
+    for(let i = 0; i < n; i++) {
+      for(let j = i + 1; j < n; j++) {
+        const a = particles[i];
+        const b = particles[j];
+
+        // Overlap check
+        const overlapX = (a.x + a.w) - b.x;
+        const overlapY = (a.y + a.h) - b.y;
+        const overlapX2 = (b.x + b.w) - a.x;
+        const overlapY2 = (b.y + b.h) - a.y;
+
+        if(overlapX > 0 && overlapX2 > 0 && overlapY > 0 && overlapY2 > 0) {
+          // Find smallest overlap axis
+          const minX = Math.min(overlapX, overlapX2);
+          const minY = Math.min(overlapY, overlapY2);
+
+          if(minX < minY) {
+            // Horizontal collision — swap x velocities
+            const tmpVx = a.vx;
+            a.vx = b.vx;
+            b.vx = tmpVx;
+            // Separate along x
+            const sep = minX / 2 + 0.5;
+            if(overlapX < overlapX2) { a.x -= sep; b.x += sep; }
+            else                     { a.x += sep; b.x -= sep; }
+          } else {
+            // Vertical collision — swap y velocities
+            const tmpVy = a.vy;
+            a.vy = b.vy;
+            b.vy = tmpVy;
+            // Separate along y
+            const sep = minY / 2 + 0.5;
+            if(overlapY < overlapY2) { a.y -= sep; b.y += sep; }
+            else                     { a.y += sep; b.y -= sep; }
+          }
+        }
+      }
+    }
+
+    // Apply positions
+    for(const p of particles) {
+      p.el.style.left = p.x + 'px';
+      p.el.style.top  = p.y + 'px';
+    }
+
+    animFrame = requestAnimationFrame(tick);
+  }
+  animFrame = requestAnimationFrame(tick);
+}
+
+function stopMotion() {
+  if(animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  particles = [];
+}
+
+// ── TIMER ──
+function startTimer() {
+  timerRemaining = state.timerSecs;
+  const fill = document.getElementById('timerFill');
+  const num = document.getElementById('timerNum');
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  num.textContent = timerRemaining;
+  num.className = '';
+
+  timerInterval = setInterval(()=>{
+    timerRemaining--;
+    num.textContent = timerRemaining;
+    fill.style.transition = 'width 1s linear';
+    fill.style.width = (timerRemaining / state.timerSecs * 100) + '%';
+
+    // colour shifts
+    const pct = timerRemaining / state.timerSecs;
+    if(pct <= 0.3) {
+      fill.style.background = 'var(--wrong)';
+      num.className = 'urgent';
+      playSound('tick');
+    } else if(pct <= 0.6) {
+      fill.style.background = 'var(--accent)';
+    }
+
+    if(timerRemaining <= 0) {
+      stopTimer();
+      timeOut();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  const fill = document.getElementById('timerFill');
+  if(fill) { fill.style.background = 'linear-gradient(90deg, var(--correct), var(--accent), var(--accent2))'; }
+  const num = document.getElementById('timerNum');
+  if(num) num.className = '';
+}
+
+function timeOut() {
+  if(state.answered) return;
+  state.answered = true;
+  stopMotion();
+  playSound('timeout');
+
+  document.querySelectorAll('.word-chip').forEach(c=>{
+    c.style.pointerEvents='none';
+    if(c.dataset.word===state.correctWord) c.classList.add('revealed');
+    else c.classList.add('disabled');
+  });
+
+  const q = state.sentences[state.sentenceIdx];
+  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts: 0, correct: false });
+
+  showWrongCountdown('⏰ Time\'s up!');
+}
+
+function handleAnswer(chip, word) {
+  if(state.answered) return;
+  state.answered = true;
+  stopTimer();
+  stopMotion();
+
+  const correct = word === state.correctWord;
+  chip.classList.add(correct ? 'correct-flash' : 'wrong-flash');
+
+  if(!correct) {
+    document.querySelectorAll('.word-chip').forEach(c=>{
+      if(c.dataset.word===state.correctWord) c.classList.add('revealed');
+      else if(c!==chip) c.classList.add('disabled');
+    });
+    playSound('wrong');
+  }
+  document.querySelectorAll('.word-chip').forEach(c=>c.style.pointerEvents='none');
+  let pts = 0;
+  if(correct) {
+    const pct = timerRemaining / state.timerSecs;
+    pts = Math.max(1, Math.round(100 * pct));
+    state.scores[state.currentTeam].score += pts;
+    state._lastPts = pts;
+    playSound('correct');
+  } else {
+    state._lastPts = 0;
+  }
+  const q = state.sentences[state.sentenceIdx];
+  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts, correct });
+  updateScoreboard(pts || null, correct ? state.currentTeam : null);
+  setTimeout(()=>showFeedback(correct, word), 500);
+}
+
+function showFeedback(correct, chosen) {
+  if (!correct) {
+    // Show the game screen for 5 seconds with a countdown bar
+    showWrongCountdown();
+    return;
+  }
+  const positiveEmoji = ['🎉','🌟','🔥','✨','💪','🥳','👏','🚀'];
+  document.getElementById('fbEmoji').textContent =
+    positiveEmoji[Math.floor(Math.random()*positiveEmoji.length)];
+  const title = document.getElementById('fbTitle');
+  title.className = 'feedback-title correct-title';
+  title.textContent = `Correct! +${state._lastPts} pts`;
+  document.getElementById('fbSub').textContent = `Great answer, ${state.scores[state.currentTeam].name}!`;
+  document.getElementById('fbWord').textContent = `"${state.correctWord}"`;
+  document.getElementById('feedbackOverlay').classList.add('show');
+}
+
+let wrongCountdownTimeout = null;
+
+function showWrongCountdown(headerMsg) {
+  const bar   = document.getElementById('wrongCountdown');
+  const fill  = document.getElementById('wrongCountdownFill');
+  const label = document.getElementById('wrongCountdownLabel');
+  const prefix = headerMsg ? headerMsg + ' — ' : '';
+
+  bar.style.display = 'block';
+  label.textContent = prefix + 'Moving on in 5…';
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+
+  fill.getBoundingClientRect();
+  fill.style.transition = 'width 5s linear';
+  fill.style.width = '100%';
+
+  let secs = 4;
+  const tick = setInterval(()=>{
+    label.textContent = prefix + `Moving on in ${secs}…`;
+    secs--;
+    if(secs < 0) clearInterval(tick);
+  }, 1000);
+
+  wrongCountdownTimeout = setTimeout(()=>{
+    bar.style.display = 'none';
+    fill.style.transition = 'none';
+    fill.style.width = '0%';
+    label.textContent = '';
+    clearInterval(tick);
+    nextQuestion();
+  }, 5000);
+}
+
+function nextQuestion() {
+  if(wrongCountdownTimeout) { clearTimeout(wrongCountdownTimeout); wrongCountdownTimeout = null; }
+  document.getElementById('feedbackOverlay').classList.remove('show');
+  document.getElementById('wrongCountdown').style.display = 'none';
+  document.getElementById('wrongCountdownLabel').textContent = '';
+  state.sentenceIdx++;
+  state.currentTeam = (state.currentTeam+1) % state.teams;
+  setTimeout(loadQuestion, 300);
+}
+
+function showTurnBanner(name) {
+  const b = document.getElementById('turnBanner');
+  b.textContent = `${name}'s Turn!`;
+  b.style.opacity='1';
+  setTimeout(()=>b.style.opacity='0', 1800);
+}
+
+function showEnd() {
+  stopMotion();
+  stopTimer();
+  showScreen('endScreen');
+  setTimeout(()=>{ playSound('fanfare'); launchConfetti(); }, 300);
+
+  const sorted = [...state.scores].map((t,i)=>({...t,orig:i})).sort((a,b)=>b.score-a.score);
+  const colors = ['#ffcc00','#4ecdc4','#ff6b6b','#a78bfa','#f9ca24','#6ab04c','#e17055','#74b9ff'];
+
+  // ── WORD CLOUD ──
+  const cloudWords = state.sentences.map(s => s.w);
+  const extras = ['great','learn','play','words','score','team','win','gap','english','vocab','think','read'];
+  while(cloudWords.length < 14) cloudWords.push(extras[cloudWords.length % extras.length]);
+  const cloudColors = [
+    {bg:'rgba(255,204,0,0.18)',border:'rgba(255,204,0,0.5)',text:'#ffcc00'},
+    {bg:'rgba(78,205,196,0.15)',border:'rgba(78,205,196,0.5)',text:'#4ecdc4'},
+    {bg:'rgba(255,107,107,0.15)',border:'rgba(255,107,107,0.5)',text:'#ff6b6b'},
+    {bg:'rgba(167,139,250,0.15)',border:'rgba(167,139,250,0.5)',text:'#a78bfa'},
+    {bg:'rgba(249,202,36,0.15)',border:'rgba(249,202,36,0.5)',text:'#f9ca24'},
+  ];
+  const sizes = ['0.85rem','0.95rem','1.05rem','1.15rem','1.25rem','1.35rem'];
+  const cloud = document.getElementById('wordCloud');
+  cloud.innerHTML = cloudWords.map((w,i) => {
+    const col = cloudColors[i % cloudColors.length];
+    const sz = sizes[i % sizes.length];
+    const dur = (2.5 + Math.random()*2).toFixed(1);
+    const del = (Math.random()*2).toFixed(1);
+    const r1 = (-3 + Math.random()*2).toFixed(1);
+    const r2 = (1 + Math.random()*3).toFixed(1);
+    return `<span class="cloud-word" style="background:${col.bg};border:2px solid ${col.border};color:${col.text};font-size:${sz};--fd:${dur}s;--fdel:${del}s;--fr:${r1}deg;--fr2:${r2}deg">${w}</span>`;
+  }).join('');
+
+  // ── PODIUM ──
+  const podium = document.getElementById('podium');
+  if(sorted.length === 1) {
+    podium.innerHTML = `<div class="podium-place first" style="height:auto;padding:24px 32px">
+      <div style="font-size:2.5rem">🥇</div>
+      <div class="place-name" style="font-size:1rem;margin-top:8px">${sorted[0].name}</div>
+      <div class="place-score">${sorted[0].score} pts</div>
+    </div>`;
+  } else {
+    const podiumOrder = sorted.length >= 3 ? [sorted[1], sorted[0], sorted[2]] : [sorted[1], sorted[0]];
+    const classes = sorted.length >= 3 ? ['second','first','third'] : ['second','first'];
+    const medals  = sorted.length >= 3 ? ['🥈','🥇','🥉'] : ['🥈','🥇'];
+    podium.innerHTML = podiumOrder.map((t,i) => `
+      <div class="podium-place ${classes[i]}">
+        <div style="font-size:1.8rem">${medals[i]}</div>
+        <div class="place-num">${sorted.indexOf(t)+1}</div>
+        <div class="place-name">${t.name}</div>
+        <div class="place-score">${t.score} pts</div>
+      </div>`).join('');
+  }
+
+  // ── FULL SCORES TABLE ──
+  const allScoresEl = document.getElementById('allScores');
+  allScoresEl.innerHTML = `<table class="all-scores-table">
+    ${sorted.map((t,i) => {
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      const col = colors[t.orig] || '#fff';
+      return `<tr>
+        <td class="rank">${medal || (i+1)+'.'}</td>
+        <td style="color:${col};font-weight:700">${t.name}</td>
+        <td class="pts" style="color:${col}">${t.score} pts</td>
+      </tr>`;
+    }).join('')}
+  </table>`;
+
+  // ── PER-TEAM WORD BREAKDOWN ──
+  const breakdown = document.getElementById('teamBreakdown');
+  breakdown.innerHTML = '';
+  for(let ti = 0; ti < state.teams; ti++) {
+    const teamHistory = state.history.filter(h => h.teamIdx === ti);
+    if(!teamHistory.length) continue;
+    const col = colors[ti];
+    const total = teamHistory.reduce((s,h)=>s+h.pts,0);
+    const section = document.createElement('div');
+    section.className = 'breakdown-section';
+    section.innerHTML = `
+      <h3 style="color:${col}">Team ${ti+1} <span style="font-size:0.75rem;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:600;letter-spacing:1px">— ${total} pts total</span></h3>
+      ${teamHistory.map(h => {
+        const sentenceDisplay = h.sentence.replace('___', `<strong style="color:${col}">${h.word}</strong>`);
+        return `<div class="breakdown-row ${h.correct?'':'breakdown-miss'}">
+          <span class="breakdown-word" style="color:${h.correct?col:'var(--wrong)'}">
+            ${h.correct?'✓':'✗'} ${h.word}
+          </span>
+          <span class="breakdown-sentence">${sentenceDisplay}</span>
+          <span class="breakdown-pts" style="color:${h.correct?col:'var(--muted)'}">
+            ${h.correct?'+'+h.pts+' pts':'—'}
+          </span>
+        </div>`;
+      }).join('')}
+    `;
+    breakdown.appendChild(section);
+  }
+}
+
+// ── AUDIO ENGINE ──
+let audioCtx = null;
+
+function getAudioCtx() {
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playTone(freq, type, dur, vol, t0, fade) {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(vol, t0);
+  if(fade) gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  osc.start(t0); osc.stop(t0 + dur + 0.01);
+}
+
+function playSound(name) {
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    if(name === 'correct') {
+      playTone(523,'sine',0.15,0.35,now,true);
+      playTone(659,'sine',0.15,0.35,now+0.12,true);
+      playTone(784,'sine',0.25,0.4,now+0.24,true);
+      playTone(1568,'sine',0.18,0.15,now+0.24,true);
+    }
+    else if(name === 'wrong') {
+      playTone(233,'sawtooth',0.12,0.3,now,true);
+      playTone(196,'sawtooth',0.18,0.3,now+0.10,true);
+      playTone(175,'sawtooth',0.22,0.3,now+0.22,true);
+    }
+    else if(name === 'tick') {
+      playTone(880,'square',0.04,0.18,now,true);
+    }
+    else if(name === 'timeout') {
+      playTone(440,'square',0.12,0.25,now,true);
+      playTone(370,'square',0.12,0.25,now+0.14,true);
+      playTone(311,'square',0.18,0.25,now+0.28,true);
+    }
+    else if(name === 'select') {
+      // crisp soft pop: quick sine blip
+      playTone(660,'sine',0.07,0.22,now,true);
+      playTone(880,'sine',0.05,0.12,now+0.05,true);
+    }
+    else if(name === 'click') {
+      // subtle lower click for +/- teams
+      playTone(400,'sine',0.06,0.2,now,true);
+    }
+    else if(name === 'fanfare') {
+      // C major triumphant fanfare
+      const notes = [
+        [523,0.00],[523,0.10],[523,0.20],[415,0.30],
+        [622,0.40],[523,0.60],[415,0.75],[622,0.90],
+        [523,1.15]
+      ];
+      notes.forEach(([f,dt])=>{
+        playTone(f,'square',0.18,0.28,now+dt,true);
+        playTone(f*1.5,'sine',0.14,0.12,now+dt,true);
+      });
+      // bass hits
+      [0.00,0.40,0.90].forEach(dt=>{
+        playTone(130,'sawtooth',0.22,0.3,now+dt,true);
+      });
+    }
+  } catch(e) {}
+}
+
+// ── CONFETTI ──
+let confettiAnim = null;
+function launchConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  const colors = ['#ffcc00','#4ecdc4','#ff6b6b','#a78bfa','#f9ca24','#6ab04c','#e17055','#74b9ff','#fff'];
+  const pieces = Array.from({length:160},()=>({
+    x: Math.random()*canvas.width,
+    y: -10 - Math.random()*200,
+    r: 4+Math.random()*6,
+    d: 1.5+Math.random()*3,
+    col: colors[Math.floor(Math.random()*colors.length)],
+    tilt: Math.random()*10-5,
+    tiltSpd: 0.1+Math.random()*0.2,
+    tiltA: 0,
+    shape: Math.random()<0.5?'rect':'circle',
+    w: 6+Math.random()*8,
+    h: 10+Math.random()*6,
+  }));
+  let frame = 0;
+  if(confettiAnim) cancelAnimationFrame(confettiAnim);
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      p.tiltA += p.tiltSpd;
+      p.y += p.d;
+      p.x += Math.sin(p.tiltA)*1.2;
+      p.tilt = Math.sin(p.tiltA)*12;
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.tilt*Math.PI/180);
+      ctx.fillStyle = p.col;
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0,p.y-canvas.height*0.7)/(canvas.height*0.3));
+      if(p.shape==='circle'){
+        ctx.beginPath(); ctx.arc(0,0,p.r,0,Math.PI*2); ctx.fill();
+      } else {
+        ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      }
+      ctx.restore();
+      if(p.y > canvas.height+20) {
+        p.y = -10; p.x = Math.random()*canvas.width;
+      }
+    });
+    frame++;
+    if(frame < 360) confettiAnim = requestAnimationFrame(draw);
+    else { ctx.clearRect(0,0,canvas.width,canvas.height); canvas.style.display='none'; }
+  }
+  draw();
+}
+
+function showStart() {
+  stopMotion();
+  stopTimer();
+  showScreen('startScreen');
+}
+</script>
+</body>
+</html>

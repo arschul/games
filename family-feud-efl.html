@@ -951,7 +951,7 @@
       <button class="btn btn-peek" id="peekBtn" onclick="togglePeek()">👁 PEEK ANSWERS</button>
       <button class="btn btn-reveal-all" onclick="revealAll()">✅ REVEAL ALL</button>
       <button class="btn btn-steal" onclick="triggerSteal()" id="stealBtn">⚡ STEAL</button>
-      <button class="btn btn-next" onclick="nextQuestion()">NEXT QUESTION ▶</button>
+      <button class="btn btn-next" id="mainNextBtn" onclick="nextQuestion()">NEXT QUESTION ▶</button>
     </div>
   </div>
 </div>
@@ -1262,13 +1262,13 @@ const ALL_QUESTIONS = [
     ]
   },
   {
-    q: "Name a word to describe the weather when it's very hot.",
+    q: "Name a word to describe the weather when temperatures are extremely high.",
     answers: [
       {a:"Boiling / Scorching", pts:38},
       {a:"Sunny", pts:28},
-      {a:"Hot", pts:18},
+      {a:"Sweltering", pts:18},
       {a:"Humid / Sticky", pts:12},
-      {a:"Sweaty / Burning", pts:4}
+      {a:"Burning / Blazing", pts:4}
     ]
   },
   {
@@ -1382,7 +1382,7 @@ const ALL_QUESTIONS = [
     ]
   },
   {
-    q: "Name an adjective to describe a funny person.",
+    q: "Name an adjective to describe a person who makes people laugh.",
     answers: [
       {a:"Hilarious", pts:38},
       {a:"Amusing", pts:25},
@@ -1462,13 +1462,13 @@ const ALL_QUESTIONS = [
     ]
   },
   {
-    q: "Name a word teenagers use to say something is bad or boring.",
+    q: "Name a word teenagers use to say something is not worth their time.",
     answers: [
       {a:"Lame", pts:35},
-      {a:"Boring", pts:28},
-      {a:"Terrible / Awful", pts:18},
-      {a:"Trash", pts:12},
-      {a:"Cringe", pts:7}
+      {a:"Cringe", pts:28},
+      {a:"Trash", pts:18},
+      {a:"Mid", pts:12},
+      {a:"Meh", pts:7}
     ]
   },
   {
@@ -2016,10 +2016,12 @@ let stealMode = false;
 let gameStarted = false;
 let answersRevealed = [];
 let peekMode = false;
+let globalQuestionCount = 0; // strictly alternates teams across all 9 questions
 
 // Phase system: 3 phases × 3 questions each = 9 questions total
 // phase 0 = Single (×1), phase 1 = Double (×2), phase 2 = Triple (×3)
-const QUESTIONS_PER_PHASE = 3;
+const QUESTIONS_PER_PHASE = [4, 2, 2];
+const TOTAL_QUESTIONS = 8;
 const PHASE_MULTIPLIERS = [1, 2, 3];
 const PHASE_NAMES = ['SINGLE', 'DOUBLE', 'TRIPLE'];
 const PHASE_COLORS = ['#CC0000', '#0055AA', '#6600AA'];
@@ -2055,9 +2057,9 @@ function startGame() {
   // Shuffle and assign 3 questions per phase (9 total)
   const shuffled = shuffleArray(ALL_QUESTIONS);
   phaseQuestions = [
-    shuffled.slice(0, QUESTIONS_PER_PHASE),
-    shuffled.slice(QUESTIONS_PER_PHASE, QUESTIONS_PER_PHASE * 2),
-    shuffled.slice(QUESTIONS_PER_PHASE * 2, QUESTIONS_PER_PHASE * 3)
+    shuffled.slice(0, QUESTIONS_PER_PHASE[0]),
+    shuffled.slice(QUESTIONS_PER_PHASE[0], QUESTIONS_PER_PHASE[0] + QUESTIONS_PER_PHASE[1]),
+    shuffled.slice(QUESTIONS_PER_PHASE[0] + QUESTIONS_PER_PHASE[1], TOTAL_QUESTIONS)
   ];
 
   currentPhase = 0;
@@ -2065,6 +2067,7 @@ function startGame() {
   scores = [0, 0];
   strikes = 0;
   activeTeam = 0;
+  globalQuestionCount = 0;
   gameStarted = true;
 
   document.getElementById('startScreen').style.display = 'none';
@@ -2078,6 +2081,7 @@ function getCurrentMultiplier() {
 }
 
 function loadQuestion() {
+  if (currentPhase >= 3 || !phaseQuestions[currentPhase] || !phaseQuestions[currentPhase][questionInPhase]) return;
   const q = phaseQuestions[currentPhase][questionInPhase];
   answersRevealed = new Array(q.answers.length).fill(false);
   strikes = 0;
@@ -2085,7 +2089,8 @@ function loadQuestion() {
   currentPoints = 0;
   peekMode = false;
 
-  const qNum = currentPhase * QUESTIONS_PER_PHASE + questionInPhase + 1;
+  const questionsBeforeThisPhase = QUESTIONS_PER_PHASE.slice(0, currentPhase).reduce((a,b) => a+b, 0);
+  const qNum = questionsBeforeThisPhase + questionInPhase + 1;
   // Find global question number from ALL_QUESTIONS (for reference sheet lookup)
   const globalQNum = ALL_QUESTIONS.indexOf(q) + 1;
   document.getElementById('questionText').childNodes[0].nodeValue = q.q;
@@ -2094,9 +2099,9 @@ function loadQuestion() {
   document.getElementById('questionScore').textContent = '0 pts';
   document.getElementById('roundNum').textContent = qNum;
   document.getElementById('qCounter').textContent =
-    `Phase ${currentPhase + 1} · Question ${questionInPhase + 1} of ${QUESTIONS_PER_PHASE} · ×${getCurrentMultiplier()}`;
+    `Phase ${currentPhase + 1} · Question ${questionInPhase + 1} of ${QUESTIONS_PER_PHASE[currentPhase]} · ×${getCurrentMultiplier()}`;
   document.getElementById('progressFill').style.width =
-    `${((qNum - 1) / (QUESTIONS_PER_PHASE * 3)) * 100}%`;
+    `${((qNum - 1) / TOTAL_QUESTIONS) * 100}%`;
 
   updateStrikes();
   updateTurnBanner();
@@ -2107,6 +2112,9 @@ function loadQuestion() {
   document.getElementById('peekBanner').classList.remove('active');
   document.getElementById('peekBtn').classList.remove('peeking');
   document.getElementById('peekBtn').textContent = '👁 PEEK ANSWERS';
+  const mainNext = document.getElementById('mainNextBtn');
+  mainNext.textContent = 'NEXT QUESTION ▶';
+  mainNext.onclick = nextQuestion;
 }
 
 function updatePhaseBadge() {
@@ -2364,7 +2372,7 @@ function nextQuestion() {
     // Reveal all without awarding points (already awarded above)
     revealAllSilent();
     // Swap button to "CONTINUE"
-    const btn = document.querySelector('.btn-next');
+    const btn = document.getElementById('mainNextBtn');
     btn.textContent = 'CONTINUE ▶▶';
     btn.onclick = () => { btn.textContent = 'NEXT QUESTION ▶'; btn.onclick = nextQuestion; advanceQuestion(); };
     return;
@@ -2386,7 +2394,7 @@ function nextQuestion() {
 function advanceQuestion() {
   questionInPhase++;
 
-  if (questionInPhase >= QUESTIONS_PER_PHASE) {
+  if (questionInPhase >= QUESTIONS_PER_PHASE[currentPhase]) {
     // End of this phase
     questionInPhase = 0;
     currentPhase++;
@@ -2402,8 +2410,9 @@ function advanceQuestion() {
     return;
   }
 
-  // Alternate starting team each question
-  activeTeam = (currentPhase * QUESTIONS_PER_PHASE + questionInPhase) % 2;
+  // Alternate starting team strictly across all questions
+  globalQuestionCount++;
+  activeTeam = globalQuestionCount % 2;
   loadQuestion();
 }
 
@@ -2426,7 +2435,8 @@ function showPhaseTransition() {
 function continueFromPhase() {
   document.getElementById('phaseScreen').style.display = 'none';
   updatePhaseBadge();
-  activeTeam = (currentPhase * QUESTIONS_PER_PHASE) % 2;
+  globalQuestionCount++;
+  activeTeam = globalQuestionCount % 2;
   loadQuestion();
 }
 

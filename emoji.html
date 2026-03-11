@@ -645,6 +645,7 @@
         <button class="btn btn-answer" id="btn-answer">Reveal Answer</button>
       </div>
       <div class="answer-reveal hidden" id="answer-display"></div>
+      <button class="btn btn-primary hidden" id="btn-next">Next →</button>
     </div>
   </div>
 
@@ -705,6 +706,7 @@ const btnGo         = document.getElementById('btn-go');
 const questionArea  = document.getElementById('question-area');
 const questionText  = document.getElementById('question-text');
 const btnAnswer     = document.getElementById('btn-answer');
+const btnNext       = document.getElementById('btn-next');
 const answerDisplay = document.getElementById('answer-display');
 
 const endScore    = document.getElementById('end-score');
@@ -785,7 +787,10 @@ function buildCatalogue() {
   });
 }
 
-// ─── Positions ─────────────────────────────────────────────────────
+// ─── Position map — stable across both phases of a round ───────────
+let positionMap = {}; // emoji -> {x, y}
+let phase2Map = {};   // preserved for answer reveal
+
 function genPositions(n) {
   const W = emojiGrid.offsetWidth, H = emojiGrid.offsetHeight;
   const placed = [], out = [];
@@ -802,22 +807,35 @@ function genPositions(n) {
   return out;
 }
 
-// ─── Display emojis ────────────────────────────────────────────────
-function displayEmojis(list, highlight = []) {
+// Display emojis using a provided posMap {emoji -> {x,y}}
+function displayEmojisFromMap(list, posMap, highlight = []) {
   emojiGrid.innerHTML = '';
-  requestAnimationFrame(() => {
-    const pos = genPositions(list.length);
-    list.forEach((e, i) => {
-      const span = document.createElement('span');
-      span.className = 'emoji';
-      if (highlight.includes(e)) span.classList.add('highlighted');
-      span.innerHTML = emojiContent(e);
-      span.style.left = pos[i].x + 'px';
-      span.style.top  = pos[i].y + 'px';
-      span.style.animationDelay = (i * 0.03) + 's';
-      emojiGrid.appendChild(span);
-    });
+  list.forEach((e, i) => {
+    const span = document.createElement('span');
+    span.className = 'emoji';
+    if (highlight.includes(e)) span.classList.add('highlighted');
+    span.innerHTML = emojiContent(e);
+    span.style.left = posMap[e].x + 'px';
+    span.style.top  = posMap[e].y + 'px';
+    span.style.animationDelay = (i * 0.03) + 's';
+    emojiGrid.appendChild(span);
   });
+}
+
+// Build a fresh positionMap for a list of emojis
+function buildPositionMap(list) {
+  const pos = genPositions(list.length);
+  const map = {};
+  list.forEach((e, i) => { map[e] = pos[i]; });
+  return map;
+}
+
+// ─── Display emojis (legacy wrapper — only used for answer reveal) ──
+function displayEmojis(list, highlight = []) {
+  const pos = genPositions(list.length);
+  const map = {};
+  list.forEach((e, i) => { map[e] = pos[i]; });
+  displayEmojisFromMap(list, map, highlight);
 }
 
 // ─── Timer ─────────────────────────────────────────────────────────
@@ -941,6 +959,7 @@ function prepareRound() {
   setPhase('Get ready…');
   questionArea.style.display = 'none'; questionArea.classList.add('hidden');
   answerDisplay.classList.add('hidden');
+  btnNext.classList.add('hidden');
   goWrap.style.display = 'flex';
   btnGo.disabled = false;
   btnAnswer.disabled = true;
@@ -977,10 +996,14 @@ function prepareRound() {
     }
   }
 
-  // Show the BEFORE state
-  const displayBefore = shuffleMode ? shuffle([...prevEmojis]) : prevEmojis;
-  displayEmojis(displayBefore);
-  emojiGrid.classList.add('invisible');
+  // Build stable position map for phase 1 (prevEmojis)
+  // Use requestAnimationFrame so grid has layout dimensions
+  emojiGrid.innerHTML = '';
+  requestAnimationFrame(() => {
+    positionMap = buildPositionMap(prevEmojis);
+    displayEmojisFromMap(prevEmojis, positionMap);
+    emojiGrid.classList.add('invisible');
+  });
 }
 
 // ─── GO ────────────────────────────────────────────────────────────
@@ -1001,25 +1024,42 @@ function onFirstTimerEnd() {
   timerText.textContent = '—';
 
   setTimeout(() => {
-    // Show the AFTER state
-    let displayAfter, highlight = [];
-    if (actionType === 'add_emoji') {
-      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
-      highlight = [changedEmoji];
-    } else if (actionType === 'remove_emoji') {
-      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
-    } else if (actionType === 'swap_emoji') {
-      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
-      highlight = swappedEmojis;
+    // Build phase 2 position map — adjust per action, stored for answer reveal
+    phase2Map = {};
+
+    if (actionType === 'swap_emoji') {
+      // Preserve all positions, swap only the two targets
+      Object.assign(phase2Map, positionMap);
+      const [a, b] = swappedEmojis;
+      phase2Map[a] = positionMap[b];
+      phase2Map[b] = positionMap[a];
+
     } else if (actionType === 'move_emoji') {
-      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
-      highlight = [movedEmoji];
+      // Preserve all positions, generate a clearly different spot for the moved emoji
+      Object.assign(phase2Map, positionMap);
+      const W = emojiGrid.offsetWidth, H = emojiGrid.offsetHeight;
+      const sz = EMOJI_W + PAD;
+      const oldPos = positionMap[movedEmoji];
+      const placed = Object.entries(positionMap)
+        .filter(([e]) => e !== movedEmoji).map(([,p]) => p);
+      let x, y, tries = 0, minDist = 100;
+      do {
+        x = rand(0, W - EMOJI_W); y = rand(0, H - EMOJI_H);
+        const dist = Math.hypot(x - oldPos.x, y - oldPos.y);
+        const noOverlap = !placed.some(p => x < p.x+sz && x+sz > p.x && y < p.y+sz && y+sz > p.y);
+        if (dist >= minDist && noOverlap) break;
+        tries++;
+        if (tries > 600) minDist = 60;
+      } while (tries < 800);
+      phase2Map[movedEmoji] = {x, y};
+
     } else {
-      // Count questions: show SAME state, keep hidden
-      displayAfter = shuffleMode ? shuffle([...currEmojis]) : currEmojis;
+      // add, remove, count — fresh random positions
+      phase2Map = buildPositionMap(currEmojis);
     }
 
-    displayEmojis(displayAfter, []);
+    // No highlights yet — reveal happens on answer button only
+    displayEmojisFromMap(currEmojis, phase2Map, []);
 
     const isVisual = ['add_emoji','remove_emoji','swap_emoji','move_emoji'].includes(actionType);
     if (isVisual) emojiGrid.classList.remove('invisible');
@@ -1080,15 +1120,18 @@ btnAnswer.addEventListener('click', () => {
     highlight = currEmojis.filter(e => CATEGORIES[questionDetails.category]?.includes(e));
   }
 
-  displayEmojis(currEmojis, highlight);
+  displayEmojisFromMap(currEmojis, phase2Map, highlight);
   emojiGrid.classList.remove('invisible');
 
   gameHistory.push({ round, actionType, answer: msg });
 
-  setTimeout(() => {
-    prevEmojis = [...currEmojis];
-    prepareRound();
-  }, 3000);
+  btnNext.classList.remove('hidden');
+});
+
+btnNext.addEventListener('click', () => {
+  btnNext.classList.add('hidden');
+  prevEmojis = [...currEmojis];
+  prepareRound();
 });
 
 // ─── END GAME ──────────────────────────────────────────────────────

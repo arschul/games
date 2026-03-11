@@ -165,6 +165,7 @@
   }
   .team-score:last-child { border-right: none; }
   .team-score.active-team { background: rgba(255,204,0,0.08); }
+  .team-score.team-eliminated { opacity: 0.3; }
   .team-score .ts-name {
     font-size: 0.6rem;
     font-weight: 700;
@@ -1057,10 +1058,14 @@ let state = {
   currentTeam: 0,
   sentences: [],
   sentenceIdx: 0,
-  totalRounds: 10,
   correctWord: '',
   answered: false,
-  history: [],   // [{word, sentence, teamIdx, pts, correct}]
+  history: [],
+  // round tracking
+  roundsPerTeam: 3,       // questions per team before rotating
+  teamRoundCount: 0,      // how many questions current team has played this stint
+  phase: 'main',          // 'main' | 'final'
+  finalTeams: [],         // indices of the 2 finalists
 };
 
 // chip physics particles
@@ -1107,17 +1112,30 @@ document.getElementById('startBtn').onclick = startGame;
 document.getElementById('fbNext').onclick = nextQuestion;
 
 function startGame() {
-  state.teams = teamsCount;
-  state.scores = Array.from({length:teamsCount},(_,i)=>({name:`Team ${i+1}`,score:0}));
+  const N = teamsCount;
+  // total sentences needed: N teams × 3 rounds, plus if N>=3: 2 finalists × 3 rounds
+  const mainRounds = N * 3;
+  const finalRounds = N >= 3 ? 6 : 0;
+  const totalNeeded = mainRounds + finalRounds;
+
+  state.teams = N;
+  state.scores = Array.from({length:N},(_,i)=>({name:`Team ${i+1}`,score:0, mainScore:0}));
   state.currentTeam = 0;
+  state.phase = 'main';
+  state.finalTeams = [];
+  state.teamRoundCount = 0;
+  state.finalStints = {};
+  state.finalDone = new Set();
+  state.history = [];
+
   const pool = [...SENTENCES[state.level]];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
-  state.sentences = pool.slice(0, state.totalRounds);
+  state.sentences = pool.slice(0, totalNeeded);
   state.sentenceIdx = 0;
-  state.history = [];
+
   showScreen('gameScreen');
   buildScoreboard();
-  loadQuestion();
+  showGetReady(state.scores[0].name, 0, ()=>loadQuestion());
 }
 
 function showScreen(id) {
@@ -1144,11 +1162,14 @@ function updateScoreboard(ptsEarned, teamIdx) {
     const el = document.getElementById('ts-'+i);
     if(!el) return;
     el.querySelector('.ts-pts').textContent = t.score;
-    el.className = 'team-score'+(i===state.currentTeam?' active-team':'');
+    const inFinal = state.phase === 'final';
+    const isFinalist = state.finalTeams.includes(i);
+    el.className = 'team-score' +
+      (i===state.currentTeam?' active-team':'') +
+      (inFinal && !isFinalist?' team-eliminated':'');
     const bar = document.getElementById('ts-bar-'+i);
     if(bar) bar.style.width = Math.round(t.score / maxScore * 100)+'%';
   });
-  // floating +pts popup on scoring team
   if(ptsEarned && teamIdx != null) {
     const el = document.getElementById('ts-'+teamIdx);
     if(el) {
@@ -1170,8 +1191,10 @@ function loadQuestion() {
   state.correctWord = q.w;
   state.answered = false;
 
+  const teamName = state.scores[state.currentTeam].name;
+  const roundLabel = state.phase === 'final' ? '⚡ FINAL' : `ROUND ${state.teamRoundCount+1} OF ${state.roundsPerTeam}`;
   document.getElementById('roundInfo').textContent =
-    `ROUND ${state.sentenceIdx+1} OF ${state.sentences.length}  ·  ${state.scores[state.currentTeam].name}'s TURN`;
+    `${roundLabel}  ·  ${teamName}'s TURN`;
 
   const parts = q.s.split('___');
   document.getElementById('sentenceText').innerHTML =
@@ -1182,7 +1205,6 @@ function loadQuestion() {
   all.sort(()=>Math.random()-0.5);
   placeWords(all);
   updateScoreboard();
-  showTurnBanner(state.scores[state.currentTeam].name);
   startTimer();
 }
 
@@ -1377,7 +1399,7 @@ function timeOut() {
   });
 
   const q = state.sentences[state.sentenceIdx];
-  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts: 0, correct: false });
+  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts: 0, correct: false, phase: state.phase });
 
   showWrongCountdown('⏰ Time\'s up!');
 }
@@ -1410,9 +1432,40 @@ function handleAnswer(chip, word) {
     state._lastPts = 0;
   }
   const q = state.sentences[state.sentenceIdx];
-  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts, correct });
+  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts, correct, phase: state.phase });
+
+  // check if this is the very last question
+  const isLastQ = isLastQuestion();
+
   updateScoreboard(pts || null, correct ? state.currentTeam : null);
-  setTimeout(()=>showFeedback(correct, word), 500);
+  if(isLastQ) {
+    setTimeout(showEnd, 900);
+  } else {
+    setTimeout(()=>showFeedback(correct, word), 500);
+  }
+}
+
+function isLastQuestion() {
+  // will this sentenceIdx advance past the end after nextQuestion?
+  const nextIdx = state.sentenceIdx + 1;
+  if(nextIdx >= state.sentences.length) return true;
+  if(state.phase === 'main') {
+    const nextRoundCount = state.teamRoundCount + 1;
+    if(nextRoundCount >= state.roundsPerTeam) {
+      const nextTeam = state.currentTeam + 1;
+      if(nextTeam >= state.teams && state.teams < 3) return true;
+    }
+  } else {
+    // final phase
+    const nextRoundCount = state.teamRoundCount + 1;
+    if(nextRoundCount >= state.roundsPerTeam) {
+      // current finalist done — check if other is also done
+      const otherIdx = state.finalTeams.find(i => i !== state.currentTeam);
+      const finalDone = state.finalDone || new Set();
+      if(finalDone.has(otherIdx)) return true;
+    }
+  }
+  return false;
 }
 
 function showFeedback(correct, chosen) {
@@ -1471,16 +1524,137 @@ function nextQuestion() {
   document.getElementById('feedbackOverlay').classList.remove('show');
   document.getElementById('wrongCountdown').style.display = 'none';
   document.getElementById('wrongCountdownLabel').textContent = '';
+
   state.sentenceIdx++;
-  state.currentTeam = (state.currentTeam+1) % state.teams;
+  state.teamRoundCount++;
+
+  if(state.phase === 'main') {
+    if(state.teamRoundCount >= state.roundsPerTeam) {
+      state.teamRoundCount = 0;
+      state.currentTeam++;
+
+      if(state.currentTeam >= state.teams) {
+        if(state.teams >= 3) {
+          const sorted = [...state.scores]
+            .map((t,i)=>({...t, idx:i}))
+            .sort((a,b)=>b.score-a.score);
+          state.finalTeams = [sorted[0].idx, sorted[1].idx];
+          state.scores.forEach(t=>{ t.finalScore = 0; });
+          state.phase = 'final';
+          state.currentTeam = state.finalTeams[0];
+          state.teamRoundCount = 0;
+          setTimeout(()=>{
+            showFinalBanner(state.scores[state.finalTeams[0]].name, state.scores[state.finalTeams[1]].name);
+          }, 200);
+          setTimeout(loadQuestion, 2800);
+          return;
+        } else {
+          setTimeout(showEnd, 300);
+          return;
+        }
+      }
+      // team changed — show get-ready
+      showGetReady(state.scores[state.currentTeam].name, state.currentTeam, ()=>setTimeout(loadQuestion, 200));
+      return;
+    }
+  } else {
+    if(state.teamRoundCount >= state.roundsPerTeam) {
+      state.teamRoundCount = 0;
+      const otherIdx = state.finalTeams.find(i => i !== state.currentTeam);
+      if(!state.finalDone) state.finalDone = new Set();
+      state.finalDone.add(state.currentTeam);
+      if(!state.finalDone.has(otherIdx)) {
+        state.currentTeam = otherIdx;
+        // team changed in final — show get-ready
+        showGetReady(state.scores[state.currentTeam].name, state.currentTeam, ()=>setTimeout(loadQuestion, 200));
+        return;
+      } else {
+        setTimeout(showEnd, 300);
+        return;
+      }
+    }
+  }
+
   setTimeout(loadQuestion, 300);
 }
 
+function showFinalBanner(name1, name2) {
+  playSound('fanfare');
+  const colors = ['#ffcc00','#4ecdc4','#ff6b6b','#a78bfa','#f9ca24','#6ab04c','#e17055','#74b9ff'];
+  const c1 = colors[state.finalTeams[0]];
+  const c2 = colors[state.finalTeams[1]];
+  const banner = document.createElement('div');
+  banner.id = 'finalBanner';
+  banner.style.cssText = `position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:rgba(10,18,28,0.92);
+    font-family:'Fredoka One',cursive;text-align:center;animation:fadeInOut 2.5s ease forwards`;
+  banner.innerHTML = `
+    <div style="font-size:clamp(1.4rem,5vw,2.2rem);color:#fff;letter-spacing:2px;margin-bottom:12px">⚡ FINAL ROUND ⚡</div>
+    <div style="font-size:clamp(1rem,4vw,1.6rem)">
+      <span style="color:${c1}">${name1}</span>
+      <span style="color:#fff;margin:0 12px">vs</span>
+      <span style="color:${c2}">${name2}</span>
+    </div>`;
+  // add keyframes if not present
+  if(!document.getElementById('finalBannerStyle')) {
+    const s = document.createElement('style');
+    s.id = 'finalBannerStyle';
+    s.textContent = `@keyframes fadeInOut{0%{opacity:0}15%{opacity:1}75%{opacity:1}100%{opacity:0}}`;
+    document.head.appendChild(s);
+  }
+  document.body.appendChild(banner);
+  setTimeout(()=>banner.remove(), 2600);
+}
+
 function showTurnBanner(name) {
+  // subtle inline banner still used for same-team continuation
   const b = document.getElementById('turnBanner');
   b.textContent = `${name}'s Turn!`;
   b.style.opacity='1';
   setTimeout(()=>b.style.opacity='0', 1800);
+}
+
+function showGetReady(name, teamIdx, callback) {
+  const colors = ['#ffcc00','#4ecdc4','#ff6b6b','#a78bfa','#f9ca24','#6ab04c','#e17055','#74b9ff'];
+  const col = colors[teamIdx] || '#fff';
+  playSound('getready');
+
+  const banner = document.createElement('div');
+  banner.id = 'getReadyBanner';
+  banner.style.cssText = `position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:rgba(10,18,28,0.95);
+    font-family:'Fredoka One',cursive;text-align:center;cursor:pointer;`;
+
+  let countdown = 3;
+  banner.innerHTML = `
+    <div style="font-size:clamp(1rem,3vw,1.3rem);color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px">Get Ready…</div>
+    <div style="font-size:clamp(2rem,7vw,3.5rem);color:${col};text-shadow:0 0 40px ${col}88;margin-bottom:10px">${name}</div>
+    <div id="grCountdown" style="font-size:clamp(3rem,12vw,6rem);color:#fff;opacity:0.9;line-height:1">${countdown}</div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-top:20px;letter-spacing:1px">tap to skip</div>`;
+
+  if(!document.getElementById('finalBannerStyle')) {
+    const s = document.createElement('style');
+    s.id = 'finalBannerStyle';
+    s.textContent = `@keyframes fadeInOut{0%{opacity:0}15%{opacity:1}75%{opacity:1}100%{opacity:0}}`;
+    document.head.appendChild(s);
+  }
+
+  document.body.appendChild(banner);
+
+  const tick = setInterval(()=>{
+    countdown--;
+    const el = document.getElementById('grCountdown');
+    if(el) el.textContent = countdown > 0 ? countdown : '▶';
+    if(countdown <= 0) { clearInterval(tick); setTimeout(go, 400); }
+  }, 1000);
+
+  function go() {
+    clearInterval(tick);
+    if(document.getElementById('getReadyBanner')) banner.remove();
+    callback();
+  }
+
+  banner.addEventListener('click', go, {once:true});
 }
 
 function showEnd() {
@@ -1553,27 +1727,46 @@ function showEnd() {
   // ── PER-TEAM WORD BREAKDOWN ──
   const breakdown = document.getElementById('teamBreakdown');
   breakdown.innerHTML = '';
-  for(let ti = 0; ti < state.teams; ti++) {
+
+  // Sort: finalists first if there was a final
+  const teamOrder = state.phase === 'final'
+    ? [...state.finalTeams, ...Array.from({length:state.teams},(_,i)=>i).filter(i=>!state.finalTeams.includes(i))]
+    : Array.from({length:state.teams},(_,i)=>i);
+
+  for(const ti of teamOrder) {
     const teamHistory = state.history.filter(h => h.teamIdx === ti);
     if(!teamHistory.length) continue;
     const col = colors[ti];
-    const total = teamHistory.reduce((s,h)=>s+h.pts,0);
+    const total = teamHistory.reduce((s,h)=>s+h.pts, 0);
+    const isFinalist = state.finalTeams.includes(ti);
+    const mainHistory = teamHistory.filter(h => h.phase === 'main');
+    const finalHistory = teamHistory.filter(h => h.phase === 'final');
+
+    const renderRows = (rows) => rows.map(h => {
+      const sentenceDisplay = h.sentence.replace('___', `<strong style="color:${col}">${h.word}</strong>`);
+      return `<div class="breakdown-row ${h.correct?'':'breakdown-miss'}">
+        <span class="breakdown-word" style="color:${h.correct?col:'var(--wrong)'}">
+          ${h.correct?'✓':'✗'} ${h.word}
+        </span>
+        <span class="breakdown-sentence">${sentenceDisplay}</span>
+        <span class="breakdown-pts" style="color:${h.correct?col:'var(--muted)'}">
+          ${h.correct?'+'+h.pts+' pts':'—'}
+        </span>
+      </div>`;
+    }).join('');
+
     const section = document.createElement('div');
     section.className = 'breakdown-section';
     section.innerHTML = `
-      <h3 style="color:${col}">Team ${ti+1} <span style="font-size:0.75rem;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:600;letter-spacing:1px">— ${total} pts total</span></h3>
-      ${teamHistory.map(h => {
-        const sentenceDisplay = h.sentence.replace('___', `<strong style="color:${col}">${h.word}</strong>`);
-        return `<div class="breakdown-row ${h.correct?'':'breakdown-miss'}">
-          <span class="breakdown-word" style="color:${h.correct?col:'var(--wrong)'}">
-            ${h.correct?'✓':'✗'} ${h.word}
-          </span>
-          <span class="breakdown-sentence">${sentenceDisplay}</span>
-          <span class="breakdown-pts" style="color:${h.correct?col:'var(--muted)'}">
-            ${h.correct?'+'+h.pts+' pts':'—'}
-          </span>
-        </div>`;
-      }).join('')}
+      <h3 style="color:${col}">
+        ${isFinalist ? '⚡ ' : ''}Team ${ti+1}
+        <span style="font-size:0.75rem;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:600;letter-spacing:1px">— ${total} pts total</span>
+      </h3>
+      ${mainHistory.length ? renderRows(mainHistory) : ''}
+      ${finalHistory.length ? `
+        <div style="font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;padding:8px 0 4px;margin-top:4px;border-top:1px solid rgba(255,204,0,0.2)">⚡ Final Round</div>
+        ${renderRows(finalHistory)}
+      ` : ''}
     `;
     breakdown.appendChild(section);
   }
@@ -1631,6 +1824,12 @@ function playSound(name) {
     else if(name === 'click') {
       // subtle lower click for +/- teams
       playTone(400,'sine',0.06,0.2,now,true);
+    }
+    else if(name === 'getready') {
+      // rising 3-note alert: E4 → G4 → B4
+      playTone(330,'sine',0.12,0.3,now,       true);
+      playTone(392,'sine',0.12,0.3,now+0.14,  true);
+      playTone(494,'sine',0.18,0.35,now+0.28, true);
     }
     else if(name === 'fanfare') {
       // C major triumphant fanfare

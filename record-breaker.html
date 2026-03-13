@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RECORD BREAKER</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Teko:wght@400;500;600;700&family=Barlow:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0a0a0f;
+  --ink2: #13131c;
+  --ink3: #1c1c2a;
+  --gold: #f5c518;
+  --red: #ff2d55;
+  --green: #30d158;
+  --blue: #0a84ff;
+  --white: #f0f0f8;
+  --muted: #6b6b88;
+  --border: rgba(255,255,255,0.07);
+  --r: 14px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--ink);
+  color: var(--white);
+  font-family: 'Barlow', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
+  pointer-events:none; z-index:9999;
+}
+body::after {
+  content:'';
+  position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(245,197,24,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(10,132,255,0.05) 0%, transparent 50%);
+  pointer-events:none; z-index:0;
+}
+.screen { display:none; position:relative; z-index:1; }
+.screen.active { display:flex; }
+
+/* ─── START ─── */
+#startScreen {
+  flex-direction:column; align-items:center; justify-content:center;
+  min-height:100vh; padding:40px 20px;
+}
+.logo { text-align:center; margin-bottom:48px; }
+.logo-top { font-family:'Teko',sans-serif; font-size:12px; font-weight:600; letter-spacing:8px; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+.logo-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(64px,13vw,120px); line-height:0.85; color:var(--gold); text-shadow:0 0 60px rgba(245,197,24,0.25); letter-spacing:3px; }
+.logo-title em { color:var(--white); font-style:normal; }
+.logo-sub { font-family:'Teko',sans-serif; font-size:16px; letter-spacing:5px; color:var(--muted); margin-top:8px; }
+.card { background:var(--ink2); border:1px solid var(--border); border-radius:var(--r); padding:36px 40px; width:100%; max-width:480px; }
+.field { margin-bottom:28px; }
+.field:last-child { margin-bottom:0; }
+.field-label { font-family:'Teko',sans-serif; font-size:12px; font-weight:600; letter-spacing:5px; color:var(--gold); text-transform:uppercase; margin-bottom:12px; display:block; }
+.pill-row { display:flex; gap:8px; }
+.pill {
+  flex:1; padding:12px 6px 10px; background:var(--ink3);
+  border:2px solid rgba(255,255,255,0.06); border-radius:10px;
+  color:var(--muted); font-family:'Bebas Neue',sans-serif; font-size:28px;
+  text-align:center; cursor:pointer; transition:all 0.13s; line-height:1; user-select:none;
+}
+.pill sub { display:block; font-family:'Teko',sans-serif; font-size:10px; letter-spacing:2px; opacity:0.5; margin-top:2px; font-weight:500; }
+.pill:hover { border-color:rgba(245,197,24,0.3); color:var(--white); }
+.pill.on { background:rgba(245,197,24,0.1); border-color:var(--gold); color:var(--gold); }
+.name-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.name-row { display:flex; align-items:center; gap:10px; }
+.team-pip { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.name-input {
+  flex:1; background:var(--ink3); border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px; padding:10px 14px; color:var(--white);
+  font-family:'Teko',sans-serif; font-size:20px; font-weight:500; letter-spacing:1px;
+  outline:none; transition:border-color 0.13s;
+}
+.name-input:focus { border-color:var(--gold); }
+.btn-big {
+  width:100%; padding:18px; background:var(--gold); border:none; border-radius:10px;
+  color:var(--ink); font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:3px;
+  cursor:pointer; transition:all 0.13s; margin-top:28px; box-shadow:0 4px 32px rgba(245,197,24,0.2);
+}
+.btn-big:hover { background:#ffd233; transform:translateY(-1px); box-shadow:0 4px 48px rgba(245,197,24,0.45); }
+.btn-big:disabled { opacity:0.35; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* ─── GAME ─── */
+#gameScreen { flex-direction:column; min-height:100vh; padding:16px; gap:12px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.round-tag { font-family:'Teko',sans-serif; font-size:13px; font-weight:600; letter-spacing:5px; color:var(--muted); text-transform:uppercase; }
+.round-tag strong { font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--gold); letter-spacing:2px; vertical-align:middle; }
+.timer-wrap { position:relative; width:64px; height:64px; flex-shrink:0; }
+.timer-svg { transform:rotate(-90deg); }
+.t-track { fill:none; stroke:rgba(255,255,255,0.06); stroke-width:5; }
+.t-fill { fill:none; stroke:var(--gold); stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset 0.92s linear, stroke 0.3s; }
+.t-fill.urgent { stroke:var(--red); }
+.timer-num { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:23px; color:var(--white); }
+.scores { display:flex; gap:8px; flex-wrap:wrap; }
+.score-pill { background:var(--ink2); border:1px solid var(--border); border-radius:10px; padding:8px 14px; display:flex; flex-direction:column; align-items:center; min-width:76px; transition:border-color 0.2s, box-shadow 0.2s; }
+.score-pill.current { border-color:var(--gold); box-shadow:0 0 16px rgba(245,197,24,0.2); }
+.sp-name { font-family:'Teko',sans-serif; font-size:12px; font-weight:600; letter-spacing:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80px; }
+.sp-pts { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1.1; color:var(--white); }
+.q-card { background:var(--ink2); border:1px solid rgba(245,197,24,0.18); border-radius:var(--r); padding:22px 26px; flex-shrink:0; }
+.q-cat { font-family:'Teko',sans-serif; font-size:11px; font-weight:600; letter-spacing:5px; color:var(--blue); text-transform:uppercase; margin-bottom:5px; }
+.q-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(20px,3.5vw,34px); line-height:1.05; color:var(--white); margin-bottom:7px; }
+.q-ask { font-family:'Teko',sans-serif; font-size:16px; font-weight:500; color:var(--gold); letter-spacing:0.5px; }
+.q-hint { font-size:12px; color:var(--muted); font-style:italic; margin-top:3px; }
+.chain-wrap { flex:1; min-height:0; display:flex; flex-direction:column; }
+.chain-label { font-family:'Teko',sans-serif; font-size:11px; font-weight:600; letter-spacing:5px; color:var(--muted); text-transform:uppercase; margin-bottom:10px; }
+.chain-list { display:flex; flex-direction:column; gap:6px; overflow-y:auto; flex:1; max-height:180px; padding-right:4px; }
+.chain-list::-webkit-scrollbar { width:3px; }
+.chain-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+.chain-item { display:flex; align-items:center; gap:10px; background:var(--ink2); border-radius:9px; padding:10px 14px; animation:popIn 0.18s ease; border-left:3px solid var(--muted); }
+.chain-item.latest { border-left-color:var(--gold); }
+@keyframes popIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.ci-team { font-family:'Teko',sans-serif; font-size:15px; font-weight:600; letter-spacing:1px; min-width:72px; }
+.ci-val { font-family:'Bebas Neue',sans-serif; font-size:22px; flex:1; }
+.ci-unit { font-size:12px; color:var(--muted); font-family:'Barlow',sans-serif; }
+.ci-arrow { font-size:11px; color:var(--muted); font-family:'Teko',sans-serif; letter-spacing:1px; }
+.no-guesses-msg { font-family:'Teko',sans-serif; font-size:16px; letter-spacing:1px; color:var(--muted); font-style:italic; padding:16px; text-align:center; }
+.input-area { background:var(--ink2); border:1px solid var(--border); border-radius:var(--r); padding:18px 20px; flex-shrink:0; }
+.whose-turn { font-family:'Teko',sans-serif; font-size:13px; font-weight:600; letter-spacing:4px; color:var(--muted); text-transform:uppercase; margin-bottom:12px; }
+.whose-turn strong { font-size:18px; letter-spacing:1px; }
+.input-controls { display:flex; gap:8px; align-items:stretch; }
+.num-field {
+  flex:1; background:var(--ink3); border:2px solid rgba(255,255,255,0.08);
+  border-radius:9px; padding:12px 16px; color:var(--white);
+  font-family:'Bebas Neue',sans-serif; font-size:30px; outline:none; transition:border-color 0.13s;
+  -moz-appearance:textfield;
+}
+.num-field::-webkit-inner-spin-button,.num-field::-webkit-outer-spin-button{-webkit-appearance:none;}
+.num-field:focus { border-color:var(--gold); }
+.btn-guess {
+  padding:0 22px; background:var(--gold); border:none; border-radius:9px;
+  color:var(--ink); font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px;
+  cursor:pointer; white-space:nowrap; transition:all 0.13s;
+}
+.btn-guess:hover { background:#ffd233; }
+.btn-guess:disabled { opacity:0.35; cursor:not-allowed; }
+.noway-row { margin-top:10px; display:flex; gap:8px; align-items:center; }
+.btn-noway {
+  flex:1; padding:14px 10px; background:transparent; border:2px solid var(--red);
+  border-radius:9px; color:var(--red); font-family:'Bebas Neue',sans-serif;
+  font-size:24px; letter-spacing:3px; cursor:pointer; transition:all 0.13s;
+  position:relative; overflow:hidden;
+}
+.btn-noway::before { content:''; position:absolute; inset:0; background:var(--red); opacity:0; transition:opacity 0.13s; }
+.btn-noway:hover::before { opacity:0.1; }
+.btn-noway:disabled { opacity:0.2; cursor:not-allowed; }
+.btn-noway span { position:relative; z-index:1; }
+.noway-hint { font-size:12px; color:var(--muted); font-style:italic; line-height:1.4; max-width:160px; }
+.skip-link { text-align:center; margin-top:8px; }
+.skip-link button { background:none; border:none; font-family:'Teko',sans-serif; font-size:13px; letter-spacing:3px; color:var(--muted); cursor:pointer; text-transform:uppercase; transition:color 0.13s; }
+.skip-link button:hover { color:var(--white); }
+
+/* ─── VERDICT OVERLAY ─── */
+#verdictOverlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:200;
+  align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:24px;
+  overflow-y:auto;
+}
+#verdictOverlay.show { display:flex; }
+.verdict-icon { font-size:72px; margin-bottom:6px; animation:boomIn 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes boomIn { from{transform:scale(0.4);opacity:0} to{transform:scale(1);opacity:1} }
+.verdict-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(48px,9vw,82px); letter-spacing:4px; line-height:1; margin-bottom:6px; }
+.verdict-title.ok  { color:var(--green); }
+.verdict-title.bad { color:var(--red); }
+.verdict-title.neutral { color:var(--muted); }
+.verdict-sub { font-family:'Teko',sans-serif; font-size:18px; letter-spacing:1px; color:var(--muted); margin-bottom:24px; max-width:420px; line-height:1.4; }
+.var-box { background:rgba(245,197,24,0.1); border:1px solid rgba(245,197,24,0.3); border-radius:12px; padding:18px 32px; margin-bottom:28px; }
+.var-eye { font-family:'Teko',sans-serif; font-size:11px; letter-spacing:5px; color:var(--gold); text-transform:uppercase; margin-bottom:4px; }
+.var-num { font-family:'Bebas Neue',sans-serif; font-size:60px; line-height:1; color:var(--gold); }
+.var-unit { font-family:'Teko',sans-serif; font-size:17px; letter-spacing:2px; color:var(--muted); }
+.verdict-pts { display:flex; flex-direction:column; gap:8px; width:100%; max-width:400px; margin-bottom:28px; }
+.vp-row { display:flex; justify-content:space-between; align-items:center; background:var(--ink2); border-radius:10px; padding:12px 18px; }
+.vp-name { font-family:'Teko',sans-serif; font-size:18px; font-weight:600; letter-spacing:1px; }
+.vp-pts { font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--gold); }
+.vp-note { font-family:'Teko',sans-serif; font-size:11px; letter-spacing:2px; color:var(--muted); }
+.btn-continue { padding:15px 52px; background:var(--white); border:none; border-radius:10px; color:var(--ink); font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:3px; cursor:pointer; transition:all 0.13s; }
+.btn-continue:hover { background:var(--gold); }
+
+/* ─── FINAL ─── */
+#finalScreen { flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:40px 20px; text-align:center; }
+.final-logo { font-family:'Bebas Neue',sans-serif; font-size:clamp(52px,10vw,90px); color:var(--gold); letter-spacing:4px; text-shadow:0 0 40px rgba(245,197,24,0.3); margin-bottom:4px; }
+.final-sub { font-family:'Teko',sans-serif; font-size:14px; letter-spacing:6px; color:var(--muted); margin-bottom:44px; text-transform:uppercase; }
+.final-list { display:flex; flex-direction:column; gap:10px; width:100%; max-width:440px; margin-bottom:44px; }
+.fl-row { display:flex; align-items:center; gap:14px; background:var(--ink2); border-radius:12px; padding:16px 20px; border-left:4px solid; }
+.fl-rank { font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--muted); width:36px; text-align:center; }
+.fl-name { font-family:'Teko',sans-serif; font-size:22px; font-weight:600; flex:1; text-align:left; letter-spacing:1px; }
+.fl-pts { font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--white); }
+.fl-label { font-family:'Teko',sans-serif; font-size:11px; letter-spacing:2px; color:var(--muted); }
+.btn-again { padding:16px 52px; background:transparent; border:2px solid var(--gold); border-radius:10px; color:var(--gold); font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:3px; cursor:pointer; transition:all 0.13s; }
+.btn-again:hover { background:rgba(245,197,24,0.1); }
+
+/* team colors */
+.tc0{color:#38bdf8}.tc1{color:#fb923c}.tc2{color:#4ade80}.tc3{color:#c084fc}
+.bc0{background:#38bdf8}.bc1{background:#fb923c}.bc2{background:#4ade80}.bc3{background:#c084fc}
+</style>
+</head>
+<body>
+
+<!-- START -->
+<div class="screen active" id="startScreen">
+  <div class="logo">
+    <div class="logo-top">World Records Party Game</div>
+    <div class="logo-title">RECORD<em>BREAKER</em></div>
+    <div class="logo-sub">HOW HIGH DARE YOU GO?</div>
+  </div>
+  <div class="card">
+    <div class="field">
+      <span class="field-label">Teams</span>
+      <div class="pill-row" id="teamPills">
+        <div class="pill" data-v="1">1<sub>SOLO</sub></div>
+        <div class="pill" data-v="2">2<sub>TEAMS</sub></div>
+        <div class="pill" data-v="3">3<sub>TEAMS</sub></div>
+        <div class="pill" data-v="4">4<sub>TEAMS</sub></div>
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">Rounds</span>
+      <div class="pill-row" id="roundPills">
+        <div class="pill" data-v="3">3<sub>ROUNDS</sub></div>
+        <div class="pill" data-v="5">5<sub>ROUNDS</sub></div>
+        <div class="pill" data-v="7">7<sub>ROUNDS</sub></div>
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">Timer per Guess</span>
+      <div class="pill-row" id="timerPills">
+        <div class="pill" data-v="30">30<sub>SEC</sub></div>
+        <div class="pill" data-v="45">45<sub>SEC</sub></div>
+        <div class="pill" data-v="60">60<sub>SEC</sub></div>
+      </div>
+    </div>
+    <div class="field" id="namesField" style="display:none">
+      <span class="field-label">Team Names</span>
+      <div class="name-list" id="nameList"></div>
+    </div>
+    <button class="btn-big" id="startBtn" disabled>LET'S GO</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="gameScreen">
+  <div class="topbar">
+    <div class="round-tag">ROUND <strong id="gRound">1</strong></div>
+    <div class="scores" id="scores"></div>
+    <div class="timer-wrap">
+      <svg class="timer-svg" width="64" height="64" viewBox="0 0 64 64">
+        <circle class="t-track" cx="32" cy="32" r="27"/>
+        <circle class="t-fill" id="tArc" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-num" id="tNum">60</div>
+    </div>
+  </div>
+  <div class="q-card">
+    <div class="q-cat" id="qCat">CATEGORY</div>
+    <div class="q-title" id="qTitle">—</div>
+    <div class="q-ask" id="qAsk">→ Enter your answer</div>
+    <div class="q-hint" id="qHint"></div>
+  </div>
+  <div class="chain-wrap">
+    <div class="chain-label">Guesses — each must be higher than the last</div>
+    <div class="chain-list" id="chainList">
+      <div class="no-guesses-msg">Waiting for first guess…</div>
+    </div>
+  </div>
+  <div class="input-area">
+    <div class="whose-turn" id="whoseTurn">—</div>
+    <div class="input-controls">
+      <input type="number" class="num-field" id="numField" placeholder="0" min="0" step="any">
+      <button class="btn-guess" id="btnGuess">LOCK IN</button>
+    </div>
+    <div class="noway-row">
+      <button class="btn-noway" id="btnNoway" disabled>
+        <span>🚨 NO WAY!</span>
+      </button>
+      <div class="noway-hint">Challenge the last guess — right call = points, wrong call = skip your turn</div>
+    </div>
+    <div class="skip-link"><button id="btnSkip">SKIP QUESTION</button></div>
+  </div>
+</div>
+
+<!-- VERDICT -->
+<div id="verdictOverlay">
+  <div class="verdict-icon" id="vIcon">🚨</div>
+  <div class="verdict-title ok" id="vTitle">NO WAY!</div>
+  <div class="verdict-sub" id="vSub">—</div>
+  <div class="var-box" id="varBox">
+    <div class="var-eye">THE REAL ANSWER</div>
+    <div class="var-num" id="vAnswer">—</div>
+    <div class="var-unit" id="vUnit">—</div>
+  </div>
+  <div class="verdict-pts" id="vPts"></div>
+  <button class="btn-continue" id="btnContinue">NEXT ROUND →</button>
+</div>
+
+<!-- FINAL -->
+<div class="screen" id="finalScreen">
+  <div class="final-logo">FINAL SCORE</div>
+  <div class="final-sub">GAME OVER — STANDINGS</div>
+  <div class="final-list" id="finalList"></div>
+  <button class="btn-again" onclick="location.reload()">PLAY AGAIN</button>
+</div>
+
+<script>
+// ════════════════════════════════════════
+//  RECORDS
+// ════════════════════════════════════════
+const RECORDS = [
+  {cat:"SWIMMING",    q:"Fastest 100m Freestyle — Men",                      ans:46.91,    unit:"seconds",          hint:"César Cielo (Brazil)",                               ask:"How many seconds?"},
+  {cat:"SWIMMING",    q:"Fastest 100m Freestyle — Women",                    ans:51.71,    unit:"seconds",          hint:"Sarah Sjöström (Sweden)",                            ask:"How many seconds?"},
+  {cat:"SWIMMING",    q:"Most Career Olympic Gold Medals (Overall)",          ans:23,       unit:"gold medals",      hint:"Michael Phelps (USA)",                               ask:"How many gold medals?"},
+  {cat:"ATHLETICS",   q:"Fastest 100m Sprint — Men",                         ans:9.58,     unit:"seconds",          hint:"Usain Bolt (Jamaica)",                               ask:"How many seconds?"},
+  {cat:"ATHLETICS",   q:"Fastest 100m Sprint — Women",                       ans:10.49,    unit:"seconds",          hint:"Florence Griffith-Joyner (USA)",                     ask:"How many seconds?"},
+  {cat:"ATHLETICS",   q:"Longest Long Jump — Men",                           ans:8.95,     unit:"meters",           hint:"Mike Powell (USA)",                                  ask:"How many meters?"},
+  {cat:"ATHLETICS",   q:"Highest High Jump — Men",                           ans:2.45,     unit:"meters",           hint:"Javier Sotomayor (Cuba)",                            ask:"How many meters?"},
+  {cat:"ATHLETICS",   q:"Longest Pole Vault — Men",                          ans:6.26,     unit:"meters",           hint:"Armand Duplantis (Sweden)",                          ask:"How many meters?"},
+  {cat:"ATHLETICS",   q:"Farthest Shot Put — Men",                           ans:23.56,    unit:"meters",           hint:"Ryan Crouser (USA)",                                 ask:"How many meters?"},
+  {cat:"ATHLETICS",   q:"Fastest Marathon — Men (total minutes)",             ans:120.58,   unit:"minutes",          hint:"Kelvin Kiptum (Kenya)",                               ask:"How many minutes total?"},
+  {cat:"STRENGTH",    q:"Heaviest Deadlift",                                 ans:501,      unit:"kg",               hint:"Hafþór Björnsson (Iceland)",                         ask:"How many kg?"},
+  {cat:"STRENGTH",    q:"Most Pull-ups in 24 Hours",                         ans:7715,     unit:"pull-ups",         hint:"Jan Kares (Czech Republic)",                         ask:"How many pull-ups?"},
+  {cat:"FOOTBALL",    q:"Most FIFA World Cup Goals — Career",                 ans:16,       unit:"goals",            hint:"Miroslav Klose (Germany)",                           ask:"How many goals?"},
+  {cat:"FOOTBALL",    q:"Most Ballon d'Or Awards",                           ans:8,        unit:"awards",           hint:"Lionel Messi",                                       ask:"How many awards?"},
+  {cat:"BASKETBALL",  q:"Most Points in a Single NBA Game",                  ans:100,      unit:"points",           hint:"Wilt Chamberlain (USA)",                             ask:"How many points?"},
+  {cat:"BASKETBALL",  q:"Most NBA Championships Won (Player)",               ans:11,       unit:"championships",    hint:"Bill Russell (Boston Celtics)",                      ask:"How many championships?"},
+  {cat:"TENNIS",      q:"Most Grand Slam Singles Titles — Men",              ans:24,       unit:"titles",           hint:"Novak Djokovic",                                     ask:"How many titles?"},
+  {cat:"TENNIS",      q:"Fastest Tennis Serve — Men",                        ans:263.4,    unit:"km/h",             hint:"Sam Groth (Australia)",                              ask:"How many km/h?"},
+  {cat:"NFL",         q:"Most Career NFL Passing Yards",                     ans:89214,    unit:"yards",            hint:"Tom Brady (USA)",                                    ask:"How many yards?"},
+  {cat:"NFL",         q:"Longest NFL Field Goal",                            ans:66,       unit:"yards",            hint:"Justin Tucker (USA)",                                ask:"How many yards?"},
+  {cat:"BASEBALL",    q:"Most Career MLB Home Runs",                         ans:762,      unit:"home runs",        hint:"Barry Bonds (USA)",                                  ask:"How many home runs?"},
+  {cat:"NHL",         q:"Most Career NHL Goals",                             ans:894,      unit:"goals",            hint:"Wayne Gretzky (Canada)",                             ask:"How many goals?"},
+  {cat:"MOTORSPORTS", q:"Most Formula 1 Race Wins",                          ans:103,      unit:"wins",             hint:"Lewis Hamilton (UK)",                                ask:"How many wins?"},
+  {cat:"CHESS",       q:"Highest FIDE Chess Rating Ever",                    ans:2882,     unit:"Elo points",       hint:"Magnus Carlsen (Norway)",                            ask:"How many Elo points?"},
+  {cat:"SPACE",       q:"Distance of Voyager 1 from Earth (approx 2024)",    ans:23.6,     unit:"billion km",       hint:"Most remote human-made object",                      ask:"How many billion km?"},
+  {cat:"SPACE",       q:"Diameter of Jupiter",                               ans:139820,   unit:"km",               hint:"Largest planet in our solar system",                  ask:"How many km in diameter?"},
+  {cat:"SPACE",       q:"Height of Olympus Mons on Mars",                    ans:21.9,     unit:"km",               hint:"Tallest mountain in the solar system",                ask:"How many km high?"},
+  {cat:"OCEAN",       q:"Depth of Challenger Deep — Mariana Trench",         ans:10935,    unit:"meters",           hint:"Deepest known point in any ocean",                   ask:"How many meters deep?"},
+  {cat:"GEOGRAPHY",   q:"Depth of the Titanic Wreckage",                     ans:3784,     unit:"meters",           hint:"North Atlantic Ocean — sank 1912",                   ask:"How many meters below sea level?"},
+  {cat:"GEOGRAPHY",   q:"Height of Mount Everest",                           ans:8848.86,  unit:"meters",           hint:"World's highest mountain from sea level",             ask:"How many meters?"},
+  {cat:"GEOGRAPHY",   q:"Length of the Nile River",                          ans:6650,     unit:"km",               hint:"Africa's longest river",                             ask:"How many km?"},
+  {cat:"GEOGRAPHY",   q:"Depth of Lake Baikal",                              ans:1642,     unit:"meters",           hint:"Russia — world's deepest lake",                      ask:"How many meters?"},
+  {cat:"GEOGRAPHY",   q:"Height of Angel Falls",                             ans:979,      unit:"meters",           hint:"Venezuela — world's tallest waterfall",               ask:"How many meters?"},
+  {cat:"HUMAN BODY",  q:"Height of the Tallest Person Ever Recorded",        ans:2.72,     unit:"meters",           hint:"Robert Wadlow (USA)",                                 ask:"How many meters tall?"},
+  {cat:"HUMAN BODY",  q:"Age of the Oldest Person Ever Recorded",            ans:122,      unit:"years",            hint:"Jeanne Calment (France)",                            ask:"How many years?"},
+  {cat:"HUMAN BODY",  q:"Number of Bones in the Adult Human Body",           ans:206,      unit:"bones",            hint:"Standard adult skeleton",                            ask:"How many bones?"},
+  {cat:"HUMAN BODY",  q:"Number of Muscles in the Human Body",               ans:639,      unit:"muscles",          hint:"Approximate total count",                            ask:"Approximately how many?"},
+  {cat:"ANIMALS",     q:"Top Speed of a Cheetah",                            ans:120,      unit:"km/h",             hint:"Fastest land animal on Earth",                       ask:"How many km/h (max)?"},
+  {cat:"ANIMALS",     q:"Top Dive Speed of a Peregrine Falcon",              ans:389,      unit:"km/h",             hint:"Fastest bird in a dive",                             ask:"How many km/h?"},
+  {cat:"ANIMALS",     q:"Maximum Length of a Blue Whale",                    ans:33.6,     unit:"meters",           hint:"Largest animal ever to exist",                       ask:"How many meters long?"},
+  {cat:"ANIMALS",     q:"Decibels of a Sperm Whale's Click",                 ans:230,      unit:"decibels",         hint:"Loudest animal on Earth",                            ask:"How many decibels?"},
+  {cat:"ANIMALS",     q:"Length of the Longest Snake Ever Recorded",         ans:7.67,     unit:"meters",           hint:"Reticulated Python",                                 ask:"How many meters?"},
+  {cat:"ANIMALS",     q:"Maximum Babies in a Single Rabbit Litter",          ans:14,       unit:"babies",           hint:"European rabbit — average is 4–6",                   ask:"How many babies max?"},
+  {cat:"ANIMALS",     q:"Age of Jonathan the Tortoise",                      ans:190,      unit:"years old",        hint:"Seychelles giant tortoise — oldest living land animal", ask:"How many years old?"},
+  {cat:"ANIMALS",     q:"Wingspan of the Wandering Albatross",               ans:3.7,      unit:"meters",           hint:"Largest wingspan of any living bird",                 ask:"How many meters?"},
+  {cat:"ANIMALS",     q:"Annual Migration of the Arctic Tern",               ans:90000,    unit:"km per year",      hint:"Champion of long-distance migration",                 ask:"How many km per year?"},
+  {cat:"ANIMALS",     q:"Deepest Dive of a Cuvier's Beaked Whale",           ans:2992,     unit:"meters",           hint:"Deepest diving marine mammal",                       ask:"How many meters?"},
+  {cat:"ANIMALS",     q:"Age of 'Ming' the Ocean Quahog Clam",               ans:507,      unit:"years",            hint:"Longest-lived animal specimen ever found",            ask:"How many years old?"},
+  {cat:"PLANTS",      q:"Height of Hyperion — Tallest Tree Ever",            ans:115.92,   unit:"meters",           hint:"Coast Redwood, California",                          ask:"How many meters?"},
+  {cat:"PLANTS",      q:"Age of Methuselah — Oldest Living Tree",            ans:4855,     unit:"years",            hint:"Great Basin Bristlecone Pine, USA",                   ask:"How many years old?"},
+  {cat:"PLANTS",      q:"Daily Growth Rate of Moso Bamboo",                  ans:91,       unit:"cm per day",       hint:"World's fastest growing plant",                      ask:"How many cm per day?"},
+  {cat:"SCIENCE",     q:"Speed of Light in a Vacuum",                        ans:299792458,unit:"meters/second",    hint:"Universal constant — c",                             ask:"How many meters per second?"},
+  {cat:"SCIENCE",     q:"Estimated Age of the Universe",                     ans:13.8,     unit:"billion years",    hint:"Based on cosmic microwave background data",           ask:"How many billion years?"},
+  {cat:"MUSIC",       q:"Copies Sold of Thriller by Michael Jackson",        ans:70,       unit:"million copies",   hint:"Best-selling album of all time",                     ask:"How many million copies?"},
+  {cat:"MUSIC",       q:"Grammy Awards Won by Beyoncé",                      ans:32,       unit:"Grammys",          hint:"Most by any artist in history",                      ask:"How many Grammys?"},
+  {cat:"FILM",        q:"Box Office of Avatar (All-Time Highest)",           ans:2923,     unit:"million USD",      hint:"James Cameron, 2009 / 2022 re-release",               ask:"How many million USD?"},
+  {cat:"FILM",        q:"Most Oscars Won by a Single Film",                  ans:11,       unit:"Oscars",           hint:"Ben-Hur, Titanic, Return of the King (all tied)",     ask:"How many Oscars?"},
+  {cat:"FOOD",        q:"Pepper X — Hottest Chili in Scoville Units",        ans:2693000,  unit:"Scoville units",   hint:"USA world record holder",                            ask:"How many Scoville units?"},
+  {cat:"FOOD",        q:"Price of Saffron per kg",                           ans:5000,     unit:"USD per kg",       hint:"World's most expensive spice",                       ask:"How many USD per kg?"},
+  {cat:"HUMAN FEATS", q:"Longest Time Without Sleep — Verified",             ans:11,       unit:"days",             hint:"Randy Gardner (USA, 1964)",                           ask:"How many days?"},
+  {cat:"HUMAN FEATS", q:"Deepest Scuba Dive",                                ans:332.35,   unit:"meters",           hint:"Ahmed Gabr (Egypt)",                                 ask:"How many meters?"},
+  {cat:"HUMAN FEATS", q:"Longest Static Breath Hold",                        ans:24.62,    unit:"minutes",          hint:"Budimir Šobat (Croatia)",                            ask:"How many minutes?"},
+  {cat:"HUMAN FEATS", q:"Most Everest Summits by One Person",                ans:29,       unit:"summits",          hint:"Kami Rita Sherpa (Nepal)",                            ask:"How many summits?"},
+  {cat:"HUMAN FEATS", q:"Fastest Rubik's Cube Solve",                        ans:3.13,     unit:"seconds",          hint:"Yiheng Wang (China, 2023)",                          ask:"How many seconds?"},
+  {cat:"DISASTERS",   q:"Deaths in the Deadliest Earthquake Ever Recorded",  ans:830000,   unit:"deaths",           hint:"Shaanxi Earthquake, China 1556",                     ask:"How many deaths?"},
+  {cat:"DISASTERS",   q:"Yield of Tsar Bomba — Largest Nuclear Explosion",   ans:57,       unit:"megatons",         hint:"USSR, 1961",                                         ask:"How many megatons?"},
+  {cat:"ENGINEERING", q:"Height of the Burj Khalifa",                        ans:828,      unit:"meters",           hint:"World's tallest building (Dubai)",                    ask:"How many meters?"},
+  {cat:"ENGINEERING", q:"Length of the Gotthard Base Tunnel",                ans:57.09,    unit:"km",               hint:"World's longest rail tunnel (Switzerland)",           ask:"How many km?"},
+  {cat:"ENGINEERING", q:"Operational Speed of the Shanghai Maglev",          ans:431,      unit:"km/h",             hint:"World's fastest commercial train",                   ask:"How many km/h?"},
+  {cat:"VEHICLES",    q:"Top Speed of the Bugatti Chiron Super Sport 300+",  ans:490.48,   unit:"km/h",             hint:"World's fastest production car",                     ask:"How many km/h?"},
+  {cat:"VEHICLES",    q:"Top Speed of the SR-71 Blackbird",                  ans:3529.6,   unit:"km/h",             hint:"Fastest manned aircraft (USA)",                      ask:"How many km/h?"},
+  {cat:"VEHICLES",    q:"Length of the Seawise Giant Supertanker",           ans:458.45,   unit:"meters",           hint:"Largest ship ever built",                            ask:"How many meters?"},
+  {cat:"FUN FACTS",   q:"Duration of Charles Osborne's Hiccup Attack",       ans:68,       unit:"years",            hint:"USA — longest recorded case of hiccups",             ask:"How many years?"},
+  {cat:"FUN FACTS",   q:"Days of Donna Griffiths' Sneezing Fit",             ans:978,      unit:"days",             hint:"UK — world record for continuous sneezing",           ask:"How many days?"},
+  {cat:"FUN FACTS",   q:"Times Roy Sullivan Was Struck by Lightning",        ans:7,        unit:"times",            hint:"USA park ranger — miraculously survived each time",  ask:"How many times?"},
+  {cat:"FUN FACTS",   q:"Duration of Isner vs Mahut — Longest Tennis Match", ans:11.08,    unit:"hours",            hint:"Wimbledon 2010",                                     ask:"How many hours?"},
+  {cat:"FUN FACTS",   q:"Dominoes Toppled in World Record Chain Reaction",   ans:4491863,  unit:"dominoes",         hint:"Netherlands, 2009",                                  ask:"How many dominoes?"},
+  {cat:"NATURE",      q:"Distance Krakatoa's 1883 Eruption Was Heard",       ans:5000,     unit:"km",               hint:"Heard across the Indian Ocean",                      ask:"How many km away?"},
+  {cat:"NATURE",      q:"Length of the Longest Lightning Bolt (2022)",        ans:768,      unit:"km",               hint:"Louisiana to Texas — US megaflash",                  ask:"How many km?"},
+  {cat:"MATH",        q:"Decimal Places of Pi Calculated (2023)",            ans:202,      unit:"trillion digits",  hint:"Google Cloud computation",                           ask:"How many trillion digits?"},
+];
+
+// ════════════════════════════════════════
+//  SOUND ENGINE
+// ════════════════════════════════════════
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+
+function resumeAC() { if (AC.state === 'suspended') AC.resume(); }
+
+function playTone(freq, type, duration, vol=0.3, when=0) {
+  const t = AC.currentTime + when;
+  const osc = AC.createOscillator();
+  const gain = AC.createGain();
+  osc.connect(gain); gain.connect(AC.destination);
+  osc.type = type; osc.frequency.setValueAtTime(freq, t);
+  gain.gain.setValueAtTime(vol, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  osc.start(t); osc.stop(t + duration);
+}
+
+function playNoise(duration, vol=0.15) {
+  const buf = AC.createBuffer(1, AC.sampleRate * duration, AC.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource();
+  const gain = AC.createGain();
+  src.buffer = buf; src.connect(gain); gain.connect(AC.destination);
+  gain.gain.setValueAtTime(vol, AC.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + duration);
+  src.start(); src.stop(AC.currentTime + duration);
+}
+
+const SFX = {
+  // Soft click when locking in a guess
+  guess() {
+    resumeAC();
+    playTone(660, 'sine', 0.08, 0.18);
+    playTone(880, 'sine', 0.06, 0.12, 0.06);
+  },
+  // Urgent timer tick
+  tick() {
+    resumeAC();
+    playTone(1200, 'square', 0.04, 0.08);
+  },
+  // NO WAY button pressed — tense siren sting
+  noway() {
+    resumeAC();
+    playTone(180, 'sawtooth', 0.12, 0.25);
+    playTone(240, 'sawtooth', 0.12, 0.10, 0.10);
+  },
+  // Correct NO WAY — triumphant fanfare
+  nowayCorrect() {
+    resumeAC();
+    [523, 659, 784, 1047].forEach((f, i) => playTone(f, 'sine', 0.18, 0.28, i * 0.09));
+  },
+  // Wrong NO WAY / elimination — descending fail
+  eliminated() {
+    resumeAC();
+    [400, 300, 200, 150].forEach((f, i) => playTone(f, 'sawtooth', 0.14, 0.22, i * 0.08));
+    playNoise(0.2, 0.1);
+  },
+  // Round winner / survivor
+  roundWin() {
+    resumeAC();
+    [523, 784, 1047].forEach((f, i) => playTone(f, 'sine', 0.22, 0.25, i * 0.1));
+  },
+  // Game over — full ascending fanfare
+  gameOver() {
+    resumeAC();
+    [262, 330, 392, 523, 659, 784, 1047].forEach((f, i) => playTone(f, 'sine', 0.3, 0.3, i * 0.1));
+  },
+  // Timer started / new round
+  roundStart() {
+    resumeAC();
+    playTone(440, 'sine', 0.1, 0.2);
+    playTone(550, 'sine', 0.08, 0.15, 0.1);
+  },
+};
+
+
+let numTeams=0, timerSec=0, roundsTotal=0;
+let teamNames=[], scores=[];
+let usedIdx=new Set();
+let cur=null, guesses=[], curTeam=0;
+let timerInterval=null, timeLeft=0;
+let roundNum=0, roundRunning=false;
+let eliminatedThisRound=new Set(); // teams knocked out by a wrong NO WAY call
+const CIRC=169.6;
+const COLORS=['#38bdf8','#fb923c','#4ade80','#c084fc'];
+const DEFS=['TEAM 1','TEAM 2','TEAM 3','TEAM 4'];
+
+// ════════════════════════════════════════
+//  START SCREEN
+// ════════════════════════════════════════
+document.querySelectorAll('#teamPills .pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('#teamPills .pill').forEach(x=>x.classList.remove('on'));
+    p.classList.add('on');
+    numTeams=+p.dataset.v;
+    buildNames();
+    checkReady();
+  });
+});
+document.querySelectorAll('#roundPills .pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('#roundPills .pill').forEach(x=>x.classList.remove('on'));
+    p.classList.add('on');
+    roundsTotal=+p.dataset.v;
+    checkReady();
+  });
+});
+document.querySelectorAll('#timerPills .pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('#timerPills .pill').forEach(x=>x.classList.remove('on'));
+    p.classList.add('on');
+    timerSec=+p.dataset.v;
+    checkReady();
+  });
+});
+
+function buildNames(){
+  const list=document.getElementById('nameList');
+  const field=document.getElementById('namesField');
+  list.innerHTML='';
+  if(!numTeams){field.style.display='none';return;}
+  field.style.display='block';
+  for(let i=0;i<numTeams;i++){
+    list.innerHTML+=`<div class="name-row">
+      <div class="team-pip bc${i}"></div>
+      <input class="name-input" data-i="${i}" placeholder="${DEFS[i]}" maxlength="18">
+    </div>`;
+  }
+}
+function checkReady(){ document.getElementById('startBtn').disabled=!(numTeams&&timerSec&&roundsTotal); }
+
+document.getElementById('startBtn').addEventListener('click',()=>{
+  teamNames=[];
+  document.querySelectorAll('.name-input').forEach(inp=>{
+    teamNames.push(inp.value.trim()||inp.placeholder);
+  });
+  if(!teamNames.length) teamNames=['YOU'];
+  scores=Array(numTeams).fill(0);
+  roundNum=0; usedIdx.clear();
+  switchScreen('gameScreen');
+  nextRound();
+});
+
+// ════════════════════════════════════════
+//  ROUND LOGIC
+// ════════════════════════════════════════
+function pickRecord(){
+  const avail=RECORDS.map((_,i)=>i).filter(i=>!usedIdx.has(i));
+  if(!avail.length) return null;
+  const i=avail[Math.floor(Math.random()*avail.length)];
+  usedIdx.add(i); return RECORDS[i];
+}
+
+function nextRound(){
+  if(roundNum>=roundsTotal){showFinal();return;}
+  cur=pickRecord();
+  if(!cur){showFinal();return;}
+  roundNum++; guesses=[]; curTeam=0; roundRunning=true; eliminatedThisRound=new Set();
+
+  document.getElementById('gRound').textContent=`${roundNum}/${roundsTotal}`;
+  document.getElementById('qCat').textContent=cur.cat;
+  document.getElementById('qTitle').textContent=cur.q;
+  document.getElementById('qAsk').textContent='→ '+cur.ask;
+  document.getElementById('qHint').textContent=cur.hint?'Context: '+cur.hint:'';
+  document.getElementById('chainList').innerHTML='<div class="no-guesses-msg">Waiting for first guess…</div>';
+  document.getElementById('numField').value='';
+  document.getElementById('btnNoway').disabled=true;
+  document.getElementById('btnGuess').disabled=false;
+
+  renderScores();
+  updateTurnLabel();
+  startTimer();
+  SFX.roundStart();
+  document.getElementById('numField').focus();
+}
+
+// ─── TIMER (per guess) ───
+function startTimer(){
+  clearInterval(timerInterval);
+  timeLeft=timerSec; drawTimer();
+  timerInterval=setInterval(()=>{
+    timeLeft--; drawTimer();
+    if(timeLeft<=0){ clearInterval(timerInterval); if(roundRunning) timedOut(); }
+  },1000);
+}
+function drawTimer(){
+  const pct=timeLeft/timerSec;
+  const arc=document.getElementById('tArc');
+  arc.setAttribute('stroke-dashoffset',CIRC*(1-pct));
+  arc.className=timeLeft<=10?'t-fill urgent':'t-fill';
+  document.getElementById('tNum').textContent=timeLeft;
+  if(timeLeft<=10 && timeLeft>0) SFX.tick();
+}
+function timedOut(){
+  SFX.eliminated();
+  // Current team ran out of time — treat like a wrong NO WAY: eliminate them
+  const eliminated=curTeam;
+  eliminatedThisRound.add(eliminated);
+  const active=[];
+  for(let i=0;i<numTeams;i++) if(!eliminatedThisRound.has(i)) active.push(i);
+
+  if(active.length<=1){
+    roundRunning=false;
+    scoreAndShow({type:'noway_wrong_ends_round', eliminatedCaller:eliminated, survivor:active[0]??-1});
+  } else {
+    showBadCall(eliminated, null, ()=>{
+      curTeam=nextActiveTeam(eliminated);
+      updateTurnLabel();
+      startTimer();
+      document.getElementById('numField').focus();
+    }, true);
+  }
+}
+
+// ─── GUESS ───
+document.getElementById('btnGuess').addEventListener('click',submitGuess);
+document.getElementById('numField').addEventListener('keydown',e=>{if(e.key==='Enter')submitGuess();});
+
+function submitGuess(){
+  if(!roundRunning) return;
+  const raw=document.getElementById('numField').value.trim();
+  if(raw===''||isNaN(parseFloat(raw))) return;
+  const val=parseFloat(raw);
+
+  if(guesses.length>0){
+    const last=guesses[guesses.length-1].val;
+    if(val<=last){ flashField('Must be higher than '+last); return; }
+  }
+
+  guesses.push({teamIdx:curTeam, val});
+  SFX.guess();
+  renderChain();
+  document.getElementById('numField').value='';
+  document.getElementById('btnNoway').disabled=false;
+
+  curTeam=nextActiveTeam(curTeam);
+  updateTurnLabel();
+  startTimer(); // reset timer for the next team's guess
+  document.getElementById('numField').focus();
+}
+
+function flashField(msg){
+  const f=document.getElementById('numField');
+  f.style.borderColor='var(--red)'; f.placeholder=msg; f.value='';
+  setTimeout(()=>{ f.style.borderColor=''; f.placeholder='0'; },1400);
+}
+
+// ─── NO WAY ───
+document.getElementById('btnNoway').addEventListener('click',()=>{
+  if(!roundRunning||!guesses.length) return;
+  SFX.noway();
+  const lastGuess=guesses[guesses.length-1];
+  const callerTeam=curTeam;
+  const correct=lastGuess.val>cur.ans;
+
+  if(correct){
+    clearInterval(timerInterval); roundRunning=false;
+    setTimeout(()=>SFX.nowayCorrect(), 200);
+    scoreAndShow({type:'noway_correct', callerTeam, bustedTeam:lastGuess.teamIdx});
+  } else {
+    clearInterval(timerInterval);
+    setTimeout(()=>SFX.eliminated(), 200);
+    eliminatedThisRound.add(callerTeam);
+
+    // How many active (non-eliminated) teams remain?
+    const active=[];
+    for(let i=0;i<numTeams;i++) if(!eliminatedThisRound.has(i)) active.push(i);
+
+    if(active.length<=1){
+      // Round ends immediately — only one (or zero) team left
+      clearInterval(timerInterval); roundRunning=false;
+      scoreAndShow({type:'noway_wrong_ends_round', eliminatedCaller:callerTeam, survivor:active[0]??-1});
+    } else {
+      // Show elimination notice, then continue with remaining teams
+      showBadCall(callerTeam, lastGuess, ()=>{
+        // Advance to next non-eliminated team
+        curTeam=nextActiveTeam(callerTeam);
+        updateTurnLabel();
+        document.getElementById('numField').focus();
+      });
+    }
+  }
+});
+
+function nextActiveTeam(from){
+  let t=(from+1)%numTeams;
+  let safety=0;
+  while(eliminatedThisRound.has(t)&&safety<numTeams){
+    t=(t+1)%numTeams; safety++;
+  }
+  return t;
+}
+
+function showBadCall(callerTeam, lastGuess, onContinue, isTimeout=false){
+  document.getElementById('vIcon').textContent='💀';
+  document.getElementById('vTitle').textContent='ELIMINATED!';
+  document.getElementById('vTitle').className='verdict-title bad';
+  document.getElementById('vSub').textContent= isTimeout
+    ? `${teamNames[callerTeam]} ran out of time! They're OUT for this round.`
+    : `${teamNames[callerTeam]} called NO WAY — but ${lastGuess.val} is still under the answer! They're OUT for this round.`;
+  document.getElementById('varBox').style.display='none';
+  document.getElementById('vPts').innerHTML=`
+    <div class="vp-row">
+      <div class="vp-name tc${callerTeam}">${teamNames[callerTeam]}</div>
+      <div style="text-align:right">
+        <div class="vp-pts" style="color:var(--red)">+0</div>
+        <div class="vp-note" style="color:var(--red)">💀 ELIMINATED</div>
+      </div>
+    </div>`;
+  document.getElementById('btnContinue').textContent='CONTINUE ROUND →';
+  document.getElementById('btnContinue').onclick=()=>{
+    document.getElementById('verdictOverlay').classList.remove('show');
+    document.getElementById('varBox').style.display='';
+    if(onContinue) onContinue();
+  };
+  document.getElementById('verdictOverlay').classList.add('show');
+}
+
+// ─── SCORING ───
+function scoreAndShow(event){
+  const ans=cur.ans;
+  const roundPts=Array(numTeams).fill(0);
+  let bonusTeam=-1, bustedTeam=-1;
+
+  if(event.type==='noway_correct'){
+    // NO WAY caller: +1
+    roundPts[event.callerTeam]+=1;
+    // Closest safe guesser: use each team's LAST guess, must be ≤ answer, exclude caller and busted team
+    const lastByTeam={};
+    guesses.slice(0,-1).forEach(g=>{ lastByTeam[g.teamIdx]=g.val; });
+    const safeGuesses=Object.entries(lastByTeam)
+      .filter(([ti,val])=>!eliminatedThisRound.has(+ti)&&val<=ans&&+ti!==event.bustedTeam)
+      .map(([ti,val])=>({teamIdx:+ti,val}));
+    if(safeGuesses.length>0){
+      let best=Infinity;
+      safeGuesses.forEach(g=>{
+        const d=ans-g.val;
+        if(d<best){best=d; bonusTeam=g.teamIdx;}
+      });
+      if(bonusTeam>=0) roundPts[bonusTeam]+=1;
+    }
+    bustedTeam=event.bustedTeam;
+  } else if(event.type==='noway_wrong_ends_round'){
+    // Only survivor gets +1
+    if(event.survivor>=0) roundPts[event.survivor]+=1;
+  }
+  // timeout: no points
+
+  // Apply
+  roundPts.forEach((p,i)=>{ scores[i]+=p; });
+
+  // Build verdict UI
+  if(event.type==='noway_correct'){
+    document.getElementById('vIcon').textContent='🚨';
+    document.getElementById('vTitle').textContent='NO WAY!';
+    document.getElementById('vTitle').className='verdict-title ok';
+    const last=guesses[guesses.length-1];
+    document.getElementById('vSub').textContent=
+      `${teamNames[event.callerTeam]} was RIGHT — ${teamNames[bustedTeam]}'s guess of ${last.val} went over the answer!`;
+  } else {
+    // noway_wrong_ends_round already handled above
+    document.getElementById('vIcon').textContent='💀';
+    document.getElementById('vTitle').textContent='ROUND OVER!';
+    document.getElementById('vTitle').className='verdict-title bad';
+    const survivorName=event.survivor>=0?teamNames[event.survivor]:'Nobody';
+    document.getElementById('vSub').textContent=
+      `${teamNames[event.eliminatedCaller]} was eliminated — ${survivorName} wins the round!`;
+    if(event.survivor>=0) SFX.roundWin();
+  }
+
+  document.getElementById('varBox').style.display='';
+  document.getElementById('vAnswer').textContent=ans;
+  document.getElementById('vUnit').textContent=cur.unit;
+
+  // Points rows — one row per team, using their LAST guess
+  const lastGuessByTeam={};
+  guesses.forEach(g=>{ lastGuessByTeam[g.teamIdx]=g; }); // last write wins
+
+  // Order: teams who guessed, then noway caller if not in guesses, then rest
+  const seen=new Set();
+  const order=[];
+  guesses.forEach(g=>{ if(!seen.has(g.teamIdx)){seen.add(g.teamIdx);order.push(g.teamIdx);} });
+  if(event.type==='noway_correct'&&!seen.has(event.callerTeam)){ seen.add(event.callerTeam); order.push(event.callerTeam); }
+  if(event.type==='noway_wrong_ends_round'&&!seen.has(event.eliminatedCaller)){ seen.add(event.eliminatedCaller); order.push(event.eliminatedCaller); }
+  for(let i=0;i<numTeams;i++) if(!seen.has(i)){ seen.add(i); order.push(i); }
+
+  const vPts=document.getElementById('vPts');
+  vPts.innerHTML='';
+  order.forEach(ti=>{
+    const pts=roundPts[ti];
+    const g=lastGuessByTeam[ti];
+    const guessStr=g?`guessed ${g.val} ${cur.unit}`:'—';
+    let tags='';
+    if(ti===bustedTeam) tags+='<div class="vp-note" style="color:var(--red)">WENT OVER ↑</div>';
+    if(event.type==='noway_correct'&&ti===event.callerTeam) tags+='<div class="vp-note" style="color:var(--green)">🚨 CALLED IT</div>';
+    if((event.type==='noway_wrong_ends_round')&&ti===event.eliminatedCaller) tags+='<div class="vp-note" style="color:var(--red)">💀 ELIMINATED</div>';
+    if((event.type==='noway_wrong_ends_round')&&ti===event.survivor) tags+='<div class="vp-note" style="color:var(--green)">🏆 ROUND WINNER</div>';
+    if(eliminatedThisRound.has(ti)&&ti!==event.eliminatedCaller) tags+='<div class="vp-note" style="color:var(--red)">💀 ELIMINATED</div>';
+    if(ti===bonusTeam) tags+='<div class="vp-note" style="color:#ffd233">★ CLOSEST</div>';
+
+    vPts.innerHTML+=`
+      <div class="vp-row" style="${(ti===bustedTeam||eliminatedThisRound.has(ti))?'opacity:0.5':''}">
+        <div>
+          <div class="vp-name tc${ti}">${teamNames[ti]}</div>
+          <div style="font-size:12px;color:var(--muted);font-family:Barlow,sans-serif;margin-top:2px">${guessStr}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="vp-pts" style="${pts===0?'color:var(--muted)':''}">+${pts}</div>
+          ${tags}
+        </div>
+      </div>`;
+  });
+
+  const isLast=roundNum>=roundsTotal;
+  document.getElementById('btnContinue').textContent=isLast?'SEE FINAL SCORES →':'NEXT ROUND →';
+  document.getElementById('btnContinue').onclick=()=>{
+    document.getElementById('verdictOverlay').classList.remove('show');
+    renderScores();
+    if(roundNum>=roundsTotal) showFinal(); else nextRound();
+  };
+  document.getElementById('verdictOverlay').classList.add('show');
+}
+
+// ─── SKIP ───
+document.getElementById('btnSkip').addEventListener('click',()=>{
+  if(!roundRunning) return;
+  clearInterval(timerInterval); roundRunning=false;
+  document.getElementById('vIcon').textContent='⏭️';
+  document.getElementById('vTitle').textContent='SKIPPED';
+  document.getElementById('vTitle').className='verdict-title neutral';
+  document.getElementById('vSub').textContent='No points awarded this round';
+  document.getElementById('varBox').style.display='';
+  document.getElementById('vAnswer').textContent=cur.ans;
+  document.getElementById('vUnit').textContent=cur.unit;
+  document.getElementById('vPts').innerHTML='';
+  const isLastSkip=roundNum>=roundsTotal;
+  document.getElementById('btnContinue').textContent=isLastSkip?'SEE FINAL SCORES →':'NEXT ROUND →';
+  document.getElementById('btnContinue').onclick=()=>{
+    document.getElementById('verdictOverlay').classList.remove('show');
+    renderScores();
+    if(roundNum>=roundsTotal) showFinal(); else nextRound();
+  };
+  document.getElementById('verdictOverlay').classList.add('show');
+});
+
+// ─── RENDER ───
+function renderChain(){
+  const list=document.getElementById('chainList');
+  if(!guesses.length){
+    list.innerHTML='<div class="no-guesses-msg">Waiting for first guess…</div>';
+    return;
+  }
+  list.innerHTML='';
+  guesses.forEach((g,idx)=>{
+    const isLatest=idx===guesses.length-1;
+    const prev=idx>0?guesses[idx-1].val:null;
+    const diff=prev!==null?`+${+(g.val-prev).toFixed(4)}`:'';
+    const item=document.createElement('div');
+    item.className='chain-item'+(isLatest?' latest':'');
+    item.innerHTML=`
+      <div class="ci-team tc${g.teamIdx}">${teamNames[g.teamIdx]}</div>
+      <div class="ci-val">${g.val} <span class="ci-unit">${cur.unit}</span></div>
+      ${diff?`<div class="ci-arrow">↑ ${diff}</div>`:''}`;
+    list.appendChild(item);
+  });
+  list.scrollTop=list.scrollHeight;
+}
+
+function renderScores(){
+  const sb=document.getElementById('scores');
+  sb.innerHTML='';
+  teamNames.forEach((name,i)=>{
+    sb.innerHTML+=`<div class="score-pill${i===curTeam?' current':''}">
+      <div class="sp-name tc${i}">${name}</div>
+      <div class="sp-pts">${scores[i]}</div>
+    </div>`;
+  });
+}
+
+function updateTurnLabel(){
+  document.getElementById('whoseTurn').innerHTML=
+    `<strong class="tc${curTeam}">${teamNames[curTeam]}</strong> — enter your guess`;
+  renderScores();
+}
+
+// ─── FINAL ───
+function showFinal(){
+  clearInterval(timerInterval);
+  SFX.gameOver();
+  const sorted=scores.map((s,i)=>({name:teamNames[i],s,i})).sort((a,b)=>b.s-a.s);
+  const medals=['🥇','🥈','🥉','4️⃣'];
+  const list=document.getElementById('finalList');
+  list.innerHTML='';
+  sorted.forEach((t,rank)=>{
+    list.innerHTML+=`<div class="fl-row" style="border-left-color:${COLORS[t.i]}">
+      <div class="fl-rank">${medals[rank]||rank+1}</div>
+      <div class="fl-name" style="color:${COLORS[t.i]}">${t.name}</div>
+      <div><div class="fl-pts">${t.s}</div><div class="fl-label">PTS</div></div>
+    </div>`;
+  });
+  switchScreen('finalScreen');
+}
+
+function switchScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>

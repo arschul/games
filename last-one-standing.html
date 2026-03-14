@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Last One Standing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0b10;
+    --panel: #11131d;
+    --border: #1e2235;
+    --gold: #f5c842;
+    --gold-dim: #a88820;
+    --text: #e8eaf0;
+    --muted: #5a607a;
+    --accent: #3d6bfa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(61,107,250,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(61,107,250,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  header {
+    width: 100%; max-width: 900px;
+    padding: 32px 24px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    position: relative; z-index: 1;
+  }
+
+  .game-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 8vw, 5.5rem);
+    letter-spacing: 4px; color: var(--gold);
+    text-shadow: 0 0 40px rgba(245,200,66,0.3); line-height: 1;
+  }
+
+  .game-subtitle { font-size: 0.8rem; letter-spacing: 6px; text-transform: uppercase; color: var(--muted); }
+
+  .round-bar {
+    width: 100%; max-width: 900px;
+    padding: 20px 24px;
+    display: flex; gap: 6px;
+    position: relative; z-index: 1;
+  }
+
+  .round-pip {
+    flex: 1; height: 6px; border-radius: 3px;
+    background: var(--border); transition: background 0.4s;
+  }
+  .round-pip.done   { background: var(--gold-dim); }
+  .round-pip.active { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+
+  main {
+    width: 100%; max-width: 900px;
+    padding: 0 24px 40px;
+    position: relative; z-index: 1;
+  }
+
+  .screen { display: none; flex-direction: column; gap: 20px; }
+  .screen.active { display: flex; animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px;
+  }
+
+  .round-label {
+    font-size: 0.7rem; letter-spacing: 5px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+  }
+
+  .category-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.4rem; letter-spacing: 2px; color: var(--gold); line-height: 1;
+  }
+
+  .option-count { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+  .category-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap;
+    gap: 12px; margin-bottom: 20px;
+  }
+
+  .odds-badge {
+    background: rgba(245,200,66,0.1);
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px; padding: 8px 14px; text-align: right;
+  }
+  .odds-badge .odds-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--gold); line-height: 1; }
+  .odds-badge .odds-label { font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+
+  .search-wrap { position: relative; margin-bottom: 12px; }
+  .search-wrap input {
+    width: 100%; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px 12px 44px;
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap input::placeholder { color: var(--muted); }
+  .search-icon {
+    position: absolute; left: 14px; top: 50%;
+    transform: translateY(-50%); color: var(--muted); font-size: 1rem;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 4px;
+  }
+  .options-grid::-webkit-scrollbar { width: 4px; }
+  .options-grid::-webkit-scrollbar-track { background: var(--border); border-radius: 2px; }
+  .options-grid::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
+
+  .opt-btn {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem; cursor: pointer; text-align: left;
+    transition: all 0.15s; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .opt-btn:hover    { border-color: var(--accent); color: #fff; background: rgba(61,107,250,0.1); }
+  .opt-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(245,200,66,0.08); }
+
+  /* ── BUTTONS ── */
+  .gold-btn {
+    width: 100%; padding: 18px;
+    background: var(--gold); color: #0a0b10; border: none;
+    border-radius: 12px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem; letter-spacing: 3px; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 4px 20px rgba(245,200,66,0.3);
+  }
+  .gold-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(245,200,66,0.5); }
+  .gold-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  .ghost-btn {
+    width: 100%; padding: 14px;
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    font-weight: 500; cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
+  }
+  .ghost-btn:hover { border-color: var(--accent); color: #fff; }
+
+  /* ── SETUP SCREEN ── */
+  .setup-intro {
+    text-align: center; margin-bottom: 28px;
+  }
+  .setup-intro h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem; letter-spacing: 3px; color: var(--gold); margin-bottom: 6px;
+  }
+  .setup-intro p { font-size: 0.85rem; color: var(--muted); }
+
+  .selection-counter {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+  }
+  .counter-text { font-size: 0.8rem; color: var(--muted); }
+  .counter-num  { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--gold); }
+  .counter-range { font-size: 0.7rem; color: var(--muted); letter-spacing: 2px; }
+
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 20px;
+  }
+  .cat-grid::-webkit-scrollbar { width: 4px; }
+  .cat-grid::-webkit-scrollbar-track { background: var(--border); border-radius: 2px; }
+  .cat-grid::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
+
+  .cat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 12px;
+    user-select: none;
+  }
+  .cat-card:hover { border-color: var(--accent); }
+  .cat-card.checked {
+    border-color: var(--gold);
+    background: rgba(245,200,66,0.06);
+  }
+  .cat-card.disabled-cat {
+    opacity: 0.35; cursor: not-allowed;
+  }
+  .cat-card.disabled-cat:hover { border-color: var(--border); }
+
+  .cat-check {
+    width: 18px; height: 18px; border-radius: 4px;
+    border: 2px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-size: 0.7rem;
+  }
+  .cat-card.checked .cat-check {
+    background: var(--gold); border-color: var(--gold); color: #0a0b10;
+  }
+
+  .cat-info { flex: 1; min-width: 0; }
+  .cat-info-name {
+    font-size: 0.85rem; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cat-card.checked .cat-info-name { color: var(--gold); }
+  .cat-info-count { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .cat-emoji { font-size: 1.3rem; flex-shrink: 0; }
+
+  .sort-note {
+    font-size: 0.72rem; color: var(--muted);
+    text-align: center; margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* ── SEALED ── */
+  .sealed-lock { font-size: 5rem; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .sealed-msg {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem; letter-spacing: 3px; color: var(--text); margin-bottom: 8px;
+  }
+  .sealed-sub { font-size: 0.8rem; color: var(--muted); max-width: 340px; margin: 0 auto; line-height: 1.6; }
+
+  /* ── REVEALED ── */
+  .reveal-category-label {
+    font-size: 0.7rem; letter-spacing: 5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .reveal-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 10vw, 5.5rem);
+    color: var(--gold); letter-spacing: 3px;
+    text-shadow: 0 0 50px rgba(245,200,66,0.5);
+    line-height: 1.1; margin-bottom: 12px;
+  }
+  .reveal-pop { animation: revealPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  @keyframes revealPop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .reveal-instruction { font-size: 0.85rem; color: var(--muted); letter-spacing: 1px; }
+
+  .score-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .score-item { display: flex; flex-direction: column; }
+  .score-num  { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--text); line-height: 1; }
+  .score-lbl  { font-size: 0.65rem; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); }
+
+  .history-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+  .history-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--bg); border-radius: 8px; font-size: 0.8rem;
+  }
+  .history-pip  { width: 8px; height: 8px; border-radius: 50%; background: var(--gold-dim); flex-shrink: 0; }
+  .history-cat  { color: var(--muted); flex: 1; }
+  .history-pick { color: var(--gold); font-weight: 600; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  /* ── GAME OVER ── */
+  #gameOver {
+    display: none; flex-direction: column; align-items: center;
+    gap: 24px; text-align: center; padding: 60px 24px;
+    position: relative; z-index: 1;
+  }
+  #gameOver.visible { display: flex; }
+  .trophy { font-size: 5rem; animation: float 3s ease-in-out infinite; }
+  .game-over-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 10vw, 6rem);
+    letter-spacing: 4px; color: var(--gold);
+    text-shadow: 0 0 60px rgba(245,200,66,0.4); line-height: 1;
+  }
+  .game-over-sub { font-size: 0.9rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .restart-btn {
+    padding: 16px 48px; background: var(--gold); color: #0a0b10; border: none;
+    border-radius: 12px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem; letter-spacing: 3px; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 4px 20px rgba(245,200,66,0.3);
+  }
+  .restart-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(245,200,66,0.5); }
+
+  /* ── DRUMROLL ── */
+  #drumrollOverlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85); z-index: 100;
+    align-items: center; justify-content: center; flex-direction: column; gap: 20px;
+  }
+  #drumrollOverlay.visible { display: flex; }
+  .drumroll-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 12vw, 7rem);
+    letter-spacing: 6px; color: var(--gold);
+    animation: pulse 0.15s ease-in-out infinite alternate;
+  }
+  @keyframes pulse { from { opacity: 0.6; transform: scale(0.97); } to { opacity: 1; transform: scale(1.03); } }
+  .drumroll-bar { width: 200px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .drumroll-fill { height: 100%; background: var(--gold); border-radius: 2px; animation: fillBar 1.5s ease-in forwards; }
+  @keyframes fillBar { from { width: 0%; } to { width: 100%; } }
+
+  @media (max-width: 540px) {
+    .options-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .category-name { font-size: 1.8rem; }
+    .cat-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="game-title">Last One Standing</div>
+  <div class="game-subtitle">The Elimination Game</div>
+</header>
+
+<div class="round-bar" id="roundBar" style="display:none;"></div>
+
+<main id="mainContent">
+
+  <!-- ══ SCREEN 0: SETUP ══ -->
+  <div class="screen active" id="screenSetup">
+    <div class="card">
+      <div class="setup-intro">
+        <h2>Choose Your Categories</h2>
+        <p>Select between 5 and 10 categories to play. Rounds will run from most to fewest options.</p>
+      </div>
+
+      <div class="selection-counter">
+        <div>
+          <span class="counter-num" id="selectedCount">0</span>
+          <span class="counter-text"> selected</span>
+        </div>
+        <div class="counter-range">MIN 5 · MAX 10</div>
+      </div>
+
+      <div class="cat-grid" id="catGrid"></div>
+
+      <div class="sort-note">▼ Rounds will be ordered from most options → fewest options automatically</div>
+      <button class="gold-btn" id="startBtn" disabled>▶ START GAME</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 1: SELECTION ══ -->
+  <div class="screen" id="screenSelect">
+    <div class="card">
+      <div class="category-header">
+        <div>
+          <div class="round-label" id="s1RoundLabel">Round 1</div>
+          <div class="category-name" id="s1CategoryName"></div>
+          <div class="option-count" id="s1OptionCount"></div>
+        </div>
+        <div class="odds-badge">
+          <div class="odds-num" id="s1OddsNum"></div>
+          <div class="odds-label">chance to match</div>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search options…">
+      </div>
+      <div class="options-grid" id="optionsGrid"></div>
+      <button class="gold-btn" id="selectBtn" disabled style="margin-top:16px;">✔ SELECT</button>
+    </div>
+
+    <div class="card">
+      <div class="score-row">
+        <div class="score-item"><div class="score-num" id="s1RoundNum">1</div><div class="score-lbl">Current Round</div></div>
+        <div class="score-item"><div class="score-num" id="s1RoundsLeft">—</div><div class="score-lbl">Rounds Left</div></div>
+        <div class="score-item"><div class="score-num" id="s1TotalOpts">—</div><div class="score-lbl">Options</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="round-label" style="margin-bottom:8px;">Round History</div>
+      <div class="history-list" id="historyList1">
+        <div style="font-size:0.8rem;color:var(--muted);font-style:italic;">No rounds played yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 2: SEALED ══ -->
+  <div class="screen" id="screenSealed">
+    <div class="card" style="text-align:center; padding: 56px 28px;">
+      <div class="round-label" id="s2RoundLabel" style="margin-bottom:10px;"></div>
+      <div class="category-name" id="s2CategoryName" style="margin-bottom:4px;"></div>
+      <div class="option-count" id="s2OptionCount" style="margin-bottom:48px;"></div>
+      <div class="sealed-lock">🔒</div>
+      <div class="sealed-msg">Pick is locked in</div>
+      <div class="sealed-sub">Show this screen to your students, then reveal when ready.</div>
+      <button class="gold-btn" id="revealBtn" style="margin-top:48px;">🎲 REVEAL THE PICK</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 3: REVEALED ══ -->
+  <div class="screen" id="screenRevealed">
+    <div class="card" style="text-align:center; padding: 48px 28px;">
+      <div class="round-label" id="s3RoundLabel" style="margin-bottom:10px;"></div>
+      <div class="reveal-category-label" id="s3CategoryLabel"></div>
+      <div class="reveal-value" id="s3RevealValue">—</div>
+      <div class="reveal-instruction">Students who wrote this are eliminated! ✋</div>
+    </div>
+
+    <div class="card">
+      <div class="score-row">
+        <div class="score-item"><div class="score-num" id="s3RoundNum">1</div><div class="score-lbl">Current Round</div></div>
+        <div class="score-item"><div class="score-num" id="s3RoundsLeft">—</div><div class="score-lbl">Rounds Left</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="round-label" style="margin-bottom:8px;">Round History</div>
+      <div class="history-list" id="historyList3">
+        <div style="font-size:0.8rem;color:var(--muted);font-style:italic;">No rounds played yet.</div>
+      </div>
+    </div>
+
+    <button class="ghost-btn" id="nextBtn">Next Round →</button>
+  </div>
+
+</main>
+
+<div id="gameOver">
+  <div class="trophy">🏆</div>
+  <div class="game-over-title">Game Over!</div>
+  <div class="game-over-sub" id="gameOverSub">All rounds completed</div>
+  <button class="restart-btn" onclick="restartGame()">↺ Play Again</button>
+</div>
+
+<div id="drumrollOverlay">
+  <div class="drumroll-text">DRUMROLL…</div>
+  <div class="drumroll-bar"><div class="drumroll-fill" id="drumrollFill"></div></div>
+</div>
+
+<script>
+// ── AUDIO ──────────────────────────────────────────────────────────────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+function playClick() {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = 'square'; o.frequency.value = 300 + Math.random() * 100;
+  g.gain.setValueAtTime(0.08, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.06);
+  o.start(); o.stop(AC.currentTime + 0.06);
+}
+function playDrumroll(duration = 1.5) {
+  let t = AC.currentTime, interval = 0.12;
+  while (t < AC.currentTime + duration) {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(AC.destination);
+    o.type = 'triangle'; o.frequency.value = 80 + Math.random() * 40;
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + interval * 0.8);
+    o.start(t); o.stop(t + interval);
+    t += interval; interval = Math.max(0.04, interval * 0.93);
+  }
+}
+function playReveal() {
+  [330, 440, 550, 660].forEach((f, i) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(AC.destination);
+    o.type = 'sine'; o.frequency.value = f;
+    const t = AC.currentTime + i * 0.07;
+    g.gain.setValueAtTime(0.2, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.start(t); o.stop(t + 0.35);
+  });
+}
+
+// ── ALL CATEGORIES ─────────────────────────────────────────────────────────
+const ALL_CATEGORIES = [
+  {
+    name: "Days of the Year", emoji: "📅",
+    options: (() => {
+      const days = [];
+      [['January',31],['February',29],['March',31],['April',30],['May',31],['June',30],
+       ['July',31],['August',31],['September',30],['October',31],['November',30],['December',31]]
+      .forEach(([m,d]) => { for (let i = 1; i <= d; i++) days.push(`${m} ${i}`); });
+      return days;
+    })()
+  },
+  {
+    name: "Countries", emoji: "🌍",
+    options: ["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia",
+      "Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Belarus","Belgium","Belize",
+      "Benin","Bhutan","Bolivia","Bosnia","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso",
+      "Burundi","Cambodia","Cameroon","Canada","Chad","Chile","China","Colombia","Congo",
+      "Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominican Republic",
+      "Ecuador","Egypt","El Salvador","Estonia","Ethiopia","Fiji","Finland","France","Gabon",
+      "Gambia","Georgia","Germany","Ghana","Greece","Guatemala","Guinea","Haiti","Honduras",
+      "Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica",
+      "Japan","Jordan","Kazakhstan","Kenya","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon",
+      "Liberia","Libya","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali",
+      "Malta","Mauritania","Mexico","Moldova","Mongolia","Montenegro","Morocco","Mozambique","Myanmar",
+      "Namibia","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","Norway",
+      "Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal",
+      "Qatar","Romania","Russia","Rwanda","Saudi Arabia","Senegal","Serbia","Sierra Leone","Singapore",
+      "Slovakia","Slovenia","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka",
+      "Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand",
+      "Togo","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine",
+      "United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Venezuela",
+      "Vietnam","Yemen","Zambia","Zimbabwe"]
+  },
+  {
+    name: "World Capitals", emoji: "🏛️",
+    options: ["Kabul","Tirana","Algiers","Andorra la Vella","Luanda","Buenos Aires","Yerevan","Canberra",
+      "Vienna","Baku","Nassau","Manama","Dhaka","Minsk","Brussels","Belmopan","Porto-Novo","Thimphu",
+      "Sucre","Sarajevo","Gaborone","Brasília","Bandar Seri Begawan","Sofia","Ouagadougou","Gitega",
+      "Phnom Penh","Yaoundé","Ottawa","N'Djamena","Santiago","Beijing","Bogotá","Brazzaville",
+      "San José","Zagreb","Havana","Nicosia","Prague","Copenhagen","Djibouti","Santo Domingo",
+      "Quito","Cairo","San Salvador","Tallinn","Addis Ababa","Suva","Helsinki","Paris","Libreville",
+      "Banjul","Tbilisi","Berlin","Accra","Athens","Guatemala City","Conakry","Port-au-Prince",
+      "Tegucigalpa","Budapest","Reykjavik","New Delhi","Jakarta","Tehran","Baghdad","Dublin",
+      "Jerusalem","Rome","Kingston","Tokyo","Amman","Nur-Sultan","Nairobi","Kuwait City","Bishkek",
+      "Vientiane","Riga","Beirut","Monrovia","Tripoli","Vilnius","Luxembourg City","Antananarivo",
+      "Lilongwe","Kuala Lumpur","Malé","Bamako","Valletta","Nouakchott","Mexico City","Chișinău",
+      "Ulaanbaatar","Podgorica","Rabat","Maputo","Naypyidaw","Windhoek","Kathmandu","Amsterdam",
+      "Wellington","Managua","Niamey","Abuja","Pyongyang","Oslo","Muscat","Islamabad","Ramallah",
+      "Panama City","Asunción","Lima","Manila","Warsaw","Lisbon","Doha","Bucharest","Moscow",
+      "Kigali","Riyadh","Dakar","Belgrade","Freetown","Singapore","Bratislava","Ljubljana",
+      "Mogadishu","Pretoria","Seoul","Juba","Madrid","Sri Jayawardenepura Kotte","Khartoum",
+      "Paramaribo","Stockholm","Bern","Damascus","Taipei","Dushanbe","Dodoma","Bangkok",
+      "Lomé","Port of Spain","Tunis","Ankara","Ashgabat","Kampala","Kyiv","Abu Dhabi",
+      "London","Washington D.C.","Montevideo","Tashkent","Caracas","Hanoi","Sana'a","Lusaka","Harare"]
+  },
+  {
+    name: "Famous People", emoji: "🌟",
+    options: ["Albert Einstein","Isaac Newton","Marie Curie","Charles Darwin","Nikola Tesla",
+      "Leonardo da Vinci","Galileo Galilei","Stephen Hawking","Alan Turing","Sigmund Freud",
+      "Karl Marx","Mahatma Gandhi","Nelson Mandela","Martin Luther King Jr.","Abraham Lincoln",
+      "Napoleon Bonaparte","Julius Caesar","Cleopatra","Alexander the Great","Winston Churchill",
+      "Adolf Hitler","Joseph Stalin","Mao Zedong","Vladimir Lenin","George Washington",
+      "Thomas Jefferson","Benjamin Franklin","Christopher Columbus","Marco Polo","Genghis Khan",
+      "Shakespeare","Mozart","Beethoven","Michelangelo","Picasso","Rembrandt","Bach","Chopin",
+      "Elvis Presley","Michael Jackson","The Beatles","Bob Dylan","David Bowie","Bob Marley",
+      "Freddie Mercury","Madonna","Taylor Swift","Beyoncé","Adele","Shakira",
+      "Marilyn Monroe","Audrey Hepburn","Charlie Chaplin","Walt Disney","Steven Spielberg",
+      "Alfred Hitchcock","Oprah Winfrey","Bill Gates","Steve Jobs","Elon Musk","Mark Zuckerberg",
+      "Jeff Bezos","Warren Buffett","Henry Ford","Thomas Edison","Alexander Graham Bell",
+      "Neil Armstrong","Yuri Gagarin","Amelia Earhart","Marco Polo","Florence Nightingale",
+      "Mother Teresa","Princess Diana","Queen Elizabeth II","Barack Obama","Donald Trump",
+      "Vladimir Putin","Angela Merkel","Nelson Mandela","Muhammad Ali","Pelé","Michael Jordan",
+      "Lionel Messi","Cristiano Ronaldo","Serena Williams","Roger Federer","Usain Bolt",
+      "Michael Phelps","LeBron James","Tiger Woods","Lewis Hamilton","Ayrton Senna",
+      "Aristotle","Plato","Socrates","Confucius","Buddha","Jesus Christ","Muhammad","Moses"]
+  },
+  {
+    name: "Animals", emoji: "🦁",
+    options: ["Lion","Tiger","Elephant","Giraffe","Zebra","Gorilla","Chimpanzee","Hippo","Rhino","Crocodile",
+      "Eagle","Shark","Whale","Dolphin","Penguin","Polar Bear","Wolf","Fox","Bear","Kangaroo",
+      "Koala","Panda","Cheetah","Leopard","Jaguar","Hyena","Ostrich","Flamingo","Parrot","Owl",
+      "Bat","Scorpion","Spider","Snake","Lizard","Turtle","Frog","Octopus","Jellyfish","Crab",
+      "Horse","Cow","Pig","Sheep","Goat","Dog","Cat","Rabbit","Chicken","Duck",
+      "Pigeon","Salmon","Tuna","Butterfly","Bee","Ant","Dragonfly","Deer","Moose","Camel",
+      "Llama","Peacock","Pelican","Porcupine","Seal","Sea Lion","Manta Ray","Orca",
+      "Raccoon","Skunk","Armadillo","Sloth","Platypus","Echidna","Wombat","Tapir","Capybara","Axolotl"]
+  },
+  {
+    name: "US States", emoji: "🇺🇸",
+    options: ["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware",
+      "Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky",
+      "Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri",
+      "Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York",
+      "North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island",
+      "South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia",
+      "Washington","West Virginia","Wisconsin","Wyoming"]
+  },
+  {
+    name: "Languages", emoji: "🗣️",
+    options: ["English","Mandarin Chinese","Spanish","Hindi","Arabic","Bengali","Portuguese","Russian",
+      "Japanese","Punjabi","German","Javanese","Wu Chinese","Korean","French","Telugu","Marathi",
+      "Tamil","Vietnamese","Urdu","Italian","Turkish","Tagalog","Persian","Polish","Ukrainian",
+      "Dutch","Thai","Romanian","Hungarian","Greek","Czech","Swedish","Hebrew","Norwegian",
+      "Danish","Finnish","Slovak","Croatian","Catalan","Swahili","Zulu","Yoruba","Igbo","Hausa",
+      "Amharic","Somali","Indonesian","Malay"]
+  },
+  {
+    name: "Sports", emoji: "⚽",
+    options: ["Football (Soccer)","Basketball","Tennis","Baseball","American Football","Rugby","Cricket",
+      "Volleyball","Swimming","Athletics","Cycling","Golf","Boxing","Martial Arts","Wrestling",
+      "Gymnastics","Ice Hockey","Skiing","Snowboarding","Skateboarding","Surfing","Climbing",
+      "Rowing","Sailing","Archery","Fencing","Equestrian","Biathlon","Triathlon","Badminton",
+      "Table Tennis","Handball","Water Polo","Diving","Weightlifting"]
+  },
+  {
+    name: "Famous Landmarks", emoji: "🗼",
+    options: ["Eiffel Tower","Big Ben","Colosseum","Taj Mahal","Great Wall of China","Statue of Liberty",
+      "Machu Picchu","Pyramids of Giza","Stonehenge","Acropolis","Sydney Opera House","Angkor Wat",
+      "Sagrada Família","Burj Khalifa","Christ the Redeemer","Leaning Tower of Pisa",
+      "Niagara Falls","Grand Canyon","Mount Everest","Amazon River","Sahara Desert",
+      "Vatican City","Louvre Museum","Sistine Chapel","Westminster Abbey","Notre-Dame de Paris",
+      "Golden Gate Bridge","Brooklyn Bridge","Empire State Building","White House","Buckingham Palace",
+      "Forbidden City","Petra","Alhambra","Brandenburg Gate"]
+  },
+  {
+    name: "Professions", emoji: "💼",
+    options: ["Doctor","Teacher","Engineer","Lawyer","Nurse","Pilot","Police Officer","Firefighter",
+      "Chef","Architect","Scientist","Artist","Musician","Actor","Writer","Journalist",
+      "Psychologist","Dentist","Pharmacist","Veterinarian","Programmer","Designer","Accountant",
+      "Electrician","Plumber","Carpenter","Photographer","Translator","Social Worker","Athlete"]
+  },
+  {
+    name: "Food & Drinks", emoji: "🍕",
+    options: ["Pizza","Sushi","Burger","Pasta","Tacos","Ramen","Steak","Salad","Soup","Sandwich",
+      "Fried Rice","Curry","Dumplings","Paella","Lasagna","Pad Thai","Shawarma","Fish and Chips",
+      "Hot Dog","Falafel","Sashimi","Risotto","Croissant","Pancakes","Waffles","Cheesecake","Ice Cream",
+      "Chocolate","Coffee","Tea","Orange Juice","Coca-Cola","Beer","Wine","Milk",
+      "Smoothie","Lemonade","Water","Espresso","Matcha"]
+  },
+  {
+    name: "Musical Instruments", emoji: "🎸",
+    options: ["Guitar","Piano","Violin","Drums","Trumpet","Saxophone","Flute","Cello","Bass Guitar",
+      "Keyboard","Ukulele","Banjo","Mandolin","Harp","Trombone","Clarinet","Oboe","Bassoon",
+      "French Horn","Tuba","Accordion","Harmonica","Bagpipes","Sitar","Didgeridoo","Bongo Drums",
+      "Xylophone","Marimba","Vibraphone","Synthesizer","Organ","Harpsichord","Lute","Dulcimer",
+      "Theremin","Djembe","Tabla","Erhu","Balalaika","Zither"]
+  },
+  {
+    name: "Fantasy Creatures", emoji: "🐉",
+    options: ["Dragon","Unicorn","Phoenix","Griffin","Mermaid","Centaur","Minotaur","Hydra",
+      "Pegasus","Sphinx","Kraken","Basilisk","Chimera","Werewolf","Vampire","Zombie","Goblin",
+      "Orc","Elf","Dwarf","Troll","Giant","Fairy","Leprechaun","Gnome","Genie",
+      "Cyclops","Medusa","Siren","Banshee","Yeti","Bigfoot","Witch","Warlock"]
+  },
+  {
+    name: "Colors", emoji: "🎨",
+    options: ["Red","Blue","Green","Yellow","Orange","Purple","Pink","Brown","Black","White",
+      "Gray","Gold","Silver","Turquoise","Violet","Indigo","Teal","Maroon","Beige","Magenta"]
+  },
+  {
+    name: "Months", emoji: "🗓️",
+    options: ["January","February","March","April","May","June","July","August","September","October","November","December"]
+  },
+  {
+    name: "Movie Genres", emoji: "🎬",
+    options: ["Action","Comedy","Drama","Horror","Romance","Thriller","Science Fiction","Fantasy",
+      "Animation","Documentary","Musical","Mystery","Adventure","Western","Crime","War","Biography","Superhero"]
+  },
+  {
+    name: "School Subjects", emoji: "📚",
+    options: ["Math","Science","History","English","Geography","Art","Music","Physical Education",
+      "Biology","Chemistry","Physics","Literature","Computer Science","Economics","Philosophy","Psychology"]
+  },
+  {
+    name: "Days of the Week", emoji: "📆",
+    options: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+  },
+  {
+    name: "Seasons", emoji: "🌸",
+    options: ["Spring","Summer","Fall","Winter"]
+  },
+  {
+    name: "Day or Night", emoji: "🌓",
+    options: ["Day","Night"]
+  }
+];
+
+// Sort all categories by option count descending (master order)
+ALL_CATEGORIES.sort((a, b) => b.options.length - a.options.length);
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let state = {
+  selectedCategoryIds: new Set(),
+  gameRounds: [],   // the sorted subset chosen by teacher
+  round: 0,
+  selected: null,
+  history: []
+};
+
+const MIN_SELECT = 5;
+const MAX_SELECT = 10;
+
+// ── SETUP SCREEN ───────────────────────────────────────────────────────────
+function buildSetupScreen() {
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  ALL_CATEGORIES.forEach((cat, idx) => {
+    const card = document.createElement('div');
+    card.className = 'cat-card';
+    card.dataset.idx = idx;
+    card.innerHTML = `
+      <div class="cat-check">✓</div>
+      <div class="cat-info">
+        <div class="cat-info-name">${cat.name}</div>
+        <div class="cat-info-count">${cat.options.length} options</div>
+      </div>
+      <div class="cat-emoji">${cat.emoji}</div>
+    `;
+    card.addEventListener('click', () => toggleCategory(idx, card));
+    grid.appendChild(card);
+  });
+  updateCounter();
+}
+
+function toggleCategory(idx, card) {
+  if (state.selectedCategoryIds.has(idx)) {
+    state.selectedCategoryIds.delete(idx);
+    card.classList.remove('checked');
+  } else {
+    if (state.selectedCategoryIds.size >= MAX_SELECT) return;
+    state.selectedCategoryIds.add(idx);
+    card.classList.add('checked');
+  }
+  playClick();
+  updateCounter();
+}
+
+function updateCounter() {
+  const count = state.selectedCategoryIds.size;
+  document.getElementById('selectedCount').textContent = count;
+  document.getElementById('startBtn').disabled = count < MIN_SELECT;
+
+  // Grey out unchosen cards if at max
+  document.querySelectorAll('.cat-card').forEach(card => {
+    const idx = parseInt(card.dataset.idx);
+    if (!state.selectedCategoryIds.has(idx) && count >= MAX_SELECT) {
+      card.classList.add('disabled-cat');
+    } else {
+      card.classList.remove('disabled-cat');
+    }
+  });
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  AC.resume();
+  // Build game rounds: filter chosen, already sorted descending by length (master sort)
+  state.gameRounds = ALL_CATEGORIES
+    .filter((_, idx) => state.selectedCategoryIds.has(idx));
+  // They're already in descending order from the master sort
+  state.round = 0;
+  state.history = [];
+  document.getElementById('roundBar').style.display = '';
+  buildRoundBar();
+  renderRound();
+});
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function buildRoundBar() {
+  const bar = document.getElementById('roundBar');
+  bar.innerHTML = '';
+  const total = state.gameRounds.length;
+  state.gameRounds.forEach((_, i) => {
+    const pip = document.createElement('div');
+    pip.className = 'round-pip' + (i < state.round ? ' done' : i === state.round ? ' active' : '');
+    bar.appendChild(pip);
+  });
+}
+
+function renderHistory(listId) {
+  const list = document.getElementById(listId);
+  if (state.history.length === 0) {
+    list.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;">No rounds played yet.</div>';
+    return;
+  }
+  list.innerHTML = state.history.map(h => `
+    <div class="history-item">
+      <div class="history-pip"></div>
+      <div class="history-cat">R${h.round} · ${h.cat}</div>
+      <div class="history-pick">${h.pick}</div>
+    </div>`).join('');
+}
+
+// ── SCREEN 1: SELECTION ────────────────────────────────────────────────────
+function renderRound() {
+  const r = state.gameRounds[state.round];
+  const total = state.gameRounds.length;
+  state.selected = null;
+
+  document.getElementById('s1RoundLabel').textContent  = `Round ${state.round + 1} of ${total}`;
+  document.getElementById('s1CategoryName').textContent = `${r.emoji} ${r.name}`;
+  document.getElementById('s1OptionCount').textContent  = `${r.options.length} options`;
+  document.getElementById('s1OddsNum').textContent      = `1/${r.options.length}`;
+  document.getElementById('s1RoundNum').textContent     = state.round + 1;
+  document.getElementById('s1RoundsLeft').textContent   = total - state.round - 1;
+  document.getElementById('s1TotalOpts').textContent    = r.options.length;
+
+  document.getElementById('searchInput').value = '';
+  document.getElementById('selectBtn').disabled = true;
+
+  renderOptions(r.options);
+  renderHistory('historyList1');
+  buildRoundBar();
+  showScreen('screenSelect');
+}
+
+function renderOptions(list) {
+  const grid = document.getElementById('optionsGrid');
+  grid.innerHTML = '';
+  list.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn' + (opt === state.selected ? ' selected' : '');
+    btn.textContent = opt;
+    btn.title = opt;
+    btn.onclick = () => {
+      playClick();
+      state.selected = opt;
+      document.getElementById('selectBtn').disabled = false;
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      renderOptions(state.gameRounds[state.round].options.filter(o => o.toLowerCase().includes(q)));
+    };
+    grid.appendChild(btn);
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  renderOptions(state.gameRounds[state.round].options.filter(o => o.toLowerCase().includes(q)));
+});
+
+// ── SELECT → SEALED ────────────────────────────────────────────────────────
+document.getElementById('selectBtn').addEventListener('click', () => {
+  if (!state.selected) return;
+  AC.resume(); playClick();
+  const r = state.gameRounds[state.round];
+  const total = state.gameRounds.length;
+  document.getElementById('s2RoundLabel').textContent   = `Round ${state.round + 1} of ${total}`;
+  document.getElementById('s2CategoryName').textContent = `${r.emoji} ${r.name}`;
+  document.getElementById('s2OptionCount').textContent  = `${r.options.length} options`;
+  showScreen('screenSealed');
+});
+
+// ── SEALED → DRUMROLL → REVEALED ───────────────────────────────────────────
+document.getElementById('revealBtn').addEventListener('click', () => {
+  AC.resume();
+  const fill = document.getElementById('drumrollFill');
+  document.getElementById('drumrollOverlay').classList.add('visible');
+  fill.style.animation = 'none'; fill.offsetHeight; fill.style.animation = '';
+  playDrumroll(1.5);
+
+  setTimeout(() => {
+    document.getElementById('drumrollOverlay').classList.remove('visible');
+    const r = state.gameRounds[state.round];
+    const total = state.gameRounds.length;
+
+    const valEl = document.getElementById('s3RevealValue');
+    valEl.classList.remove('reveal-pop');
+    valEl.textContent = state.selected;
+    void valEl.offsetWidth;
+    valEl.classList.add('reveal-pop');
+
+    document.getElementById('s3RoundLabel').textContent   = `Round ${state.round + 1} of ${total}`;
+    document.getElementById('s3CategoryLabel').textContent = `— ${r.name} —`;
+    document.getElementById('s3RoundNum').textContent      = state.round + 1;
+    document.getElementById('s3RoundsLeft').textContent    = total - state.round - 1;
+
+    state.history.unshift({ round: state.round + 1, cat: r.name, pick: state.selected });
+    renderHistory('historyList3');
+    playReveal();
+    showScreen('screenRevealed');
+  }, 1600);
+});
+
+// ── NEXT ROUND ─────────────────────────────────────────────────────────────
+document.getElementById('nextBtn').addEventListener('click', () => {
+  playClick();
+  state.round++;
+  if (state.round >= state.gameRounds.length) {
+    showGameOver();
+  } else {
+    renderRound();
+  }
+});
+
+function showGameOver() {
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('roundBar').style.display = 'none';
+  document.getElementById('gameOverSub').textContent = `All ${state.gameRounds.length} rounds completed`;
+  document.getElementById('gameOver').classList.add('visible');
+  playReveal();
+}
+
+function restartGame() {
+  state = { selectedCategoryIds: new Set(), gameRounds: [], round: 0, selected: null, history: [] };
+  document.getElementById('mainContent').style.display = '';
+  document.getElementById('roundBar').style.display = 'none';
+  document.getElementById('gameOver').classList.remove('visible');
+  buildSetupScreen();
+  showScreen('screenSetup');
+}
+
+// ── START ──────────────────────────────────────────────────────────────────
+buildSetupScreen();
+</script>
+</body>
+</html>

@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WordQuest — Teacher's Wordle</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0f0e17;
+    --surface: #1a1930;
+    --border: #2e2c50;
+    --text: #fffffe;
+    --muted: #6b6a8a;
+    --correct: #2cb67d;
+    --present: #f4a127;
+    --absent: #2e2c50;
+    --correct-text: #fffffe;
+    --tile-size: 58px;
+    --tile-gap: 6px;
+    --accent: #7f5af0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* ── Setup Screen ── */
+  #setup-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    gap: 2rem;
+    animation: fadeIn .5s ease;
+  }
+
+  .logo {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #7f5af0, #2cb67d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    font-size: .85rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: -.5rem;
+  }
+
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.5rem 2.5rem 2rem;
+    width: min(420px, 95vw);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .field-label {
+    font-size: .7rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .5rem;
+  }
+
+  .word-input-wrap {
+    position: relative;
+  }
+
+  #secret-word {
+    width: 100%;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    padding: .7rem 3rem .7rem 1.2rem;
+    outline: none;
+    transition: border-color .2s;
+  }
+  #secret-word:focus { border-color: var(--accent); }
+  #secret-word::placeholder { letter-spacing: 2px; font-size: 1rem; color: var(--muted); }
+
+  #toggle-vis {
+    position: absolute;
+    right: .9rem; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--muted); cursor: pointer;
+    font-size: 1.2rem; padding: 0;
+    transition: color .2s;
+  }
+  #toggle-vis:hover { color: var(--text); }
+
+  .info-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: .8rem 1rem;
+    border: 1px solid var(--border);
+  }
+  .info-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: .8rem;
+    color: var(--muted);
+  }
+  .info-badge span {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .error-msg {
+    font-size: .8rem;
+    color: #ff6b6b;
+    font-family: 'Space Mono', monospace;
+    min-height: 1rem;
+    text-align: center;
+  }
+
+  .btn-start {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #7f5af0, #2cb67d);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity .2s, transform .15s;
+  }
+  .btn-start:hover { opacity: .9; transform: translateY(-1px); }
+  .btn-start:active { transform: translateY(0); }
+  .btn-start:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .valid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: 1px;
+    padding: .3rem .7rem;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .valid-badge.checking { background: #2e2c50; color: var(--muted); }
+  .valid-badge.valid    { background: #0e3d2a; color: var(--correct); border: 1px solid var(--correct); }
+  .valid-badge.invalid  { background: #3d1010; color: #ff6b6b;        border: 1px solid #ff6b6b; }
+
+  .checking-spinner {
+    width: 10px; height: 10px;
+    border: 2px solid var(--muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Game Screen ── */
+  #game-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 1.2rem 1rem 2rem;
+    gap: 1rem;
+    animation: fadeIn .4s ease;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(500px, 96vw);
+  }
+
+  .game-logo {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #7f5af0, #2cb67d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .guess-counter {
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .guess-counter span { color: var(--text); font-weight: 700; }
+
+  #board {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tile-gap);
+  }
+
+  .row {
+    display: flex;
+    gap: var(--tile-gap);
+  }
+
+  .tile {
+    width: var(--tile-size);
+    height: var(--tile-size);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text);
+    background: var(--surface);
+    transition: border-color .1s;
+    position: relative;
+    user-select: none;
+  }
+
+  .tile.filled { border-color: var(--muted); animation: pop .1s ease; }
+
+  .tile.correct  { background: var(--correct);  border-color: var(--correct);  color: #fff; }
+  .tile.present  { background: var(--present);  border-color: var(--present);  color: #fff; }
+  .tile.absent   { background: var(--absent);   border-color: var(--absent);   color: var(--muted); }
+
+  .tile.flip {
+    animation: flip .5s ease forwards;
+  }
+
+  .tile.shake { animation: shake .4s ease; }
+
+  @keyframes pop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes flip {
+    0%   { transform: scaleY(1); }
+    50%  { transform: scaleY(0); }
+    100% { transform: scaleY(1); }
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Keyboard ── */
+  #keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .kb-row {
+    display: flex;
+    gap: 5px;
+  }
+
+  .key {
+    height: 52px;
+    min-width: 36px;
+    padding: 0 6px;
+    background: #2e2c50;
+    border: none;
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: .85rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background .15s, color .15s, transform .1s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .key:active { transform: scale(.93); }
+  .key.wide { min-width: 58px; font-size: .72rem; letter-spacing: 1px; }
+  .key.correct { background: var(--correct); color: #fff; }
+  .key.present { background: var(--present); color: #fff; }
+  .key.absent  { background: #1a1930; color: var(--muted); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--text);
+    color: var(--bg);
+    font-family: 'Space Mono', monospace;
+    font-size: .85rem;
+    font-weight: 700;
+    padding: .7rem 1.5rem;
+    border-radius: 999px;
+    letter-spacing: 1px;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    z-index: 100;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Result Banner ── */
+  #result-banner {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: .8rem;
+    padding: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: min(400px, 90vw);
+    animation: fadeIn .5s ease .2s both;
+  }
+  .result-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .7rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .result-word {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #7f5af0, #2cb67d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .btn-again {
+    padding: .7rem 2rem;
+    background: transparent;
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: .9rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .btn-again:hover { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP SCREEN ══ -->
+<div id="setup-screen">
+  <div>
+    <div class="logo">WordQuest</div>
+    <div class="subtitle">Teacher Edition</div>
+  </div>
+
+  <div class="setup-card">
+    <div>
+      <div class="field-label">Secret Word</div>
+      <div class="word-input-wrap">
+        <input id="secret-word" type="password" maxlength="12" placeholder="Type word…" autocomplete="off" spellcheck="false" />
+        <button id="toggle-vis" title="Show/hide word">👁</button>
+      </div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-badge">Letters: <span id="letter-count">—</span></div>
+      <div class="info-badge" style="margin-left:auto">Guesses: <span id="guess-count">—</span></div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;">
+      <div id="word-valid-badge"></div>
+      <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:1px;">
+        <input type="checkbox" id="bypass-dict" style="accent-color:var(--accent);cursor:pointer;">
+        SKIP CHECK
+      </label>
+    </div>
+
+    <div class="error-msg" id="setup-error"></div>
+
+    <button class="btn-start" id="btn-start" disabled>Launch Game →</button>
+  </div>
+</div>
+
+<!-- ══ GAME SCREEN ══ -->
+<div id="game-screen">
+  <header>
+    <div class="game-logo">WordQuest</div>
+    <div class="guess-counter">Guess <span id="cur-guess">1</span> of <span id="max-guess">6</span></div>
+  </header>
+
+  <div id="board"></div>
+
+  <div id="result-banner">
+    <div class="result-label" id="result-label">The word was</div>
+    <div class="result-word" id="result-word"></div>
+    <button class="btn-again" id="btn-again">New Word</button>
+  </div>
+
+  <div id="keyboard">
+    <div class="kb-row" id="kb-row-1"></div>
+    <div class="kb-row" id="kb-row-2"></div>
+    <div class="kb-row" id="kb-row-3"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Keyboard layout ──
+const KB_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['ENTER','Z','X','C','V','B','N','M','⌫']
+];
+
+const DICT_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+const wordCache = {}; // word → true/false
+
+async function isRealWord(word) {
+  const key = word.toLowerCase();
+  if (key in wordCache) return wordCache[key];
+  try {
+    const res = await fetch(DICT_API + key);
+    wordCache[key] = res.ok;
+    return res.ok;
+  } catch {
+    return null; // network error → treat as unknown
+  }
+}
+
+// ── State ──
+let secretWord = '';
+let wordLen = 0;
+let maxGuesses = 0;
+let currentRow = 0;
+let currentCol = 0;
+let currentGuess = [];
+let board = [];
+let gameOver = false;
+let keyMap = {};
+let submitting = false;
+
+// ── Setup ──
+const setupScreen  = document.getElementById('setup-screen');
+const gameScreen   = document.getElementById('game-screen');
+const secretInput  = document.getElementById('secret-word');
+const toggleVisBtn = document.getElementById('toggle-vis');
+const letterCount  = document.getElementById('letter-count');
+const guessCount   = document.getElementById('guess-count');
+const setupError   = document.getElementById('setup-error');
+const btnStart     = document.getElementById('btn-start');
+const toastEl      = document.getElementById('toast');
+const validBadge   = document.getElementById('word-valid-badge');
+const bypassCheck  = document.getElementById('bypass-dict');
+
+let validationTimer = null;
+
+function setBadge(state, text) {
+  validBadge.className = 'valid-badge ' + state;
+  validBadge.innerHTML = state === 'checking'
+    ? `<span class="checking-spinner"></span> CHECKING…`
+    : text;
+}
+
+bypassCheck.addEventListener('change', () => {
+  const val = secretInput.value.replace(/[^a-zA-Z]/g, '');
+  if (bypassCheck.checked && val.length >= 2) {
+    validBadge.innerHTML = '';
+    setupError.textContent = '';
+    btnStart.disabled = false;
+  } else {
+    // re-trigger validation
+    secretInput.dispatchEvent(new Event('input'));
+  }
+});
+
+secretInput.addEventListener('input', () => {
+  const val = secretInput.value.replace(/[^a-zA-Z]/g, '');
+  secretInput.value = val;
+  const len = val.length;
+  letterCount.textContent = len || '—';
+  guessCount.textContent  = len >= 2 ? (len + 1) : '—';
+  setupError.textContent  = '';
+  validBadge.innerHTML    = '';
+  btnStart.disabled       = true;
+  clearTimeout(validationTimer);
+
+  if (len < 2) return;
+
+  if (bypassCheck.checked) {
+    btnStart.disabled = false;
+    return;
+  }
+
+  setBadge('checking', '');
+  validationTimer = setTimeout(async () => {
+    const result = await isRealWord(val);
+    if (result === true) {
+      setBadge('valid', '✓ VALID WORD');
+      btnStart.disabled = false;
+    } else if (result === false) {
+      setBadge('invalid', '✗ NOT FOUND');
+      setupError.textContent = 'Word not found. Use SKIP CHECK to override.';
+      btnStart.disabled = true;
+    } else {
+      // network error
+      setBadge('invalid', '⚠ NO CONNECTION');
+      setupError.textContent = 'Could not reach dictionary. Use SKIP CHECK to proceed.';
+      btnStart.disabled = false; // allow teacher to proceed
+    }
+  }, 600);
+});
+
+toggleVisBtn.addEventListener('click', () => {
+  secretInput.type = secretInput.type === 'password' ? 'text' : 'password';
+  toggleVisBtn.textContent = secretInput.type === 'password' ? '👁' : '🙈';
+});
+
+btnStart.addEventListener('click', launchGame);
+
+function launchGame() {
+  const val = secretInput.value.trim().toUpperCase().replace(/[^A-Z]/g, '');
+  if (val.length < 2) {
+    setupError.textContent = 'Enter at least 2 letters.';
+    return;
+  }
+  secretWord  = val;
+  wordLen     = val.length;
+  maxGuesses  = wordLen + 1;
+  currentRow  = 0;
+  currentCol  = 0;
+  currentGuess = [];
+  board       = [];
+  gameOver    = false;
+  keyMap      = {};
+  submitting  = false;
+
+  setupScreen.style.display = 'none';
+  gameScreen.style.display  = 'flex';
+  document.getElementById('result-banner').style.display = 'none';
+
+  buildBoard();
+  buildKeyboard();
+  updateHeader();
+  SFX.launch();
+}
+
+// ── Board ──
+function buildBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+
+  // Dynamic tile size
+  const maxW = Math.min(window.innerWidth - 32, 500);
+  const size = Math.min(58, Math.floor((maxW - (wordLen - 1) * 6) / wordLen));
+  document.documentElement.style.setProperty('--tile-size', size + 'px');
+
+  for (let r = 0; r < maxGuesses; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.id = `row-${r}`;
+    board.push([]);
+    for (let c = 0; c < wordLen; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.id = `tile-${r}-${c}`;
+      row.appendChild(tile);
+      board[r].push({ el: tile, letter: '', state: '' });
+    }
+    boardEl.appendChild(row);
+  }
+}
+
+// ── Keyboard ──
+function buildKeyboard() {
+  KB_ROWS.forEach((row, i) => {
+    const rowEl = document.getElementById(`kb-row-${i + 1}`);
+    rowEl.innerHTML = '';
+    row.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (k.length > 1 ? ' wide' : '');
+      btn.textContent = k;
+      btn.dataset.key = k;
+      btn.addEventListener('click', () => handleKey(k));
+      rowEl.appendChild(btn);
+    });
+  });
+}
+
+// ── Input ──
+document.addEventListener('keydown', e => {
+  if (gameOver || gameScreen.style.display === 'none') return;
+  if (e.key === 'Enter')     handleKey('ENTER');
+  else if (e.key === 'Backspace') handleKey('⌫');
+  else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+});
+
+function handleKey(k) {
+  if (gameOver) return;
+  if (k === '⌫') {
+    deleteLetter();
+  } else if (k === 'ENTER') {
+    submitGuess();
+  } else if (/^[A-Z]$/.test(k) && currentCol < wordLen) {
+    addLetter(k);
+  }
+}
+
+function addLetter(letter) {
+  if (currentCol >= wordLen) return;
+  const tile = board[currentRow][currentCol].el;
+  tile.textContent = letter;
+  tile.classList.add('filled');
+  board[currentRow][currentCol].letter = letter;
+  currentGuess.push(letter);
+  currentCol++;
+  SFX.keyPress();
+}
+
+function deleteLetter() {
+  if (currentCol <= 0) return;
+  currentCol--;
+  const tile = board[currentRow][currentCol].el;
+  tile.textContent = '';
+  tile.classList.remove('filled');
+  board[currentRow][currentCol].letter = '';
+  currentGuess.pop();
+  SFX.backspace();
+}
+
+async function submitGuess() {
+  if (currentCol < wordLen) {
+    shakeRow(currentRow);
+    showToast(`Need ${wordLen} letters`);
+    SFX.invalid();
+    return;
+  }
+  if (submitting) return;
+
+  const guess = currentGuess.join('');
+
+  // Dictionary check for student guess
+  submitting = true;
+  showToast('Checking…', 3000);
+  const valid = await isRealWord(guess);
+  submitting = false;
+
+  if (valid === false) {
+    shakeRow(currentRow);
+    showToast('Not a real word!');
+    SFX.invalid();
+    return;
+  }
+  // valid === null means network error → allow the guess
+
+  const result = evaluate(guess, secretWord);
+
+  revealRow(currentRow, result, guess, () => {
+    updateKeyboard(guess, result);
+
+    if (guess === secretWord) {
+      gameOver = true;
+      setTimeout(() => showResult(true), 400);
+    } else if (currentRow >= maxGuesses - 1) {
+      gameOver = true;
+      setTimeout(() => showResult(false), 400);
+    } else {
+      currentRow++;
+      currentCol = 0;
+      currentGuess = [];
+      updateHeader();
+    }
+  });
+}
+
+// ── Evaluate (handles duplicate letters correctly) ──
+function evaluate(guess, answer) {
+  const result   = Array(wordLen).fill('absent');
+  const ansArr   = answer.split('');
+  const guessArr = guess.split('');
+  const used     = Array(wordLen).fill(false);
+
+  // First pass: correct
+  for (let i = 0; i < wordLen; i++) {
+    if (guessArr[i] === ansArr[i]) {
+      result[i] = 'correct';
+      used[i] = true;
+    }
+  }
+  // Second pass: present
+  for (let i = 0; i < wordLen; i++) {
+    if (result[i] === 'correct') continue;
+    for (let j = 0; j < wordLen; j++) {
+      if (!used[j] && guessArr[i] === ansArr[j]) {
+        result[i] = 'present';
+        used[j] = true;
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+// ── Reveal animation ──
+function revealRow(row, result, guess, callback) {
+  const delay = 300;
+  result.forEach((state, col) => {
+    setTimeout(() => {
+      const tile = board[row][col].el;
+      tile.classList.add('flip');
+      SFX.tileFlip(col);
+      setTimeout(() => {
+        tile.classList.add(state);
+        tile.classList.remove('filled');
+        if (state === 'correct')       SFX.correct(col);
+        else if (state === 'present')  SFX.present(col);
+        else                           SFX.absent(col);
+      }, 150);
+    }, col * delay);
+  });
+  setTimeout(callback, wordLen * delay + 300);
+}
+
+function shakeRow(row) {
+  document.getElementById(`row-${row}`).querySelectorAll('.tile')
+    .forEach(t => { t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake'); });
+}
+
+// ══════════════════════════════════════════
+// ── Sound Engine (Web Audio API) ──
+// ══════════════════════════════════════════
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let ctx = null;
+
+function getCtx() {
+  if (!ctx) ctx = new AudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+
+function playTone({ type = 'sine', freq = 440, freq2, duration = 0.12, volume = 0.18,
+                    attack = 0.005, decay = 0.05, sustain = 0.6, release = 0.08,
+                    detune = 0, delay = 0 } = {}) {
+  const ac = getCtx();
+  const t0 = ac.currentTime + delay;
+
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain);
+  gain.connect(ac.destination);
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (freq2) osc.frequency.exponentialRampToValueAtTime(freq2, t0 + duration);
+  osc.detune.setValueAtTime(detune, t0);
+
+  const peak = volume;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(peak, t0 + attack);
+  gain.gain.linearRampToValueAtTime(peak * sustain, t0 + attack + decay);
+  gain.gain.setValueAtTime(peak * sustain, t0 + duration - release);
+  gain.gain.linearRampToValueAtTime(0, t0 + duration);
+
+  osc.start(t0);
+  osc.stop(t0 + duration + 0.01);
+}
+
+function playNoise({ duration = 0.08, volume = 0.12, highpass = 800, delay = 0 } = {}) {
+  const ac = getCtx();
+  const t0 = ac.currentTime + delay;
+  const bufSize = ac.sampleRate * duration;
+  const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+
+  const filter = ac.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = highpass;
+
+  const gain = ac.createGain();
+  gain.gain.setValueAtTime(volume, t0);
+  gain.gain.linearRampToValueAtTime(0, t0 + duration);
+
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(ac.destination);
+  src.start(t0);
+}
+
+// Individual sound effects
+const SFX = {
+  keyPress() {
+    playTone({ type: 'triangle', freq: 380, duration: 0.07, volume: 0.1, attack: 0.002, decay: 0.02, sustain: 0.3, release: 0.04 });
+  },
+  backspace() {
+    playTone({ type: 'sine', freq: 260, freq2: 180, duration: 0.09, volume: 0.08, attack: 0.002, decay: 0.04, sustain: 0.2 });
+  },
+  invalid() {
+    // Low buzz + noise
+    playTone({ type: 'sawtooth', freq: 130, duration: 0.18, volume: 0.12, attack: 0.003, decay: 0.04, sustain: 0.5 });
+    playNoise({ duration: 0.15, volume: 0.08, highpass: 400 });
+  },
+  tileFlip(col) {
+    playTone({ type: 'sine', freq: 300 + col * 40, duration: 0.1, volume: 0.1, attack: 0.003, decay: 0.03, sustain: 0.4, delay: col * 0.04 });
+  },
+  correct(col) {
+    // Bright chime
+    playTone({ type: 'triangle', freq: 520 + col * 60, freq2: 620 + col * 60, duration: 0.18, volume: 0.14, attack: 0.004, decay: 0.04, sustain: 0.5, delay: col * 0.04 });
+  },
+  present(col) {
+    // Warm mid tone
+    playTone({ type: 'sine', freq: 400, duration: 0.14, volume: 0.11, attack: 0.005, decay: 0.05, sustain: 0.4, delay: col * 0.04 });
+  },
+  absent(col) {
+    // Dull thud
+    playTone({ type: 'triangle', freq: 200, freq2: 160, duration: 0.1, volume: 0.07, attack: 0.003, decay: 0.05, sustain: 0.2, delay: col * 0.04 });
+    playNoise({ duration: 0.06, volume: 0.05, highpass: 300, delay: col * 0.04 });
+  },
+  win() {
+    // Ascending fanfare arpeggio
+    const notes = [523, 659, 784, 1047, 1319];
+    notes.forEach((freq, i) => {
+      playTone({ type: 'triangle', freq, duration: 0.22, volume: 0.15, attack: 0.005, decay: 0.06, sustain: 0.55, release: 0.08, delay: i * 0.1 });
+    });
+    // Sparkle layer
+    [1047, 1319, 1568].forEach((freq, i) => {
+      playTone({ type: 'sine', freq, duration: 0.15, volume: 0.08, attack: 0.002, decay: 0.04, sustain: 0.3, delay: 0.5 + i * 0.08 });
+    });
+  },
+  lose() {
+    // Descending sad tones
+    const notes = [392, 330, 262, 220];
+    notes.forEach((freq, i) => {
+      playTone({ type: 'sine', freq, duration: 0.28, volume: 0.13, attack: 0.01, decay: 0.08, sustain: 0.5, release: 0.1, delay: i * 0.15 });
+    });
+  },
+  launch() {
+    // Quick upward sweep
+    playTone({ type: 'sine', freq: 300, freq2: 600, duration: 0.2, volume: 0.12, attack: 0.01, decay: 0.05, sustain: 0.5 });
+    playTone({ type: 'triangle', freq: 600, freq2: 900, duration: 0.15, volume: 0.08, attack: 0.01, delay: 0.12 });
+  }
+};
+
+// ── Keyboard coloring ──
+const STATE_PRIORITY = { correct: 3, present: 2, absent: 1, '': 0 };
+
+function updateKeyboard(guess, result) {
+  guess.split('').forEach((letter, i) => {
+    const cur = keyMap[letter] || '';
+    if ((STATE_PRIORITY[result[i]] || 0) > (STATE_PRIORITY[cur] || 0)) {
+      keyMap[letter] = result[i];
+    }
+  });
+
+  document.querySelectorAll('.key').forEach(btn => {
+    const k = btn.dataset.key;
+    if (k && k.length === 1 && keyMap[k]) {
+      btn.className = `key ${keyMap[k]}`;
+    }
+  });
+}
+
+// ── Header ──
+function updateHeader() {
+  document.getElementById('cur-guess').textContent = currentRow + 1;
+  document.getElementById('max-guess').textContent = maxGuesses;
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg, duration = 1500) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), duration);
+}
+
+// ── Result ──
+function showResult(won) {
+  const banner = document.getElementById('result-banner');
+  document.getElementById('result-label').textContent = won
+    ? `🎉 Got it in ${currentRow + 1}!`
+    : 'The word was';
+  document.getElementById('result-word').textContent = secretWord;
+  banner.style.display = 'flex';
+  if (won) SFX.win();
+  else     SFX.lose();
+}
+
+document.getElementById('btn-again').addEventListener('click', () => {
+  secretInput.value = '';
+  letterCount.textContent = '—';
+  guessCount.textContent  = '—';
+  setupError.textContent  = '';
+  secretInput.type        = 'password';
+  toggleVisBtn.textContent = '👁';
+  validBadge.innerHTML    = '';
+  bypassCheck.checked     = false;
+  btnStart.disabled       = true;
+  setupScreen.style.display = 'flex';
+  gameScreen.style.display  = 'none';
+});
+</script>
+</body>
+</html>

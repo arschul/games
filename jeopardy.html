@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEOPARDY!</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #0a1fd4;
+    --dark-blue: #060e8a;
+    --gold: #ffcc00;
+    --gold-dark: #c9a000;
+    --white: #ffffff;
+    --light-blue: #1a3fff;
+    --correct: #00c851;
+    --wrong: #ff4444;
+    --bg: #04083a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* ─── SCREENS ─── */
+  .screen { display: none; width: 100%; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; align-items: center; }
+
+  /* ─── START SCREEN ─── */
+  #startScreen {
+    background: radial-gradient(ellipse at top, #0f1f9e 0%, #04083a 60%);
+    padding: 24px 16px;
+  }
+  .logo {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(48px, 10vw, 96px);
+    color: var(--gold);
+    text-shadow: 4px 4px 0 var(--gold-dark), 0 0 40px #ffcc0088;
+    letter-spacing: 4px;
+    text-align: center;
+    animation: logoPulse 3s ease-in-out infinite;
+  }
+  @keyframes logoPulse {
+    0%,100%{text-shadow:4px 4px 0 var(--gold-dark),0 0 40px #ffcc0088;}
+    50%{text-shadow:4px 4px 0 var(--gold-dark),0 0 80px #ffcc00cc;}
+  }
+  .subtitle {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(12px, 2.5vw, 18px);
+    color: #aabfff;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .setup-panel {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 900px;
+    backdrop-filter: blur(10px);
+  }
+  .section-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 20px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--gold-dark);
+    padding-bottom: 8px;
+  }
+  /* Player setup */
+  .players-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .player-card {
+    flex: 1;
+    min-width: 150px;
+    background: rgba(10, 31, 212, 0.3);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .player-card.active { border-color: var(--gold); background: rgba(10, 31, 212, 0.6); }
+  .player-card label { font-size: 13px; color: #aabfff; display: block; margin-bottom: 6px; letter-spacing: 1px; }
+  .player-card input {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #4466ff;
+    color: white;
+    font-family: 'Oswald', sans-serif;
+    font-size: 20px;
+    width: 100%;
+    padding: 4px 0;
+    outline: none;
+  }
+  .player-count-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .pcount-btn {
+    background: rgba(255,255,255,0.08);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Oswald', sans-serif;
+    font-size: 18px;
+    padding: 8px 22px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pcount-btn.active { border-color: var(--gold); background: rgba(255,204,0,0.15); color: var(--gold); }
+
+  /* Category selection */
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .cat-grid::-webkit-scrollbar { width: 6px; }
+  .cat-grid::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+  .cat-grid::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
+  .cat-item {
+    background: rgba(10,31,212,0.25);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .cat-item.selected { border-color: var(--gold); background: rgba(255,204,0,0.12); }
+  .cat-item .cat-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .diff-selector { display: flex; gap: 4px; }
+  .diff-btn {
+    flex: 1;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 3px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    font-family: 'Barlow Condensed', sans-serif;
+    transition: all 0.15s;
+  }
+  .diff-btn.easy.active { background: #00c851; border-color: #00c851; color: #000; font-weight: 700; }
+  .diff-btn.medium.active { background: #ffbb00; border-color: #ffbb00; color: #000; font-weight: 700; }
+  .diff-btn.hard.active { background: #ff4444; border-color: #ff4444; color: #fff; font-weight: 700; }
+  .cat-count {
+    font-size: 12px;
+    color: #aabfff;
+    margin: 10px 0 6px;
+  }
+  .cat-count span { color: var(--gold); font-weight: 700; }
+  .start-btn {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: 'Anton', sans-serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    padding: 16px 48px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(255,204,0,0.4);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,204,0,0.6); }
+  .start-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ─── GAME BOARD ─── */
+  #boardScreen { background: var(--bg); padding: 0; justify-content: flex-start; }
+  .scoreboard {
+    display: flex;
+    gap: 0;
+    width: 100%;
+    background: #000;
+    border-bottom: 3px solid var(--gold);
+  }
+  .score-cell {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-right: 1px solid #1a1a3a;
+    transition: background 0.3s;
+  }
+  .score-cell:last-child { border-right: none; }
+  .score-cell.current-turn { background: rgba(255,204,0,0.15); }
+  .score-cell .p-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(13px, 2.5vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .score-cell .p-score {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(20px, 4vw, 32px);
+    color: white;
+  }
+  .score-cell .p-score.negative { color: #ff6666; }
+  .board-wrap { width: 100%; flex: 1; padding: 4px; }
+  .board {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+  }
+  .cat-header {
+    background: linear-gradient(180deg, #0a1fd4 0%, #060e8a 100%);
+    border: 2px solid #1a3fff;
+    border-radius: 6px;
+    padding: 8px 4px;
+    text-align: center;
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(10px, 1.8vw, 15px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: white;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+  }
+  .cell {
+    background: linear-gradient(180deg, #0a1fd4 0%, #060e8a 100%);
+    border: 2px solid #1a3fff;
+    border-radius: 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    padding: 4px;
+  }
+  .cell:hover:not(.used) { background: linear-gradient(180deg, #1a3fff 0%, #0a1fd4 100%); transform: scale(1.02); border-color: var(--gold); }
+  .cell.used { background: #04083a; border-color: #1a1a4a; cursor: default; }
+  .cell .val {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(16px, 3vw, 28px);
+    color: var(--gold);
+    text-shadow: 1px 1px 0 var(--gold-dark);
+  }
+  .cell.used .val { display: none; }
+
+  /* ─── QUESTION MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: linear-gradient(160deg, #0a1fd4 0%, #060e8a 100%);
+    border: 3px solid var(--gold);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 680px;
+    padding: 32px 28px;
+    box-shadow: 0 0 60px rgba(255,204,0,0.3);
+    animation: modalIn 0.3s cubic-bezier(.175,.885,.32,1.275);
+  }
+  @keyframes modalIn { from{transform:scale(0.7);opacity:0;} to{transform:scale(1);opacity:1;} }
+  .modal-cat {
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #aabfff;
+    margin-bottom: 8px;
+  }
+  .modal-value {
+    font-family: 'Anton', sans-serif;
+    font-size: 36px;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+  .modal-clue {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(20px, 4vw, 30px);
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.4;
+    color: white;
+    margin-bottom: 28px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .player-buzz-row {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .buzz-card {
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .buzz-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 18px;
+    color: white;
+    font-weight: 600;
+  }
+  .buzz-btns { display: flex; gap: 8px; }
+  .buzz-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-family: 'Anton', sans-serif;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+  .buzz-btn.correct { background: var(--correct); color: #000; }
+  .buzz-btn.wrong { background: var(--wrong); color: #fff; }
+  .buzz-btn:hover { filter: brightness(1.15); transform: scale(1.05); }
+  .buzz-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; filter: none; }
+  .reveal-btn {
+    background: transparent;
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    color: var(--gold);
+    font-family: 'Oswald', sans-serif;
+    font-size: 17px;
+    padding: 10px 24px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  .reveal-btn:hover { background: rgba(255,204,0,0.1); }
+  .answer-reveal {
+    display: none;
+    background: rgba(0,200,80,0.15);
+    border: 2px solid var(--correct);
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    color: #00ff66;
+    margin-bottom: 10px;
+  }
+  .close-modal-btn {
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    color: white;
+    font-family: 'Oswald', sans-serif;
+    font-size: 16px;
+    padding: 10px 24px;
+    cursor: pointer;
+    width: 100%;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  .close-modal-btn:hover { background: rgba(255,255,255,0.18); }
+
+  /* ─── END SCREEN ─── */
+  #endScreen {
+    background: radial-gradient(ellipse at top, #1a1060 0%, #04083a 70%);
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .podium-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin: 32px 0;
+    justify-content: center;
+  }
+  .podium-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .podium-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+  }
+  .podium-score {
+    font-family: 'Anton', sans-serif;
+    font-size: 28px;
+    color: var(--gold);
+  }
+  .podium-bar {
+    background: linear-gradient(180deg, #0a1fd4, #060e8a);
+    border: 3px solid #1a3fff;
+    border-radius: 8px 8px 0 0;
+    width: 110px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+    font-family: 'Anton', sans-serif;
+    font-size: 28px;
+  }
+  .podium-bar.first { height: 160px; border-color: var(--gold); background: linear-gradient(180deg, #1a3fff, #0a1fd4); }
+  .podium-bar.second { height: 120px; }
+  .podium-bar.third { height: 90px; }
+  .medal { font-size: 36px; }
+  .play-again-btn {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: 'Anton', sans-serif;
+    font-size: 24px;
+    letter-spacing: 4px;
+    padding: 14px 40px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(255,204,0,0.4);
+  }
+  .play-again-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,204,0,0.6); }
+
+  /* ─── FEEDBACK FLASH ─── */
+  .feedback-flash {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%) scale(0);
+    font-family: 'Anton', sans-serif;
+    font-size: 64px;
+    letter-spacing: 4px;
+    z-index: 200;
+    pointer-events: none;
+    transition: all 0.15s;
+  }
+  .feedback-flash.show { transform: translate(-50%,-50%) scale(1); }
+  .feedback-flash.correct-flash { color: var(--correct); text-shadow: 0 0 30px #00ff6688; }
+  .feedback-flash.wrong-flash { color: var(--wrong); text-shadow: 0 0 30px #ff444488; }
+
+  @media (max-width: 600px) {
+    .cat-grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
+    .modal { padding: 20px 14px; }
+    .podium-bar { width: 80px; }
+    .podium-bar.first { height: 120px; }
+    .podium-bar.second { height: 90px; }
+    .podium-bar.third { height: 70px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── START SCREEN ─── -->
+<div id="startScreen" class="screen active">
+  <div class="logo">JEOPARDY!</div>
+  <div class="subtitle">The Ultimate Classroom Edition</div>
+  <div class="setup-panel">
+    <div class="section-title">👥 Players</div>
+    <div class="player-count-row">
+      <button class="pcount-btn active" onclick="setPlayerCount(1)">1</button>
+      <button class="pcount-btn" onclick="setPlayerCount(2)">2</button>
+      <button class="pcount-btn" onclick="setPlayerCount(3)">3</button>
+    </div>
+    <div class="players-row" id="playersRow">
+      <div class="player-card active" id="pc1">
+        <label>PLAYER 1</label>
+        <input type="text" id="p1name" value="Player 1" maxlength="16">
+      </div>
+      <div class="player-card" id="pc2" style="display:none">
+        <label>PLAYER 2</label>
+        <input type="text" id="p2name" value="Player 2" maxlength="16">
+      </div>
+      <div class="player-card" id="pc3" style="display:none">
+        <label>PLAYER 3</label>
+        <input type="text" id="p3name" value="Player 3" maxlength="16">
+      </div>
+    </div>
+
+    <div class="section-title">📋 Categories <span style="font-size:13px;color:#aabfff;font-family:'Barlow Condensed';letter-spacing:1px;">(choose exactly 6)</span></div>
+    <div class="cat-count">Selected: <span id="catCountDisplay">0</span> / 6</div>
+    <div class="cat-grid" id="catGrid"></div>
+  </div>
+  <button class="start-btn" id="startBtn" onclick="startGame()" disabled>LET'S PLAY!</button>
+</div>
+
+<!-- ─── BOARD SCREEN ─── -->
+<div id="boardScreen" class="screen">
+  <div class="scoreboard" id="scoreboard"></div>
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<!-- ─── QUESTION MODAL ─── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-cat" id="modalCat"></div>
+    <div class="modal-value" id="modalVal"></div>
+    <div class="modal-clue" id="modalClue"></div>
+    <div class="player-buzz-row" id="buzzRow"></div>
+    <button class="reveal-btn" onclick="revealAnswer()">▶ REVEAL ANSWER</button>
+    <div class="answer-reveal" id="answerReveal"></div>
+    <button class="close-modal-btn" onclick="closeModal()">NEXT QUESTION</button>
+  </div>
+</div>
+
+<!-- ─── END SCREEN ─── -->
+<div id="endScreen" class="screen">
+  <div class="logo" style="font-size:clamp(36px,8vw,72px)">GAME OVER!</div>
+  <div class="podium-wrap" id="podium"></div>
+  <button class="play-again-btn" onclick="goHome()">PLAY AGAIN</button>
+</div>
+
+<!-- Feedback flash -->
+<div class="feedback-flash" id="feedbackFlash"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  QUESTION DATABASE
+// ═══════════════════════════════════════════════════════
+const CATEGORIES = {
+  "World Capitals": {
+    easy: [
+      {q:"What is the capital of France?", a:"Paris"},
+      {q:"What is the capital of the United States?", a:"Washington D.C."},
+      {q:"What is the capital of Brazil?", a:"Brasília"},
+      {q:"What is the capital of Japan?", a:"Tokyo"},
+      {q:"What is the capital of Australia?", a:"Canberra"},
+    ],
+    medium: [
+      {q:"What is the capital of Argentina?", a:"Buenos Aires"},
+      {q:"What is the capital of Egypt?", a:"Cairo"},
+      {q:"What is the capital of Canada?", a:"Ottawa"},
+      {q:"What is the capital of South Korea?", a:"Seoul"},
+      {q:"What is the capital of South Africa?", a:"Pretoria"},
+    ],
+    hard: [
+      {q:"What is the capital of Hungary?", a:"Budapest"},
+      {q:"What is the capital of Kazakhstan?", a:"Astana"},
+      {q:"What is the capital of Kyrgyzstan?", a:"Bishkek"},
+      {q:"What is the capital of Mozambique?", a:"Maputo"},
+      {q:"What is the capital of Tajikistan?", a:"Dushanbe"},
+    ]
+  },
+  "Stranger Things S1": {
+    easy: [
+      {q:"In which fictional town does Stranger Things take place?", a:"Hawkins"},
+      {q:"What is the name of the girl with telekinetic powers?", a:"Eleven"},
+      {q:"What game are the boys playing when Will disappears?", a:"Dungeons & Dragons"},
+      {q:"What does Eleven call the dark parallel dimension?", a:"The Upside Down"},
+      {q:"What is the name of the monster in Season 1?", a:"Demogorgon"},
+    ],
+    medium: [
+      {q:"What year is Stranger Things Season 1 set in?", a:"1983"},
+      {q:"What is the name of Will Byers' older brother?", a:"Jonathan"},
+      {q:"Who is the police chief in Hawkins?", a:"Jim Hopper"},
+      {q:"What song does Eleven hear on the radio that makes her cry?", a:"Should I Stay or Should I Go"},
+      {q:"What does Joyce use to communicate with Will in the Upside Down?", a:"Christmas lights"},
+    ],
+    hard: [
+      {q:"What is the number of the lab where Eleven was kept?", a:"Hawkins National Laboratory"},
+      {q:"What is the name of the scientist who ran the experiments on Eleven?", a:"Dr. Martin Brenner"},
+      {q:"What is Mike's sister's name?", a:"Nancy"},
+      {q:"In what classroom do the boys first hide Eleven?", a:"Mike's basement"},
+      {q:"Who first discovers the portal to the Upside Down?", a:"Eleven / Dr. Brenner's team"},
+    ]
+  },
+  "Harry Potter": {
+    easy: [
+      {q:"What school does Harry Potter attend?", a:"Hogwarts"},
+      {q:"What is Harry's owl's name?", a:"Hedwig"},
+      {q:"What house is Harry sorted into?", a:"Gryffindor"},
+      {q:"What is the name of Harry's best male friend?", a:"Ron Weasley"},
+      {q:"What sport do wizards play on broomsticks?", a:"Quidditch"},
+    ],
+    medium: [
+      {q:"What is the spell to make something levitate?", a:"Wingardium Leviosa"},
+      {q:"What is Hermione Granger's middle name?", a:"Jean"},
+      {q:"Who is the Defense Against the Dark Arts teacher in year 1?", a:"Professor Quirrell"},
+      {q:"What magical creature guards Gringotts bank?", a:"Dragons"},
+      {q:"What is the name of the Weasleys' home?", a:"The Burrow"},
+    ],
+    hard: [
+      {q:"What is the incantation for the Killing Curse?", a:"Avada Kedavra"},
+      {q:"What are the three Unforgivable Curses?", a:"Avada Kedavra, Crucio, Imperio"},
+      {q:"What does the Mirror of Erised show?", a:"Your heart's deepest desire"},
+      {q:"What platform do students take to Hogwarts?", a:"Platform 9¾"},
+      {q:"Who is the Half-Blood Prince?", a:"Severus Snape"},
+    ]
+  },
+  "Female Singers 2023-2025": {
+    easy: [
+      {q:"This singer released 'Anti-Hero' and the Eras Tour.", a:"Taylor Swift"},
+      {q:"Beyoncé's country-inspired 2024 album is called…", a:"Cowboy Carter"},
+      {q:"'Flowers' was a massive 2023 hit by this Australian pop star.", a:"Miley Cyrus"},
+      {q:"'Vampire' was a 2023 hit by this former child actress.", a:"Olivia Rodrigo"},
+      {q:"She released 'Espresso' in 2024 and became the summer's biggest star.", a:"Sabrina Carpenter"},
+    ],
+    medium: [
+      {q:"Billie Eilish's 2024 Bond theme song was called…", a:"No Time to Die / Birds of a Feather"},
+      {q:"This singer's 2023 album 'Did You Know That There's a Tunnel Under Ocean Blvd' was critically acclaimed.", a:"Lana Del Rey"},
+      {q:"Doja Cat's 2023 'scarlet' era featured which controversial short hair look?", a:"Bald head"},
+      {q:"Rihanna performed the 2023 Super Bowl halftime show while pregnant. True or False?", a:"True"},
+      {q:"SZA's 2022/2023 album that dominated charts was called…", a:"SOS"},
+    ],
+    hard: [
+      {q:"Charli XCX's 2024 album capturing the summer aesthetic was called…", a:"Brat"},
+      {q:"Tyla's hit 2023 song that introduced amapiano to pop charts was called…", a:"Water"},
+      {q:"What was the name of Chappell Roan's breakout 2024 hit about a pink cowboy?", a:"Pink Pony Club"},
+      {q:"Gracie Abrams' 2024 debut album name is…", a:"The Secret of Us"},
+      {q:"Ariana Grande's 2024 film collaboration with Cynthia Erivo was called…", a:"Wicked"},
+    ]
+  },
+  "How Many": {
+    easy: [
+      {q:"How many days are in a week?", a:"7"},
+      {q:"How many legs does a spider have?", a:"8"},
+      {q:"How many planets are in our solar system?", a:"8"},
+      {q:"How many colors are in a rainbow?", a:"7"},
+      {q:"How many months are in a year?", a:"12"},
+    ],
+    medium: [
+      {q:"How many bones are in the adult human body?", a:"206"},
+      {q:"How many teeth does an adult human have?", a:"32"},
+      {q:"How many keys are on a standard piano?", a:"88"},
+      {q:"How many states are in the USA?", a:"50"},
+      {q:"How many episodes are in Stranger Things Season 1?", a:"8"},
+    ],
+    hard: [
+      {q:"How many elements are in the periodic table?", a:"118"},
+      {q:"How many muscles are in the human body?", a:"600 (approximately)"},
+      {q:"How many languages does the UN recognize as official?", a:"6"},
+      {q:"How many meters are in one nautical mile?", a:"1,852"},
+      {q:"How many chromosomes does a human cell have?", a:"46"},
+    ]
+  },
+  "The Letter A": {
+    easy: [
+      {q:"A continent that starts with A: the icy one at the bottom of the world.", a:"Antarctica"},
+      {q:"An animal starting with A that rolls into a ball for defense.", a:"Armadillo"},
+      {q:"A fruit starting with A that keeps the doctor away.", a:"Apple"},
+      {q:"A musical instrument starting with A, you squeeze it to play.", a:"Accordion"},
+      {q:"A color starting with A, a blue-green shade.", a:"Aquamarine"},
+    ],
+    medium: [
+      {q:"A country in South America starting with A. It borders Brazil.", a:"Argentina"},
+      {q:"A woodwind instrument starting with A, played with a reed mouthpiece.", a:"Alto saxophone"},
+      {q:"A sport starting with A that uses arrows.", a:"Archery"},
+      {q:"An A-word meaning 'relating to water'.", a:"Aquatic"},
+      {q:"A capital city starting with A: the capital of Greece.", a:"Athens"},
+    ],
+    hard: [
+      {q:"A scientific word starting with A: the study of spiders.", a:"Arachnology"},
+      {q:"An A-word for 'without oxygen'.", a:"Anaerobic"},
+      {q:"A literary term starting with A: a story with a hidden moral meaning.", a:"Allegory"},
+      {q:"A medical term starting with A: the inability to feel pain.", a:"Analgesia"},
+      {q:"An A-word for the transparent layer at the front of the eye.", a:"Aqueous humor / Anterior chamber"},
+    ]
+  },
+  "Science": {
+    easy: [
+      {q:"What planet is known as the Red Planet?", a:"Mars"},
+      {q:"What is the chemical symbol for water?", a:"H₂O"},
+      {q:"How many colors are in a visible light spectrum?", a:"7"},
+      {q:"What force keeps us on the ground?", a:"Gravity"},
+      {q:"What gas do plants breathe in to make food?", a:"Carbon dioxide (CO₂)"},
+    ],
+    medium: [
+      {q:"What is the speed of light (approximately)?", a:"300,000 km/s"},
+      {q:"What type of rock is formed from cooled lava?", a:"Igneous rock"},
+      {q:"What is the powerhouse of the cell?", a:"Mitochondria"},
+      {q:"What is the process by which plants make their own food?", a:"Photosynthesis"},
+      {q:"What is the atomic number of carbon?", a:"6"},
+    ],
+    hard: [
+      {q:"What is Newton's Second Law of Motion?", a:"Force equals mass times acceleration (F=ma)"},
+      {q:"What is the half-life of Carbon-14?", a:"5,730 years"},
+      {q:"What is the Heisenberg Uncertainty Principle?", a:"You cannot know both position and momentum of a particle precisely at the same time"},
+      {q:"What is the name of the theory that describes the behavior of subatomic particles?", a:"Quantum mechanics"},
+      {q:"What is the SI unit of electric resistance?", a:"Ohm"},
+    ]
+  },
+  "Math": {
+    easy: [
+      {q:"What is 7 × 8?", a:"56"},
+      {q:"What is the square root of 144?", a:"12"},
+      {q:"What is 25% of 200?", a:"50"},
+      {q:"What shape has 3 sides?", a:"Triangle"},
+      {q:"What is 1/2 + 1/4?", a:"3/4"},
+    ],
+    medium: [
+      {q:"What is the value of π (pi) to 2 decimal places?", a:"3.14"},
+      {q:"What is the formula for the area of a circle?", a:"πr²"},
+      {q:"If x + 5 = 12, what is x?", a:"7"},
+      {q:"What is 15² (15 squared)?", a:"225"},
+      {q:"What is the sum of interior angles in a triangle?", a:"180°"},
+    ],
+    hard: [
+      {q:"What is the derivative of x³?", a:"3x²"},
+      {q:"What is the quadratic formula?", a:"x = (−b ± √(b²−4ac)) / 2a"},
+      {q:"How many degrees are in one radian?", a:"≈57.3° (180/π)"},
+      {q:"What is the sum of the first 100 natural numbers?", a:"5050"},
+      {q:"What is log base 2 of 64?", a:"6"},
+    ]
+  },
+  "Geography": {
+    easy: [
+      {q:"What is the longest river in the world?", a:"The Nile"},
+      {q:"What is the largest ocean on Earth?", a:"Pacific Ocean"},
+      {q:"On which continent is Egypt located?", a:"Africa"},
+      {q:"What country has the most people in the world?", a:"India"},
+      {q:"What is the tallest mountain in the world?", a:"Mount Everest"},
+    ],
+    medium: [
+      {q:"What is the largest country by area?", a:"Russia"},
+      {q:"What is the capital city of Australia?", a:"Canberra"},
+      {q:"Through which countries does the Amazon River flow?", a:"Brazil, Peru, Colombia"},
+      {q:"What is the smallest country in the world?", a:"Vatican City"},
+      {q:"Which desert is the largest in the world?", a:"The Sahara (or Antarctic Desert)"},
+    ],
+    hard: [
+      {q:"What is the deepest lake in the world?", a:"Lake Baikal"},
+      {q:"What tectonic plates border the Pacific Ring of Fire?", a:"Pacific, Philippine, Juan de Fuca, Cocos, Nazca plates"},
+      {q:"What is the name of the ocean current responsible for warming Western Europe?", a:"Gulf Stream"},
+      {q:"What is the Tropic of Capricorn's latitude?", a:"23.5° South"},
+      {q:"What country has the most time zones?", a:"France"},
+    ]
+  },
+  "Simple Present": {
+    easy: [
+      {q:"Fill in: She ___ to school every day. (go)", a:"goes"},
+      {q:"Fill in: They ___ football on Saturdays. (play)", a:"play"},
+      {q:"Fill in: He ___ coffee in the morning. (drink)", a:"drinks"},
+      {q:"True or False: 'I goes to the store' is correct.", a:"False — it should be 'I go'"},
+      {q:"Fill in: The cat ___ on the mat. (sit)", a:"sits"},
+    ],
+    medium: [
+      {q:"What auxiliary verb do we use to make a question in simple present (he/she/it)?", a:"Does"},
+      {q:"Make a negative: 'She likes cats.'", a:"She doesn't like cats."},
+      {q:"Fill in: Water ___ at 100°C. (boil)", a:"boils"},
+      {q:"Which is correct: 'Do they speaks English?' or 'Do they speak English?'", a:"Do they speak English?"},
+      {q:"Fill in: The sun ___ in the east. (rise)", a:"rises"},
+    ],
+    hard: [
+      {q:"Identify the error: 'He don't understand the question.'", a:"'don't' should be 'doesn't'"},
+      {q:"Transform into a question: 'They work on Sundays.'", a:"Do they work on Sundays?"},
+      {q:"Simple present is used for scheduled future events. Give an example.", a:"The train leaves at 8 tomorrow."},
+      {q:"Fill in: The news ___ at 6pm every day. (start)", a:"starts"},
+      {q:"Why do we say 'she has' and not 'she have' in simple present?", a:"Because with third person singular (he/she/it) we add -s/-es to the verb."},
+    ]
+  },
+  "Simple Past": {
+    easy: [
+      {q:"Fill in: I ___ TV last night. (watch)", a:"watched"},
+      {q:"What is the past tense of 'go'?", a:"went"},
+      {q:"Fill in: She ___ a cake for the party. (bake)", a:"baked"},
+      {q:"What is the past tense of 'eat'?", a:"ate"},
+      {q:"Fill in: They ___ football yesterday. (play)", a:"played"},
+    ],
+    medium: [
+      {q:"What is the past tense of 'buy'?", a:"bought"},
+      {q:"Make a negative in simple past: 'He went to the party.'", a:"He didn't go to the party."},
+      {q:"Fill in: We ___ a great time at the beach. (have)", a:"had"},
+      {q:"Which is correct: 'Did she went?' or 'Did she go?'", a:"Did she go?"},
+      {q:"What is the past tense of 'speak'?", a:"spoke"},
+    ],
+    hard: [
+      {q:"Correct the sentence: 'I didn't saw that movie.'", a:"I didn't see that movie."},
+      {q:"What is the past tense of 'lie' (to recline)?", a:"lay"},
+      {q:"Transform to simple past question: 'They finished the project.'", a:"Did they finish the project?"},
+      {q:"Fill in: The earthquake ___ at 3am. (occur)", a:"occurred"},
+      {q:"What is the difference between 'I ate' and 'I have eaten'?", a:"'I ate' is simple past (specific past time); 'I have eaten' is present perfect (connected to present)."},
+    ]
+  },
+  "Present Perfect": {
+    easy: [
+      {q:"Fill in: I ___ that movie before. (see)", a:"have seen"},
+      {q:"Fill in: She ___ already ___. (eat)", a:"has already eaten"},
+      {q:"What two words form the present perfect auxiliary?", a:"have / has"},
+      {q:"Fill in: They ___ to Paris. (never / be)", a:"have never been"},
+      {q:"True or False: 'I have went' is correct.", a:"False — it should be 'I have gone'"},
+    ],
+    medium: [
+      {q:"Fill in: How long ___ you ___ English? (study)", a:"have you studied / have you been studying"},
+      {q:"Make a question: 'She has met the president.'", a:"Has she met the president?"},
+      {q:"Fill in: We ___ just ___ dinner. (finish)", a:"have just finished"},
+      {q:"What is the past participle of 'break'?", a:"broken"},
+      {q:"Which signal word goes with present perfect: 'yesterday' or 'already'?", a:"already"},
+    ],
+    hard: [
+      {q:"Explain the difference between 'I have lived here for 5 years' and 'I lived here for 5 years'.", a:"Present perfect = still living there; Simple past = no longer living there."},
+      {q:"Fill in: This is the best film I ___ ever ___. (see)", a:"have ever seen"},
+      {q:"Correct the error: 'Have you ever went abroad?'", a:"Have you ever gone abroad?"},
+      {q:"What is the past participle of 'arise'?", a:"arisen"},
+      {q:"Fill in: It ___ not ___ since Monday. (rain)", a:"has not rained"},
+    ]
+  },
+  "Past Continuous": {
+    easy: [
+      {q:"Fill in: I ___ TV when she called. (watch)", a:"was watching"},
+      {q:"What is the formula for past continuous?", a:"was/were + verb-ing"},
+      {q:"Fill in: They ___ football at 3pm. (play)", a:"were playing"},
+      {q:"True or False: 'She was sleep' is correct.", a:"False — it should be 'She was sleeping'"},
+      {q:"Fill in: He ___ dinner when I arrived. (cook)", a:"was cooking"},
+    ],
+    medium: [
+      {q:"Make a negative: 'They were having a meeting.'", a:"They were not having a meeting."},
+      {q:"Fill in: While I ___, my phone rang. (study)", a:"was studying"},
+      {q:"Which connector is typical for past continuous + simple past: 'when' or 'since'?", a:"when"},
+      {q:"Fill in: The children ___ in the garden at noon. (play)", a:"were playing"},
+      {q:"Make a question: 'She was crying.'", a:"Was she crying?"},
+    ],
+    hard: [
+      {q:"Explain the difference: 'I was reading when she called' vs 'I read when she called'.", a:"Past continuous = action interrupted/in progress; simple past = completed action as a reaction."},
+      {q:"Fill in: What ___ you ___ at midnight? (do)", a:"were you doing"},
+      {q:"Correct: 'Were she sleeping when it happened?'", a:"Was she sleeping when it happened?"},
+      {q:"Fill in: The fire ___ for hours before the rain stopped it. (burn)", a:"was burning"},
+      {q:"Can past continuous express future in the past? Give an example.", a:"Yes: 'She was leaving the next day.'"},
+    ]
+  },
+  "Past Perfect": {
+    easy: [
+      {q:"Fill in: I ___ never ___ sushi before. (eat)", a:"had never eaten"},
+      {q:"What is the formula for past perfect?", a:"had + past participle"},
+      {q:"Fill in: She ___ already ___ when we arrived. (leave)", a:"had already left"},
+      {q:"True or False: 'They had went' is correct.", a:"False — it should be 'They had gone'"},
+      {q:"Fill in: He ___ finished his homework before dinner. (just)", a:"had just finished"},
+    ],
+    medium: [
+      {q:"Why do we use past perfect? Give a short explanation.", a:"To show that one past action happened before another past action."},
+      {q:"Fill in: When I got to the cinema, the film ___ already ___. (start)", a:"had already started"},
+      {q:"Make a question: 'She had studied English before.'", a:"Had she studied English before?"},
+      {q:"Fill in: They realized they ___ made a mistake. (make)", a:"had made"},
+      {q:"What is the past participle of 'choose'?", a:"chosen"},
+    ],
+    hard: [
+      {q:"Explain: 'By the time the police arrived, the thief had escaped.'", a:"The escaping happened first; the arrival happened second. Past perfect shows the earlier action."},
+      {q:"Correct the error: 'He had went to bed before I called.'", a:"He had gone to bed before I called."},
+      {q:"Fill in: I could see that she ___ been crying. (have)", a:"had been (past perfect continuous)"},
+      {q:"What is the difference between 'had seen' and 'had been seeing'?", a:"'had seen' = completed action; 'had been seeing' = ongoing/repeated action before a past point."},
+      {q:"Fill in: They ___ never ___ such a big storm before. (experience)", a:"had never experienced"},
+    ]
+  },
+  "Present Continuous": {
+    easy: [
+      {q:"Fill in both blanks: She ___ ___ a book right now. (be / read)", a:"is reading"},
+      {q:"Fill in both blanks: I ___ ___ to music right now. (be / listen)", a:"am listening"},
+      {q:"Fill in both blanks: They ___ ___ football outside. (be / play)", a:"are playing"},
+      {q:"Fill in both blanks: Look! It ___ ___! (be / rain)", a:"is raining"},
+      {q:"Fill in both blanks: We ___ ___ dinner at the moment. (be / have)", a:"are having"},
+    ],
+    medium: [
+      {q:"Make a negative: 'He is sleeping.'", a:"He is not sleeping."},
+      {q:"What is the -ing form of 'sit'?", a:"sitting"},
+      {q:"Present continuous can refer to future arrangements. Give an example.", a:"'I am meeting her tomorrow.'"},
+      {q:"Fill in: Why ___ you ___? (shout)", a:"are you shouting"},
+      {q:"What is the -ing form of 'run'?", a:"running"},
+    ],
+    hard: [
+      {q:"Name two stative verbs that CANNOT be used in continuous tenses.", a:"know, believe, love, hate, want, need, own (any two)"},
+      {q:"Correct: 'She is knowing the answer.'", a:"She knows the answer."},
+      {q:"Fill in: The company ___ its prices this year. (increase)", a:"is increasing"},
+      {q:"Explain: 'He is always losing his keys.' What does 'always' add here?", a:"It expresses annoyance or a repeated habit (often negative connotation)."},
+      {q:"Fill in: Don't disturb her — she ___ a presentation for tomorrow. (prepare)", a:"is preparing"},
+    ]
+  },
+  "Italian Brainrot": {
+    easy: [
+      {q:"This character looks like a tuna fish walking upright. It sings a repetitive melody. Name it!", a:"Tralalero Tralala"},
+      {q:"This character has the body of a green crocodile but the head and wings of a military bomber plane. Name it!", a:"Bombardino Crocodilo"},
+      {q:"This character is a graceful ballet dancer wearing a frilly tutu, but her head is a steaming cup of coffee with foam. Name it!", a:"Ballerina Cappuccina"},
+      {q:"This character looks like a small hairy creature with big orange eyes and stubby legs, making a rhythmic 'brr brr' sound. Name it!", a:"Brr Brr Patapim"},
+      {q:"This character has the giant grey body of an elephant but the long neck and face of a camel, often seen in desert landscapes. Name it!", a:"Lirili Larila"},
+    ],
+    medium: [
+      {q:"What is 'Brr Brr Patapim' known for in Italian brainrot?", a:"It is a character/meme from the Italian brainrot AI series — often depicted as a small colorful creature"},
+      {q:"'Lirili Larila' is associated with which animal?", a:"An elephant / camel"},
+      {q:"What language are the Italian brainrot names based on?", a:"Mock Italian / AI-generated pseudo-Italian"},
+      {q:"Finish the name: 'Tung Tung Tung Tung Tung Tung Tung Tung Tung ___'", a:"Sahur"},
+      {q:"Italian brainrot characters are mostly generated using which type of AI?", a:"AI image/video generation (like Sora or similar tools)"},
+    ],
+    hard: [
+      {q:"What is the satirical purpose of Italian Brainrot content?", a:"Parody of AI-generated content, nonsensical internet humor, random fusions of everyday objects and animals"},
+      {q:"'Glorbo Frutabaga' is a fusion of a character and which vegetable?", a:"Rutabaga"},
+      {q:"In Italian brainrot lore, what does 'La Vaca Saturno Saturnita' depict?", a:"A cow fused with Saturn / space imagery"},
+      {q:"What Italian phrase means 'nonsense' or 'rubbish', fitting for this meme?", a:"Sciocchezze"},
+      {q:"Which Italian brainrot character is depicted as a shark-like creature with a cap?", a:"Capuchino Assassino"},
+    ]
+  },
+  "Fruits": {
+    easy: [
+      {q:"What red fruit is also considered a vegetable in cooking?", a:"Tomato"},
+      {q:"What yellow fruit comes in a bunch and monkeys love?", a:"Banana"},
+      {q:"What green fruit, when cut in half, is used in guacamole?", a:"Avocado"},
+      {q:"What round, sweet fruit comes in red, green, or yellow and grows on trees in orchards?", a:"Apple"},
+      {q:"What small red or green round fruit grows on a vine?", a:"Grape"},
+    ],
+    medium: [
+      {q:"What tropical fruit has a rough brown exterior and white interior with coconut water?", a:"Coconut"},
+      {q:"What orange citrus fruit is a hybrid of orange and grapefruit?", a:"Tangerine / Clementine"},
+      {q:"What fruit shares its name with a color?", a:"Orange"},
+      {q:"What fruit comes from a cactus and is pink inside?", a:"Dragon fruit"},
+      {q:"What small black or red fruit is used to make jam and contains many seeds?", a:"Raspberry or Blackberry"},
+    ],
+    hard: [
+      {q:"What fruit is called 'melograno' in Italian?", a:"Pomegranate"},
+      {q:"What tropical fruit is used in Jamaican cuisine and is toxic unless fully ripe?", a:"Ackee"},
+      {q:"What fruit comes from the Prunus persica tree?", a:"Peach"},
+      {q:"What Asian pear-shaped fruit is also called 'alligator pear'?", a:"Avocado"},
+      {q:"What berry is the main ingredient in elderflower cordial?", a:"Elderberry"},
+    ]
+  },
+  "Vegetables": {
+    easy: [
+      {q:"What orange vegetable is said to improve eyesight?", a:"Carrot"},
+      {q:"What green vegetable looks like a tiny tree?", a:"Broccoli"},
+      {q:"What round red vegetable is a staple in salads?", a:"Tomato"},
+      {q:"What white layered vegetable makes you cry when you cut it?", a:"Onion"},
+      {q:"What long green vegetable is a member of the gourd family?", a:"Zucchini / Cucumber"},
+    ],
+    medium: [
+      {q:"What vegetable is the main ingredient in hummus?", a:"Chickpea"},
+      {q:"What leafy green is known as a superfood and is Popeye's favorite?", a:"Spinach"},
+      {q:"What purple vegetable is used in moussaka?", a:"Eggplant / Aubergine"},
+      {q:"What vegetable shares its name with a color?", a:"Red / green pepper"},
+      {q:"What root vegetable is used to make borscht?", a:"Beetroot"},
+    ],
+    hard: [
+      {q:"What is the Italian name for zucchini?", a:"Zucchini (it IS Italian) / Courgette"},
+      {q:"What vegetable's name comes from the Quechua word 'papa'?", a:"Potato"},
+      {q:"What vegetable contains the most water by percentage?", a:"Cucumber (about 95%)"},
+      {q:"What compound in hot peppers makes them spicy?", a:"Capsaicin"},
+      {q:"What vegetable is known as 'daikon' in Japanese cuisine?", a:"White radish"},
+    ]
+  },
+  "Brazilian Capitals": {
+    easy: [
+      {q:"What is the capital of São Paulo state?", a:"São Paulo"},
+      {q:"What is the capital of Rio de Janeiro state?", a:"Rio de Janeiro"},
+      {q:"What is the federal capital of Brazil?", a:"Brasília"},
+      {q:"What is the capital of Minas Gerais?", a:"Belo Horizonte"},
+      {q:"What is the capital of Bahia?", a:"Salvador"},
+    ],
+    medium: [
+      {q:"What is the capital of Amazonas?", a:"Manaus"},
+      {q:"What is the capital of Pernambuco?", a:"Recife"},
+      {q:"What is the capital of Rio Grande do Sul?", a:"Porto Alegre"},
+      {q:"What is the capital of Ceará?", a:"Fortaleza"},
+      {q:"What is the capital of Paraná?", a:"Curitiba"},
+    ],
+    hard: [
+      {q:"What is the capital of Roraima?", a:"Boa Vista"},
+      {q:"What is the capital of Amapá?", a:"Macapá"},
+      {q:"What is the capital of Mato Grosso?", a:"Cuiabá"},
+      {q:"What is the capital of Maranhão?", a:"São Luís"},
+      {q:"What is the capital of Acre?", a:"Rio Branco"},
+    ]
+  },
+  "Roblox": {
+    easy: [
+      {q:"In this Roblox game, you adopt and take care of cute pets like the Shadow Dragon.", a:"Adopt Me!"},
+      {q:"In this Roblox game, you live in a suburb, drive cars, own a house and roleplay daily life.", a:"Brookhaven"},
+      {q:"In this Roblox game, you run as fast as possible jumping over barriers and obstacles.", a:"Obby (Obstacle Course) / Speed Run 4"},
+      {q:"In this Roblox game, you hide or seek players across a giant map.", a:"Blox Hunt"},
+      {q:"In this Roblox game, players compete in a series of mini-games until one winner survives.", a:"Survive the Disasters / Murder Mystery"},
+    ],
+    medium: [
+      {q:"What is the name of the Roblox mascot character?", a:"Noob"},
+      {q:"What programming language is used to script Roblox games?", a:"Lua"},
+      {q:"What is the name of Roblox's development platform?", a:"Roblox Studio"},
+      {q:"In 'Adopt Me!', what is the rarest pet?", a:"Shadow Dragon / Frost Dragon"},
+      {q:"What is 'Brookhaven' in Roblox?", a:"A role-playing game"},
+    ],
+    hard: [
+      {q:"What was Roblox originally called during development?", a:"DynaBlocks"},
+      {q:"Who are the co-founders of Roblox?", a:"David Baszucki and Erik Cassel"},
+      {q:"What is the Roblox game 'Arsenal' a type of?", a:"First-person shooter (FPS)"},
+      {q:"What does 'ODer' mean in Roblox slang?", a:"Online Dater"},
+      {q:"In Roblox, what is the highest rank in a group called?", a:"Owner"},
+    ]
+  },
+  "Minecraft": {
+    easy: [
+      {q:"What do you need to build a crafting table?", a:"4 wooden planks"},
+      {q:"What mob explodes near you in Minecraft?", a:"Creeper"},
+      {q:"What is the final boss in Minecraft?", a:"The Ender Dragon"},
+      {q:"What material is stronger than iron in Minecraft?", a:"Diamond"},
+      {q:"In what dimension is the Ender Dragon found?", a:"The End"},
+    ],
+    medium: [
+      {q:"What is Minecraft's second boss mob?", a:"The Wither"},
+      {q:"What is the name of the Minecraft currency found in villages?", a:"Emeralds"},
+      {q:"What biome is Alex's skin associated with?", a:"No specific biome — she is the default female character"},
+      {q:"What year was Minecraft released?", a:"2011"},
+      {q:"What blocks can Endermen pick up?", a:"Grass, dirt, sand, gravel, clay, flower pots and mycelium"},
+    ],
+    hard: [
+      {q:"What is the maximum level of enchantment for Fortune?", a:"Fortune III"},
+      {q:"What is Notch's real name?", a:"Markus Persson"},
+      {q:"What is the seed that generates the first Minecraft demo world?", a:"North Carolina"},
+      {q:"What update introduced llamas to Minecraft?", a:"The Exploration Update (1.11)"},
+      {q:"What is the ID number for a Creeper in Minecraft's code?", a:"50"},
+    ]
+  },
+  "Fortnite": {
+    easy: [
+      {q:"What is the maximum number of players in a standard Fortnite Battle Royale match?", a:"100"},
+      {q:"What is the shrinking boundary in Fortnite called?", a:"The Storm"},
+      {q:"What company makes Fortnite?", a:"Epic Games"},
+      {q:"What material do you collect from trees to build in Fortnite?", a:"Wood"},
+      {q:"What is the name of the flying vehicle that drops players onto the island at the start of each match?", a:"The Battle Bus"},
+    ],
+    medium: [
+      {q:"What is 'building' used for in Fortnite?", a:"Cover, mobility, and combat advantage"},
+      {q:"What was the first major Fortnite crossover skin?", a:"John Wick / Thanos"},
+      {q:"What is the rarest Fortnite skin?", a:"Renegade Raider (Season 1) / Aerial Assault Trooper"},
+      {q:"What is 'tilted towers' known as in later Fortnite seasons?", a:"Tilted Towers (it was remade) — later called Neo Tilted / Salty Towers"},
+      {q:"What is the storm in Fortnite made of?", a:"A fictional toxic/energy storm"},
+    ],
+    hard: [
+      {q:"What year was Fortnite Battle Royale released?", a:"2017"},
+      {q:"What was the name of the first Fortnite Chapter 1 season's map event that ended the chapter?", a:"The Black Hole Event"},
+      {q:"In competitive Fortnite, what is 'box fighting'?", a:"A close-range fighting technique using builds to create a small box and fighting inside it"},
+      {q:"What is the maximum building material you can carry of each type?", a:"999"},
+      {q:"What is the name of the Fortnite Creative mode?", a:"Fortnite Creative (UEFN — Unreal Editor for Fortnite)"},
+    ]
+  },
+  "Famous Landmarks": {
+    easy: [
+      {q:"In which city is the Eiffel Tower located?", a:"Paris, France"},
+      {q:"In which country is the Colosseum?", a:"Italy"},
+      {q:"What is the name of the famous clock tower in London?", a:"Big Ben"},
+      {q:"What wonder of the world is located in Egypt?", a:"The Great Pyramids of Giza"},
+      {q:"In which country is the Taj Mahal?", a:"India"},
+    ],
+    medium: [
+      {q:"What US state is Mount Rushmore located in?", a:"South Dakota"},
+      {q:"In which city is the Sagrada Família?", a:"Barcelona, Spain"},
+      {q:"What landmark is located on Easter Island?", a:"Moai statues"},
+      {q:"In which country is Angkor Wat?", a:"Cambodia"},
+      {q:"What bridge connects San Francisco to Marin County?", a:"Golden Gate Bridge"},
+    ],
+    hard: [
+      {q:"In which Turkish city is Hagia Sophia?", a:"Istanbul"},
+      {q:"What is the name of the fortress in Alhambra, Spain?", a:"The Alhambra Palace"},
+      {q:"The Burj Khalifa is in which city?", a:"Dubai, UAE"},
+      {q:"What is the world's largest church by floor area?", a:"St. Peter's Basilica, Vatican"},
+      {q:"In which country is the ancient city of Petra?", a:"Jordan"},
+    ]
+  },
+  "Flags": {
+    easy: [
+      {q:"What colors are on the French flag?", a:"Blue, white, red"},
+      {q:"What country has a maple leaf on its flag?", a:"Canada"},
+      {q:"What color is the circle on Japan's flag?", a:"Red"},
+      {q:"How many stars are on the US flag?", a:"50"},
+      {q:"What animal appears on the Mexican flag?", a:"Eagle"},
+    ],
+    medium: [
+      {q:"Which country's flag features a cedar tree?", a:"Lebanon"},
+      {q:"What is unique about Nepal's flag compared to all other national flags?", a:"It is the only non-rectangular national flag"},
+      {q:"Which Scandinavian country has a blue flag with a yellow cross?", a:"Sweden"},
+      {q:"What does the green, gold, and red Pan-African color scheme represent?", a:"African unity / nature / mineral wealth / bloodshed"},
+      {q:"Which country's flag has a globe on it?", a:"Brazil"},
+    ],
+    hard: [
+      {q:"What do the two triangles on the flag of Trinidad and Tobago represent?", a:"Earth, water, and fire; the two main islands"},
+      {q:"Which African country's flag has a Kalashnikov on it?", a:"Mozambique"},
+      {q:"What does the star and crescent symbol on Islamic nation flags traditionally represent?", a:"Islam, divine light, and sovereignty"},
+      {q:"Which two countries have almost identical flags: red, white, and blue horizontal stripes?", a:"Netherlands and Luxembourg"},
+      {q:"What do the 24 spokes on India's flag represent?", a:"The 24 hours of the day / Dharma wheel"},
+    ]
+  },
+  "Animals": {
+    easy: [
+      {q:"What is the fastest land animal?", a:"Cheetah"},
+      {q:"What is the largest mammal on Earth?", a:"Blue whale"},
+      {q:"What animal is known as man's best friend?", a:"Dog"},
+      {q:"What black and white animal from China eats mostly bamboo?", a:"Giant panda"},
+      {q:"What animal can change its skin color?", a:"Chameleon"},
+    ],
+    medium: [
+      {q:"What is a group of lions called?", a:"A pride"},
+      {q:"What is the only mammal capable of true flight?", a:"Bat"},
+      {q:"How many hearts does an octopus have?", a:"Three"},
+      {q:"What is the tallest animal in the world?", a:"Giraffe"},
+      {q:"What animal has fingerprints most similar to humans?", a:"Koala"},
+    ],
+    hard: [
+      {q:"What is the gestation period of an elephant?", a:"22 months"},
+      {q:"What is the scientific name for a domestic cat?", a:"Felis catus"},
+      {q:"What is the only bird that can fly backwards?", a:"Hummingbird"},
+      {q:"What is the loudest animal on Earth?", a:"Sperm whale (or blue whale for sustained sound)"},
+      {q:"What animal has the highest blood pressure?", a:"Giraffe"},
+    ]
+  },
+  "Superheroes": {
+    easy: [
+      {q:"What superhero is known as the Man of Steel?", a:"Superman"},
+      {q:"What superhero's alter ego is Bruce Wayne?", a:"Batman"},
+      {q:"What superhero can stick to walls and shoot webs?", a:"Spider-Man"},
+      {q:"What color is the Hulk?", a:"Green"},
+      {q:"What is Wonder Woman's weapon?", a:"Lasso of Truth"},
+    ],
+    medium: [
+      {q:"What element is Superman weak to?", a:"Kryptonite"},
+      {q:"What is Iron Man's real name?", a:"Tony Stark"},
+      {q:"Who is Thor's adopted brother and enemy?", a:"Loki"},
+      {q:"What are the X-Men mutant powers called?", a:"Mutant abilities / powers"},
+      {q:"What superhero uses a shield made of vibranium?", a:"Captain America"},
+    ],
+    hard: [
+      {q:"What is the name of Batman's butler?", a:"Alfred Pennyworth"},
+      {q:"What multiverse concept connects all DC heroes?", a:"The DC Multiverse / Crisis on Infinite Earths"},
+      {q:"Who created Spider-Man?", a:"Stan Lee and Steve Ditko"},
+      {q:"What is the Green Lantern's weakness?", a:"The color yellow (and fear)"},
+      {q:"What is Wolverine's skeleton and claws made of?", a:"Adamantium"},
+    ]
+  },
+  "Marvel and DC": {
+    easy: [
+      {q:"Who leads the Avengers?", a:"Iron Man / Captain America"},
+      {q:"What Marvel hero has a star-spangled shield?", a:"Captain America"},
+      {q:"What DC city does Batman protect?", a:"Gotham City"},
+      {q:"Who is the villain of the Avengers: Infinity War?", a:"Thanos"},
+      {q:"What is the DC team of heroes?", a:"Justice League"},
+    ],
+    medium: [
+      {q:"What Marvel stone gave Vision his life?", a:"Mind Stone"},
+      {q:"Who plays Tony Stark in the MCU films?", a:"Robert Downey Jr."},
+      {q:"In DC, what is The Flash's real name?", a:"Barry Allen"},
+      {q:"What is the name of Black Panther's home country?", a:"Wakanda"},
+      {q:"Who is DC's God of Speed villain?", a:"Reverse Flash"},
+    ],
+    hard: [
+      {q:"What is the name of the multiverse timeline organization in Loki?", a:"TVA — Time Variance Authority"},
+      {q:"In Marvel, what substance is Mjolnir (Thor's hammer) made of?", a:"Uru metal"},
+      {q:"What is the name of the DC storyline where heroes fight alternate versions of themselves?", a:"Crisis on Infinite Earths / Flashpoint"},
+      {q:"What is Doctor Strange's full Marvel title?", a:"Sorcerer Supreme"},
+      {q:"In DC, who is the 'World's Greatest Detective'?", a:"Batman"},
+    ]
+  },
+  "Pop Culture": {
+    easy: [
+      {q:"What app do people use to share short videos, known for trends and viral dances?", a:"TikTok"},
+      {q:"Who is the most followed person on Instagram as of 2024?", a:"Cristiano Ronaldo"},
+      {q:"What does 'GOAT' stand for in pop culture?", a:"Greatest Of All Time"},
+      {q:"What social media platform is known for short videos?", a:"TikTok"},
+      {q:"What Netflix show features the Upside Down?", a:"Stranger Things"},
+    ],
+    medium: [
+      {q:"What is the name of the 2023 viral 'It's Corn!' kid's real name?", a:"Tariq (Tariq the Corn Kid)"},
+      {q:"What year did the 'Ice Bucket Challenge' go viral?", a:"2014"},
+      {q:"Who sang 'Old Town Road' in 2019?", a:"Lil Nas X"},
+      {q:"What is the name of the main character in 'Breaking Bad'?", a:"Walter White"},
+      {q:"What show popularized the phrase 'Winter is Coming'?", a:"Game of Thrones"},
+    ],
+    hard: [
+      {q:"What is the name of the viral 2023 AI-generated image of the Pope in a white puffer jacket?", a:"The Pope Drip / Pope in Balenciaga jacket"},
+      {q:"What is 'demure' in the viral 2024 TikTok trend?", a:"Very demure, very mindful — a viral phrase by Jools Lebron about modest, calm behavior"},
+      {q:"Who created the 'Distracted Boyfriend' meme (real photographer)?", a:"Antonio Guillem"},
+      {q:"What is the name of the viral 2022 dance from Wednesday on Netflix?", a:"The Wednesday Dance / Goo Goo Muck"},
+      {q:"What does 'NPC' mean in internet culture?", a:"Non-Player Character — someone acting robotically or predictably"},
+    ]
+  },
+  "Famous Nicknames": {
+    easy: [
+      {q:"Marshall Mathers is better known by what name?", a:"Eminem"},
+      {q:"Stefani Germanotta is better known as…?", a:"Lady Gaga"},
+      {q:"Dwayne Johnson goes by which nickname?", a:"The Rock"},
+      {q:"Edson Arantes do Nascimento is better known by what nickname?", a:"Pelé"},
+      {q:"Peter Gene Hernandez goes by which stage name?", a:"Bruno Mars"},
+    ],
+    medium: [
+      {q:"Aubrey Drake Graham is better known as…?", a:"Drake"},
+      {q:"Belcalis Marlenis Almánzar is better known as…?", a:"Cardi B"},
+      {q:"What is Snoop Dogg's real name?", a:"Calvin Cordozar Broadus Jr."},
+      {q:"Onika Tanya Maraj is better known as…?", a:"Nicki Minaj"},
+      {q:"What is Bono's real name?", a:"Paul David Hewson"},
+    ],
+    hard: [
+      {q:"What is The Weeknd's real name?", a:"Abel Tesfaye"},
+      {q:"Georgios Kyriacos Panayiotou is better known as…?", a:"George Michael"},
+      {q:"What is Jay-Z's real name?", a:"Shawn Corey Carter"},
+      {q:"Princess Diana's full name was Diana…?", a:"Diana Frances Spencer"},
+      {q:"Which famous painter's full name was Pablo Diego José Francisco de Paula Juan Nepomuceno María de los Remedios Cipriano de la Santísima Trinidad Ruiz y Picasso?", a:"Pablo Picasso"},
+    ]
+  },
+  "Periodic Table": {
+    easy: [
+      {q:"What element has the symbol O?", a:"Oxygen"},
+      {q:"What element has the symbol H?", a:"Hydrogen"},
+      {q:"What element has the symbol Fe?", a:"Iron"},
+      {q:"What element has the symbol Au?", a:"Gold"},
+      {q:"What element has the symbol Na?", a:"Sodium"},
+    ],
+    medium: [
+      {q:"What element has the symbol Ag?", a:"Silver"},
+      {q:"What element has the symbol Pb?", a:"Lead"},
+      {q:"What element has the symbol K?", a:"Potassium"},
+      {q:"What element has the symbol Hg?", a:"Mercury"},
+      {q:"What element has the symbol W?", a:"Tungsten"},
+    ],
+    hard: [
+      {q:"What element has the symbol Sb?", a:"Antimony"},
+      {q:"What element has the symbol Sn?", a:"Tin"},
+      {q:"What element has the symbol Bi?", a:"Bismuth"},
+      {q:"What element has the symbol Cs?", a:"Cesium"},
+      {q:"What element has the symbol Xe?", a:"Xenon"},
+    ]
+  },
+  "Mobile Games": {
+    easy: [
+      {q:"In this Supercell card game, you build a deck and destroy the opponent's towers in real time.", a:"Clash Royale"},
+      {q:"What Supercell game features clans attacking each other's bases?", a:"Clash of Clans"},
+      {q:"In this Supercell game, you pick a Brawler and fight in 3v3 matches or battle royale.", a:"Brawl Stars"},
+      {q:"What running game features a character escaping a temple?", a:"Temple Run"},
+      {q:"In this mobile battle royale game popular in Brazil, 50 players fight on a tropical island.", a:"Free Fire"},
+    ],
+    medium: [
+      {q:"What mobile game became viral for placing virtual creatures in the real world via GPS?", a:"Pokémon GO"},
+      {q:"What is the name of the main character in Subway Surfers?", a:"Jake"},
+      {q:"What Supercell game involves building a deck of cards to attack a castle?", a:"Clash Royale"},
+      {q:"What mobile MOBA game is the mobile version of League of Legends?", a:"Wild Rift"},
+      {q:"In Among Us, what are the imposters trying to do?", a:"Sabotage and kill crewmates without being caught"},
+    ],
+    hard: [
+      {q:"What is the highest possible trophy count in standard Clash Royale ladder?", a:"No fixed cap — changes each season"},
+      {q:"What mobile game features the character 'Brawlers' in 3v3 modes?", a:"Brawl Stars"},
+      {q:"What is the full name of the company behind Pokémon GO?", a:"Niantic"},
+      {q:"In Honkai: Star Rail, what is the main form of transport for heroes?", a:"The Astral Express"},
+      {q:"What farming mobile game was one of the first major social media games on Facebook?", a:"FarmVille"},
+    ]
+  },
+  "Brazilian Cars": {
+    easy: [
+      {q:"The Kwid is a model from which car brand?", a:"Renault"},
+      {q:"What Brazilian car brand makes the Onix?", a:"Chevrolet"},
+      {q:"What car brand makes the Polo in Brazil?", a:"Volkswagen"},
+      {q:"The Kicks is a compact SUV model from which car brand?", a:"Nissan"},
+      {q:"What brand makes the Cronos sedan in Brazil?", a:"Fiat"},
+    ],
+    medium: [
+      {q:"What is the Volkswagen Gol known for in Brazil?", a:"Being the best-selling car in Brazilian history"},
+      {q:"What Fiat model is sold as the 'Mobi' in Brazil?", a:"Fiat Mobi"},
+      {q:"What is the name of Chevrolet's popular pickup truck in Brazil?", a:"S10"},
+      {q:"What Hyundai SUV is very popular in Brazil named after a river?", a:"HB20 / Creta"},
+      {q:"What Brazilian-market Renault model is a compact SUV?", a:"Duster"},
+    ],
+    hard: [
+      {q:"What was the first car manufactured in Brazil (1950s Volkswagen model)?", a:"Volkswagen Fusca (Beetle)"},
+      {q:"What does the 'HB' stand for in HB20?", a:"Hyundai Brazil"},
+      {q:"Which car was nicknamed 'Fusca' in Brazil?", a:"Volkswagen Beetle"},
+      {q:"What is the best-selling pickup truck in Brazil?", a:"Fiat Strada"},
+      {q:"What does 'flex' mean when referring to Brazilian car engines?", a:"The engine runs on both gasoline and ethanol (E100/E25 flex fuel)"},
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+//  SOUND ENGINE (Web Audio API)
+// ═══════════════════════════════════════════════════════
+const SFX = (() => {
+  let ctx = null;
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+
+  function play(fn) {
+    try { fn(getCtx()); } catch(e) {}
+  }
+
+  // Board tile click - classic Jeopardy-style blip
+  function tileClick() {
+    play(ctx => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.08);
+      g.gain.setValueAtTime(0.3, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.15);
+    });
+  }
+
+  // Correct answer - ascending fanfare
+  function correct() {
+    play(ctx => {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'triangle';
+        const t = ctx.currentTime + i * 0.1;
+        o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(0.0, t);
+        g.gain.linearRampToValueAtTime(0.35, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        o.start(t);
+        o.stop(t + 0.25);
+      });
+    });
+  }
+
+  // Wrong answer - descending buzz
+  function wrong() {
+    play(ctx => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(220, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.3);
+      g.gain.setValueAtTime(0.25, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.35);
+    });
+  }
+
+  // Question open - dramatic low thud + shimmer
+  function questionOpen() {
+    play(ctx => {
+      // Low thud
+      const o1 = ctx.createOscillator();
+      const g1 = ctx.createGain();
+      o1.connect(g1); g1.connect(ctx.destination);
+      o1.type = 'sine';
+      o1.frequency.setValueAtTime(120, ctx.currentTime);
+      o1.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.25);
+      g1.gain.setValueAtTime(0.4, ctx.currentTime);
+      g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      o1.start(ctx.currentTime);
+      o1.stop(ctx.currentTime + 0.3);
+      // Shimmer
+      const o2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(1200, ctx.currentTime + 0.05);
+      o2.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.2);
+      g2.gain.setValueAtTime(0.15, ctx.currentTime + 0.05);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      o2.start(ctx.currentTime + 0.05);
+      o2.stop(ctx.currentTime + 0.3);
+    });
+  }
+
+  // Answer reveal - soft chime
+  function reveal() {
+    play(ctx => {
+      [1046.50, 1318.51].forEach((freq, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        const t = ctx.currentTime + i * 0.12;
+        o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(0.2, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+        o.start(t);
+        o.stop(t + 0.5);
+      });
+    });
+  }
+
+  // Game over / victory fanfare
+  function victory() {
+    play(ctx => {
+      const melody = [
+        {f:523.25, t:0},    {f:523.25, t:0.15},
+        {f:523.25, t:0.3},  {f:415.30, t:0.45},
+        {f:523.25, t:0.6},  {f:415.30, t:0.75},
+        {f:659.25, t:0.9},
+      ];
+      melody.forEach(({f, t}) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'square';
+        o.frequency.setValueAtTime(f, ctx.currentTime + t);
+        g.gain.setValueAtTime(0.18, ctx.currentTime + t);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.18);
+        o.start(ctx.currentTime + t);
+        o.stop(ctx.currentTime + t + 0.2);
+      });
+    });
+  }
+
+  // Game start - ascending sweep
+  function gameStart() {
+    play(ctx => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(220, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.4);
+      g.gain.setValueAtTime(0.25, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.5);
+    });
+  }
+
+  return { tileClick, correct, wrong, questionOpen, reveal, victory, gameStart };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════
+let state = {
+  players: [],
+  categories: [], // [{name, difficulty}]
+  scores: [],
+  currentQ: null,
+  usedCells: {},
+  currentTurn: 0,
+};
+
+// ═══════════════════════════════════════════════════════
+//  START SCREEN LOGIC
+// ═══════════════════════════════════════════════════════
+let playerCount = 1;
+let selectedCats = {}; // {catName: difficulty}
+
+function setPlayerCount(n) {
+  playerCount = n;
+  document.querySelectorAll('.pcount-btn').forEach((b,i)=>{
+    b.classList.toggle('active', i+1===n);
+  });
+  for(let i=1;i<=3;i++){
+    const pc = document.getElementById('pc'+i);
+    if(pc) pc.style.display = i<=n ? 'flex':'none';
+  }
+}
+
+function buildCatGrid() {
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  Object.keys(CATEGORIES).forEach(catName => {
+    const item = document.createElement('div');
+    item.className = 'cat-item';
+    item.id = 'cat_'+catName.replace(/\s+/g,'_');
+    item.innerHTML = `
+      <div class="cat-name">${catName}</div>
+      <div class="diff-selector">
+        <button class="diff-btn easy" data-cat="${catName}" data-diff="easy" onclick="toggleDiff(this,'easy','${catName}')">Easy</button>
+        <button class="diff-btn medium" data-cat="${catName}" data-diff="medium" onclick="toggleDiff(this,'medium','${catName}')">Med</button>
+        <button class="diff-btn hard" data-cat="${catName}" data-diff="hard" onclick="toggleDiff(this,'hard','${catName}')">Hard</button>
+      </div>
+    `;
+    grid.appendChild(item);
+  });
+}
+
+function toggleDiff(btn, diff, catName) {
+  const itemEl = document.getElementById('cat_'+catName.replace(/\s+/g,'_'));
+  const isCurrentlySelected = selectedCats[catName] === diff;
+
+  if (isCurrentlySelected) {
+    // deselect
+    delete selectedCats[catName];
+    itemEl.classList.remove('selected');
+    itemEl.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+  } else {
+    const count = Object.keys(selectedCats).length;
+    if(!selectedCats[catName] && count >= 6) { alert('You can only select 6 categories!'); return; }
+    selectedCats[catName] = diff;
+    itemEl.classList.add('selected');
+    itemEl.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  updateCatCount();
+}
+
+function updateCatCount() {
+  const c = Object.keys(selectedCats).length;
+  document.getElementById('catCountDisplay').textContent = c;
+  document.getElementById('startBtn').disabled = c !== 6;
+}
+
+function startGame() {
+  // Build players
+  state.players = [];
+  for(let i=1;i<=playerCount;i++){
+    const name = document.getElementById('p'+i+'name').value.trim() || 'Player '+i;
+    state.players.push(name);
+  }
+  state.scores = state.players.map(()=>0);
+  state.categories = Object.entries(selectedCats).map(([name,diff])=>({name,diff}));
+  state.usedCells = {};
+  state.currentTurn = 0;
+  SFX.gameStart();
+  showScreen('boardScreen');
+  buildBoard();
+  renderScoreboard();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOARD
+// ═══════════════════════════════════════════════════════
+const VALUES = [200, 400, 600, 800, 1000];
+
+function buildBoard() {
+  const board = document.getElementById('board');
+  const numCats = state.categories.length; // always 6
+  board.style.gridTemplateColumns = `repeat(${numCats}, 1fr)`;
+  board.innerHTML = '';
+
+  // Headers
+  state.categories.forEach(cat => {
+    const h = document.createElement('div');
+    h.className = 'cat-header';
+    h.textContent = cat.name.toUpperCase();
+    board.appendChild(h);
+  });
+
+  // 5 rows of value cells
+  for(let row=0;row<5;row++){
+    state.categories.forEach((cat, colIdx) => {
+      const cellKey = `${colIdx}_${row}`;
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (state.usedCells[cellKey] ? ' used':'');
+      cell.innerHTML = `<span class="val">$${VALUES[row]}</span>`;
+      cell.onclick = ()=> { SFX.tileClick(); openQuestion(cat, colIdx, row); };
+      board.appendChild(cell);
+    });
+  }
+}
+
+function renderScoreboard() {
+  const sb = document.getElementById('scoreboard');
+  sb.innerHTML = '';
+  state.players.forEach((name, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'score-cell' + (i===state.currentTurn ? ' current-turn':'');
+    cell.id = 'scell_'+i;
+    cell.innerHTML = `<div class="p-name">${name}</div><div class="p-score ${state.scores[i]<0?'negative':''}">${state.scores[i]<0?'-':''}$${Math.abs(state.scores[i])}</div>`;
+    sb.appendChild(cell);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  QUESTION MODAL
+// ═══════════════════════════════════════════════════════
+function openQuestion(cat, colIdx, row) {
+  const cellKey = `${colIdx}_${row}`;
+  if(state.usedCells[cellKey]) return;
+
+  const questions = CATEGORIES[cat.name][cat.diff];
+  const q = questions[row];
+  const value = VALUES[row];
+
+  state.currentQ = {cat, colIdx, row, cellKey, q, value};
+
+  document.getElementById('modalCat').textContent = cat.name.toUpperCase() + ' — ' + cat.diff.toUpperCase();
+  document.getElementById('modalVal').textContent = '$' + value;
+  document.getElementById('modalClue').textContent = q.q;
+  document.getElementById('answerReveal').style.display = 'none';
+  document.getElementById('answerReveal').textContent = '';
+
+  // Build buzz row
+  const buzzRow = document.getElementById('buzzRow');
+  buzzRow.innerHTML = '';
+  state.players.forEach((name, i) => {
+    const card = document.createElement('div');
+    card.className = 'buzz-card';
+    card.innerHTML = `
+      <div class="buzz-name">${name}</div>
+      <div class="buzz-btns">
+        <button class="buzz-btn correct" onclick="scorePlayer(${i}, true)">✓</button>
+        <button class="buzz-btn wrong" onclick="scorePlayer(${i}, false)">✗</button>
+      </div>
+    `;
+    buzzRow.appendChild(card);
+  });
+
+  SFX.questionOpen();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function scorePlayer(playerIdx, correct) {
+  const val = state.currentQ.value;
+  if(correct){
+    state.scores[playerIdx] += val;
+    SFX.correct();
+    flashFeedback('CORRECT!', true);
+    // Correct answer — lock everyone out
+    document.querySelectorAll('.buzz-btn').forEach(b => b.disabled = true);
+  } else {
+    state.scores[playerIdx] -= val;
+    SFX.wrong();
+    flashFeedback('WRONG!', false);
+    // Wrong answer — only disable this player's buttons
+    const cards = document.querySelectorAll('.buzz-card');
+    cards[playerIdx].querySelectorAll('.buzz-btn').forEach(b => b.disabled = true);
+  }
+  renderScoreboard();
+}
+
+function revealAnswer() {
+  SFX.reveal();
+  const ans = document.getElementById('answerReveal');
+  ans.textContent = '✓ ' + state.currentQ.q.a;
+  ans.style.display = 'block';
+}
+
+function closeModal() {
+  const {cellKey, colIdx, row} = state.currentQ;
+  state.usedCells[cellKey] = true;
+
+  // Mark cell used on board
+  const cells = document.querySelectorAll('.cell');
+  const numCats = state.categories.length;
+  const cellIndex = row * numCats + colIdx;
+  if(cells[cellIndex]) cells[cellIndex].classList.add('used');
+
+  // Advance turn
+  state.currentTurn = (state.currentTurn + 1) % state.players.length;
+  renderScoreboard();
+  document.getElementById('modalOverlay').classList.remove('open');
+
+  // Check if game is over
+  if(Object.keys(state.usedCells).length >= 30) {
+    setTimeout(showEndScreen, 400);
+  }
+}
+
+function flashFeedback(msg, correct) {
+  const el = document.getElementById('feedbackFlash');
+  el.textContent = msg;
+  el.className = 'feedback-flash ' + (correct ? 'correct-flash':'wrong-flash');
+  setTimeout(()=>el.classList.add('show'),10);
+  setTimeout(()=>el.classList.remove('show'),900);
+}
+
+// ═══════════════════════════════════════════════════════
+//  END SCREEN
+// ═══════════════════════════════════════════════════════
+function showEndScreen() {
+  SFX.victory();
+  showScreen('endScreen');
+  const sorted = state.players
+    .map((name,i)=>({name, score: state.scores[i]}))
+    .sort((a,b)=>b.score-a.score);
+
+  const medals = ['🥇','🥈','🥉'];
+  const podiumOrder = sorted.length === 3 ? [sorted[1], sorted[0], sorted[2]] : (sorted.length === 2 ? [sorted[1], sorted[0]] : [sorted[0]]);
+  const podiumClasses = sorted.length === 3 ? ['second','first','third'] : (sorted.length === 2 ? ['second','first'] : ['first']);
+
+  const podium = document.getElementById('podium');
+  podium.innerHTML = '';
+  podiumOrder.forEach((p, idx) => {
+    const rank = sorted.indexOf(p);
+    const block = document.createElement('div');
+    block.className = 'podium-block';
+    block.innerHTML = `
+      <div class="medal">${medals[rank] || ''}</div>
+      <div class="podium-name">${p.name}</div>
+      <div class="podium-score">${p.score<0?'-':''}$${Math.abs(p.score)}</div>
+      <div class="podium-bar ${podiumClasses[idx]}"></div>
+    `;
+    podium.appendChild(block);
+  });
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome() {
+  selectedCats = {};
+  setPlayerCount(1);
+  updateCatCount();
+  buildCatGrid();
+  showScreen('startScreen');
+}
+
+// ─── INIT ───
+buildCatGrid();
+</script>
+</body>
+</html>

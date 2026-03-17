@@ -3,733 +3,1140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dice Elimination Game</title>
+    <title>Left to Right 🎲</title>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: #0d0f1a;
+            --surface: #14172a;
+            --surface2: #1c2040;
+            --border: #2a2f55;
+            --neon-blue: #00c8ff;
+            --neon-pink: #ff2d87;
+            --neon-green: #00ff99;
+            --neon-yellow: #ffe600;
+            --neon-orange: #ff7b00;
+            --text: #e8eaf6;
+            --text-dim: #6b7280;
+            --eliminated: #ff2d5a;
+            --winner-glow: #00ff99;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Barlow', sans-serif;
+            background: var(--bg);
             min-height: 100vh;
-            padding: 20px;
-            color: #333;
+            color: var(--text);
+            overflow-x: hidden;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        /* Scanline overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.08) 2px,
+                rgba(0,0,0,0.08) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
         }
 
-        h1 {
+        /* Ambient glow circles */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -30vh; left: -20vw;
+            width: 80vw; height: 80vh;
+            background: radial-gradient(ellipse, rgba(0,200,255,0.04) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .bg-glow-right {
+            position: fixed;
+            bottom: -20vh; right: -20vw;
+            width: 70vw; height: 70vh;
+            background: radial-gradient(ellipse, rgba(255,45,135,0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── HEADER ── */
+        header {
             text-align: center;
-            color: #4a5568;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            padding: 28px 20px 16px;
+            position: relative;
         }
 
-        .setup-section {
-            text-align: center;
-            margin-bottom: 30px;
+        header h1 {
+            font-family: 'Black Ops One', sans-serif;
+            font-size: clamp(2.2rem, 6vw, 4rem);
+            letter-spacing: 4px;
+            color: var(--neon-blue);
+            text-shadow:
+                0 0 20px rgba(0,200,255,0.8),
+                0 0 60px rgba(0,200,255,0.3);
+            line-height: 1;
         }
 
-        .player-selector {
-            margin-bottom: 20px;
+        header p {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-top: 6px;
         }
 
-        .player-selector label {
-            font-size: 1.2em;
-            margin-right: 15px;
-            font-weight: bold;
+        /* ── SETUP ── */
+        .setup-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px 24px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
         }
 
-        .player-selector select {
-            padding: 10px 15px;
-            font-size: 1.1em;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            background: white;
+        .setup-bar label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .setup-bar select {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: var(--surface2);
+            color: var(--neon-blue);
+            border: 1px solid var(--neon-blue);
+            border-radius: 6px;
+            padding: 8px 14px;
+            outline: none;
             cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,200,255,0.2);
         }
 
-        .players-container {
+        /* ── BUTTONS ── */
+        .btn {
+            font-family: 'Black Ops One', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 22px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.1);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .btn:hover:not(:disabled)::after { opacity: 1; }
+        .btn:active:not(:disabled) { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        .btn-blue {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 16px rgba(0,200,255,0.4);
+        }
+        .btn-blue:hover:not(:disabled) {
+            box-shadow: 0 0 28px rgba(0,200,255,0.7);
+        }
+
+        .btn-green {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 16px rgba(0,255,153,0.4);
+        }
+        .btn-green:hover:not(:disabled) {
+            box-shadow: 0 0 28px rgba(0,255,153,0.7);
+        }
+
+        .btn-pink {
+            background: var(--neon-pink);
+            color: #fff;
+            box-shadow: 0 0 16px rgba(255,45,135,0.4);
+        }
+        .btn-pink:hover:not(:disabled) {
+            box-shadow: 0 0 28px rgba(255,45,135,0.7);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover:not(:disabled) {
+            border-color: var(--text-dim);
+            color: var(--text);
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main {
             display: grid;
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: 1fr 300px;
+            gap: 0;
+            min-height: calc(100vh - 130px);
         }
 
-        .player {
-            background: #f7fafc;
-            border: 3px solid #e2e8f0;
-            border-radius: 15px;
+        @media (max-width: 900px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── PLAYERS AREA ── */
+        .players-area {
             padding: 20px;
-            transition: all 0.3s ease;
+            border-right: 1px solid var(--border);
         }
 
-        .player.eliminated {
+        .players-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        /* ── PLAYER CARD ── */
+        .player-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 18px;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue);
+            transition: all 0.4s;
+        }
+
+        .player-card.eliminated {
+            border-color: rgba(255,45,90,0.3);
+            background: rgba(255,45,90,0.04);
+        }
+
+        .player-card.eliminated::before {
+            background: var(--eliminated);
+            box-shadow: 0 0 8px var(--eliminated);
             opacity: 0.5;
-            background: #fed7d7;
-            border-color: #fc8181;
         }
 
-        .player.winner {
-            background: #c6f6d5;
-            border-color: #48bb78;
-            box-shadow: 0 0 20px rgba(72, 187, 120, 0.3);
+        .player-card.winner {
+            border-color: var(--neon-green);
+            background: rgba(0,255,153,0.05);
+            box-shadow: 0 0 24px rgba(0,255,153,0.2);
+            animation: winnerPulse 2s ease-in-out infinite;
         }
 
-        .player-header {
-            text-align: center;
-            margin-bottom: 15px;
+        .player-card.winner::before {
+            background: var(--neon-green);
+            box-shadow: 0 0 16px var(--neon-green);
         }
 
-        .player-name {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #2d3748;
+        @keyframes winnerPulse {
+            0%, 100% { box-shadow: 0 0 24px rgba(0,255,153,0.2); }
+            50% { box-shadow: 0 0 40px rgba(0,255,153,0.5); }
+        }
+
+        .player-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .player-rank-badge {
+            font-family: 'Black Ops One', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255,45,90,0.2);
+            color: var(--eliminated);
+            border: 1px solid rgba(255,45,90,0.3);
+            white-space: nowrap;
+        }
+
+        .player-rank-badge.winner {
+            background: rgba(0,255,153,0.2);
+            color: var(--neon-green);
+            border-color: rgba(0,255,153,0.3);
+        }
+
+        .player-name-display {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text);
+            flex: 1;
+        }
+
+        .player-card.eliminated .player-name-display {
+            color: var(--text-dim);
+        }
+
+        .player-card.winner .player-name-display {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px rgba(0,255,153,0.5);
         }
 
         .player-name-input {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #2d3748;
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 8px 12px;
-            text-align: center;
-            width: 100%;
-            max-width: 200px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 5px 10px;
             outline: none;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.2s;
+            flex: 1;
+            min-width: 0;
         }
 
         .player-name-input:focus {
-            border-color: #4299e1;
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 8px rgba(0,200,255,0.2);
         }
 
-        .squares-container {
+        /* ── SQUARES ── */
+        .squares-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .square {
+            width: 52px;
+            height: 52px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Black Ops One', sans-serif;
+            font-size: 1.4rem;
+            background: var(--surface2);
+            color: var(--text-dim);
+            transition: all 0.25s;
+            position: relative;
+        }
+
+        .square.has-value {
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            background: rgba(0,200,255,0.07);
+            box-shadow: inset 0 0 10px rgba(0,200,255,0.1);
+            cursor: pointer;
+        }
+        .square.has-value:hover {
+            border-color: var(--eliminated);
+            color: var(--eliminated);
+            background: rgba(255,45,90,0.1);
+        }
+
+        .square.active-leftmost {
+            border-color: var(--neon-yellow);
+            color: var(--neon-yellow);
+            background: rgba(255,230,0,0.08);
+            box-shadow: 0 0 12px rgba(255,230,0,0.25), inset 0 0 8px rgba(255,230,0,0.1);
+        }
+
+        .square.elim-state {
+            border-color: rgba(255,45,90,0.4);
+            background: rgba(255,45,90,0.08);
+            color: rgba(255,45,90,0.5);
+            text-decoration: line-through;
+            text-decoration-color: var(--eliminated);
+            text-decoration-thickness: 3px;
+        }
+
+        .square-arrow {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            opacity: 0.5;
+        }
+
+        /* ── NUMBER PALETTE ── */
+        .num-palette {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .palette-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background: var(--surface2);
+            color: var(--text-dim);
+            font-family: 'Black Ops One', sans-serif;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.18s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .palette-btn:hover {
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            background: rgba(0,200,255,0.1);
+            box-shadow: 0 0 10px rgba(0,200,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .palette-btn:active {
+            transform: scale(0.93);
+        }
+
+        /* ── SIDE PANEL ── */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        /* ── DICE SECTION ── */
+        .dice-section {
+            padding: 28px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .dice-face {
+            width: 110px;
+            height: 110px;
+            border: 3px solid var(--neon-blue);
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Black Ops One', sans-serif;
+            font-size: 3.5rem;
+            color: var(--neon-blue);
+            background: rgba(0,200,255,0.05);
+            box-shadow: 0 0 30px rgba(0,200,255,0.25), inset 0 0 20px rgba(0,200,255,0.05);
+            margin-bottom: 12px;
+            transition: all 0.15s;
+            position: relative;
+            user-select: none;
+        }
+        .dice-face.clickable {
+            cursor: pointer;
+        }
+        .dice-face.clickable:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 45px rgba(0,200,255,0.6), inset 0 0 20px rgba(0,200,255,0.1);
+        }
+        .dice-face.clickable:active { transform: scale(0.97); }
+        .dice-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+        }
+
+        .dice-face.rolling {
+            animation: diceRoll 0.5s ease-in-out;
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+            box-shadow: 0 0 30px rgba(255,45,135,0.4), inset 0 0 20px rgba(255,45,135,0.1);
+        }
+
+        @keyframes diceRoll {
+            0% { transform: rotate(0deg) scale(1); }
+            20% { transform: rotate(-15deg) scale(1.1); }
+            40% { transform: rotate(15deg) scale(0.95); }
+            60% { transform: rotate(-10deg) scale(1.05); }
+            80% { transform: rotate(5deg) scale(0.98); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        .dice-face.result-flash {
+            animation: resultFlash 0.3s ease forwards;
+        }
+
+        @keyframes resultFlash {
+            0% { transform: scale(1.25); box-shadow: 0 0 60px rgba(0,200,255,0.8); }
+            100% { transform: scale(1); }
+        }
+
+        /* ── STATUS BADGE ── */
+        .status-msg {
+            padding: 16px 20px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-align: center;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-msg.highlight {
+            color: var(--neon-yellow);
+        }
+
+        .status-msg.winner-msg {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px rgba(0,255,153,0.5);
+            font-size: 1.1rem;
+        }
+
+        /* ── ROLL LOG ── */
+        .roll-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .roll-log h3 {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 10px;
+            background: var(--surface2);
+            border-radius: 6px;
+            border-left: 3px solid transparent;
+            animation: logSlide 0.3s ease;
+        }
+
+        @keyframes logSlide {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-entry.had-effect { border-left-color: var(--neon-pink); }
+        .log-entry.no-effect { border-left-color: var(--text-dim); }
+        .log-entry.win-entry { border-left-color: var(--neon-green); }
+
+        .log-dice {
+            font-family: 'Black Ops One', sans-serif;
+            font-size: 1.1rem;
+            color: var(--neon-blue);
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .log-text {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            flex: 1;
+        }
+
+        .log-entry.had-effect .log-text { color: var(--text); }
+        .log-entry.win-entry .log-text { color: var(--neon-green); }
+
+        /* ── GAME CONTROLS BAR ── */
+        .controls-bar {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
             display: flex;
             gap: 10px;
             justify-content: center;
             flex-wrap: wrap;
         }
 
-        .square {
-            width: 60px;
-            height: 60px;
-            border: 3px solid #cbd5e0;
-            border-radius: 10px;
+        /* ── HIDDEN ── */
+        .hidden { display: none !important; }
+
+        /* ── WINNER OVERLAY ── */
+        .winner-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5em;
-            font-weight: bold;
-            background: white;
-            transition: all 0.3s ease;
+            z-index: 1000;
+            animation: overlayIn 0.4s ease;
         }
 
-        .square input {
-            width: 100%;
-            height: 100%;
-            border: none;
+        @keyframes overlayIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .winner-card {
+            background: var(--surface);
+            border: 2px solid var(--neon-green);
+            border-radius: 20px;
+            padding: 50px 60px;
             text-align: center;
-            font-size: 1.5em;
-            font-weight: bold;
-            background: transparent;
-            outline: none;
-            -moz-appearance: textfield;
+            box-shadow: 0 0 60px rgba(0,255,153,0.3);
+            animation: winCardIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+            max-width: 90vw;
         }
 
-        .square input::-webkit-outer-spin-button,
-        .square input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        @keyframes winCardIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
         }
 
-        .square.filled {
-            background: #e6fffa;
-            border-color: #38b2ac;
-            color: #2d3748;
+        .winner-card .trophy { font-size: 5rem; margin-bottom: 16px; display: block; }
+
+        .winner-card h2 {
+            font-family: 'Black Ops One', sans-serif;
+            font-size: clamp(1.5rem, 5vw, 3rem);
+            color: var(--neon-green);
+            text-shadow: 0 0 30px rgba(0,255,153,0.6);
+            letter-spacing: 3px;
+            margin-bottom: 8px;
         }
 
-        .square.eliminated {
-            background: #fed7d7;
-            border-color: #fc8181;
-            opacity: 0.6;
-            text-decoration: line-through;
-            text-decoration-thickness: 3px;
-            color: #e53e3e;
+        .winner-card p {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 30px;
         }
 
-        .game-controls {
-            text-align: center;
-            margin: 30px 0;
+        /* ── CONFETTI ── */
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -20px;
+            border-radius: 2px;
+            animation: confettiFall linear forwards;
+            z-index: 2000;
+            pointer-events: none;
         }
 
-        .btn {
-            padding: 15px 30px;
-            font-size: 1.2em;
-            font-weight: bold;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 0 10px;
+        @keyframes confettiFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
         }
 
-        .btn-primary {
-            background: #4299e1;
-            color: white;
+        /* ── RESPONSIVE ── */
+        @media (max-width: 600px) {
+            .square { width: 42px; height: 42px; font-size: 1.1rem; }
+            .square input { font-size: 1.1rem; }
+            .player-card { padding: 10px 12px; }
         }
 
-        .btn-primary:hover:not(:disabled) {
-            background: #3182ce;
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-
-        .btn-success:hover:not(:disabled) {
-            background: #38a169;
-            transform: translateY(-2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .dice-section {
-            text-align: center;
-            margin: 30px 0;
-            padding: 20px;
-            background: #edf2f7;
-            border-radius: 15px;
-        }
-
-        .dice {
-            width: 80px;
-            height: 80px;
-            background: white;
-            border: 3px solid #2d3748;
-            border-radius: 15px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5em;
-            font-weight: bold;
-            margin: 20px;
-            transition: all 0.5s ease;
-        }
-
-        .dice.rolling {
-            animation: roll 0.5s ease-in-out;
-        }
-
-        @keyframes roll {
-            0%, 100% { transform: rotate(0deg); }
-            25% { transform: rotate(90deg); }
-            50% { transform: rotate(180deg); }
-            75% { transform: rotate(270deg); }
-        }
-
-        .game-status {
-            text-align: center;
-            font-size: 1.3em;
-            font-weight: bold;
-            margin: 20px 0;
-            padding: 15px;
-            border-radius: 10px;
-        }
-
-        .status-playing {
-            background: #bee3f8;
-            color: #2b6cb0;
-        }
-
-        .status-winner {
-            background: #c6f6d5;
-            color: #2f855a;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-            }
-            
-            .squares-container {
-                gap: 5px;
-            }
-            
-            .square {
-                width: 50px;
-                height: 50px;
-                font-size: 1.2em;
-            }
-            
-            .square input {
-                font-size: 1.2em;
-            }
-        }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎲 Left to Right</h1>
-        
-        <div class="setup-section">
-            <div class="player-selector">
-                <label for="playerCount">Number of Players:</label>
-                <select id="playerCount">
-                    <option value="2">2 Players</option>
-                    <option value="3">3 Players</option>
-                    <option value="4">4 Players</option>
-                    <option value="5">5 Players</option>
-                    <option value="6">6 Players</option>
-                    <option value="7">7 Players</option>
-                    <option value="8">8 Players</option>
-                    <option value="9">9 Players</option>
-                    <option value="10">10 Players</option>
-                    <option value="11">11 Players</option>
-                    <option value="12">12 Players</option>
-                    <option value="13">13 Players</option>
-                    <option value="14">14 Players</option>
-                    <option value="15">15 Players</option>
-                    <option value="16">16 Players</option>
-                </select>
-                <button class="btn btn-primary" onclick="setupGame()">Setup Game</button>
-            </div>
+    <div class="bg-glow-right"></div>
+
+    <header>
+        <h1>🎲 LEFT TO RIGHT</h1>
+        <p>Eliminate your squares — last one standing wins</p>
+    </header>
+
+    <div class="setup-bar">
+        <label for="playerCount">Players</label>
+        <select id="playerCount">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+            <option value="16">16</option>
+        </select>
+        <button class="btn btn-blue" onclick="setupGame()">Setup Game</button>
+        <div id="startBtnWrap">
+            <button id="startGameBtn" class="btn btn-green" onclick="startGame()" disabled>▶ Start Game</button>
+        </div>
+        <button id="newGameBtn" class="btn btn-outline hidden" onclick="newGame()">↺ New Game</button>
+    </div>
+
+    <div id="mainArea" class="main hidden">
+        <!-- Left: players -->
+        <div class="players-area">
+            <div id="playersGrid" class="players-grid"></div>
         </div>
 
-        <div id="gameArea" class="hidden">
-            <div id="playersContainer" class="players-container"></div>
-            
-            <div class="game-controls">
-                <button id="startGameBtn" class="btn btn-success" onclick="startGame()" disabled>Start Game</button>
-                <button id="newGameBtn" class="btn btn-primary" onclick="newGame()" style="display: none;">New Game</button>
+        <!-- Right: controls + log -->
+        <div class="side-panel">
+            <div class="dice-section">
+                <div class="dice-face" id="diceFace">?</div>
+                <div class="dice-label" id="diceLabel">—</div>
             </div>
 
-            <div id="gameSection" class="hidden">
-                <div class="dice-section">
-                    <div class="dice" id="dice">?</div>
-                    <br>
-                    <button id="rollBtn" class="btn btn-primary" onclick="rollDice()">Roll Dice</button>
-                </div>
-                
-                <div id="gameStatus" class="game-status status-playing">
-                    Fill all squares with numbers 1-6, then start the game!
-                </div>
+            <div id="statusMsg" class="status-msg">Set up the game to begin.</div>
+
+            <div class="roll-log" id="rollLog">
+                <h3>Roll History</h3>
             </div>
         </div>
     </div>
 
+    <!-- Winner Overlay -->
+    <div class="winner-overlay hidden" id="winnerOverlay">
+        <div class="winner-card">
+            <span class="trophy">🏆</span>
+            <h2 id="winnerName">—</h2>
+            <p>Wins the game!</p>
+            <button class="btn btn-green" onclick="closeOverlay()">Continue</button>
+        </div>
+    </div>
+
     <script>
-        let gameState = {
+        let state = {
             players: [],
-            currentPlayer: 0,
             gameStarted: false,
-            gameEnded: false
+            gameEnded: false,
+            rollCount: 0,
+            eliminationOrder: [],
+            rolling: false,
+            pendingRoll: null   // roll result waiting to be "used"
         };
 
+        /* ────── AUDIO ────── */
+        function getCtx() {
+            if (!window._audioCtx) window._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return window._audioCtx;
+        }
+        function tone(freq, type, duration, gain, startDelay = 0) {
+            const ctx = getCtx();
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination);
+            osc.frequency.value = freq; osc.type = type;
+            const t = ctx.currentTime + startDelay;
+            g.gain.setValueAtTime(gain, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+            osc.start(t); osc.stop(t + duration);
+        }
+        function playClick()      { tone(600, 'sine', 0.06, 0.18); }
+        function playRemove()     { tone(280, 'sine', 0.1, 0.15); }
+        function playRoll()       { tone(300, 'sawtooth', 0.08, 0.15); }
+        function playSingleElim() { tone(440,'square',0.12,0.2); tone(330,'square',0.15,0.15,0.1); }
+        function playChainElim()  { [520,460,400,330].forEach((f,i)=>tone(f,'square',0.12,0.25,i*0.08)); }
+        function playPlayerOut()  { [200,150,100].forEach((f,i)=>tone(f,'sawtooth',0.25,0.3,i*0.1)); }
+        function playNoEffect()   { tone(180,'sine',0.18,0.12); }
+        function playWin()        { [[523,0],[659,0.18],[784,0.36],[523,0.54],[784,0.72],[1047,0.9]].forEach(([f,t])=>tone(f,'sine',0.3,0.4,t)); }
+
+        /* ────── SETUP ────── */
         function setupGame() {
-            const playerCount = parseInt(document.getElementById('playerCount').value);
-            gameState.players = [];
-            gameState.currentPlayer = 0;
-            gameState.gameStarted = false;
-            gameState.gameEnded = false;
+            const count = parseInt(document.getElementById('playerCount').value);
+            state.players = Array.from({ length: count }, (_, i) => ({
+                id: i,
+                name: `Player ${i + 1}`,
+                squares: [null,null,null,null,null,null],
+                eliminated: false,
+                eliminationRank: null
+            }));
+            state.gameStarted = false;
+            state.gameEnded = false;
+            state.rollCount = 0;
+            state.eliminationOrder = [];
+            state.rolling = false;
+            state.pendingRoll = null;
 
-            // Create players
-            for (let i = 0; i < playerCount; i++) {
-                gameState.players.push({
-                    id: i,
-                    name: `Player ${i + 1}`,
-                    squares: [null, null, null, null, null, null],
-                    eliminated: false
-                });
-            }
-
-            renderPlayers();
-            document.getElementById('gameArea').classList.remove('hidden');
-            document.getElementById('gameSection').classList.add('hidden');
+            document.getElementById('mainArea').classList.remove('hidden');
+            document.getElementById('newGameBtn').classList.add('hidden');
+            document.getElementById('startBtnWrap').classList.remove('hidden');
             document.getElementById('startGameBtn').disabled = true;
-            updateGameStatus("Fill all squares with numbers 1-6, then start the game!");
+            setDiceIdle();
+            clearLog();
+            setStatus('Click a number on each player\'s palette to fill their squares.', '');
+            setGrid();
         }
 
-        function renderPlayers() {
-            const container = document.getElementById('playersContainer');
-            container.innerHTML = '';
-
-            // Determine grid layout based on player count
-            const playerCount = gameState.players.length;
-            if (playerCount <= 2) {
-                container.style.gridTemplateColumns = 'repeat(auto-fit, minmax(400px, 1fr))';
-            } else if (playerCount <= 4) {
-                container.style.gridTemplateColumns = 'repeat(2, 1fr)';
-            } else if (playerCount <= 9) {
-                container.style.gridTemplateColumns = 'repeat(3, 1fr)';
-            } else {
-                container.style.gridTemplateColumns = 'repeat(4, 1fr)';
-            }
-
-            gameState.players.forEach(player => {
-                const playerDiv = document.createElement('div');
-                playerDiv.className = `player ${player.eliminated ? 'eliminated' : ''}`;
-                if (isWinner(player)) {
-                    playerDiv.classList.add('winner');
-                }
-
-                const playerNameContent = gameState.gameStarted 
-                    ? `<div class="player-name">${player.name}</div>`
-                    : `<input type="text" class="player-name-input" value="${player.name}" onchange="updatePlayerName(${player.id}, this.value)" placeholder="Enter player name">`;
-
-                playerDiv.innerHTML = `
-                    <div class="player-header">
-                        ${playerNameContent}
-                    </div>
-                    <div class="squares-container">
-                        ${player.squares.map((value, index) => {
-                            if (gameState.gameStarted) {
-                                // Game has started - show eliminated squares with strikethrough or filled squares
-                                if (typeof value === 'object' && value !== null && value.eliminated) {
-                                    return `<div class="square filled eliminated">${value.originalValue}</div>`;
-                                } else if (value !== null && typeof value === 'number') {
-                                    return `<div class="square filled">${value}</div>`;
-                                } else {
-                                    return `<div class="square"></div>`;
-                                }
-                            } else {
-                                // Game hasn't started - keep all squares as editable inputs
-                                const inputValue = (value !== null && typeof value === 'number') ? value : '';
-                                return `<div class="square ${inputValue ? 'filled' : ''}"><input type="number" min="1" max="6" value="${inputValue}" oninput="handleSquareInput(${player.id}, ${index}, this)" onchange="updateSquare(${player.id}, ${index}, this.value)"></div>`;
-                            }
-                        }).join('')}
-                    </div>
-                `;
-
-                container.appendChild(playerDiv);
-            });
-
-            checkStartGameButton();
-        }
-
-        function updateSquare(playerId, squareIndex, value) {
-            const numValue = parseInt(value);
-            if (numValue >= 1 && numValue <= 6) {
-                gameState.players[playerId].squares[squareIndex] = numValue;
-                autoAdvanceToNextSquare(playerId, squareIndex);
-            } else {
-                gameState.players[playerId].squares[squareIndex] = null;
-            }
+        function setGrid() {
+            const n = state.players.length;
+            const g = document.getElementById('playersGrid');
+            g.style.gridTemplateColumns = n <= 2 ? '1fr' : n <= 6 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)';
             renderPlayers();
         }
 
-        function autoAdvanceToNextSquare(playerId, currentSquareIndex) {
-            // Find the next empty square for this player
-            const player = gameState.players[playerId];
-            for (let i = currentSquareIndex + 1; i < player.squares.length; i++) {
-                if (player.squares[i] === null) {
-                    // Focus the next empty square after a short delay to allow rendering
-                    setTimeout(() => {
-                        const playerElements = document.querySelectorAll('.player');
-                        const currentPlayerElement = playerElements[playerId];
-                        const inputs = currentPlayerElement.querySelectorAll('input[type="number"]');
-                        if (inputs[i]) {
-                            inputs[i].focus();
-                        }
-                    }, 50);
-                    return;
+        /* ────── RENDER ────── */
+        function renderPlayers() {
+            const g = document.getElementById('playersGrid');
+            g.innerHTML = '';
+            state.players.forEach(player => {
+                const card = document.createElement('div');
+                card.className = `player-card${player.eliminated ? ' eliminated' : ''}${isWinner(player) ? ' winner' : ''}`;
+                card.id = `player-card-${player.id}`;
+
+                const nameHtml = state.gameStarted
+                    ? `<div class="player-name-display">${player.name}</div>`
+                    : `<input class="player-name-input" type="text" value="${player.name}"
+                         oninput="updateName(${player.id}, this.value)"
+                         placeholder="Player ${player.id + 1}">`;
+
+                let badgeHtml = '';
+                if (isWinner(player)) {
+                    badgeHtml = `<span class="player-rank-badge winner">🏆 Winner</span>`;
+                } else if (player.eliminationRank !== null) {
+                    badgeHtml = `<span class="player-rank-badge">OUT ${ordinal(player.eliminationRank)}</span>`;
                 }
-            }
-            
-            // If no empty squares found in current player, try next player
-            for (let nextPlayerId = playerId + 1; nextPlayerId < gameState.players.length; nextPlayerId++) {
-                const nextPlayer = gameState.players[nextPlayerId];
-                for (let i = 0; i < nextPlayer.squares.length; i++) {
-                    if (nextPlayer.squares[i] === null) {
-                        setTimeout(() => {
-                            const playerElements = document.querySelectorAll('.player');
-                            const nextPlayerElement = playerElements[nextPlayerId];
-                            const inputs = nextPlayerElement.querySelectorAll('input[type="number"]');
-                            if (inputs[i]) {
-                                inputs[i].focus();
-                            }
-                        }, 50);
-                        return;
+
+                // Leftmost active square index
+                let leftmost = -1;
+                if (state.gameStarted && !player.eliminated) {
+                    for (let i = 0; i < player.squares.length; i++) {
+                        const s = player.squares[i];
+                        if (!(s && typeof s === 'object' && s.eliminated)) { leftmost = i; break; }
                     }
                 }
-            }
+
+                // Squares
+                const squaresHtml = player.squares.map((sq, i) => {
+                    if (!state.gameStarted) {
+                        const v = (sq !== null && typeof sq === 'number') ? sq : '';
+                        const cls = v ? 'has-value' : '';
+                        const clickHandler = v ? `onclick="removeSquare(${player.id}, ${i})"` : '';
+                        const label = v || '·';
+                        return `<div class="square ${cls}" ${clickHandler} title="${v ? 'Click to remove' : ''}">${label}</div>`
+                             + (i < 5 ? `<span class="square-arrow">›</span>` : '');
+                    } else {
+                        if (sq && typeof sq === 'object' && sq.eliminated) {
+                            return `<div class="square elim-state">${sq.v}</div>` + (i < 5 ? `<span class="square-arrow">›</span>` : '');
+                        } else if (sq !== null) {
+                            const isLeft = i === leftmost;
+                            return `<div class="square ${isLeft ? 'active-leftmost' : 'has-value'}">${sq}</div>` + (i < 5 ? `<span class="square-arrow">›</span>` : '');
+                        } else {
+                            return `<div class="square"></div>` + (i < 5 ? `<span class="square-arrow">›</span>` : '');
+                        }
+                    }
+                }).join('');
+
+                // Number palette (setup only, not eliminated)
+                let paletteHtml = '';
+                if (!state.gameStarted) {
+                    const nextEmpty = player.squares.indexOf(null);
+                    const full = nextEmpty === -1;
+                    paletteHtml = `<div class="num-palette">` +
+                        [1,2,3,4,5,6].map(n =>
+                            `<button class="palette-btn" onclick="addSquare(${player.id}, ${n})"
+                              ${full ? 'disabled style="opacity:0.25;cursor:not-allowed"' : ''}>${n}</button>`
+                        ).join('') +
+                        `</div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="player-top">${nameHtml}${badgeHtml}</div>
+                    <div class="squares-row">${squaresHtml}</div>
+                    ${paletteHtml}
+                `;
+                g.appendChild(card);
+            });
+            checkStartable();
         }
 
-        function handleSquareInput(playerId, squareIndex, inputElement) {
-            const value = inputElement.value;
-            const numValue = parseInt(value);
-            
-            // If valid single digit 1-6, immediately advance
-            if (value.length === 1 && numValue >= 1 && numValue <= 6) {
-                gameState.players[playerId].squares[squareIndex] = numValue;
-                autoAdvanceToNextSquare(playerId, squareIndex);
-                renderPlayers();
-            }
-        }
-
-        function updatePlayerName(playerId, newName) {
-            if (newName.trim()) {
-                gameState.players[playerId].name = newName.trim();
-            }
-        }
-
-        function checkStartGameButton() {
-            const allSquaresFilled = gameState.players.every(player => 
-                player.squares.every(square => square !== null)
-            );
-            document.getElementById('startGameBtn').disabled = !allSquaresFilled || gameState.gameStarted;
-        }
-
-        function startGame() {
-            gameState.gameStarted = true;
-            document.getElementById('gameSection').classList.remove('hidden');
-            document.getElementById('startGameBtn').style.display = 'none';
+        /* ────── PALETTE INTERACTIONS ────── */
+        function addSquare(pid, num) {
+            const player = state.players[pid];
+            const idx = player.squares.indexOf(null);
+            if (idx === -1) return; // already full
+            player.squares[idx] = num;
+            playClick();
             renderPlayers();
-            updateGameStatus("Game started! Roll the dice to eliminate squares!");
+        }
+
+        function removeSquare(pid, idx) {
+            if (state.gameStarted) return;
+            state.players[pid].squares[idx] = null;
+            playRemove();
+            renderPlayers();
+        }
+
+        function updateName(pid, val) {
+            state.players[pid].name = val.trim() || `Player ${pid + 1}`;
+        }
+
+        function checkStartable() {
+            const ok = !state.gameStarted && state.players.every(p => p.squares.every(s => s !== null && typeof s === 'number'));
+            document.getElementById('startGameBtn').disabled = !ok;
+        }
+
+        /* ────── GAME FLOW ────── */
+        function startGame() {
+            state.gameStarted = true;
+            document.getElementById('startBtnWrap').classList.add('hidden');
+            setStatus('Click the die to roll!', 'highlight');
+            setDiceReady();
+            renderPlayers();
+        }
+
+        function setDiceIdle() {
+            const face = document.getElementById('diceFace');
+            const label = document.getElementById('diceLabel');
+            face.textContent = '?';
+            face.className = 'dice-face';
+            face.onclick = null;
+            label.textContent = '—';
+        }
+
+        function setDiceReady() {
+            const face = document.getElementById('diceFace');
+            const label = document.getElementById('diceLabel');
+            face.className = 'dice-face clickable';
+            face.onclick = rollDice;
+            label.textContent = 'Click to roll';
         }
 
         function rollDice() {
-            if (gameState.gameEnded) return;
+            if (state.gameEnded || state.rolling) return;
+            state.rolling = true;
 
-            const dice = document.getElementById('dice');
-            const rollBtn = document.getElementById('rollBtn');
-            
-            dice.classList.add('rolling');
-            rollBtn.disabled = true;
-            
-            playSound('roll');
+            const face = document.getElementById('diceFace');
+            const label = document.getElementById('diceLabel');
+            face.className = 'dice-face rolling';
+            face.onclick = null;
+            label.textContent = 'Rolling…';
+            playRoll();
 
-            // Simulate rolling animation
-            let rollCount = 0;
-            const rollInterval = setInterval(() => {
-                dice.textContent = Math.floor(Math.random() * 6) + 1;
-                rollCount++;
-                
-                if (rollCount >= 10) {
-                    clearInterval(rollInterval);
-                    const finalRoll = Math.floor(Math.random() * 6) + 1;
-                    dice.textContent = finalRoll;
-                    dice.classList.remove('rolling');
-                    rollBtn.disabled = false;
-                    
-                    processRoll(finalRoll);
+            let ticks = 0;
+            const iv = setInterval(() => {
+                face.textContent = Math.ceil(Math.random() * 6);
+                ticks++;
+                if (ticks >= 12) {
+                    clearInterval(iv);
+                    const result = Math.ceil(Math.random() * 6);
+                    face.textContent = result;
+                    face.className = 'dice-face result-flash';
+                    setTimeout(() => { face.className = 'dice-face'; }, 350);
+                    state.rolling = false;
+                    processRoll(result);
                 }
-            }, 50);
+            }, 55);
         }
 
-        function processRoll(diceValue) {
-            let squaresEliminated = 0;
-            let playersEliminated = 0;
+        function processRoll(val) {
+            state.rollCount++;
+            let totalEliminated = 0;
+            let maxChain = 0;
+            let newlyOut = [];
 
-            gameState.players.forEach(player => {
+            state.players.forEach(player => {
                 if (player.eliminated) return;
-
-                // Continue eliminating squares as long as the leftmost matches the dice
-                let continueEliminating = true;
-                while (continueEliminating) {
-                    continueEliminating = false;
-                    
-                    // Find leftmost non-eliminated square
+                let chain = 0;
+                let keep = true;
+                while (keep) {
+                    keep = false;
                     for (let i = 0; i < player.squares.length; i++) {
-                        const square = player.squares[i];
-                        if (!(typeof square === 'object' && square !== null && square.eliminated)) {
-                            // This is the leftmost square, check if it matches the dice
-                            if (square === diceValue) {
-                                player.squares[i] = { originalValue: square, eliminated: true };
-                                squaresEliminated++;
-                                continueEliminating = true; // Continue checking for more matches
-                            }
-                            break; // Only check the leftmost square, then continue the while loop
+                        const sq = player.squares[i];
+                        if (sq && typeof sq === 'object' && sq.eliminated) continue;
+                        if (sq === val) {
+                            player.squares[i] = { v: val, eliminated: true };
+                            chain++; totalEliminated++; keep = true;
                         }
+                        break;
                     }
                 }
-
-                // Check if player is eliminated
-                const allEliminated = player.squares.every(square => 
-                    typeof square === 'object' && square !== null && square.eliminated
-                );
-                if (allEliminated && !player.eliminated) {
+                if (chain > maxChain) maxChain = chain;
+                if (player.squares.every(s => s && typeof s === 'object' && s.eliminated) && !player.eliminated) {
                     player.eliminated = true;
-                    playersEliminated++;
+                    state.eliminationOrder.push(player.id);
+                    player.eliminationRank = state.eliminationOrder.length;
+                    newlyOut.push(player.name);
                 }
             });
 
-            if (squaresEliminated === 0 && !gameState.gameEnded) {
-                updateGameStatus(`Rolled ${diceValue}! No squares eliminated. Rolling again...`);
+            let logText, logClass;
+            if (totalEliminated === 0) {
+                logText = 'No matches — rerolling';
+                logClass = 'no-effect';
+                addLog(val, logText, logClass);
+                playNoEffect();
+                setStatus(`Rolled ${val} — no matches! Rerolling…`, '');
                 renderPlayers();
-                
-                // Auto-roll after a short delay
-                setTimeout(() => {
-                    if (!gameState.gameEnded) {
-                        rollDice();
-                    }
-                }, 1000);
+                setTimeout(() => { if (!state.gameEnded) rollDice(); }, 900);
                 return;
+            } else if (maxChain >= 2) {
+                logText = `${totalEliminated} eliminated (chain!)`;
+                logClass = 'had-effect';
+                playChainElim();
+            } else {
+                logText = `${totalEliminated} square${totalEliminated !== 1 ? 's' : ''} eliminated`;
+                logClass = 'had-effect';
+                playSingleElim();
             }
 
-            if (squaresEliminated > 0) {
-                playSound('eliminate');
-            }
-            if (playersEliminated > 0) {
-                setTimeout(() => playSound('playerOut'), 300);
+            if (newlyOut.length) {
+                setTimeout(playPlayerOut, 350);
+                logText += ` · ${newlyOut.join(', ')} out!`;
             }
 
+            addLog(val, logText, logClass);
             renderPlayers();
-            checkGameEnd();
-
-            if (squaresEliminated > 0) {
-                updateGameStatus(`Rolled ${diceValue}! ${squaresEliminated} square(s) eliminated!`);
-            }
+            setStatus(`Rolled ${val} — ${logText}`, 'highlight');
+            checkWin();
+            if (!state.gameEnded) setDiceReady();
         }
 
-        function checkGameEnd() {
-            const activePlayers = gameState.players.filter(player => !player.eliminated);
-            
-            if (activePlayers.length === 1) {
-                gameState.gameEnded = true;
-                const winner = activePlayers[0];
-                updateGameStatus(`🎉 ${winner.name} wins the game! 🎉`);
-                document.getElementById('rollBtn').disabled = true;
-                document.getElementById('newGameBtn').style.display = 'inline-block';
-                
-                setTimeout(() => playSound('win'), 500);
-                
-                // Add winner class
-                renderPlayers();
-            } else if (activePlayers.length === 0) {
-                gameState.gameEnded = true;
-                updateGameStatus("It's a tie! All players eliminated!");
-                document.getElementById('rollBtn').disabled = true;
-                document.getElementById('newGameBtn').style.display = 'inline-block';
+        function checkWin() {
+            const active = state.players.filter(p => !p.eliminated);
+            if (active.length <= 1) {
+                state.gameEnded = true;
+                setDiceIdle();
+                document.getElementById('newGameBtn').classList.remove('hidden');
+                if (active.length === 1) {
+                    const w = active[0];
+                    setStatus(`🏆 ${w.name} wins!`, 'winner-msg');
+                    addLog('🏆', `${w.name} wins!`, 'win-entry');
+                    renderPlayers();
+                    setTimeout(() => { playWin(); showWinnerOverlay(w.name); launchConfetti(); }, 400);
+                } else {
+                    setStatus("It's a tie — everyone's out!", '');
+                    renderPlayers();
+                }
             }
         }
 
         function isWinner(player) {
-            if (!gameState.gameEnded) return false;
-            const activePlayers = gameState.players.filter(p => !p.eliminated);
-            return activePlayers.length === 1 && activePlayers[0].id === player.id;
+            if (!state.gameEnded) return false;
+            return !player.eliminated;
         }
 
-        function updateGameStatus(message) {
-            const statusDiv = document.getElementById('gameStatus');
-            statusDiv.textContent = message;
-            
-            if (gameState.gameEnded) {
-                statusDiv.className = 'game-status status-winner';
-            } else {
-                statusDiv.className = 'game-status status-playing';
+        /* ────── UI HELPERS ────── */
+        function setStatus(msg, cls) {
+            const el = document.getElementById('statusMsg');
+            el.textContent = msg;
+            el.className = `status-msg${cls ? ' ' + cls : ''}`;
+        }
+
+        function addLog(dice, text, cls) {
+            const log = document.getElementById('rollLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${cls}`;
+            entry.innerHTML = `<span class="log-dice">${dice}</span><span class="log-text">${text}</span>`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('rollLog').innerHTML = '<h3>Roll History</h3>';
+        }
+
+        function ordinal(n) {
+            const s = ['th','st','nd','rd'], v = n % 100;
+            return n + (s[(v-20)%10] || s[v] || s[0]);
+        }
+
+        /* ────── WINNER OVERLAY ────── */
+        function showWinnerOverlay(name) {
+            document.getElementById('winnerName').textContent = name;
+            document.getElementById('winnerOverlay').classList.remove('hidden');
+        }
+        function closeOverlay() {
+            document.getElementById('winnerOverlay').classList.add('hidden');
+        }
+
+        function launchConfetti() {
+            const colors = ['#00c8ff','#ff2d87','#00ff99','#ffe600','#ff7b00','#c77dff'];
+            for (let i = 0; i < 80; i++) {
+                const el = document.createElement('div');
+                el.className = 'confetti-piece';
+                el.style.left = Math.random() * 100 + 'vw';
+                el.style.background = colors[Math.floor(Math.random() * colors.length)];
+                el.style.width  = (Math.random() * 10 + 6) + 'px';
+                el.style.height = (Math.random() * 6 + 4) + 'px';
+                el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                const dur = (Math.random() * 2 + 2).toFixed(2);
+                el.style.animationDuration = dur + 's';
+                el.style.animationDelay = (Math.random() * 1).toFixed(2) + 's';
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), (parseFloat(dur) + 1.5) * 1000);
             }
         }
 
+        /* ────── NEW GAME ────── */
         function newGame() {
-            gameState.players.forEach(player => {
-                player.squares = [null, null, null, null, null, null];
-                player.eliminated = false;
+            closeOverlay();
+            state.players.forEach(p => {
+                p.squares = [null,null,null,null,null,null];
+                p.eliminated = false;
+                p.eliminationRank = null;
             });
-            
-            gameState.currentPlayer = 0;
-            gameState.gameStarted = false;
-            gameState.gameEnded = false;
-            
-            // Reset UI elements
-            document.getElementById('gameSection').classList.add('hidden');
-            document.getElementById('newGameBtn').style.display = 'none';
-            document.getElementById('startGameBtn').style.display = 'inline-block';
+            state.gameStarted = false;
+            state.gameEnded = false;
+            state.rollCount = 0;
+            state.eliminationOrder = [];
+            state.rolling = false;
+            document.getElementById('newGameBtn').classList.add('hidden');
+            document.getElementById('startBtnWrap').classList.remove('hidden');
             document.getElementById('startGameBtn').disabled = true;
-            document.getElementById('dice').textContent = '?';
-            document.getElementById('rollBtn').disabled = false;
-            
-            // Re-render players with empty editable squares
+            setDiceIdle();
+            clearLog();
+            setStatus('Click a number on each player\'s palette to fill their squares.', '');
             renderPlayers();
-            updateGameStatus("Fill all squares with numbers 1-6, then start the game!");
         }
 
-        // Initialize the game
-        window.onload = function() {
-            updateGameStatus("Select number of players and click 'Setup Game' to begin!");
-        };
-
-        function playSound(type) {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            let frequency, duration;
-            
-            switch(type) {
-                case 'roll':
-                    frequency = 440;
-                    duration = 0.1;
-                    break;
-                case 'eliminate':
-                    frequency = 220;
-                    duration = 0.3;
-                    break;
-                case 'playerOut':
-                    frequency = 150;
-                    duration = 0.5;
-                    break;
-                case 'win':
-                    // Play a victory tune
-                    playVictorySound(audioContext);
-                    return;
-                default:
-                    return;
-            }
-            
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration);
-        }
-
-        function playVictorySound(audioContext) {
-            const notes = [523, 659, 784, 1047]; // C, E, G, C
-            notes.forEach((freq, index) => {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.2);
-                oscillator.type = 'sine';
-                
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + index * 0.2);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.2 + 0.3);
-                
-                oscillator.start(audioContext.currentTime + index * 0.2);
-                oscillator.stop(audioContext.currentTime + index * 0.2 + 0.3);
-            });
-        }
+        /* ────── INIT ────── */
+        setupGame();
     </script>
 </body>
 </html>

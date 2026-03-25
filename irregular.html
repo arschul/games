@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VerbFlip — Irregular Verbs</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e17;
+    --surface: #1a1828;
+    --card-front-a1: #ff6b35;
+    --card-back-a1: #ff8c5a;
+    --card-front-b1: #3a86ff;
+    --card-back-b1: #5b9eff;
+    --card-pp-a1: #e040fb;
+    --card-pp-b1: #00d4aa;
+    --text-light: #fffffe;
+    --text-muted: #a7a9be;
+    --accent: #ff6b35;
+    --gold: #f4c842;
+    --radius: 18px;
+    --shadow: 0 30px 80px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-light);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 2rem 2rem 0;
+    text-align: center;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--text-light);
+  }
+
+  .logo span { color: var(--gold); }
+
+  .tagline {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  /* Deck selector tabs */
+  .deck-tabs {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 1.8rem 1rem 0;
+  }
+
+  .deck-tab {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.55rem 1.1rem;
+    border-radius: 100px;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .deck-tab:hover { border-color: rgba(255,255,255,0.4); color: var(--text-light); }
+
+  .deck-tab.active[data-deck="0"] { background: var(--card-front-a1); border-color: var(--card-front-a1); color: #fff; }
+  .deck-tab.active[data-deck="1"] { background: var(--card-pp-a1); border-color: var(--card-pp-a1); color: #fff; }
+  .deck-tab.active[data-deck="2"] { background: var(--card-front-b1); border-color: var(--card-front-b1); color: #fff; }
+  .deck-tab.active[data-deck="3"] { background: var(--card-pp-b1); border-color: var(--card-pp-b1); color: #000; }
+
+  /* Main area */
+  main {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 3rem;
+    gap: 1.8rem;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .progress-track {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+  }
+
+  .deck-0 .progress-fill { background: var(--card-front-a1); }
+  .deck-1 .progress-fill { background: var(--card-pp-a1); }
+  .deck-2 .progress-fill { background: var(--card-front-b1); }
+  .deck-3 .progress-fill { background: var(--card-pp-b1); }
+
+  /* Card scene */
+  .card-scene {
+    perspective: 1200px;
+    width: min(420px, 92vw);
+    height: 260px;
+    cursor: pointer;
+  }
+
+  .card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .card-inner.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.8rem;
+    box-shadow: var(--shadow);
+    padding: 2rem;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* Decorative circle on card */
+  .card-face::after {
+    content: '';
+    position: absolute;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    bottom: -100px;
+    right: -80px;
+  }
+
+  .card-face::before {
+    content: '';
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    top: -50px;
+    left: -30px;
+  }
+
+  .card-front { background: var(--card-front-a1); color: #fff; }
+  .card-back { background: var(--card-back-a1); color: #fff; transform: rotateY(180deg); }
+
+  /* Per-deck colors */
+  .deck-0 .card-front { background: var(--card-front-a1); }
+  .deck-0 .card-back  { background: var(--card-back-a1); }
+  .deck-1 .card-front { background: var(--card-pp-a1); }
+  .deck-1 .card-back  { background: #c030d0; }
+  .deck-2 .card-front { background: var(--card-front-b1); }
+  .deck-2 .card-back  { background: var(--card-back-b1); }
+  .deck-3 .card-front { background: var(--card-pp-b1); }
+  .deck-3 .card-back  { background: #00b894; }
+
+  .card-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+
+  .card-word {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 700;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card-pronunciation {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    position: relative;
+    z-index: 1;
+  }
+
+  .tap-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: none;
+    border-radius: 100px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    transition: all 0.2s ease;
+    padding: 0.7rem 1.5rem;
+    background: rgba(255,255,255,0.08);
+    color: var(--text-light);
+  }
+
+  .btn:hover { background: rgba(255,255,255,0.18); transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-prev, .btn-next {
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1.2rem;
+  }
+
+  .btn-shuffle { font-size: 0.72rem; }
+
+  /* Sound toggle */
+  .sound-toggle {
+    position: fixed;
+    top: 1.2rem;
+    right: 1.5rem;
+    z-index: 100;
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+  }
+  .sound-toggle:hover { color: var(--text-light); border-color: rgba(255,255,255,0.4); }
+  .sound-toggle.on { color: var(--gold); border-color: var(--gold); }
+
+  /* Completion screen */
+  .completion {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .completion.visible { display: flex; }
+
+  .completion-emoji { font-size: 4rem; }
+
+  .completion h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .completion p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  /* Known/unknown counter */
+  .score-row {
+    display: flex;
+    gap: 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .score-known { color: #00d4aa; }
+  .score-unknown { color: var(--card-front-a1); }
+
+  /* Mark buttons */
+  .mark-buttons {
+    display: flex;
+    gap: 0.8rem;
+  }
+
+  .btn-known {
+    background: rgba(0, 212, 170, 0.15);
+    border: 1.5px solid rgba(0, 212, 170, 0.4);
+    color: #00d4aa;
+  }
+
+  .btn-known:hover { background: rgba(0, 212, 170, 0.3); }
+
+  .btn-unknown {
+    background: rgba(255,107,53,0.15);
+    border: 1.5px solid rgba(255,107,53,0.4);
+    color: var(--card-front-a1);
+  }
+
+  .btn-unknown:hover { background: rgba(255,107,53,0.3); }
+
+  /* Keyboard hint */
+  .keyboard-hints {
+    display: flex;
+    gap: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  kbd {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+  }
+
+  .card-scene.bounce .card-inner {
+    animation: bounce-in 0.35s ease;
+  }
+
+  @keyframes bounce-in {
+    0% { transform: scale(0.92); opacity: 0.5; }
+    60% { transform: scale(1.04); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @media (max-width: 500px) {
+    .keyboard-hints { display: none; }
+    .deck-tab { font-size: 0.65rem; padding: 0.45rem 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<button class="sound-toggle on" id="soundToggle">🔊 Sound</button>
+
+<header>
+  <div class="logo">Verb<span>Flip</span></div>
+  <div class="tagline">Irregular Verbs · Flashcard Trainer</div>
+</header>
+
+<div class="deck-tabs" id="deckTabs">
+  <button class="deck-tab active" data-deck="0">A1–A2 · Past Simple</button>
+  <button class="deck-tab" data-deck="1">A1–A2 · Past Participle</button>
+  <button class="deck-tab" data-deck="2">B1 · Past Simple</button>
+  <button class="deck-tab" data-deck="3">B1 · Past Participle</button>
+</div>
+
+<main id="main">
+  <div class="progress-wrap deck-0" id="progressWrap">
+    <div class="progress-label">
+      <span id="deckLabel">A1–A2 Past Simple</span>
+      <span id="cardCount">1 / 50</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:2%"></div>
+    </div>
+  </div>
+
+  <div class="score-row">
+    <span>Known: <span class="score-known" id="scoreKnown">0</span></span>
+    <span>Study again: <span class="score-unknown" id="scoreUnknown">0</span></span>
+  </div>
+
+  <div class="card-scene" id="cardScene">
+    <div class="card-inner" id="cardInner">
+      <div class="card-face card-front">
+        <div class="card-hint">Base form</div>
+        <div class="card-word" id="frontWord">go</div>
+        <div class="card-pronunciation" id="frontPron">/ɡoʊ/</div>
+      </div>
+      <div class="card-face card-back">
+        <div class="card-hint" id="backHint">Past simple</div>
+        <div class="card-word" id="backWord">went</div>
+        <div class="card-pronunciation" id="backPron">/wɛnt/</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tap-hint">👆 tap card to flip</div>
+
+  <div class="controls">
+    <button class="btn btn-prev" id="btnPrev" title="Previous (←)">←</button>
+    <div class="mark-buttons">
+      <button class="btn btn-unknown" id="btnUnknown">✗ Again</button>
+      <button class="btn btn-known" id="btnKnown">✓ Known</button>
+    </div>
+    <button class="btn btn-next" id="btnNext" title="Next (→)">→</button>
+  </div>
+
+  <button class="btn btn-shuffle" id="btnShuffle">⇄ Shuffle Deck</button>
+
+  <div class="keyboard-hints">
+    <span class="key"><kbd>Space</kbd> flip</span>
+    <span class="key"><kbd>←</kbd><kbd>→</kbd> navigate</span>
+    <span class="key"><kbd>K</kbd> known</span>
+    <span class="key"><kbd>U</kbd> again</span>
+  </div>
+
+  <div class="completion" id="completionScreen">
+    <div class="completion-emoji">🎉</div>
+    <h2>Deck Complete!</h2>
+    <p id="completionMsg">Great job! You've reviewed all 50 cards.</p>
+    <button class="btn" id="btnRestart">↺ Restart Deck</button>
+  </div>
+</main>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+const DECKS = {
+  0: {
+    label: 'A1–A2 · Past Simple',
+    frontHint: 'Base form',
+    backHint: 'Past simple',
+    cards: [
+      { front:'be', fpron:'/biː/', back:'was/were', bpron:'/wɒz//wɜː/' },
+      { front:'go', fpron:'/ɡoʊ/', back:'went', bpron:'/wɛnt/' },
+      { front:'have', fpron:'/hæv/', back:'had', bpron:'/hæd/' },
+      { front:'do', fpron:'/duː/', back:'did', bpron:'/dɪd/' },
+      { front:'say', fpron:'/seɪ/', back:'said', bpron:'/sɛd/' },
+      { front:'get', fpron:'/ɡɛt/', back:'got', bpron:'/ɡɒt/' },
+      { front:'make', fpron:'/meɪk/', back:'made', bpron:'/meɪd/' },
+      { front:'know', fpron:'/noʊ/', back:'knew', bpron:'/njuː/' },
+      { front:'think', fpron:'/θɪŋk/', back:'thought', bpron:'/θɔːt/' },
+      { front:'take', fpron:'/teɪk/', back:'took', bpron:'/tʊk/' },
+      { front:'see', fpron:'/siː/', back:'saw', bpron:'/sɔː/' },
+      { front:'come', fpron:'/kʌm/', back:'came', bpron:'/keɪm/' },
+      { front:'want', fpron:'/wɒnt/', back:'wanted', bpron:'/ˈwɒntɪd/' },
+      { front:'give', fpron:'/ɡɪv/', back:'gave', bpron:'/ɡeɪv/' },
+      { front:'find', fpron:'/faɪnd/', back:'found', bpron:'/faʊnd/' },
+      { front:'tell', fpron:'/tɛl/', back:'told', bpron:'/toʊld/' },
+      { front:'put', fpron:'/pʊt/', back:'put', bpron:'/pʊt/' },
+      { front:'ask', fpron:'/ɑːsk/', back:'asked', bpron:'/ɑːskt/' },
+      { front:'buy', fpron:'/baɪ/', back:'bought', bpron:'/bɔːt/' },
+      { front:'bring', fpron:'/brɪŋ/', back:'brought', bpron:'/brɔːt/' },
+      { front:'eat', fpron:'/iːt/', back:'ate', bpron:'/eɪt/' },
+      { front:'drink', fpron:'/drɪŋk/', back:'drank', bpron:'/dræŋk/' },
+      { front:'run', fpron:'/rʌn/', back:'ran', bpron:'/ræn/' },
+      { front:'read', fpron:'/riːd/', back:'read', bpron:'/rɛd/' },
+      { front:'write', fpron:'/raɪt/', back:'wrote', bpron:'/roʊt/' },
+      { front:'sit', fpron:'/sɪt/', back:'sat', bpron:'/sæt/' },
+      { front:'stand', fpron:'/stænd/', back:'stood', bpron:'/stʊd/' },
+      { front:'leave', fpron:'/liːv/', back:'left', bpron:'/lɛft/' },
+      { front:'lose', fpron:'/luːz/', back:'lost', bpron:'/lɒst/' },
+      { front:'win', fpron:'/wɪn/', back:'won', bpron:'/wʌn/' },
+      { front:'sleep', fpron:'/sliːp/', back:'slept', bpron:'/slɛpt/' },
+      { front:'meet', fpron:'/miːt/', back:'met', bpron:'/mɛt/' },
+      { front:'speak', fpron:'/spiːk/', back:'spoke', bpron:'/spoʊk/' },
+      { front:'hear', fpron:'/hɪər/', back:'heard', bpron:'/hɜːrd/' },
+      { front:'drive', fpron:'/draɪv/', back:'drove', bpron:'/droʊv/' },
+      { front:'ride', fpron:'/raɪd/', back:'rode', bpron:'/roʊd/' },
+      { front:'break', fpron:'/breɪk/', back:'broke', bpron:'/broʊk/' },
+      { front:'pay', fpron:'/peɪ/', back:'paid', bpron:'/peɪd/' },
+      { front:'send', fpron:'/sɛnd/', back:'sent', bpron:'/sɛnt/' },
+      { front:'feel', fpron:'/fiːl/', back:'felt', bpron:'/fɛlt/' },
+      { front:'keep', fpron:'/kiːp/', back:'kept', bpron:'/kɛpt/' },
+      { front:'begin', fpron:'/bɪˈɡɪn/', back:'began', bpron:'/bɪˈɡæn/' },
+      { front:'grow', fpron:'/ɡroʊ/', back:'grew', bpron:'/ɡruː/' },
+      { front:'hold', fpron:'/hoʊld/', back:'held', bpron:'/hɛld/' },
+      { front:'fall', fpron:'/fɔːl/', back:'fell', bpron:'/fɛl/' },
+      { front:'wear', fpron:'/wɛər/', back:'wore', bpron:'/wɔːr/' },
+      { front:'catch', fpron:'/kætʃ/', back:'caught', bpron:'/kɔːt/' },
+      { front:'swim', fpron:'/swɪm/', back:'swam', bpron:'/swæm/' },
+      { front:'cut', fpron:'/kʌt/', back:'cut', bpron:'/kʌt/' },
+      { front:'hit', fpron:'/hɪt/', back:'hit', bpron:'/hɪt/' }
+    ]
+  },
+  1: {
+    label: 'A1–A2 · Past Participle',
+    frontHint: 'Base form',
+    backHint: 'Past participle',
+    cards: [
+      { front:'be', fpron:'/biː/', back:'been', bpron:'/biːn/' },
+      { front:'go', fpron:'/ɡoʊ/', back:'gone', bpron:'/ɡɒn/' },
+      { front:'have', fpron:'/hæv/', back:'had', bpron:'/hæd/' },
+      { front:'do', fpron:'/duː/', back:'done', bpron:'/dʌn/' },
+      { front:'say', fpron:'/seɪ/', back:'said', bpron:'/sɛd/' },
+      { front:'get', fpron:'/ɡɛt/', back:'got/gotten', bpron:'/ɡɒt/' },
+      { front:'make', fpron:'/meɪk/', back:'made', bpron:'/meɪd/' },
+      { front:'know', fpron:'/noʊ/', back:'known', bpron:'/noʊn/' },
+      { front:'think', fpron:'/θɪŋk/', back:'thought', bpron:'/θɔːt/' },
+      { front:'take', fpron:'/teɪk/', back:'taken', bpron:'/ˈteɪkən/' },
+      { front:'see', fpron:'/siː/', back:'seen', bpron:'/siːn/' },
+      { front:'come', fpron:'/kʌm/', back:'come', bpron:'/kʌm/' },
+      { front:'give', fpron:'/ɡɪv/', back:'given', bpron:'/ˈɡɪvən/' },
+      { front:'find', fpron:'/faɪnd/', back:'found', bpron:'/faʊnd/' },
+      { front:'tell', fpron:'/tɛl/', back:'told', bpron:'/toʊld/' },
+      { front:'put', fpron:'/pʊt/', back:'put', bpron:'/pʊt/' },
+      { front:'buy', fpron:'/baɪ/', back:'bought', bpron:'/bɔːt/' },
+      { front:'bring', fpron:'/brɪŋ/', back:'brought', bpron:'/brɔːt/' },
+      { front:'eat', fpron:'/iːt/', back:'eaten', bpron:'/ˈiːtən/' },
+      { front:'drink', fpron:'/drɪŋk/', back:'drunk', bpron:'/drʌŋk/' },
+      { front:'run', fpron:'/rʌn/', back:'run', bpron:'/rʌn/' },
+      { front:'read', fpron:'/riːd/', back:'read', bpron:'/rɛd/' },
+      { front:'write', fpron:'/raɪt/', back:'written', bpron:'/ˈrɪtən/' },
+      { front:'sit', fpron:'/sɪt/', back:'sat', bpron:'/sæt/' },
+      { front:'stand', fpron:'/stænd/', back:'stood', bpron:'/stʊd/' },
+      { front:'leave', fpron:'/liːv/', back:'left', bpron:'/lɛft/' },
+      { front:'lose', fpron:'/luːz/', back:'lost', bpron:'/lɒst/' },
+      { front:'win', fpron:'/wɪn/', back:'won', bpron:'/wʌn/' },
+      { front:'sleep', fpron:'/sliːp/', back:'slept', bpron:'/slɛpt/' },
+      { front:'meet', fpron:'/miːt/', back:'met', bpron:'/mɛt/' },
+      { front:'speak', fpron:'/spiːk/', back:'spoken', bpron:'/ˈspoʊkən/' },
+      { front:'hear', fpron:'/hɪər/', back:'heard', bpron:'/hɜːrd/' },
+      { front:'drive', fpron:'/draɪv/', back:'driven', bpron:'/ˈdrɪvən/' },
+      { front:'ride', fpron:'/raɪd/', back:'ridden', bpron:'/ˈrɪdən/' },
+      { front:'break', fpron:'/breɪk/', back:'broken', bpron:'/ˈbroʊkən/' },
+      { front:'pay', fpron:'/peɪ/', back:'paid', bpron:'/peɪd/' },
+      { front:'send', fpron:'/sɛnd/', back:'sent', bpron:'/sɛnt/' },
+      { front:'feel', fpron:'/fiːl/', back:'felt', bpron:'/fɛlt/' },
+      { front:'keep', fpron:'/kiːp/', back:'kept', bpron:'/kɛpt/' },
+      { front:'begin', fpron:'/bɪˈɡɪn/', back:'begun', bpron:'/bɪˈɡʌn/' },
+      { front:'grow', fpron:'/ɡroʊ/', back:'grown', bpron:'/ɡroʊn/' },
+      { front:'hold', fpron:'/hoʊld/', back:'held', bpron:'/hɛld/' },
+      { front:'fall', fpron:'/fɔːl/', back:'fallen', bpron:'/ˈfɔːlən/' },
+      { front:'wear', fpron:'/wɛər/', back:'worn', bpron:'/wɔːrn/' },
+      { front:'catch', fpron:'/kætʃ/', back:'caught', bpron:'/kɔːt/' },
+      { front:'swim', fpron:'/swɪm/', back:'swum', bpron:'/swʌm/' },
+      { front:'cut', fpron:'/kʌt/', back:'cut', bpron:'/kʌt/' },
+      { front:'hit', fpron:'/hɪt/', back:'hit', bpron:'/hɪt/' },
+      { front:'choose', fpron:'/tʃuːz/', back:'chosen', bpron:'/ˈtʃoʊzən/' },
+      { front:'forget', fpron:'/fəˈɡɛt/', back:'forgotten', bpron:'/fəˈɡɒtən/' }
+    ]
+  },
+  2: {
+    label: 'B1 · Past Simple',
+    frontHint: 'Base form',
+    backHint: 'Past simple',
+    cards: [
+      { front:'arise', fpron:'/əˈraɪz/', back:'arose', bpron:'/əˈroʊz/' },
+      { front:'beat', fpron:'/biːt/', back:'beat', bpron:'/biːt/' },
+      { front:'bend', fpron:'/bɛnd/', back:'bent', bpron:'/bɛnt/' },
+      { front:'bind', fpron:'/baɪnd/', back:'bound', bpron:'/baʊnd/' },
+      { front:'bite', fpron:'/baɪt/', back:'bit', bpron:'/bɪt/' },
+      { front:'blow', fpron:'/bloʊ/', back:'blew', bpron:'/bluː/' },
+      { front:'build', fpron:'/bɪld/', back:'built', bpron:'/bɪlt/' },
+      { front:'burn', fpron:'/bɜːrn/', back:'burnt/burned', bpron:'/bɜːrnt/' },
+      { front:'burst', fpron:'/bɜːrst/', back:'burst', bpron:'/bɜːrst/' },
+      { front:'cast', fpron:'/kɑːst/', back:'cast', bpron:'/kɑːst/' },
+      { front:'cost', fpron:'/kɒst/', back:'cost', bpron:'/kɒst/' },
+      { front:'creep', fpron:'/kriːp/', back:'crept', bpron:'/krɛpt/' },
+      { front:'deal', fpron:'/diːl/', back:'dealt', bpron:'/dɛlt/' },
+      { front:'dig', fpron:'/dɪɡ/', back:'dug', bpron:'/dʌɡ/' },
+      { front:'draw', fpron:'/drɔː/', back:'drew', bpron:'/druː/' },
+      { front:'dream', fpron:'/driːm/', back:'dreamt/dreamed', bpron:'/drɛmt/' },
+      { front:'feed', fpron:'/fiːd/', back:'fed', bpron:'/fɛd/' },
+      { front:'fight', fpron:'/faɪt/', back:'fought', bpron:'/fɔːt/' },
+      { front:'fly', fpron:'/flaɪ/', back:'flew', bpron:'/fluː/' },
+      { front:'forbid', fpron:'/fəˈbɪd/', back:'forbade', bpron:'/fəˈbeɪd/' },
+      { front:'forget', fpron:'/fəˈɡɛt/', back:'forgot', bpron:'/fəˈɡɒt/' },
+      { front:'forgive', fpron:'/fəˈɡɪv/', back:'forgave', bpron:'/fəˈɡeɪv/' },
+      { front:'freeze', fpron:'/friːz/', back:'froze', bpron:'/froʊz/' },
+      { front:'grind', fpron:'/ɡraɪnd/', back:'ground', bpron:'/ɡraʊnd/' },
+      { front:'hang', fpron:'/hæŋ/', back:'hung', bpron:'/hʌŋ/' },
+      { front:'hide', fpron:'/haɪd/', back:'hid', bpron:'/hɪd/' },
+      { front:'hurt', fpron:'/hɜːrt/', back:'hurt', bpron:'/hɜːrt/' },
+      { front:'lay', fpron:'/leɪ/', back:'laid', bpron:'/leɪd/' },
+      { front:'lead', fpron:'/liːd/', back:'led', bpron:'/lɛd/' },
+      { front:'lend', fpron:'/lɛnd/', back:'lent', bpron:'/lɛnt/' },
+      { front:'let', fpron:'/lɛt/', back:'let', bpron:'/lɛt/' },
+      { front:'lie', fpron:'/laɪ/', back:'lay', bpron:'/leɪ/' },
+      { front:'mean', fpron:'/miːn/', back:'meant', bpron:'/mɛnt/' },
+      { front:'overdo', fpron:'/ˌoʊvərˈduː/', back:'overdid', bpron:'/ˌoʊvərˈdɪd/' },
+      { front:'prove', fpron:'/pruːv/', back:'proved', bpron:'/pruːvd/' },
+      { front:'ring', fpron:'/rɪŋ/', back:'rang', bpron:'/ræŋ/' },
+      { front:'rise', fpron:'/raɪz/', back:'rose', bpron:'/roʊz/' },
+      { front:'seek', fpron:'/siːk/', back:'sought', bpron:'/sɔːt/' },
+      { front:'sell', fpron:'/sɛl/', back:'sold', bpron:'/soʊld/' },
+      { front:'set', fpron:'/sɛt/', back:'set', bpron:'/sɛt/' },
+      { front:'shake', fpron:'/ʃeɪk/', back:'shook', bpron:'/ʃʊk/' },
+      { front:'shed', fpron:'/ʃɛd/', back:'shed', bpron:'/ʃɛd/' },
+      { front:'shine', fpron:'/ʃaɪn/', back:'shone', bpron:'/ʃɒn/' },
+      { front:'shoot', fpron:'/ʃuːt/', back:'shot', bpron:'/ʃɒt/' },
+      { front:'sink', fpron:'/sɪŋk/', back:'sank', bpron:'/sæŋk/' },
+      { front:'slide', fpron:'/slaɪd/', back:'slid', bpron:'/slɪd/' },
+      { front:'spit', fpron:'/spɪt/', back:'spat', bpron:'/spæt/' },
+      { front:'spread', fpron:'/sprɛd/', back:'spread', bpron:'/sprɛd/' },
+      { front:'steal', fpron:'/stiːl/', back:'stole', bpron:'/stoʊl/' },
+      { front:'sting', fpron:'/stɪŋ/', back:'stung', bpron:'/stʌŋ/' }
+    ]
+  },
+  3: {
+    label: 'B1 · Past Participle',
+    frontHint: 'Base form',
+    backHint: 'Past participle',
+    cards: [
+      { front:'arise', fpron:'/əˈraɪz/', back:'arisen', bpron:'/əˈrɪzən/' },
+      { front:'beat', fpron:'/biːt/', back:'beaten', bpron:'/ˈbiːtən/' },
+      { front:'bend', fpron:'/bɛnd/', back:'bent', bpron:'/bɛnt/' },
+      { front:'bind', fpron:'/baɪnd/', back:'bound', bpron:'/baʊnd/' },
+      { front:'bite', fpron:'/baɪt/', back:'bitten', bpron:'/ˈbɪtən/' },
+      { front:'blow', fpron:'/bloʊ/', back:'blown', bpron:'/bloʊn/' },
+      { front:'build', fpron:'/bɪld/', back:'built', bpron:'/bɪlt/' },
+      { front:'burn', fpron:'/bɜːrn/', back:'burnt/burned', bpron:'/bɜːrnt/' },
+      { front:'burst', fpron:'/bɜːrst/', back:'burst', bpron:'/bɜːrst/' },
+      { front:'cast', fpron:'/kɑːst/', back:'cast', bpron:'/kɑːst/' },
+      { front:'cost', fpron:'/kɒst/', back:'cost', bpron:'/kɒst/' },
+      { front:'creep', fpron:'/kriːp/', back:'crept', bpron:'/krɛpt/' },
+      { front:'deal', fpron:'/diːl/', back:'dealt', bpron:'/dɛlt/' },
+      { front:'dig', fpron:'/dɪɡ/', back:'dug', bpron:'/dʌɡ/' },
+      { front:'draw', fpron:'/drɔː/', back:'drawn', bpron:'/drɔːn/' },
+      { front:'dream', fpron:'/driːm/', back:'dreamt/dreamed', bpron:'/drɛmt/' },
+      { front:'feed', fpron:'/fiːd/', back:'fed', bpron:'/fɛd/' },
+      { front:'fight', fpron:'/faɪt/', back:'fought', bpron:'/fɔːt/' },
+      { front:'fly', fpron:'/flaɪ/', back:'flown', bpron:'/floʊn/' },
+      { front:'forbid', fpron:'/fəˈbɪd/', back:'forbidden', bpron:'/fəˈbɪdən/' },
+      { front:'forget', fpron:'/fəˈɡɛt/', back:'forgotten', bpron:'/fəˈɡɒtən/' },
+      { front:'forgive', fpron:'/fəˈɡɪv/', back:'forgiven', bpron:'/fəˈɡɪvən/' },
+      { front:'freeze', fpron:'/friːz/', back:'frozen', bpron:'/ˈfroʊzən/' },
+      { front:'grind', fpron:'/ɡraɪnd/', back:'ground', bpron:'/ɡraʊnd/' },
+      { front:'hang', fpron:'/hæŋ/', back:'hung', bpron:'/hʌŋ/' },
+      { front:'hide', fpron:'/haɪd/', back:'hidden', bpron:'/ˈhɪdən/' },
+      { front:'hurt', fpron:'/hɜːrt/', back:'hurt', bpron:'/hɜːrt/' },
+      { front:'lay', fpron:'/leɪ/', back:'laid', bpron:'/leɪd/' },
+      { front:'lead', fpron:'/liːd/', back:'led', bpron:'/lɛd/' },
+      { front:'lend', fpron:'/lɛnd/', back:'lent', bpron:'/lɛnt/' },
+      { front:'let', fpron:'/lɛt/', back:'let', bpron:'/lɛt/' },
+      { front:'lie', fpron:'/laɪ/', back:'lain', bpron:'/leɪn/' },
+      { front:'mean', fpron:'/miːn/', back:'meant', bpron:'/mɛnt/' },
+      { front:'overdo', fpron:'/ˌoʊvərˈduː/', back:'overdone', bpron:'/ˌoʊvərˈdʌn/' },
+      { front:'prove', fpron:'/pruːv/', back:'proven/proved', bpron:'/ˈpruːvən/' },
+      { front:'ring', fpron:'/rɪŋ/', back:'rung', bpron:'/rʌŋ/' },
+      { front:'rise', fpron:'/raɪz/', back:'risen', bpron:'/ˈrɪzən/' },
+      { front:'seek', fpron:'/siːk/', back:'sought', bpron:'/sɔːt/' },
+      { front:'sell', fpron:'/sɛl/', back:'sold', bpron:'/soʊld/' },
+      { front:'set', fpron:'/sɛt/', back:'set', bpron:'/sɛt/' },
+      { front:'shake', fpron:'/ʃeɪk/', back:'shaken', bpron:'/ˈʃeɪkən/' },
+      { front:'shed', fpron:'/ʃɛd/', back:'shed', bpron:'/ʃɛd/' },
+      { front:'shine', fpron:'/ʃaɪn/', back:'shone', bpron:'/ʃɒn/' },
+      { front:'shoot', fpron:'/ʃuːt/', back:'shot', bpron:'/ʃɒt/' },
+      { front:'sink', fpron:'/sɪŋk/', back:'sunk', bpron:'/sʌŋk/' },
+      { front:'slide', fpron:'/slaɪd/', back:'slid', bpron:'/slɪd/' },
+      { front:'spit', fpron:'/spɪt/', back:'spat/spit', bpron:'/spæt/' },
+      { front:'spread', fpron:'/sprɛd/', back:'spread', bpron:'/sprɛd/' },
+      { front:'steal', fpron:'/stiːl/', back:'stolen', bpron:'/ˈstoʊlən/' },
+      { front:'sting', fpron:'/stɪŋ/', back:'stung', bpron:'/stʌŋ/' }
+    ]
+  }
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentDeck = 0;
+let currentIndex = 0;
+let isFlipped = false;
+let soundOn = true;
+let known = 0;
+let studyAgain = 0;
+let deck = [...DECKS[0].cards];
+
+// ─── AUDIO ───────────────────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let ctx = null;
+
+function getCtx() {
+  if (!ctx) ctx = new AudioCtx();
+  return ctx;
+}
+
+function playTone(freq, type, duration, vol = 0.15) {
+  if (!soundOn) return;
+  const ac = getCtx();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain);
+  gain.connect(ac.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ac.currentTime);
+  gain.gain.setValueAtTime(vol, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+  osc.start();
+  osc.stop(ac.currentTime + duration);
+}
+
+function playFlip() {
+  // whoosh-like
+  const ac = getCtx();
+  const buf = ac.createBuffer(1, ac.sampleRate * 0.15, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / data.length) * 0.3;
+  }
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.setValueAtTime(800, ac.currentTime);
+  f.frequency.exponentialRampToValueAtTime(2000, ac.currentTime + 0.15);
+  f.Q.value = 2;
+  src.connect(f);
+  f.connect(ac.destination);
+  src.start();
+}
+
+function playNext() { playTone(440, 'sine', 0.12, 0.1); }
+function playKnown() {
+  playTone(523, 'sine', 0.1, 0.12);
+  setTimeout(() => playTone(659, 'sine', 0.15, 0.1), 80);
+}
+function playAgain() { playTone(220, 'triangle', 0.25, 0.12); }
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function updateCard(animate = false) {
+  const d = DECKS[currentDeck];
+  const card = deck[currentIndex];
+  const total = deck.length;
+
+  document.getElementById('frontWord').textContent = card.front;
+  document.getElementById('frontPron').textContent = card.fpron;
+  document.getElementById('backWord').textContent = card.back;
+  document.getElementById('backPron').textContent = card.bpron;
+  document.getElementById('backHint').textContent = d.backHint;
+
+  document.getElementById('cardCount').textContent = `${currentIndex + 1} / ${total}`;
+  document.getElementById('deckLabel').textContent = d.label;
+
+  const pct = ((currentIndex + 1) / total) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  document.getElementById('scoreKnown').textContent = known;
+  document.getElementById('scoreUnknown').textContent = studyAgain;
+
+  // Reset flip
+  if (isFlipped) {
+    document.getElementById('cardInner').classList.remove('flipped');
+    isFlipped = false;
+  }
+
+  // Bounce animation
+  if (animate) {
+    const scene = document.getElementById('cardScene');
+    scene.classList.remove('bounce');
+    void scene.offsetWidth;
+    scene.classList.add('bounce');
+  }
+
+  // Show/hide completion
+  document.getElementById('completionScreen').classList.toggle('visible', currentIndex >= total);
+  document.querySelector('.card-scene').style.display = currentIndex >= total ? 'none' : 'block';
+  document.querySelector('.controls').style.display = currentIndex >= total ? 'none' : 'flex';
+  document.querySelector('.mark-buttons') && null;
+}
+
+function updateDeckColors() {
+  const pw = document.getElementById('progressWrap');
+  pw.className = `progress-wrap deck-${currentDeck}`;
+  const scene = document.getElementById('cardScene');
+  scene.className = `card-scene deck-${currentDeck}`;
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function nextCard() {
+  if (currentIndex >= deck.length) return;
+  currentIndex++;
+  if (currentIndex < deck.length) { playNext(); updateCard(true); }
+  else { updateCard(); }
+}
+
+function prevCard() {
+  if (currentIndex <= 0) return;
+  currentIndex--;
+  playNext();
+  updateCard(true);
+}
+
+function flipCard() {
+  if (currentIndex >= deck.length) return;
+  isFlipped = !isFlipped;
+  document.getElementById('cardInner').classList.toggle('flipped', isFlipped);
+  if (soundOn) playFlip();
+}
+
+function switchDeck(idx) {
+  currentDeck = idx;
+  deck = [...DECKS[idx].cards];
+  currentIndex = 0;
+  isFlipped = false;
+  known = 0;
+  studyAgain = 0;
+  document.querySelectorAll('.deck-tab').forEach(t => t.classList.toggle('active', +t.dataset.deck === idx));
+  updateDeckColors();
+  updateCard(true);
+}
+
+function shuffleDeck() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  currentIndex = 0;
+  isFlipped = false;
+  known = 0;
+  studyAgain = 0;
+  playNext();
+  updateCard(true);
+}
+
+function markKnown() {
+  if (currentIndex >= deck.length) return;
+  known++;
+  playKnown();
+  nextCard();
+}
+
+function markAgain() {
+  if (currentIndex >= deck.length) return;
+  studyAgain++;
+  playAgain();
+  nextCard();
+}
+
+// ─── EVENT LISTENERS ─────────────────────────────────────────────────────────
+document.getElementById('cardScene').addEventListener('click', flipCard);
+document.getElementById('btnNext').addEventListener('click', nextCard);
+document.getElementById('btnPrev').addEventListener('click', prevCard);
+document.getElementById('btnKnown').addEventListener('click', markKnown);
+document.getElementById('btnUnknown').addEventListener('click', markAgain);
+document.getElementById('btnShuffle').addEventListener('click', shuffleDeck);
+
+document.querySelectorAll('.deck-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchDeck(+tab.dataset.deck));
+});
+
+document.getElementById('btnRestart').addEventListener('click', () => {
+  currentIndex = 0;
+  isFlipped = false;
+  known = 0;
+  studyAgain = 0;
+  deck = [...DECKS[currentDeck].cards];
+  updateCard(true);
+});
+
+const soundBtn = document.getElementById('soundToggle');
+soundBtn.addEventListener('click', () => {
+  soundOn = !soundOn;
+  soundBtn.textContent = soundOn ? '🔊 Sound' : '🔇 Sound';
+  soundBtn.classList.toggle('on', soundOn);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextCard();
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevCard();
+  else if (e.key === ' ') { e.preventDefault(); flipCard(); }
+  else if (e.key === 'k' || e.key === 'K') markKnown();
+  else if (e.key === 'u' || e.key === 'U') markAgain();
+});
+
+// Touch swipe
+let touchStartX = 0;
+document.getElementById('cardScene').addEventListener('touchstart', e => {
+  touchStartX = e.changedTouches[0].clientX;
+}, { passive: true });
+document.getElementById('cardScene').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) { dx > 0 ? prevCard() : nextCard(); }
+  else flipCard();
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+updateDeckColors();
+updateCard();
+</script>
+</body>
+</html>

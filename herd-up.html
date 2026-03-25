@@ -985,31 +985,18 @@ function confirmRound() {
 
   // Skull transfer logic
   const newSkullIdx = state.awards.findIndex(a => a.skull);
-  let winner = null;
 
   if (newSkullIdx !== -1) {
-    const oldSkullIdx = state.players.findIndex(p => p.hasSkull);
-
-    if (oldSkullIdx !== -1 && oldSkullIdx !== newSkullIdx) {
-      // Skull is moving — old owner loses it
-      const oldOwner = state.players[oldSkullIdx];
-      oldOwner.hasSkull = false;
-      // If old owner now qualifies to win (7+ stars, no skull) → instant win
-      if (oldOwner.stars >= 7) winner = oldOwner;
-    }
-
-    // Transfer skull
+    // Clear skull from everyone, then assign to new owner
     state.players.forEach(p => p.hasSkull = false);
     state.players[newSkullIdx].hasSkull = true;
   }
 
-  // Check standard win (7+ stars, no skull)
-  if (!winner) {
-    winner = state.players.find(p => p.stars >= 7 && !p.hasSkull) || null;
-  }
+  // Collect ALL winners (7+ stars, no skull) — handles ties
+  const winners = state.players.filter(p => p.stars >= 7 && !p.hasSkull);
 
-  if (winner) {
-    showWinScreen(winner);
+  if (winners.length) {
+    showWinScreen(winners);
   } else {
     renderScoreboard();
     document.getElementById('post-round-num').textContent = state.roundNum;
@@ -1041,10 +1028,15 @@ function renderScoreboard() {
 // ===========================
 //   WIN
 // ===========================
-function showWinScreen(winner) {
-  document.getElementById('win-name').textContent = winner.name;
+function showWinScreen(winners) {
+  const isTie = winners.length > 1;
+  document.getElementById('win-name').textContent = isTie
+    ? winners.map(w => w.name).join(' & ')
+    : winners[0].name;
+  document.querySelector('.win-confetti').textContent = isTie ? '🏆🏆' : '🏆';
+  document.querySelector('.win-title').textContent = isTie ? 'WINNERS!' : 'WINNER!';
   document.getElementById('win-stats').innerHTML = `
-    <p>Stars: <span>${winner.stars} ⭐</span></p>
+    ${isTie ? `<p>Tied with: <span>${winners.map(w => w.stars + ' ⭐').join(', ')}</span></p>` : `<p>Stars: <span>${winners[0].stars} ⭐</span></p>`}
     <p>Rounds played: <span>${state.roundNum}</span></p>
     <p>Players: <span>${state.players.length}</span></p>
   `;

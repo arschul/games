@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HERD UP! — Think Like the Group</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e17;
+    --surface: #1a1828;
+    --card: #221f35;
+    --accent: #ff6b35;
+    --accent2: #ffd166;
+    --teal: #06d6a0;
+    --pink: #ef476f;
+    --text: #fffffe;
+    --muted: #a7a9be;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .screen { display: none; position: relative; z-index: 1; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ===== SETUP ===== */
+  #setup-screen {
+    align-items: center;
+    justify-content: flex-start;
+    padding: 32px 20px 60px;
+  }
+  .logo { text-align: center; margin-bottom: 36px; }
+  .logo h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 12vw, 96px);
+    letter-spacing: 4px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 30px rgba(255,107,53,0.4));
+  }
+  .logo p {
+    font-size: 15px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  .setup-card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 20px;
+  }
+  .setup-card h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 18px;
+    font-weight: 700;
+  }
+  .player-count-row { display: flex; align-items: center; gap: 16px; }
+  .count-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-size: 22px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .count-btn:hover { background: var(--accent); color: #fff; }
+  .count-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--accent2);
+    min-width: 60px;
+    text-align: center;
+    line-height: 1;
+  }
+  #player-names-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .player-name-input {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    width: 100%;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .player-name-input:focus { border-color: var(--accent2); }
+  .player-name-input::placeholder { color: var(--muted); font-weight: 400; }
+  .timer-options { display: flex; gap: 12px; }
+  .timer-option {
+    flex: 1;
+    background: var(--surface);
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .timer-option:hover { border-color: var(--teal); }
+  .timer-option.selected { border-color: var(--teal); background: rgba(6,214,160,0.1); }
+  .timer-option .big { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--teal); line-height: 1; }
+  .timer-option .small { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .start-btn {
+    display: block;
+    width: 100%;
+    max-width: 600px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: var(--radius);
+    color: #0f0e17;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    padding: 18px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 8px 32px rgba(255,107,53,0.35);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(255,107,53,0.5); }
+  .start-btn:active { transform: translateY(0); }
+
+  /* ===== GAME SCREEN — QUESTION PHASE ===== */
+  #game-screen { padding: 0; }
+
+  .game-header {
+    background: var(--surface);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .round-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    flex: 1;
+  }
+  .done-btn {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .done-btn:hover:not(:disabled) { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.3); }
+  .done-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .timer-ring-wrap {
+    position: relative;
+    width: 62px; height: 62px;
+    flex-shrink: 0;
+  }
+  .timer-ring-wrap svg { transform: rotate(-90deg); width: 62px; height: 62px; }
+  .timer-bg { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 5; }
+  .timer-arc {
+    fill: none;
+    stroke: var(--teal);
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear, stroke 0.5s;
+  }
+  .timer-text {
+    position: absolute;
+    inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--teal);
+    transition: color 0.5s;
+  }
+
+  #question-phase {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 20px;
+  }
+  .question-card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 24px;
+    padding: 44px 40px;
+    max-width: 680px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+  }
+  .q-number {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 18px;
+    font-weight: 700;
+  }
+  .question-text {
+    font-size: clamp(22px, 4.5vw, 36px);
+    font-weight: 900;
+    line-height: 1.3;
+  }
+
+  /* ===== AWARD SCREEN ===== */
+  #award-screen { padding: 0; }
+
+  .award-header {
+    background: var(--surface);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 14px 20px;
+  }
+  .award-header .label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .award-header .q-preview {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .award-body {
+    flex: 1;
+    padding: 18px 18px 28px;
+    overflow-y: auto;
+  }
+
+  .award-instruction {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .award-instruction strong { color: var(--text); }
+
+  /* Pills */
+  .pills-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 24px;
+  }
+
+  .player-pill {
+    display: flex;
+    align-items: center;
+    background: var(--card);
+    border: 1.5px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 11px 14px;
+    gap: 10px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .player-pill.has-star {
+    border-color: rgba(255,209,102,0.55);
+    background: rgba(255,209,102,0.06);
+  }
+  .player-pill.has-skull {
+    border-color: rgba(239,71,111,0.55);
+    background: rgba(239,71,111,0.06);
+  }
+
+  .pill-name {
+    flex: 1;
+    font-weight: 900;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pill-current {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .pill-toggles {
+    display: flex;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .toggle-btn {
+    width: 46px;
+    height: 38px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    filter: grayscale(1) opacity(0.3);
+    user-select: none;
+  }
+  .toggle-btn:hover:not(.off-limits) {
+    filter: grayscale(0.2) opacity(0.65);
+    border-color: rgba(255,255,255,0.2);
+  }
+  .toggle-btn.star-on {
+    filter: none;
+    border-color: var(--accent2);
+    background: rgba(255,209,102,0.15);
+    box-shadow: 0 0 14px rgba(255,209,102,0.3);
+  }
+  .toggle-btn.skull-on {
+    filter: none;
+    border-color: var(--pink);
+    background: rgba(239,71,111,0.15);
+    box-shadow: 0 0 14px rgba(239,71,111,0.3);
+  }
+  .toggle-btn.off-limits {
+    filter: grayscale(1) opacity(0.12);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Action row */
+  .action-row {
+    display: flex;
+    gap: 10px;
+  }
+  .btn {
+    flex: 1;
+    padding: 15px 18px;
+    border-radius: 12px;
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-confirm {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #0f0e17;
+    box-shadow: 0 6px 24px rgba(255,107,53,0.3);
+  }
+  .btn-quit {
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    color: var(--muted);
+    flex: 0 0 auto;
+    padding: 15px 22px;
+  }
+  .btn-quit:hover { border-color: rgba(255,255,255,0.25); color: var(--text); }
+
+  /* ===== POST ROUND ===== */
+  #post-screen {
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+  }
+  .post-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 22px;
+  }
+  .scoreboard-card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius);
+    padding: 22px;
+    max-width: 480px;
+    width: 100%;
+    margin-bottom: 24px;
+    text-align: left;
+  }
+  .scoreboard-card h3 {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    font-weight: 700;
+  }
+  .sb-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    background: var(--surface);
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .sb-entry.leading { background: rgba(255,209,102,0.1); }
+  .sb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sb-stars { color: var(--accent2); }
+
+  .next-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: var(--radius);
+    color: #0f0e17;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 3px;
+    padding: 16px 48px;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(255,107,53,0.35);
+    transition: all 0.2s;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 12px;
+  }
+  .next-btn:hover { transform: translateY(-2px); }
+  .quit-link {
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .quit-link:hover { color: var(--text); }
+
+  /* ===== WIN ===== */
+  #win-screen {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .win-confetti { font-size: 64px; margin-bottom: 14px; animation: bounce 0.7s infinite alternate; }
+  @keyframes bounce { from { transform: translateY(0) } to { transform: translateY(-14px) } }
+  .win-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(44px, 10vw, 80px);
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 4px;
+  }
+  .win-name { font-size: clamp(26px, 6vw, 50px); font-weight: 900; margin: 8px 0 28px; }
+  .win-stats {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 22px 28px;
+    max-width: 380px;
+    width: 100%;
+    margin-bottom: 28px;
+    border: 1px solid rgba(255,255,255,0.07);
+    text-align: left;
+  }
+  .win-stats p { color: var(--muted); font-size: 15px; margin-bottom: 7px; }
+  .win-stats span { color: var(--text); font-weight: 900; }
+  .play-again-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: var(--radius);
+    color: #0f0e17;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 3px;
+    padding: 16px 52px;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(255,107,53,0.35);
+    transition: all 0.2s;
+  }
+  .play-again-btn:hover { transform: translateY(-2px); }
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP ===== -->
+<div id="setup-screen" class="screen active">
+  <div class="logo">
+    <h1>HERD UP!</h1>
+    <p>Think Like the Group</p>
+  </div>
+
+  <div class="setup-card">
+    <h2>👥 Number of Players</h2>
+    <div class="player-count-row">
+      <button class="count-btn" onclick="adjustPlayers(-1)">−</button>
+      <div class="count-display" id="player-count-display">4</div>
+      <button class="count-btn" onclick="adjustPlayers(1)">+</button>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h2>✏️ Player Names</h2>
+    <div id="player-names-grid"></div>
+  </div>
+
+  <div class="setup-card">
+    <h2>⏱ Timer Per Round</h2>
+    <div class="timer-options">
+      <div class="timer-option" onclick="selectTimer(30)" id="timer-30">
+        <div class="big">30</div><div class="small">Seconds</div>
+      </div>
+      <div class="timer-option selected" onclick="selectTimer(60)" id="timer-60">
+        <div class="big">60</div><div class="small">Seconds</div>
+      </div>
+      <div class="timer-option" onclick="selectTimer(90)" id="timer-90">
+        <div class="big">90</div><div class="small">Seconds</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="start-btn" onclick="startGame()">START GAME</button>
+</div>
+
+<!-- ===== GAME — QUESTION + TIMER ===== -->
+<div id="game-screen" class="screen">
+  <div class="game-header">
+    <div class="round-label" id="round-label">ROUND 1</div>
+    <button class="done-btn" id="done-btn" onclick="endTimerEarly()">DONE ✓</button>
+    <div class="timer-ring-wrap">
+      <svg viewBox="0 0 62 62">
+        <circle class="timer-bg" cx="31" cy="31" r="26"/>
+        <circle class="timer-arc" id="timer-arc" cx="31" cy="31" r="26"/>
+      </svg>
+      <div class="timer-text" id="timer-text">60</div>
+    </div>
+  </div>
+
+  <div id="question-phase">
+    <div class="question-card">
+      <div class="q-number" id="q-number">QUESTION 1</div>
+      <div class="question-text" id="question-text">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AWARD SCREEN ===== -->
+<div id="award-screen" class="screen">
+  <div class="award-header">
+    <div class="label">⭐ Check Answers & Award Points</div>
+    <div class="q-preview" id="award-q-preview"></div>
+  </div>
+
+  <div class="award-body">
+    <div class="award-instruction">
+      Orally check answers. Tap <strong>⭐</strong> for players with the same answer.
+      Tap <strong>💀</strong> for the player with the <strong>only unique</strong> answer (one max).
+      A player can't have both.
+    </div>
+
+    <div class="pills-list" id="pills-list"></div>
+
+    <div class="action-row">
+      <button class="btn btn-quit" onclick="backToSetup()">QUIT</button>
+      <button class="btn btn-confirm" onclick="confirmRound()">CONFIRM →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== POST ROUND — SCOREBOARD ===== -->
+<div id="post-screen" class="screen">
+  <div class="post-title">AFTER ROUND <span id="post-round-num"></span></div>
+  <div class="scoreboard-card">
+    <h3>Standings</h3>
+    <div id="sb-list"></div>
+  </div>
+  <button class="next-btn" onclick="nextRound()">NEXT QUESTION →</button>
+  <span class="quit-link" onclick="backToSetup()">End game</span>
+</div>
+
+<!-- ===== WIN ===== -->
+<div id="win-screen" class="screen">
+  <div class="win-confetti">🏆</div>
+  <div class="win-title">WINNER!</div>
+  <div class="win-name" id="win-name"></div>
+  <div class="win-stats" id="win-stats"></div>
+  <button class="play-again-btn" onclick="backToSetup()">PLAY AGAIN</button>
+</div>
+
+<script>
+// ===========================
+//   QUESTIONS
+// ===========================
+const ALL_QUESTIONS = [
+  "Name an animal people keep as a pet.",
+  "Name a wild animal you'd be scared to see in your backyard.",
+  "Name a farm animal.",
+  "Name something you might find at the beach.",
+  "Name a fruit that's red.",
+  "Name a vegetable kids hate eating.",
+  "Name an animal that lives in the ocean.",
+  "Name a bug you might find in your house.",
+  "Name a sport played with a ball.",
+  "Name something you do first thing in the morning.",
+  "Name a subject taught in school.",
+  "Name something you find in a school backpack.",
+  "Name a reason a student gets sent to the principal's office.",
+  "Name something you do on a lazy Sunday.",
+  "Name a reason you would be late to school.",
+  "Name something you do right before bed.",
+  "Name something people do on their birthday.",
+  "Name a popular social media platform.",
+  "Name something you charge with a USB cable.",
+  "Name a way to pay for something without cash.",
+  "Name a pizza topping.",
+  "Name a fast food restaurant.",
+  "Name something you put on a sandwich.",
+  "Name a flavor of ice cream.",
+  "Name a breakfast food.",
+  "Name something you drink when you're sick.",
+  "Name a snack you eat at the movies.",
+  "Name a type of noodle dish.",
+  "Name a food that's orange.",
+  "Name something you might eat at a birthday party.",
+  "Name a streaming platform.",
+  "Name a popular type of video game.",
+  "Name something you'd find in a gamer's room.",
+  "Name a character everyone knows from a Disney movie.",
+  "Name a type of YouTube channel.",
+  "Name a reason you'd skip a class.",
+  "Name a superpower people wish they had.",
+  "Name a famous fictional wizard.",
+  "Name a superhero from Marvel.",
+  "Name a thing teens do when they're bored.",
+  "Name a country in Europe.",
+  "Name a place you'd go on a dream vacation.",
+  "Name something you pack in a suitcase.",
+  "Name a famous landmark in the world.",
+  "Name a place in a city where people hang out.",
+  "Name a reason someone would move to another country.",
+  "Name a type of transportation.",
+  "Name a thing you do at an airport.",
+  "Name a city that never sleeps.",
+  "Name a sport played at the Olympics.",
+  "Name something friends argue about.",
+  "Name a way to cheer up a sad friend.",
+  "Name something annoying a younger sibling does.",
+  "Name a reason two people would stop being friends.",
+  "Name a gift you'd give someone for their birthday.",
+  "Name something you post on social media.",
+  "Name a reason your parents take away your phone.",
+  "Name something teens do to earn money.",
+  "Name a way people show they like someone.",
+  "Name something you'd do on a first date.",
+  "Name something you find under a couch cushion.",
+  "Name something that's always in a hospital.",
+  "Name a reason people go to the doctor.",
+  "Name a type of music genre.",
+  "Name something you'd find at a theme park.",
+  "Name a word that means 'cool'.",
+  "Name a thing that makes a loud noise.",
+  "Name something you do in a swimming pool.",
+  "Name a thing you'd bring to a desert island.",
+  "Name a season of the year.",
+  "Name something a vampire would hate.",
+  "Name something you'd see at a haunted house.",
+  "Name a job that starts with the letter 'T'.",
+  "Name something in a teacher's desk.",
+  "Name a word you use a lot when texting.",
+  "Name a country in South America.",
+  "Name an emoji everyone uses.",
+  "Name a type of dance.",
+  "Name a famous painting.",
+  "Name a thing that's always in a kitchen.",
+  "Name something you'd do if you had a million dollars.",
+  "Name a thing you'd bring to a sleepover.",
+  "Name a language people want to learn.",
+  "Name something you'd change about school.",
+  "Name a fictional place you'd love to visit.",
+  "Name a thing robots might do in the future.",
+  "Name a skill everyone should learn.",
+  "Name a thing you'd want to time-travel to see.",
+  "Name a famous scientist.",
+  "Name something an alien might be confused by on Earth.",
+  "Name an app on every teen's phone.",
+  "Name something you'd do at a school talent show.",
+  "Name a type of hat.",
+  "Name something you collect.",
+  "Name a reason you'd stay up past midnight.",
+  "Name a thing you'd say if you won an award.",
+  "Name a color that's rarely used in fashion.",
+  "Name something that gets better with age.",
+  "Name a thing people do at a concert.",
+  "Name a popular Halloween costume.",
+  "Name something you'd find in a library.",
+  "Name a type of weather that cancels school.",
+  "Name a famous fictional robot.",
+  "Name a card game.",
+  "Name a board game everyone has at home.",
+  "Name something you'd find in outer space.",
+  "Name a thing that makes you sneeze.",
+  "Name a famous athlete.",
+  "Name a sport you can play alone.",
+  "Name a reason people use headphones.",
+  "Name a thing you always forget.",
+  "Name a material clothes are made from.",
+  "Name a thing that's always in a car.",
+  "Name a famous fictional detective.",
+  "Name a thing that's better done with friends.",
+  "Name a reason someone cries in a movie.",
+  "Name a type of shoe.",
+  "Name something you find in a hotel room.",
+  "Name a thing people do to relax.",
+  "Name something you see at a sports game.",
+  "Name a thing you say when you're surprised.",
+];
+
+// ===========================
+//   STATE
+// ===========================
+let state = {
+  playerCount: 4,
+  timerSecs: 60,
+  players: [],        // { name, stars, hasSkull }
+  usedQuestions: [],
+  currentQuestion: '',
+  roundNum: 0,
+  timerInterval: null,
+  timeLeft: 0,
+  awards: [],         // per player: { star: bool, skull: bool }
+};
+
+// ===========================
+//   SETUP
+// ===========================
+function adjustPlayers(delta) {
+  state.playerCount = Math.min(20, Math.max(1, state.playerCount + delta));
+  document.getElementById('player-count-display').textContent = state.playerCount;
+  renderNameInputs();
+}
+
+function renderNameInputs() {
+  const grid = document.getElementById('player-names-grid');
+  const existing = [...grid.querySelectorAll('input')].map(i => i.value);
+  grid.innerHTML = '';
+  for (let i = 0; i < state.playerCount; i++) {
+    const inp = document.createElement('input');
+    inp.className = 'player-name-input';
+    inp.placeholder = `Player ${i + 1}`;
+    inp.value = existing[i] || '';
+    inp.maxLength = 20;
+    grid.appendChild(inp);
+  }
+}
+
+function selectTimer(secs) {
+  state.timerSecs = secs;
+  document.querySelectorAll('.timer-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`timer-${secs}`).classList.add('selected');
+}
+
+function startGame() {
+  const inputs = document.querySelectorAll('.player-name-input');
+  const names = [...inputs].map((inp, i) => inp.value.trim() || `Player ${i + 1}`);
+  state.players = names.map(name => ({ name, stars: 0, hasSkull: false }));
+  state.usedQuestions = [];
+  state.roundNum = 0;
+  showScreen('game-screen');
+  nextRound();
+}
+
+function backToSetup() {
+  clearTimerInterval();
+  showScreen('setup-screen');
+}
+
+// ===========================
+//   ROUND FLOW
+// ===========================
+function pickQuestion() {
+  const unused = ALL_QUESTIONS.filter(q => !state.usedQuestions.includes(q));
+  if (!unused.length) { state.usedQuestions = []; return pickQuestion(); }
+  const q = unused[Math.floor(Math.random() * unused.length)];
+  state.usedQuestions.push(q);
+  return q;
+}
+
+function nextRound() {
+  state.roundNum++;
+  state.currentQuestion = pickQuestion();
+
+  document.getElementById('round-label').textContent = `ROUND ${state.roundNum}`;
+  document.getElementById('q-number').textContent = `QUESTION ${state.roundNum}`;
+  document.getElementById('question-text').textContent = state.currentQuestion;
+
+  const doneBtn = document.getElementById('done-btn');
+  doneBtn.disabled = false;
+
+  showScreen('game-screen');
+  startTimer();
+}
+
+// ===========================
+//   TIMER
+// ===========================
+const R = 26;
+const CIRC = +(2 * Math.PI * R).toFixed(2);
+
+function startTimer() {
+  clearTimerInterval();
+  state.timeLeft = state.timerSecs;
+
+  const arc = document.getElementById('timer-arc');
+  const txt = document.getElementById('timer-text');
+  arc.style.strokeDasharray = CIRC;
+  arc.style.strokeDashoffset = 0;
+  arc.style.stroke = 'var(--teal)';
+  txt.style.color = 'var(--teal)';
+
+  function tick() {
+    txt.textContent = state.timeLeft;
+    const pct = state.timeLeft / state.timerSecs;
+    arc.style.strokeDashoffset = CIRC * (1 - pct);
+
+    if (pct <= 0.25) {
+      arc.style.stroke = 'var(--pink)';
+      txt.style.color = 'var(--pink)';
+    } else if (pct <= 0.5) {
+      arc.style.stroke = 'var(--accent2)';
+      txt.style.color = 'var(--accent2)';
+    }
+
+    if (state.timeLeft <= 0) {
+      clearTimerInterval();
+      goToAwardScreen();
+      return;
+    }
+    state.timeLeft--;
+  }
+
+  tick();
+  state.timerInterval = setInterval(tick, 1000);
+}
+
+function clearTimerInterval() {
+  if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+}
+
+function endTimerEarly() {
+  clearTimerInterval();
+  document.getElementById('done-btn').disabled = true;
+  goToAwardScreen();
+}
+
+// ===========================
+//   AWARD SCREEN
+// ===========================
+function goToAwardScreen() {
+  // Reset awards
+  state.awards = state.players.map(() => ({ star: false, skull: false }));
+  document.getElementById('award-q-preview').textContent = state.currentQuestion;
+  renderPills();
+  showScreen('award-screen');
+}
+
+function renderPills() {
+  const list = document.getElementById('pills-list');
+  list.innerHTML = '';
+
+  const skullIdx = state.awards.findIndex(a => a.skull); // -1 if none
+
+  state.players.forEach((p, idx) => {
+    const a = state.awards[idx];
+
+    // Star btn: disabled if this player has skull this round
+    const starOffLimits = a.skull;
+    // Skull btn: disabled if this player has star, OR another player already has skull
+    const skullOffLimits = a.star || (skullIdx !== -1 && skullIdx !== idx);
+
+    const pill = document.createElement('div');
+    pill.className = `player-pill${a.star ? ' has-star' : ''}${a.skull ? ' has-skull' : ''}`;
+
+    const currentBadge = `${p.stars}⭐${p.hasSkull ? ' 💀' : ''}`;
+
+    pill.innerHTML = `
+      <div class="pill-name">${p.name}</div>
+      <div class="pill-current">${currentBadge}</div>
+      <div class="pill-toggles">
+        <button class="toggle-btn ${a.star ? 'star-on' : ''} ${starOffLimits ? 'off-limits' : ''}"
+                data-action="star" data-idx="${idx}" title="Award ⭐">⭐</button>
+        <button class="toggle-btn ${a.skull ? 'skull-on' : ''} ${skullOffLimits ? 'off-limits' : ''}"
+                data-action="skull" data-idx="${idx}" title="Award 💀">💀</button>
+      </div>
+    `;
+    list.appendChild(pill);
+  });
+
+  // Attach events
+  list.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = +btn.dataset.idx;
+      const action = btn.dataset.action;
+      if (btn.classList.contains('off-limits')) return;
+      if (action === 'star') toggleStar(idx);
+      else toggleSkull(idx);
+    });
+  });
+}
+
+function toggleStar(idx) {
+  if (state.awards[idx].skull) return;
+  state.awards[idx].star = !state.awards[idx].star;
+  renderPills();
+}
+
+function toggleSkull(idx) {
+  if (state.awards[idx].star) return;
+  const wasOn = state.awards[idx].skull;
+  state.awards.forEach(a => a.skull = false); // clear all
+  if (!wasOn) state.awards[idx].skull = true;  // toggle on
+  renderPills();
+}
+
+// ===========================
+//   CONFIRM
+// ===========================
+function confirmRound() {
+  // Apply stars
+  state.awards.forEach((a, idx) => {
+    if (a.star) state.players[idx].stars++;
+  });
+
+  // Skull transfer logic
+  const newSkullIdx = state.awards.findIndex(a => a.skull);
+
+  if (newSkullIdx !== -1) {
+    // Clear skull from everyone, then assign to new owner
+    state.players.forEach(p => p.hasSkull = false);
+    state.players[newSkullIdx].hasSkull = true;
+  }
+
+  // Collect ALL winners (7+ stars, no skull) — handles ties
+  const winners = state.players.filter(p => p.stars >= 7 && !p.hasSkull);
+
+  if (winners.length) {
+    showWinScreen(winners);
+  } else {
+    renderScoreboard();
+    document.getElementById('post-round-num').textContent = state.roundNum;
+    showScreen('post-screen');
+  }
+}
+
+// ===========================
+//   SCOREBOARD
+// ===========================
+function renderScoreboard() {
+  const list = document.getElementById('sb-list');
+  list.innerHTML = '';
+  const sorted = [...state.players].sort((a, b) => b.stars - a.stars);
+  const maxStars = sorted[0]?.stars || 0;
+
+  sorted.forEach(p => {
+    const el = document.createElement('div');
+    el.className = `sb-entry${p.stars === maxStars && p.stars > 0 ? ' leading' : ''}`;
+    el.innerHTML = `
+      <span class="sb-name">${p.name}</span>
+      <span class="sb-stars">${p.stars} ⭐</span>
+      ${p.hasSkull ? '<span>💀</span>' : ''}
+    `;
+    list.appendChild(el);
+  });
+}
+
+// ===========================
+//   WIN
+// ===========================
+function showWinScreen(winners) {
+  const isTie = winners.length > 1;
+  document.getElementById('win-name').textContent = isTie
+    ? winners.map(w => w.name).join(' & ')
+    : winners[0].name;
+  document.querySelector('.win-confetti').textContent = isTie ? '🏆🏆' : '🏆';
+  document.querySelector('.win-title').textContent = isTie ? 'WINNERS!' : 'WINNER!';
+  document.getElementById('win-stats').innerHTML = `
+    ${isTie ? `<p>Tied with: <span>${winners.map(w => w.stars + ' ⭐').join(', ')}</span></p>` : `<p>Stars: <span>${winners[0].stars} ⭐</span></p>`}
+    <p>Rounds played: <span>${state.roundNum}</span></p>
+    <p>Players: <span>${state.players.length}</span></p>
+  `;
+  showScreen('win-screen');
+}
+
+// ===========================
+//   UTILS
+// ===========================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ===========================
+//   INIT
+// ===========================
+renderNameInputs();
+</script>
+</body>
+</html>

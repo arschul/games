@@ -1,894 +1,1387 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Word Chain Game</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            'sans': ['Inter', 'system-ui', 'sans-serif'],
-          },
-          colors: {
-            'neon-pink': '#ff0080',
-            'neon-purple': '#8b5cf6',
-            'cobalt': '#1e40af',
-            'steel': '#64748b',
-          },
-          animation: {
-            'glow': 'glow 2s ease-in-out infinite alternate',
-            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-          },
-          keyframes: {
-            glow: {
-              '0%': { boxShadow: '0 0 5px #ff0080, 0 0 10px #ff0080, 0 0 15px #ff0080' },
-              '100%': { boxShadow: '0 0 10px #ff0080, 0 0 20px #ff0080, 0 0 30px #ff0080' }
-            }
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    body {
-      font-family: 'Inter', system-ui, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(to bottom right, #f8fafc, #e2e8f0); /* from-gray-50 to-gray-200 */
-      padding: 1rem; /* p-4 */
-      margin: 0;
-    }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Word Chain Party</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --c-bg: #fff9f0;
+    --c-ink: #1a1a2e;
+    --c-t1: #ff4757;
+    --c-t2: #2ed573;
+    --c-t3: #1e90ff;
+    --c-t4: #ffa502;
+    --c-card: #ffffff;
+    --c-border: #1a1a2e;
+    --c-shadow: #1a1a2e;
+    --radius: 16px;
+    --border: 3px solid var(--c-border);
+    --shadow: 4px 4px 0px var(--c-shadow);
+    --shadow-lg: 6px 6px 0px var(--c-shadow);
+    --font-head: 'Fredoka One', cursive;
+    --font-body: 'Nunito', sans-serif;
+  }
 
-    /* Game Area Card */
-    #game-area {
-      width: 100%;
-      max-width: 60rem; /* Increased max-width for widescreen */
-      background-color: #ffffff; /* bg-white */
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
-      border-radius: 0.75rem; /* rounded-xl */
-      padding: 1.5rem; /* p-6 */
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem; /* space-y-6 */
-    }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Card Header */
-    .card-header {
-      text-align: center;
-      padding-bottom: 1rem; /* pb-4 */
-    }
+  body {
+    font-family: var(--font-body);
+    background: var(--c-bg);
+    background-image:
+      radial-gradient(circle at 20% 20%, #ffe0e0 0%, transparent 40%),
+      radial-gradient(circle at 80% 80%, #e0f0ff 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, #e8ffe0 0%, transparent 50%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
 
-    .card-title {
-      font-size: 2.25rem; /* text-4xl */
-      font-weight: 800; /* font-extrabold */
-      color: #1f2937; /* text-gray-800 */
-    }
+  /* ---- SCREENS ---- */
+  .screen { display: none; width: 100%; max-width: 720px; }
+  .screen.active { display: block; }
 
-    /* Card Content */
-    .card-content {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem; /* space-y-6 */
-    }
+  /* ---- CARD ---- */
+  .card {
+    background: var(--c-card);
+    border: var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 32px;
+  }
 
-    /* Game Mode Selector */
-    .game-mode-selector {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem; /* space-y-3 */
-      padding: 0.75rem;
-      background-color: #f0f9ff; /* bg-blue-50 */
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    }
-    .game-mode-selector label {
-      font-weight: 600;
-      color: #1e40af;
-    }
-    .game-mode-selector select {
-      padding: 0.5rem;
-      border: 1px solid #93c5fd; /* border-blue-300 */
-      border-radius: 0.375rem;
-      background-color: #ffffff;
-      font-size: 1rem;
-      color: #1f2937;
-      margin-bottom: 0.5rem; /* Added for spacing between selects */
-    }
+  /* ---- TYPOGRAPHY ---- */
+  h1 {
+    font-family: var(--font-head);
+    font-size: clamp(2.4rem, 8vw, 3.6rem);
+    color: var(--c-ink);
+    text-align: center;
+    line-height: 1;
+  }
+  h2 {
+    font-family: var(--font-head);
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    color: var(--c-ink);
+    text-align: center;
+  }
+  .subtitle {
+    text-align: center;
+    font-weight: 700;
+    color: #666;
+    margin-top: 4px;
+    font-size: 1rem;
+  }
 
-    /* Info Grid */
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1fr; /* grid-cols-1 */
-      gap: 1rem; /* gap-4 */
-      font-size: 1.125rem; /* text-lg */
-      font-weight: 500; /* font-medium */
-      color: #374151; /* text-gray-700 */
-    }
-    @media (min-width: 768px) { /* md:grid-cols-2 */
-      .info-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
+  /* ---- TITLE BADGE ---- */
+  .title-wrap { text-align: center; margin-bottom: 32px; }
+  .title-badge {
+    display: inline-block;
+    background: var(--c-ink);
+    color: #fff;
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    padding: 4px 14px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
 
-    .info-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.75rem; /* p-3 */
-      background-color: #f9fafb; /* bg-gray-50 */
-      border-radius: 0.5rem; /* rounded-lg */
-      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
-    }
+  /* ---- SETUP SCREEN ---- */
+  .setup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 500px) { .setup-grid { grid-template-columns: 1fr; } }
 
-    .info-item strong {
-      color: #2563eb; /* text-blue-600 */
-      font-size: 1.5rem; /* text-2xl */
-    }
+  .field-label {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--c-ink);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
-    /* Next Word Hint */
-    #next-word-hint {
-      text-align: center;
-      font-size: 1.25rem; /* text-xl */
-      font-weight: 600; /* font-semibold */
-      color: #1f2937; /* text-gray-800 */
-      padding: 0.75rem; /* p-3 */
-      background-color: #fffbeb; /* bg-yellow-50 */
-      border-radius: 0.5rem; /* rounded-lg */
-      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
-    }
+  .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    padding: 8px 16px;
+    border: var(--border);
+    border-radius: 999px;
+    background: #fff;
+    font-family: var(--font-body);
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.12s;
+    box-shadow: 2px 2px 0 var(--c-border);
+    color: var(--c-ink);
+  }
+  .pill:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--c-border); }
+  .pill.selected {
+    background: var(--c-ink);
+    color: #fff;
+    transform: translate(1px,1px);
+    box-shadow: 1px 1px 0 var(--c-border);
+  }
 
-    /* Timer and Progress Bar */
-    .timer-section {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem; /* space-y-2 */
-    }
+  /* Mode cards */
+  .mode-cards { display: flex; flex-direction: column; gap: 10px; }
+  .mode-card {
+    border: var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.12s;
+    box-shadow: 3px 3px 0 var(--c-border);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .mode-card:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--c-border); }
+  .mode-card.selected { background: var(--c-ink); color: #fff; transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--c-border); }
+  .mode-card.selected .mode-desc { color: #ccc; }
+  .mode-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 2px; }
+  .mode-name { font-family: var(--font-head); font-size: 1.1rem; }
+  .mode-desc { font-size: 0.8rem; font-weight: 600; color: #777; margin-top: 2px; }
 
-    .timer-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: #374151; /* text-gray-700 */
-      font-weight: 600; /* font-semibold */
-    }
+  /* ---- BIG BUTTON ---- */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px 24px;
+    border: var(--border);
+    border-radius: 12px;
+    font-family: var(--font-head);
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: all 0.12s;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .btn:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: var(--shadow-lg); }
+  .btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--c-border); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-ink { background: var(--c-ink); color: #fff; }
+  .btn-sm {
+    width: auto;
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 10px;
+  }
 
-    .timer-value {
-      font-size: 1.5rem; /* text-2xl */
-      font-weight: 700; /* font-bold */
-      color: #9333ea; /* text-purple-600 */
-    }
+  /* ---- GAME SCREEN ---- */
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .word-count-badge {
+    background: var(--c-ink);
+    color: #fff;
+    font-family: var(--font-head);
+    font-size: 1rem;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: var(--border);
+  }
 
-    #progress-container {
-      height: 0.75rem; /* h-3 */
-      background-color: #e5e7eb; /* bg-gray-200 */
-      border-radius: 9999px; /* full rounded */
-      overflow: hidden;
-    }
+  /* Team Row */
+  .teams-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .team-chip {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 8px;
+    border: 3px solid transparent;
+    border-radius: 12px;
+    text-align: center;
+    font-family: var(--font-head);
+    font-size: 1rem;
+    transition: all 0.2s;
+    opacity: 0.45;
+    position: relative;
+  }
+  .team-chip.active { opacity: 1; border-color: var(--c-border); box-shadow: var(--shadow); transform: translateY(-3px); }
+  .team-chip.eliminated { opacity: 0.2; text-decoration: line-through; }
+  .team-chip.t1 { background: #ffe5e7; color: var(--c-t1); }
+  .team-chip.t2 { background: #e5fff0; color: var(--c-t2); }
+  .team-chip.t3 { background: #e5f0ff; color: var(--c-t3); }
+  .team-chip.t4 { background: #fff5e5; color: var(--c-t4); }
+  .team-chip .chip-name { font-size: 0.95rem; }
+  .team-chip .chip-status { font-size: 0.7rem; font-family: var(--font-body); font-weight: 700; color: #999; }
+  .team-chip.active .chip-status { color: inherit; }
 
-    #progress-bar {
-      height: 100%;
-      width: 100%; /* Initial width */
-      background: linear-gradient(to right, #4ade80, #22c55e); /* from-green-400 to-green-600 */
-      transition: width 0.5s linear; /* Smoother transition */
-      border-radius: 9999px; /* full rounded */
-    }
+  /* Current Word */
+  .current-word-box {
+    text-align: center;
+    padding: 16px;
+    border: var(--border);
+    border-radius: 14px;
+    background: #f8f8f8;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+  .current-word-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #999; letter-spacing: 1px; }
+  .current-word-value {
+    font-family: var(--font-head);
+    font-size: clamp(2rem, 8vw, 3rem);
+    color: var(--c-ink);
+    letter-spacing: 4px;
+    margin-top: 4px;
+    word-break: break-all;
+  }
 
-    /* Input and Buttons */
-    .input-buttons-section {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem; /* space-y-4 */
-    }
+  /* Hint bar */
+  .hint-bar {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 16px;
+    padding: 8px 14px;
+    background: #fffbe6;
+    border: 2px dashed #f0c040;
+    border-radius: 10px;
+  }
 
-    #word-input {
-      width: 100%;
-      padding: 0.75rem; /* p-3 */
-      font-size: 1.125rem; /* text-lg */
-      border: 2px solid #d1d5db; /* border-2 border-gray-300 */
-      border-radius: 0.5rem; /* rounded-lg */
-      transition: border-color 0.2s, box-shadow 0.2s; /* transition-all duration-200 */
-    }
-    #word-input:focus {
-      outline: none;
-      border-color: #3b82f6; /* focus:border-blue-500 */
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus:ring-blue-500 */
-    }
-    #word-input:disabled {
-      background-color: #e5e7eb; /* gray-200 */
-      cursor: not-allowed;
-    }
+  /* Timer */
+  .timer-wrap { margin-bottom: 20px; }
+  .timer-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .timer-label { font-weight: 800; font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .timer-value {
+    font-family: var(--font-head);
+    font-size: 2rem;
+    color: var(--c-ink);
+    transition: color 0.3s;
+  }
+  .timer-value.warn { color: #ff6b35; }
+  .timer-value.danger { color: #ff4757; animation: pulse-timer 0.5s infinite alternate; }
+  @keyframes pulse-timer { from { transform: scale(1); } to { transform: scale(1.08); } }
 
-    .button-group {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.75rem; /* gap-3 */
-    }
+  .progress-track {
+    height: 16px;
+    background: #eee;
+    border: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: #2ed573;
+    transition: width 0.5s linear, background 0.3s;
+  }
+  .progress-fill.warn { background: #ffa502; }
+  .progress-fill.danger { background: #ff4757; }
 
-    .game-button {
-      padding: 0.75rem 1.5rem; /* px-6 py-3 */
-      font-size: 1.125rem; /* text-lg */
-      border: none;
-      border-radius: 0.5rem; /* rounded-lg */
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* shadow-md */
-      cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s; /* transition-colors duration-200 */
-      color: #ffffff; /* text-white */
-    }
-    .game-button:hover {
-      transform: translateY(-1px);
-    }
-    .game-button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
+  /* Input */
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: stretch;
+  }
+  .word-input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    border: 3px solid var(--c-border);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .word-prefix {
+    padding: 0 8px 0 16px;
+    font-family: var(--font-head);
+    font-size: 1.6rem;
+    color: var(--c-ink);
+    background: #f0f0f0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    border-right: 2px solid #ddd;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .word-prefix.hidden { display: none; }
+  #word-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--font-head);
+    font-size: 1.6rem;
+    padding: 14px 16px;
+    background: transparent;
+    color: var(--c-ink);
+    text-transform: uppercase;
+    width: 100%;
+  }
+  #word-input::placeholder { color: #ccc; font-family: var(--font-body); font-size: 1rem; font-weight: 600; }
+  #word-input:disabled { background: #f5f5f5; cursor: not-allowed; }
+  .letter-count {
+    padding-right: 12px;
+    font-weight: 800;
+    font-size: 0.8rem;
+    color: #aaa;
+    flex-shrink: 0;
+  }
 
-    #submit-btn { background-color: #16a34a; /* bg-green-600 */ }
-    #submit-btn:hover:not(:disabled) { background-color: #15803d; /* hover:bg-green-700 */ }
+  #submit-btn {
+    padding: 14px 24px;
+    border: var(--border);
+    border-radius: 12px;
+    background: #2ed573;
+    font-family: var(--font-head);
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: all 0.12s;
+    color: var(--c-ink);
+    flex-shrink: 0;
+  }
+  #submit-btn:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: var(--shadow-lg); }
+  #submit-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    #pause-btn { background-color: #2563eb; /* bg-blue-600 */ }
-    #pause-btn:hover:not(:disabled) { background-color: #1d4ed8; /* hover:bg-blue-700 */ }
+  /* Message */
+  #message {
+    text-align: center;
+    font-weight: 800;
+    font-size: 1rem;
+    min-height: 1.5em;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+  }
+  #message.good { color: #20bf6b; }
+  #message.bad { color: #ff4757; }
+  #message.info { color: #1e90ff; }
 
-    #new-game-btn, #start-game-btn { background-color: #dc2626; /* bg-red-600 */ }
-    #new-game-btn:hover:not(:disabled), #start-game-btn:hover:not(:disabled) { background-color: #b91c1c; /* hover:bg-red-700 */ }
+  /* Mode info row */
+  .mode-info-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .mode-badge {
+    padding: 6px 14px;
+    border: var(--border);
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.82rem;
+    background: #fff;
+    box-shadow: 2px 2px 0 var(--c-border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mode-badge .badge-label { color: #999; }
+  .mode-badge .badge-value { color: var(--c-ink); }
 
-    /* Alphabet Buttons */
-    #alphabet {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 1.5rem; /* mt-6 */
-      padding: 1rem; /* p-4 */
-      background-color: #f3f4f6; /* bg-gray-100 */
-      border-radius: 0.5rem; /* rounded-lg */
-      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); /* shadow-inner */
-      gap: 0.5rem; /* gap-2 */
-    }
+  /* Alphabet */
+  .alphabet-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    padding: 14px;
+    background: #f5f5f5;
+    border: var(--border);
+    border-radius: 14px;
+    margin-bottom: 16px;
+  }
+  .alpha-btn {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--c-border);
+    border-radius: 8px;
+    font-family: var(--font-head);
+    font-size: 0.95rem;
+    background: #fff;
+    cursor: default;
+    transition: all 0.15s;
+    color: var(--c-ink);
+    box-shadow: 2px 2px 0 var(--c-border);
+  }
+  .alpha-btn.used {
+    background: #ddd;
+    color: #aaa;
+    border-color: #ccc;
+    box-shadow: none;
+    text-decoration: line-through;
+  }
+  .alpha-btn.disabled-end {
+    background: #ffe5e7;
+    color: #ff4757;
+    border-color: #ff4757;
+    font-weight: 900;
+  }
+  .alpha-btn.required {
+    background: var(--c-ink);
+    color: #fff;
+    border-color: var(--c-ink);
+    animation: bounce-letter 0.6s infinite alternate;
+  }
+  @keyframes bounce-letter { from { transform: translateY(0); } to { transform: translateY(-3px); } }
 
-    #alphabet button {
-      width: 2.5rem; /* w-10 */
-      height: 2.5rem; /* h-10 */
-      font-size: 1rem; /* text-base */
-      font-weight: 700; /* font-bold */
-      border-radius: 0.375rem; /* rounded-md */
-      transition: background-color 0.2s, color 0.2s, border-color 0.2s; /* transition-colors duration-200 */
-      background-color: #ffffff; /* bg-white */
-      color: #1f2937; /* text-gray-800 */
-      border: 1px solid #d1d5db; /* border-gray-300 */
-      cursor: pointer;
-    }
-    #alphabet button:hover:not(:disabled) {
-      background-color: #e5e7eb; /* hover:bg-gray-200 */
-    }
-    #alphabet button.disabled {
-      background-color: #d1d5db; /* bg-gray-300 */
-      color: #6b7280; /* text-gray-500 */
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-    /* Specific styling for disabled end letters in TAILS mode */
-    #alphabet button.disabled-end-letter {
-      background-color: #fca5a5; /* bg-red-300 */
-      color: #7f1d1d; /* text-red-800 */
-      border-color: #ef4444; /* border-red-500 */
-      font-weight: bold;
-    }
+  /* Word history */
+  .history-wrap {
+    border: var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    background: #fafafa;
+    box-shadow: var(--shadow);
+    max-height: 80px;
+    overflow-y: auto;
+  }
+  .history-label { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #bbb; letter-spacing: 1px; margin-bottom: 4px; }
+  #word-history { font-weight: 700; font-size: 0.9rem; color: #555; word-break: break-all; }
 
+  /* Controls row */
+  .controls-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
 
-    /* Message Display */
-    #message {
-      text-align: center;
-      font-size: 1.125rem; /* text-lg */
-      font-weight: 600; /* font-semibold */
-      margin-top: 1rem; /* mt-4 */
-      min-height: 1.5em; /* min-h-[1.5em] */
-    }
-    .text-red-500 { color: #ef4444; }
-    .text-red-600 { color: #dc2626; }
-    .text-green-600 { color: #16a34a; }
-    .text-blue-600 { color: #2563eb; }
-    .text-gray-700 { color: #374151; }
+  /* ---- SPLASH OVERLAY ---- */
+  #splash-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #splash-overlay.show { opacity: 1; pointer-events: all; }
+  .splash-card {
+    background: #fff;
+    border: 4px solid var(--c-border);
+    border-radius: 24px;
+    padding: 40px 56px;
+    text-align: center;
+    box-shadow: 8px 8px 0 var(--c-border);
+    transform: scale(0.85);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  #splash-overlay.show .splash-card { transform: scale(1); }
+  .splash-emoji { font-size: 4rem; margin-bottom: 8px; }
+  .splash-title { font-family: var(--font-head); font-size: 2.4rem; color: var(--c-ink); }
+  .splash-sub { font-weight: 700; color: #777; margin-top: 6px; font-size: 1rem; }
 
-    /* Word History */
-    #word-history-container {
-      margin-top: 1.5rem; /* mt-6 */
-      padding: 1rem; /* p-4 */
-      background-color: #eff6ff; /* bg-blue-50 */
-      border-radius: 0.5rem; /* rounded-lg */
-      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); /* shadow-inner */
-    }
+  /* ---- ELIM OVERLAY ---- */
+  #elim-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #elim-overlay.show { opacity: 1; pointer-events: all; }
+  .elim-card {
+    background: #fff;
+    border: 4px solid var(--c-border);
+    border-radius: 24px;
+    padding: 40px 56px;
+    text-align: center;
+    box-shadow: 8px 8px 0 var(--c-border);
+    transform: scale(0.8) rotate(-3deg);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  #elim-overlay.show .elim-card { transform: scale(1) rotate(0deg); }
+  .elim-emoji { font-size: 4rem; }
+  .elim-title { font-family: var(--font-head); font-size: 2rem; color: #ff4757; margin: 8px 0; }
+  .elim-sub { font-weight: 700; color: #555; }
 
-    #word-history-container h3 {
-      font-size: 1.25rem; /* text-xl */
-      font-weight: 700; /* font-bold */
-      color: #1e40af; /* text-blue-800 */
-      margin-bottom: 0.5rem; /* mb-2 */
-    }
+  /* ---- WINNER SCREEN ---- */
+  #winner-screen .card { text-align: center; }
+  .confetti-wrap { position: relative; }
+  .winner-emoji { font-size: 5rem; animation: winner-bounce 0.7s infinite alternate; }
+  @keyframes winner-bounce { from { transform: translateY(0) rotate(-5deg); } to { transform: translateY(-12px) rotate(5deg); } }
+  .winner-title { font-family: var(--font-head); font-size: clamp(2rem,7vw,3.2rem); margin: 12px 0 4px; }
+  .winner-sub { font-weight: 700; color: #888; margin-bottom: 28px; }
+  .winner-stats {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .stat-box {
+    border: var(--border);
+    border-radius: 14px;
+    padding: 14px 24px;
+    box-shadow: var(--shadow);
+    background: #fafafa;
+  }
+  .stat-val { font-family: var(--font-head); font-size: 2rem; color: var(--c-ink); }
+  .stat-lbl { font-size: 0.75rem; font-weight: 800; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    #word-history {
-      font-size: 1.125rem; /* text-lg */
-      color: #1d4ed8; /* text-blue-700 */
-      word-break: break-all; /* break-words */
-    }
+  /* Confetti canvas */
+  #confetti-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 300;
+  }
 
-    /* New styles for Tailwind integration */
-    .glass-effect {
-      backdrop-filter: blur(10px);
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    .neon-glow {
-      box-shadow: 0 0 10px #ff0080, 0 0 20px #ff0080, 0 0 30px #ff0080;
-    }
-    .steel-glow {
-      box-shadow: 0 0 10px #64748b, 0 0 20px #64748b;
-    }
-  </style>
+  /* ---- TURN SPLASH BG ---- */
+  .t1-bg { background: linear-gradient(135deg, #ffe5e7, #fff); }
+  .t2-bg { background: linear-gradient(135deg, #e5fff0, #fff); }
+  .t3-bg { background: linear-gradient(135deg, #e5f0ff, #fff); }
+  .t4-bg { background: linear-gradient(135deg, #fff5e5, #fff); }
+  .t1-color { color: var(--c-t1); }
+  .t2-color { color: var(--c-t2); }
+  .t3-color { color: var(--c-t3); }
+  .t4-color { color: var(--c-t4); }
+
+  .divider { border: none; border-top: 2px dashed #eee; margin: 16px 0; }
+</style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 font-sans">
-  <div id="game-area" class="w-full max-w-4xl bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-    <div class="text-center pb-8">
-      <h1 class="text-5xl font-black bg-gradient-to-r from-neon-pink via-neon-purple to-cobalt bg-clip-text text-transparent mb-2 animate-pulse-slow">
-        Word Chain Game
-      </h1>
-      <div class="w-24 h-1 bg-gradient-to-r from-neon-pink to-neon-purple mx-auto rounded-full"></div>
+<body>
+
+<!-- ===== SETUP SCREEN ===== -->
+<div id="setup-screen" class="screen active">
+  <div class="card">
+    <div class="title-wrap">
+      <div class="title-badge">🔤 Party Edition</div>
+      <h1>Word Chain</h1>
+      <p class="subtitle">Team vs Team · Last one standing wins</p>
     </div>
 
-    <div class="space-y-8">
-      <div class="bg-gradient-to-r from-slate-800/50 to-slate-700/50 backdrop-blur-sm rounded-xl p-6 border border-slate-600/30">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div>
-            <label for="game-mode-dropdown" class="block text-sm font-semibold text-neon-pink mb-2">Choose Mode:</label>
-            <select id="game-mode-dropdown" class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20 transition-all">
-              <option value="HEADS">HEADS</option>
-              <option value="TAILS">TAILS</option>
-              <option value="CHAOS">CHAOS</option>
-            </select>
-          </div>
-          <div>
-            <label for="timer-duration-dropdown" class="block text-sm font-semibold text-neon-purple mb-2">Timer:</label>
-            <select id="timer-duration-dropdown" class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/20 transition-all">
-              <option value="30">30 Seconds</option>
-              <option value="60">1 Minute</option>
-            </select>
-          </div>
-          <button id="start-game-btn" class="bg-gradient-to-r from-neon-pink to-neon-purple hover:from-neon-purple hover:to-neon-pink text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-neon-pink/25">
-            Start Game
-          </button>
+    <div class="setup-grid">
+      <div>
+        <div class="field-label">Number of Teams</div>
+        <div class="pill-group" id="team-count-pills">
+          <button class="pill" data-val="2">2 Teams</button>
+          <button class="pill selected" data-val="3">3 Teams</button>
+          <button class="pill" data-val="4">4 Teams</button>
         </div>
       </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="glass-effect rounded-xl p-4 flex justify-between items-center">
-          <span class="text-slate-300 font-medium">Current Word:</span>
-          <strong id="current-word" class="text-2xl font-bold text-neon-pink">None</strong>
-        </div>
-        <div class="glass-effect rounded-xl p-4 flex justify-between items-center">
-          <span class="text-slate-300 font-medium">Required Length:</span>
-          <strong id="required-length" class="text-2xl font-bold text-neon-purple">3</strong>
-        </div>
-        <div id="tails-disabled-letters" class="glass-effect rounded-xl p-4 flex justify-between items-center" style="display: none;">
-          <span class="text-slate-300 font-medium">Disabled End Letters:</span>
-          <strong id="disabled-end-letters-display" class="text-xl font-bold text-red-400"></strong>
-        </div>
-        <div id="chaos-first-letter-display" class="glass-effect rounded-xl p-4 flex justify-between items-center" style="display: none;">
-          <span class="text-slate-300 font-medium">Required First Letter:</span>
-          <strong id="required-first-letter-value" class="text-2xl font-bold text-cobalt"></strong>
+      <div>
+        <div class="field-label">Turn Timer</div>
+        <div class="pill-group" id="timer-pills">
+          <button class="pill" data-val="15">15s</button>
+          <button class="pill selected" data-val="30">30s</button>
+          <button class="pill" data-val="60">60s</button>
         </div>
       </div>
+    </div>
 
-      <div id="next-word-hint" class="text-center text-xl font-semibold text-white p-4 bg-gradient-to-r from-slate-700/50 to-slate-600/50 rounded-xl border border-slate-500/30">
-        Select a game mode and timer, then click 'Start Game' to begin.
-      </div>
+    <hr class="divider"/>
 
-      <div class="space-y-3">
-        <div class="flex justify-between items-center text-slate-300 font-semibold">
-          <span>Time Left:</span>
-          <span id="timer" class="text-2xl font-bold text-neon-purple">30s</span>
-        </div>
-        <div class="h-4 bg-slate-700/50 rounded-full overflow-hidden border border-slate-600/30">
-          <div id="progress-bar" class="h-full bg-gradient-to-r from-neon-pink via-neon-purple to-cobalt transition-all duration-500 ease-linear rounded-full"></div>
-        </div>
-      </div>
-
-      <div class="space-y-4">
-        <div class="relative">
-          <input type="text" id="word-input" placeholder="Type your word here" disabled 
-                 class="w-full bg-slate-700/50 border-2 border-slate-600 rounded-xl px-6 py-4 text-xl text-white placeholder-slate-400 focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed" />
-          <div id="letter-counter" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-slate-400">
-            0 letters
-          </div>
-        </div>
-        <div class="flex flex-wrap justify-center gap-3">
-          <button id="submit-btn" disabled class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-            Submit
-          </button>
-          <button id="pause-btn" disabled class="bg-gradient-to-r from-cobalt to-blue-600 hover:from-blue-600 hover:to-cobalt text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-            Pause
-          </button>
-          <button id="new-game-btn" disabled class="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-            New Game
-          </button>
+    <div class="field-label" style="margin-bottom:10px">Game Mode</div>
+    <div class="mode-cards" id="mode-cards">
+      <div class="mode-card selected" data-mode="HEADS">
+        <div class="mode-icon">🧠</div>
+        <div>
+          <div class="mode-name">HEADS</div>
+          <div class="mode-desc">Same first letter = same length · New letter = length +1. Used first letters are locked out.</div>
         </div>
       </div>
-
-      <div id="alphabet" class="flex flex-wrap justify-center gap-2 p-6 bg-gradient-to-r from-slate-800/30 to-slate-700/30 rounded-xl border border-slate-600/20"></div>
-
-      <div id="message" class="text-center text-lg font-semibold min-h-[1.5em] text-slate-300"></div>
-
-      <div id="word-history-container" class="glass-effect rounded-xl p-6 border border-slate-600/30" style="display: none;">
-        <h3 class="text-xl font-bold text-neon-pink mb-3">Word Chain History:</h3>
-        <p id="word-history" class="text-lg text-slate-300 break-words"></p>
+      <div class="mode-card" data-mode="TAILS">
+        <div class="mode-icon">🔗</div>
+        <div>
+          <div class="mode-name">TAILS</div>
+          <div class="mode-desc">Start with the last letter of the previous word. 5 random ending letters are forbidden each round.</div>
+        </div>
       </div>
+      <div class="mode-card" data-mode="CHAOS">
+        <div class="mode-icon">🎲</div>
+        <div>
+          <div class="mode-name">CHAOS</div>
+          <div class="mode-desc">A random first letter is assigned each turn. Word must be one letter longer every time.</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <button class="btn btn-ink" id="setup-start-btn">Let's Play! 🎉</button>
+  </div>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="game-screen" class="screen">
+  <div class="card">
+    <div class="game-header">
+      <h2 id="mode-title">HEADS Mode</h2>
+      <div class="word-count-badge">🔤 <span id="word-count">0</span> words</div>
+    </div>
+
+    <div class="teams-row" id="teams-row"></div>
+
+    <div class="current-word-box">
+      <div class="current-word-label">Current Word</div>
+      <div class="current-word-value" id="current-word-display">—</div>
+    </div>
+
+    <div class="hint-bar" id="hint-bar">First word — 3 letters only!</div>
+
+    <div class="timer-wrap">
+      <div class="timer-top">
+        <span class="timer-label">Time Left</span>
+        <span class="timer-value" id="timer-display">30s</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="mode-info-row" id="mode-info-row"></div>
+
+    <div class="input-row">
+      <div class="word-input-wrap">
+        <div class="word-prefix hidden" id="word-prefix"></div>
+        <input type="text" id="word-input" placeholder="Type your word…" disabled autocomplete="off" autocorrect="off" spellcheck="false"/>
+        <div class="letter-count" id="letter-count">0</div>
+      </div>
+      <button id="submit-btn" disabled>GO ✓</button>
+    </div>
+
+    <div id="message" class="info">Press Start to begin!</div>
+
+    <div class="controls-row">
+      <button class="btn btn-sm btn-ink" id="pause-btn" disabled>⏸ Pause</button>
+      <button class="btn btn-sm" style="background:#ff4757;color:#fff;border:var(--border);box-shadow:var(--shadow);" id="new-game-btn">↩ New Game</button>
+    </div>
+
+    <div class="alphabet-grid" id="alphabet-grid"></div>
+
+    <div class="history-wrap">
+      <div class="history-label">Word Chain</div>
+      <div id="word-history">—</div>
     </div>
   </div>
+</div>
 
-  <script>
-    let currentWord = "";
-    let requiredLength = 3;
-    let usedLetters = []; // For HEADS and CHAOS mode (first letters)
-    let timeLeft = 30;
-    let timerInterval = null;
-    let gameStarted = false;
-    let isPaused = false;
-    let wordHistory = [];
-    let gameMode = "HEADS"; // Default mode
-    let selectedTimeLimit = 30; // Default timer duration
-    let submittedWords = new Set(); // To track all words used in the current game
+<!-- ===== WINNER SCREEN ===== -->
+<div id="winner-screen" class="screen">
+  <div class="card">
+    <div class="winner-emoji" id="winner-emoji">🏆</div>
+    <div class="winner-title" id="winner-title">Team 1 Wins!</div>
+    <div class="winner-sub" id="winner-sub">Last team standing</div>
+    <div class="winner-stats">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-words">0</div>
+        <div class="stat-lbl">Total Words</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-longest">—</div>
+        <div class="stat-lbl">Longest Word</div>
+      </div>
+    </div>
+    <button class="btn btn-ink" id="play-again-btn">Play Again 🎉</button>
+  </div>
+</div>
 
-    // Mode-specific variables
-    let disabledEndLetters = []; // For TAILS mode
-    let chaosRequiredFirstLetter = ""; // For CHAOS mode
-    let chaosUsedFirstLetters = []; // For CHAOS mode
+<!-- ===== TURN SPLASH OVERLAY ===== -->
+<div id="splash-overlay">
+  <div class="splash-card" id="splash-card">
+    <div class="splash-emoji" id="splash-emoji">🎯</div>
+    <div class="splash-title" id="splash-title">Team 1's Turn!</div>
+    <div class="splash-sub" id="splash-sub">Get ready…</div>
+  </div>
+</div>
 
-    const alphabetArray = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+<!-- ===== ELIM OVERLAY ===== -->
+<div id="elim-overlay">
+  <div class="elim-card" id="elim-card">
+    <div class="elim-emoji">💥</div>
+    <div class="elim-title" id="elim-title">Team 1 is OUT!</div>
+    <div class="elim-sub" id="elim-sub">Time ran out!</div>
+  </div>
+</div>
 
-    // DOM Elements
-    const gameModeDropdown = document.getElementById("game-mode-dropdown");
-    const timerDurationDropdown = document.getElementById("timer-duration-dropdown");
-    const startGameBtn = document.getElementById("start-game-btn");
-    const wordInput = document.getElementById("word-input");
-    const currentWordSpan = document.getElementById("current-word");
-    const requiredLengthSpan = document.getElementById("required-length");
-    const messageDiv = document.getElementById("message");
-    const alphabetDiv = document.getElementById("alphabet");
-    const timerSpan = document.getElementById("timer");
-    const progressBar = document.getElementById("progress-bar");
-    const pauseBtn = document.getElementById("pause-btn");
-    const submitBtn = document.getElementById("submit-btn");
-    const newGameBtn = document.getElementById("new-game-btn");
-    const nextWordHintDiv = document.getElementById("next-word-hint");
-    const wordHistoryContainer = document.getElementById("word-history-container");
-    const wordHistoryParagraph = document.getElementById("word-history");
-    const tailsDisabledLettersDiv = document.getElementById("tails-disabled-letters");
-    const disabledEndLettersDisplay = document.getElementById("disabled-end-letters-display");
-    const chaosFirstLetterDisplayDiv = document.getElementById("chaos-first-letter-display");
-    const requiredFirstLetterValue = document.getElementById("required-first-letter-value");
-    const letterCounter = document.getElementById("letter-counter");
+<canvas id="confetti-canvas"></canvas>
 
-    alphabetArray.forEach(letter => {
-      const btn = document.createElement("button");
-      btn.textContent = letter;
-      btn.id = `letter-${letter}`;
-      btn.className = "w-12 h-12 text-base font-bold rounded-lg transition-all duration-200 bg-slate-700/50 text-white border border-slate-600/50 hover:bg-slate-600/50 hover:border-neon-pink/50 hover:text-neon-pink hover:shadow-lg hover:shadow-neon-pink/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50 disabled:hover:border-slate-600/50 disabled:hover:text-white disabled:hover:shadow-none";
-      alphabetDiv.appendChild(btn);
+<script>
+// ============================================================
+// AUDIO ENGINE
+// ============================================================
+const AudioEngine = (() => {
+  let ctx = null;
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+  function tone(freq, type, dur, vol=0.3, delay=0) {
+    try {
+      const c = getCtx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.setValueAtTime(freq, c.currentTime + delay);
+      g.gain.setValueAtTime(vol, c.currentTime + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + dur);
+      o.start(c.currentTime + delay);
+      o.stop(c.currentTime + delay + dur + 0.05);
+    } catch(e){}
+  }
+  function noise(dur, vol=0.15) {
+    try {
+      const c = getCtx();
+      const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i=0; i<d.length; i++) d[i] = Math.random()*2-1;
+      const s = c.createBufferSource();
+      const g = c.createGain();
+      const f = c.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.value = 800;
+      s.buffer = buf; s.connect(f); f.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(vol, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      s.start(); s.stop(c.currentTime + dur + 0.05);
+    } catch(e){}
+  }
+  return {
+    accept() { tone(523,  'sine',   0.12, 0.25);  tone(659, 'sine', 0.12, 0.25, 0.1); tone(784, 'sine', 0.18, 0.25, 0.2); },
+    reject() { tone(220, 'sawtooth', 0.15, 0.2); tone(180, 'sawtooth', 0.2, 0.2, 0.1); },
+    tick()   { tone(880, 'sine', 0.06, 0.08); },
+    danger() { tone(440, 'square', 0.08, 0.12); },
+    elim()   { noise(0.3, 0.2); tone(200,'sawtooth',0.4,0.2); tone(160,'sawtooth',0.4,0.2,0.2); },
+    turnStart() { tone(660,'sine',0.1,0.2); tone(880,'sine',0.1,0.2,0.12); },
+    win()    {
+      [523,659,784,1047].forEach((f,i) => tone(f,'sine',0.2,0.3,i*0.12));
+      setTimeout(()=>[784,1047,1319].forEach((f,i)=>tone(f,'sine',0.25,0.3,i*0.1)),600);
+    }
+  };
+})();
+
+// ============================================================
+// CONFETTI
+// ============================================================
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const pieces = Array.from({length:120}, () => ({
+    x: Math.random()*canvas.width, y: -20,
+    vx: (Math.random()-0.5)*6, vy: Math.random()*4+3,
+    rot: Math.random()*360, rotv: (Math.random()-0.5)*8,
+    w: Math.random()*12+6, h: Math.random()*6+4,
+    color: ['#ff4757','#2ed573','#1e90ff','#ffa502','#ff6b81','#7bed9f','#70a1ff','#eccc68'][Math.floor(Math.random()*8)]
+  }));
+  let frame=0, anim;
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.rot+=p.rotv;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
     });
+    frame++;
+    if (frame < 180) anim = requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  anim = requestAnimationFrame(draw);
+}
 
-    function updateLetterCounter() {
-      const currentLength = wordInput.value.length;
-      letterCounter.textContent = `${currentLength} letter${currentLength !== 1 ? 's' : ''}`;
-      
-      // Change color based on required length
-      if (currentLength === 0) {
-        letterCounter.className = "absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-slate-400";
-      } else if (currentLength < requiredLength) {
-        letterCounter.className = "absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-yellow-400";
-      } else if (currentLength === requiredLength || (gameMode !== "CHAOS" && currentLength === requiredLength + 1)) {
-        letterCounter.className = "absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-green-400";
-      } else {
-        letterCounter.className = "absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-red-400";
-      }
+// ============================================================
+// GAME STATE
+// ============================================================
+const TEAM_COLORS = ['t1','t2','t3','t4'];
+const TEAM_EMOJIS = ['🔴','🟢','🔵','🟡'];
+// Letters commonly used to start English words (Q, X, Z, J, K, V removed)
+const LETTER_POOL = 'ABCDEFGHILMNOPRSTUW'.split('');
+
+let state = {
+  phase: 'setup', // setup | splash | playing | elim | winner
+  numTeams: 3,
+  timerDuration: 30,
+  mode: 'HEADS',
+  teams: [], // [{name, color, alive}]
+  activeTeamIdx: 0,
+  currentWord: '',
+  requiredLength: 3,
+  wordHistory: [],
+  wordCount: 0,
+  longestWord: '',
+  submittedWords: new Set(),
+  usedFirstLetters: [],     // HEADS
+  disabledEndLetters: [],   // TAILS
+  chaosRequiredLetter: '',  // CHAOS
+  chaosUsedLetters: [],     // CHAOS
+  timeLeft: 30,
+  isPaused: false,
+  timerInterval: null,
+};
+
+// ============================================================
+// SETUP SCREEN LOGIC
+// ============================================================
+document.querySelectorAll('#team-count-pills .pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#team-count-pills .pill').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.numTeams = parseInt(btn.dataset.val);
+  });
+});
+document.querySelectorAll('#timer-pills .pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#timer-pills .pill').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.timerDuration = parseInt(btn.dataset.val);
+  });
+});
+document.querySelectorAll('#mode-cards .mode-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('#mode-cards .mode-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.mode = card.dataset.mode;
+    const hintBar = document.getElementById('hint-bar');
+    if (hintBar) hintBar.textContent = '';
+    const msg = document.getElementById('message');
+    if (msg) { msg.textContent = ''; msg.className = ''; }
+  });
+});
+document.getElementById('setup-start-btn').addEventListener('click', startGame);
+
+// ============================================================
+// START GAME
+// ============================================================
+function startGame() {
+  // Build teams
+  state.teams = Array.from({length: state.numTeams}, (_,i) => ({
+    name: `Team ${i+1}`,
+    color: TEAM_COLORS[i],
+    emoji: TEAM_EMOJIS[i],
+    alive: true
+  }));
+  state.activeTeamIdx = 0;
+  state.currentWord = '';
+  state.requiredLength = 3;
+  state.wordHistory = [];
+  state.wordCount = 0;
+  state.longestWord = '';
+  state.submittedWords = new Set();
+  state.usedFirstLetters = [];
+  state.disabledEndLetters = [];
+  state.chaosRequiredLetter = '';
+  state.chaosUsedLetters = [];
+  state.isPaused = false;
+  clearInterval(state.timerInterval);
+
+  showScreen('game-screen');
+  buildTeamsRow();
+  buildAlphabet();
+  document.getElementById('hint-bar').textContent = '';
+  document.getElementById('message').textContent = '';
+  document.getElementById('message').className = '';
+  renderGameUI();
+
+  // First turn splash
+  showTurnSplash(state.activeTeamIdx, () => {
+    if (state.mode === 'CHAOS') assignChaosLetter();
+    if (state.mode === 'TAILS') generateDisabledEndLetters();
+    enableInput();
+    renderGameUI();
+    startTimer();
+  });
+}
+
+// ============================================================
+// SCREENS
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ============================================================
+// BUILD STATIC UI
+// ============================================================
+function buildTeamsRow() {
+  const row = document.getElementById('teams-row');
+  row.innerHTML = '';
+  state.teams.forEach((t,i) => {
+    const div = document.createElement('div');
+    div.className = `team-chip ${t.color}`;
+    div.id = `team-chip-${i}`;
+    div.innerHTML = `<div class="chip-name">${t.emoji} ${t.name}</div><div class="chip-status">—</div>`;
+    row.appendChild(div);
+  });
+}
+
+function buildAlphabet() {
+  const grid = document.getElementById('alphabet-grid');
+  grid.innerHTML = '';
+  LETTER_POOL.forEach(l => {
+    const btn = document.createElement('div');
+    btn.className = 'alpha-btn';
+    btn.id = `alpha-${l}`;
+    btn.textContent = l;
+    grid.appendChild(btn);
+  });
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderGameUI() {
+  const t = state.teams[state.activeTeamIdx];
+
+  // Mode title
+  document.getElementById('mode-title').textContent = `${state.mode} Mode`;
+
+  // Word count
+  document.getElementById('word-count').textContent = state.wordCount;
+
+  // Teams row
+  state.teams.forEach((team, i) => {
+    const chip = document.getElementById(`team-chip-${i}`);
+    if (!chip) return;
+    chip.className = `team-chip ${team.color}`;
+    if (!team.alive) { chip.classList.add('eliminated'); chip.querySelector('.chip-status').textContent = 'OUT'; }
+    else if (i === state.activeTeamIdx) { chip.classList.add('active'); chip.querySelector('.chip-status').textContent = 'YOUR TURN'; }
+    else { chip.querySelector('.chip-status').textContent = '—'; }
+  });
+
+  // Current word
+  document.getElementById('current-word-display').textContent = state.currentWord || '—';
+
+  // Hint
+  updateHint();
+
+  // Mode info badges
+  renderModeBadges();
+
+  // Alphabet
+  renderAlphabet();
+
+  // Word history
+  document.getElementById('word-history').textContent = state.wordHistory.length ? state.wordHistory.join(' → ') : '—';
+
+  // Letter count
+  updateLetterCount();
+}
+
+function updateHint() {
+  const hint = document.getElementById('hint-bar');
+  if (!state.currentWord) { hint.textContent = `First word — exactly 3 letters!`; return; }
+
+  const prev = state.currentWord;
+  switch(state.mode) {
+    case 'HEADS':
+      hint.textContent = `Same first letter "${prev[0]}" = length ${state.requiredLength} · New letter = length ${state.requiredLength+1}`;
+      break;
+    case 'TAILS':
+      hint.textContent = `Must start with "${prev[prev.length-1]}" · Length ${state.requiredLength} or ${state.requiredLength+1} · Watch forbidden endings!`;
+      break;
+    case 'CHAOS':
+      hint.textContent = `Must start with "${state.chaosRequiredLetter}" · Length must be ${state.requiredLength+1}`;
+      break;
+  }
+}
+
+function renderModeBadges() {
+  const row = document.getElementById('mode-info-row');
+  row.innerHTML = '';
+  function badge(label, value) {
+    const b = document.createElement('div');
+    b.className = 'mode-badge';
+    b.innerHTML = `<span class="badge-label">${label}</span><span class="badge-value">${value}</span>`;
+    row.appendChild(b);
+  }
+  badge('Length', state.requiredLength);
+  if (state.mode === 'TAILS' && state.disabledEndLetters.length) {
+    badge('🚫 Ends', state.disabledEndLetters.join(' '));
+  }
+  if (state.mode === 'CHAOS' && state.chaosRequiredLetter) {
+    badge('🎲 Starts with', state.chaosRequiredLetter);
+  }
+}
+
+function renderAlphabet() {
+  LETTER_POOL.forEach(l => {
+    const btn = document.getElementById(`alpha-${l}`);
+    if (!btn) return;
+    btn.className = 'alpha-btn';
+    if (state.mode === 'HEADS' && state.usedFirstLetters.includes(l)) btn.classList.add('used');
+    if (state.mode === 'TAILS' && state.disabledEndLetters.includes(l)) btn.classList.add('disabled-end');
+    if (state.mode === 'CHAOS' && l === state.chaosRequiredLetter) btn.classList.add('required');
+  });
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+function enableInput() {
+  const input = document.getElementById('word-input');
+  const submitBtn = document.getElementById('submit-btn');
+  const pauseBtn = document.getElementById('pause-btn');
+  input.disabled = false;
+  submitBtn.disabled = false;
+  pauseBtn.disabled = false;
+  setPrefix();
+  input.focus();
+}
+
+function disableInput() {
+  document.getElementById('word-input').disabled = true;
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('pause-btn').disabled = true;
+}
+
+function setPrefix() {
+  const prefixEl = document.getElementById('word-prefix');
+  const input = document.getElementById('word-input');
+  let letter = getRequiredFirstLetter();
+  if (letter && state.currentWord) {
+    prefixEl.textContent = letter;
+    prefixEl.classList.remove('hidden');
+    input.placeholder = 'rest of word…';
+  } else {
+    prefixEl.classList.add('hidden');
+    input.placeholder = 'Type 3-letter word…';
+  }
+  input.value = '';
+  updateLetterCount();
+}
+
+function getRequiredFirstLetter() {
+  if (!state.currentWord) return '';
+  switch(state.mode) {
+    case 'HEADS': return state.currentWord[0]; // default; can also be new letter
+    case 'TAILS': return state.currentWord[state.currentWord.length-1];
+    case 'CHAOS': return state.chaosRequiredLetter;
+  }
+  return '';
+}
+
+function updateLetterCount() {
+  const input = document.getElementById('word-input');
+  const prefix = document.getElementById('word-prefix');
+  const prefixLen = prefix.classList.contains('hidden') ? 0 : 1;
+  const total = prefixLen + input.value.length;
+  document.getElementById('letter-count').textContent = total;
+}
+
+document.getElementById('word-input').addEventListener('input', () => {
+  // Force uppercase
+  const inp = document.getElementById('word-input');
+  inp.value = inp.value.replace(/[^a-zA-Z]/g,'').toUpperCase();
+  updateLetterCount();
+});
+
+document.getElementById('word-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleSubmit();
+  // Prevent deleting into prefix
+});
+
+document.getElementById('submit-btn').addEventListener('click', handleSubmit);
+
+// ============================================================
+// SUBMIT
+// ============================================================
+function handleSubmit() {
+  if (state.isPaused || state.phase !== 'playing') return;
+  const input = document.getElementById('word-input');
+  const prefixEl = document.getElementById('word-prefix');
+  const prefixLetter = prefixEl.classList.contains('hidden') ? '' : prefixEl.textContent;
+  const typedPart = input.value.trim().toUpperCase().replace(/[^A-Z]/g,'');
+  const fullWord = prefixLetter + typedPart;
+
+  if (!fullWord) { showMsg('Type a word!', 'bad'); return; }
+  if (!/^[A-Z]+$/.test(fullWord)) { showMsg('Letters only!', 'bad'); return; }
+  if (state.submittedWords.has(fullWord)) { showMsg(`"${fullWord}" already used!`, 'bad'); AudioEngine.reject(); return; }
+
+  // First word
+  if (!state.currentWord) {
+    if (fullWord.length !== 3) { showMsg('First word must be exactly 3 letters!', 'bad'); AudioEngine.reject(); return; }
+    acceptWord(fullWord);
+    return;
+  }
+
+  // Mode validation
+  const len = fullWord.length;
+  const firstL = fullWord[0];
+  const lastL = fullWord[fullWord.length-1];
+
+  switch(state.mode) {
+    case 'HEADS': {
+      const prevFirst = state.currentWord[0];
+      const sameFirst = firstL === prevFirst;
+      const sameLen = len === state.requiredLength;
+      const newFirst = !state.usedFirstLetters.includes(firstL);
+      const longerLen = len === state.requiredLength + 1;
+
+      if (sameFirst && sameLen) { acceptWord(fullWord); return; }
+      if (newFirst && !sameFirst && longerLen) { acceptWord(fullWord, state.requiredLength+1); return; }
+      if (sameFirst && !sameLen) { showMsg(`Same first letter → must be ${state.requiredLength} letters.`, 'bad'); }
+      else if (!newFirst) { showMsg(`"${firstL}" is already a used starting letter!`, 'bad'); }
+      else { showMsg(`New letter → must be ${state.requiredLength+1} letters.`, 'bad'); }
+      AudioEngine.reject();
+      return;
     }
-
-    function showMessage(msg, colorClass = "text-red-400") {
-      messageDiv.className = `text-center text-lg font-semibold min-h-[1.5em] ${colorClass}`;
-      messageDiv.textContent = msg;
+    case 'TAILS': {
+      const prevLast = state.currentWord[state.currentWord.length-1];
+      if (firstL !== prevLast) { showMsg(`Must start with "${prevLast}"!`, 'bad'); AudioEngine.reject(); return; }
+      if (state.disabledEndLetters.includes(lastL)) { showMsg(`Can't end with "${lastL}" — it's forbidden!`, 'bad'); AudioEngine.reject(); return; }
+      if (len !== state.requiredLength && len !== state.requiredLength+1) { showMsg(`Length must be ${state.requiredLength} or ${state.requiredLength+1}.`, 'bad'); AudioEngine.reject(); return; }
+      acceptWord(fullWord, len);
+      return;
     }
-
-    function updateDisplay() {
-      currentWordSpan.textContent = currentWord || "None";
-      requiredLengthSpan.textContent = requiredLength;
-      wordInput.value = "";
-      updateLetterCounter(); // Update counter when display updates
-      updateNextWordHint();
-      updateWordHistoryDisplay();
-      updateModeSpecificDisplays();
-      wordInput.focus(); // Keep focus
+    case 'CHAOS': {
+      if (firstL !== state.chaosRequiredLetter) { showMsg(`Must start with "${state.chaosRequiredLetter}"!`, 'bad'); AudioEngine.reject(); return; }
+      if (len !== state.requiredLength+1) { showMsg(`Must be ${state.requiredLength+1} letters.`, 'bad'); AudioEngine.reject(); return; }
+      acceptWord(fullWord, state.requiredLength+1);
+      return;
     }
+  }
+}
 
-    function updateNextWordHint() {
-      if (!gameStarted) {
-        nextWordHintDiv.textContent = "Select a game mode and timer, then click 'Start Game' to begin.";
-        return;
-      }
+function acceptWord(word, newLen) {
+  if (!newLen) newLen = state.requiredLength;
+  state.currentWord = word;
+  state.requiredLength = newLen;
+  state.wordHistory.push(word);
+  state.wordCount++;
+  state.submittedWords.add(word);
+  if (word.length > (state.longestWord || '').length) state.longestWord = word;
 
-      if (!currentWord) {
-        nextWordHintDiv.textContent = "First word: 3 letters long.";
-        return;
-      }
+  // Mode updates
+  if (state.mode === 'HEADS') { if (!state.usedFirstLetters.includes(word[0])) state.usedFirstLetters.push(word[0]); }
+  if (state.mode === 'TAILS') { generateDisabledEndLetters(); }
+  if (state.mode === 'CHAOS') { assignChaosLetter(); }
 
-      const lastLetterOfPrevWord = currentWord[currentWord.length - 1];
-      const firstLetterOfPrevWord = currentWord[0];
+  AudioEngine.accept();
+  showMsg(`✓ "${word}" accepted!`, 'good');
+  renderGameUI();
 
-      switch (gameMode) {
-        case "HEADS":
-          nextWordHintDiv.textContent = `Next: First letter "${firstLetterOfPrevWord}" (len ${requiredLength}) OR new letter (len ${requiredLength + 1}).`;
-          break;
-        case "TAILS":
-          nextWordHintDiv.textContent = `Next: First letter "${lastLetterOfPrevWord}" (len ${requiredLength} or ${requiredLength + 1}).`;
-          break;
-        case "CHAOS":
-          nextWordHintDiv.textContent = `Next: First letter "${chaosRequiredFirstLetter}" (len ${requiredLength + 1}).`;
-          break;
-      }
-    }
+  // Advance to next alive team
+  nextTurn();
+}
 
-    function updateWordHistoryDisplay() {
-      if (wordHistory.length > 0) {
-        wordHistoryParagraph.textContent = wordHistory.join(" → ");
-        wordHistoryContainer.style.display = "block";
-      } else {
-        wordHistoryParagraph.textContent = "";
-        wordHistoryContainer.style.display = "none";
-      }
-    }
+// ============================================================
+// TURNS & TIMER
+// ============================================================
+function nextTurn() {
+  disableInput();
+  clearInterval(state.timerInterval);
+  const next = getNextAliveTeam();
+  if (next === null) { endGame(); return; }
+  state.activeTeamIdx = next;
+  renderGameUI();
 
-    function updateModeSpecificDisplays() {
-      // Reset visibility
-      tailsDisabledLettersDiv.style.display = "none";
-      chaosFirstLetterDisplayDiv.style.display = "none";
+  showTurnSplash(next, () => {
+    setPrefix();
+    enableInput();
+    renderGameUI();
+    startTimer();
+  });
+}
 
-      // Clear alphabet button styling
-      document.querySelectorAll("#alphabet button").forEach(btn => {
-        btn.classList.remove("disabled-end-letter");
-      });
+function getNextAliveTeam() {
+  let idx = (state.activeTeamIdx + 1) % state.teams.length;
+  let loops = 0;
+  while (!state.teams[idx].alive) {
+    idx = (idx+1) % state.teams.length;
+    loops++;
+    if (loops > state.teams.length) return null;
+  }
+  // Check if only one alive
+  const alive = state.teams.filter(t=>t.alive);
+  if (alive.length <= 1) return null;
+  return idx;
+}
 
-      if (gameStarted) {
-        if (gameMode === "TAILS") {
-          tailsDisabledLettersDiv.style.display = "flex";
-          disabledEndLettersDisplay.textContent = disabledEndLetters.join(", ");
-          disabledEndLetters.forEach(letter => {
-            const btn = document.getElementById(`letter-${letter}`);
-            if (btn) {
-              btn.className = "w-12 h-12 text-base font-bold rounded-lg transition-all duration-200 bg-red-500/20 text-red-400 border-2 border-red-500/50 cursor-not-allowed disabled-end-letter";
-            }
-          });
-        } else if (gameMode === "CHAOS") {
-          chaosFirstLetterDisplayDiv.style.display = "flex";
-          requiredFirstLetterValue.textContent = chaosRequiredFirstLetter;
-        }
-      }
-    }
-
-    function disableLetter(letter) {
-      const btn = document.getElementById(`letter-${letter}`);
-      if (btn && !usedLetters.includes(letter)) {
-        btn.className = "w-12 h-12 text-base font-bold rounded-lg transition-all duration-200 bg-slate-600/30 text-slate-500 border border-slate-500/30 cursor-not-allowed disabled";
-        btn.disabled = true;
-        usedLetters.push(letter);
-      }
-    }
-
-    function enableAllAlphabetLetters() {
-      usedLetters = []; // Reset for HEADS/CHAOS first letter tracking
-      chaosUsedFirstLetters = []; // Reset for CHAOS mode
-      document.querySelectorAll("#alphabet button").forEach(btn => {
-        btn.disabled = false;
-        btn.className = "w-12 h-12 text-base font-bold rounded-lg transition-all duration-200 bg-slate-700/50 text-white border border-slate-600/50 hover:bg-slate-600/50 hover:border-neon-pink/50 hover:text-neon-pink hover:shadow-lg hover:shadow-neon-pink/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50 disabled:hover:border-slate-600/50 disabled:hover:text-white disabled:hover:shadow-none";
-      });
-    }
-
-    function updateTimerDisplay() {
-      timerSpan.textContent = `${timeLeft}s`;
-      progressBar.style.width = `${(timeLeft / selectedTimeLimit) * 100}%`;
-    }
-
-    function startTimer() {
-      clearInterval(timerInterval);
-      timeLeft = selectedTimeLimit;
-      updateTimerDisplay();
-      timerInterval = setInterval(() => {
-        if (!isPaused) {
-          timeLeft--;
-          updateTimerDisplay();
-          if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            showMessage("⏰ Time's up! Game Over.", "text-red-400");
-            submitBtn.disabled = true;
-            wordInput.disabled = true;
-            pauseBtn.disabled = true;
-            gameStarted = false; // End game on time up
-          }
-        }
-      }, 1000);
-    }
-
-    function generateRandomDisabledEndLetters() {
-      disabledEndLetters = [];
-      const availableLetters = [...alphabetArray];
-      for (let i = 0; i < 5; i++) { // Changed from 3 to 5
-        if (availableLetters.length === 0) break;
-        const randomIndex = Math.floor(Math.random() * availableLetters.length);
-        disabledEndLetters.push(availableLetters.splice(randomIndex, 1)[0]);
-      }
-      updateModeSpecificDisplays(); // Update display immediately
-    }
-
-    function assignChaosFirstLetter() {
-      const availableLetters = alphabetArray.filter(letter => !chaosUsedFirstLetters.includes(letter));
-      if (availableLetters.length === 0) {
-        showMessage("All letters used in CHAOS mode! Game Over.", "text-red-400");
-        submitBtn.disabled = true;
-        wordInput.disabled = true;
-        pauseBtn.disabled = true;
-        newGameBtn.disabled = true; // Disable new game if no letters left
-        gameStarted = false;
-        return;
-      }
-      const randomIndex = Math.floor(Math.random() * availableLetters.length);
-      chaosRequiredFirstLetter = availableLetters[randomIndex];
-      chaosUsedFirstLetters.push(chaosRequiredFirstLetter);
-      updateModeSpecificDisplays(); // Update display immediately
-    }
-
-    function newGame() {
-      currentWord = "";
-      requiredLength = 3;
-      timeLeft = selectedTimeLimit;
-      gameStarted = true; // Set to true when game starts
-      isPaused = false;
-      wordHistory = [];
-      submittedWords.clear(); // Clear submitted words for new game
-      disabledEndLetters = [];
-      chaosRequiredFirstLetter = "";
-      chaosUsedFirstLetters = [];
-      clearInterval(timerInterval);
-      timerInterval = null;
-      
-      wordInput.disabled = false;
-      submitBtn.disabled = false;
-      pauseBtn.disabled = false;
-      newGameBtn.disabled = false; // Ensure new game button is enabled
-      pauseBtn.textContent = "Pause";
-      
-      enableAllAlphabetLetters(); // Reset all alphabet buttons
-      showMessage("Game started! Enter your first word.", "text-slate-300");
-      
-      if (gameMode === "TAILS") {
-        generateRandomDisabledEndLetters();
-      } else if (gameMode === "CHAOS") {
-        assignChaosFirstLetter();
-      }
-      
-      updateDisplay();
-      updateTimerDisplay();
-      wordInput.focus();
-    }
-
-    function handleSubmit() {
-      if (!gameStarted || isPaused || timeLeft <= 0) {
-        showMessage("Game not active. Start a new game or unpause.");
-        wordInput.focus();
-        return;
-      }
-
-      const inputWord = wordInput.value.trim().toUpperCase();
-
-      if (!inputWord) {
-        showMessage("Please enter a word.");
-        wordInput.focus();
-        return;
-      }
-      if (!/^[A-Z]+$/.test(inputWord)) {
-        showMessage("Only letters A-Z are allowed.");
-        wordInput.focus();
-        return;
-      }
-      
-      // Check for repeated words
-      if (submittedWords.has(inputWord)) {
-          showMessage(`"${inputWord}" has already been used!`, "text-red-400");
-          wordInput.focus();
-          return;
-      }
-
-      const inputLen = inputWord.length;
-      const firstLetter = inputWord[0];
-      const lastLetter = inputWord[inputWord.length - 1];
-
-      // First word validation (common for all modes)
-      if (wordHistory.length === 0) {
-        if (inputLen !== 3) {
-          showMessage("First word must be 3 letters long.");
-          wordInput.focus();
-          return;
-        }
-        currentWord = inputWord;
-        requiredLength = 3;
-        wordHistory.push(inputWord);
-        submittedWords.add(inputWord); // Add to submitted words
-        showMessage(`Accepted "${inputWord}" as the first word.`, "text-green-400");
-        
-        // For HEADS mode, the first word's starting letter is also 'used'
-        if (gameMode === "HEADS") {
-            disableLetter(firstLetter);
-        }
-
-        startTimer();
-        updateDisplay();
-        return;
-      }
-
-      // Mode-specific validation for subsequent words
-      let isValidMove = false;
-      let messageText = "";
-      let messageColor = "text-red-400";
-      let newRequiredLength = requiredLength;
-
-      // TAILS mode specific check (disabled end letters)
-      if (gameMode === "TAILS" && disabledEndLetters.includes(lastLetter)) {
-        showMessage("Word cannot end with a disabled letter!");
-        wordInput.focus();
-        return;
-      }
-
-      switch (gameMode) {
-        case "HEADS":
-          const prevFirstLetterHeads = currentWord[0];
-          const sameFirstLetterHeads = firstLetter === prevFirstLetterHeads;
-          const sameLengthHeads = inputLen === requiredLength;
-          const diffLetterValidHeads = !sameFirstLetterHeads && !usedLetters.includes(firstLetter) && inputLen === requiredLength + 1;
-
-          if (sameFirstLetterHeads && sameLengthHeads) {
-            isValidMove = true;
-            messageText = `Accepted "${inputWord}"`;
-            messageColor = "text-green-400";
-            // Always disable the first letter of the accepted word in HEADS mode
-            // This ensures all starting letters used in the chain are tracked
-            disableLetter(firstLetter);
-          } else if (diffLetterValidHeads) {
-            isValidMove = true;
-            newRequiredLength = requiredLength + 1;
-            disableLetter(firstLetter); // Disable the new starting letter
-            messageText = `Accepted "${inputWord}"`;
-            messageColor = "text-blue-400";
-          } else {
-            messageText = "Invalid move!";
-          }
-          break;
-
-        case "TAILS":
-          const prevLastLetterTails = currentWord[currentWord.length - 1];
-          if (firstLetter !== prevLastLetterTails) {
-            messageText = `Invalid move! Word must start with "${prevLastLetterTails}".`;
-          } else if (inputLen === requiredLength || inputLen === requiredLength + 1) {
-            isValidMove = true;
-            newRequiredLength = inputLen; // Length becomes the new word's length
-            generateRandomDisabledEndLetters(); // Generate new disabled letters for next round
-            messageText = `Accepted "${inputWord}"`;
-            messageColor = "text-green-400";
-          } else {
-            messageText = `Invalid length!`;
-          }
-          break;
-
-        case "CHAOS":
-          if (firstLetter !== chaosRequiredFirstLetter) {
-            messageText = `Invalid move! Word must start with "${chaosRequiredFirstLetter}".`;
-          } else if (inputLen === requiredLength + 1) {
-            isValidMove = true;
-            newRequiredLength = requiredLength + 1;
-            assignChaosFirstLetter(); // Assign new random first letter for next round
-            messageText = `Accepted "${inputWord}"`;
-            messageColor = "text-green-400";
-          } else {
-            messageText = `Invalid length!`;
-          }
-          break;
-      }
-
-      if (isValidMove) {
-        currentWord = inputWord;
-        requiredLength = newRequiredLength;
-        wordHistory.push(inputWord);
-        submittedWords.add(inputWord); // Add to submitted words
-        showMessage(messageText, messageColor);
-        startTimer();
-      } else {
-        showMessage(messageText, messageColor);
-      }
-      updateDisplay();
-    }
-
-    // Event Listeners
-    wordInput.addEventListener("input", updateLetterCounter);
-
-    gameModeDropdown.addEventListener("change", () => {
-      gameMode = gameModeDropdown.value;
-      showMessage(`Mode set to ${gameMode}. Click 'Start Game' to begin.`, "text-slate-300");
-      // Reset game state visually without starting
-      currentWord = "";
-      requiredLength = 3;
-      timeLeft = selectedTimeLimit; // Reset timer display to selected limit
-      gameStarted = false;
-      isPaused = false;
-      wordHistory = [];
-      submittedWords.clear(); // Clear submitted words for new game
-      disabledEndLetters = [];
-      chaosRequiredFirstLetter = "";
-      chaosUsedFirstLetters = [];
-      clearInterval(timerInterval);
-      timerInterval = null;
-      wordInput.disabled = true;
-      submitBtn.disabled = true;
-      pauseBtn.disabled = true;
-      newGameBtn.disabled = true;
-      pauseBtn.textContent = "Pause";
-      enableAllAlphabetLetters();
-      updateDisplay();
-      updateTimerDisplay();
-      wordInput.focus();
-    });
-
-    timerDurationDropdown.addEventListener("change", () => {
-      selectedTimeLimit = parseInt(timerDurationDropdown.value);
-      showMessage(`Timer set to ${selectedTimeLimit} seconds.`, "text-slate-300");
-      // If game is not started, just update display
-      if (!gameStarted) {
-        timeLeft = selectedTimeLimit;
-        updateTimerDisplay();
-      }
-      wordInput.focus();
-    });
-
-    startGameBtn.addEventListener("click", () => {
-      newGame();
-    });
-
-    pauseBtn.addEventListener("click", () => {
-      isPaused = !isPaused;
-      pauseBtn.textContent = isPaused ? "Play" : "Pause";
-      if (!isPaused && gameStarted && timeLeft > 0) {
-        startTimer(); // Resume timer if game is active and not paused
-      } else if (isPaused && timerInterval) {
-        clearInterval(timerInterval); // Pause timer
-      }
-      wordInput.focus(); // Keep focus
-    });
-
-    newGameBtn.addEventListener("click", () => {
-      newGame();
-    });
-
-    wordInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && !wordInput.disabled) {
-        handleSubmit();
-      }
-    });
-
-    // Initial setup
-    updateDisplay();
+function startTimer() {
+  state.phase = 'playing';
+  state.timeLeft = state.timerDuration;
+  state.isPaused = false;
+  updateTimerDisplay();
+  clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    if (state.isPaused) return;
+    state.timeLeft--;
     updateTimerDisplay();
-    wordInput.focus(); // Set initial focus
-  </script>
+    if (state.timeLeft <= 5 && state.timeLeft > 0) AudioEngine.danger();
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timerInterval);
+      eliminateCurrentTeam();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer-display');
+  const fill = document.getElementById('progress-fill');
+  const pct = (state.timeLeft / state.timerDuration) * 100;
+  el.textContent = `${state.timeLeft}s`;
+  fill.style.width = `${pct}%`;
+  el.className = 'timer-value';
+  fill.className = 'progress-fill';
+  if (state.timeLeft <= 5) { el.classList.add('danger'); fill.classList.add('danger'); }
+  else if (state.timeLeft <= state.timerDuration * 0.4) { el.classList.add('warn'); fill.classList.add('warn'); }
+}
+
+function eliminateCurrentTeam() {
+  state.phase = 'elim';
+  disableInput();
+  AudioEngine.elim();
+  const team = state.teams[state.activeTeamIdx];
+  team.alive = false;
+
+  // Show elim overlay
+  document.getElementById('elim-title').textContent = `${team.emoji} ${team.name} is OUT!`;
+  document.getElementById('elim-sub').textContent = `Time ran out!`;
+  const overlay = document.getElementById('elim-overlay');
+  overlay.classList.add('show');
+
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    renderGameUI();
+
+    // Check if game over
+    const alive = state.teams.filter(t=>t.alive);
+    if (alive.length <= 1) {
+      setTimeout(endGame, 300);
+      return;
+    }
+
+    // Next alive team
+    const next = getNextAliveTeam(true);
+    state.activeTeamIdx = (next !== null) ? next : state.activeTeamIdx;
+    renderGameUI();
+    showTurnSplash(state.activeTeamIdx, () => {
+      setPrefix();
+      enableInput();
+      renderGameUI();
+      startTimer();
+    });
+  }, 2200);
+}
+
+function getNextAliveTeamFrom(from) {
+  let idx = (from + 1) % state.teams.length;
+  for (let i=0; i<state.teams.length; i++) {
+    if (state.teams[idx].alive) return idx;
+    idx = (idx+1) % state.teams.length;
+  }
+  return null;
+}
+
+// ============================================================
+// TURN SPLASH
+// ============================================================
+function showTurnSplash(teamIdx, cb) {
+  state.phase = 'splash';
+  const team = state.teams[teamIdx];
+  const overlay = document.getElementById('splash-overlay');
+  const card = document.getElementById('splash-card');
+
+  document.getElementById('splash-emoji').textContent = team.emoji;
+  document.getElementById('splash-title').textContent = `${team.name}'s Turn!`;
+  document.getElementById('splash-sub').textContent = `Get ready…`;
+  card.className = `splash-card ${team.color}-bg`;
+
+  AudioEngine.turnStart();
+  overlay.classList.add('show');
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    setTimeout(cb, 250);
+  }, 1600);
+}
+
+// ============================================================
+// END GAME / WINNER
+// ============================================================
+function endGame() {
+  state.phase = 'winner';
+  clearInterval(state.timerInterval);
+  disableInput();
+  const winner = state.teams.find(t=>t.alive);
+  AudioEngine.win();
+  setTimeout(launchConfetti, 200);
+  document.getElementById('winner-title').textContent = winner ? `${winner.emoji} ${winner.name} Wins! 🏆` : 'Draw!';
+  document.getElementById('winner-sub').textContent = `Last team standing`;
+  document.getElementById('stat-words').textContent = state.wordCount;
+  document.getElementById('stat-longest').textContent = state.longestWord || '—';
+  showScreen('winner-screen');
+}
+
+document.getElementById('play-again-btn').addEventListener('click', () => {
+  showScreen('setup-screen');
+});
+
+// ============================================================
+// PAUSE / NEW GAME
+// ============================================================
+document.getElementById('pause-btn').addEventListener('click', () => {
+  if (state.phase !== 'playing') return;
+  state.isPaused = !state.isPaused;
+  document.getElementById('pause-btn').textContent = state.isPaused ? '▶ Resume' : '⏸ Pause';
+});
+
+document.getElementById('new-game-btn').addEventListener('click', () => {
+  clearInterval(state.timerInterval);
+  document.getElementById('elim-overlay').classList.remove('show');
+  document.getElementById('splash-overlay').classList.remove('show');
+  showScreen('setup-screen');
+});
+
+// ============================================================
+// MODE HELPERS
+// ============================================================
+function generateDisabledEndLetters() {
+  const letters = [...LETTER_POOL];
+  state.disabledEndLetters = [];
+  for (let i=0; i<5; i++) {
+    const idx = Math.floor(Math.random()*letters.length);
+    state.disabledEndLetters.push(letters.splice(idx,1)[0]);
+  }
+}
+
+function assignChaosLetter() {
+  const available = LETTER_POOL.filter(l=>!state.chaosUsedLetters.includes(l));
+  if (!available.length) {
+    showMsg('All letters used — CHAOS complete!', 'info');
+    return;
+  }
+  state.chaosRequiredLetter = available[Math.floor(Math.random()*available.length)];
+  state.chaosUsedLetters.push(state.chaosRequiredLetter);
+}
+
+// ============================================================
+// MESSAGE
+// ============================================================
+function showMsg(msg, type='info') {
+  const el = document.getElementById('message');
+  el.textContent = msg;
+  el.className = type;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderGameUI();
+</script>
 </body>
 </html>

@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentence Auction — EFL Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3d;
+    --gold: #f5c842;
+    --gold2: #e8a820;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --blue: #3b82f6;
+    --text: #eeeef5;
+    --muted: #7777aa;
+    --glow: 0 0 20px rgba(245,200,66,0.3);
+    --team-colors: #e74c3c, #3b82f6, #2ecc71, #f39c12, #9b59b6, #1abc9c, #e91e63, #ff5722;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, rgba(245,200,66,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.04) 0%, transparent 50%);
+  }
+
+  /* ─── SCANLINE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
+
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ─── SETUP SCREEN ─── */
+  #setup {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 2rem;
+  }
+
+  .logo {
+    text-align: center;
+  }
+  .logo h1 {
+    font-size: clamp(3rem, 8vw, 6rem);
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(245,200,66,0.5), 0 0 80px rgba(245,200,66,0.2);
+    line-height: 1;
+  }
+  .logo p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .setup-group label {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+
+  .setup-group .name-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .team-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .team-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .team-name-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+  }
+  .team-name-row input:focus { outline: none; border-color: var(--gold); }
+
+  .option-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .opt-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 0.6rem 0.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .opt-btn:hover { border-color: var(--gold); color: var(--text); }
+  .opt-btn.selected { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 600; }
+
+  /* Vanish mode toggle */
+  .vanish-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+  .vanish-toggle {
+    width: 52px;
+    height: 28px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .vanish-toggle[data-on="true"] {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+  .vanish-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.2s, background 0.2s;
+  }
+  .vanish-toggle[data-on="true"] .vanish-knob {
+    transform: translateX(24px);
+    background: #000;
+  }
+  .vanish-label {
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+  .vanish-hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* Vanish animation on sentence text */
+  @keyframes vanishOut {
+    0%   { opacity: 1; filter: blur(0px); }
+    70%  { opacity: 0.6; filter: blur(2px); }
+    100% { opacity: 0; filter: blur(8px); }
+  }
+  .sentence-text.vanishing {
+    animation: vanishOut 0.6s ease forwards;
+  }
+  .sentence-text.vanished {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .vanish-badge {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .vanish-badge.visible { opacity: 1; }
+
+  .start-btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--gold);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(245,200,66,0.3);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(245,200,66,0.4); }
+  .start-btn:active { transform: translateY(0); }
+
+  /* ─── GAME SCREEN ─── */
+  #game {
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .game-header h2 {
+    font-size: 1.4rem;
+    color: var(--gold);
+  }
+  .round-info {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .level-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+  }
+
+  .game-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 1.5rem;
+    gap: 1rem;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* Sentence card */
+  .sentence-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3rem 3.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 60px rgba(245,200,66,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .sentence-card::before {
+    content: '\201C';
+    position: absolute;
+    top: -1.5rem;
+    left: 1.5rem;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14rem;
+    color: rgba(245,200,66,0.04);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .sentence-text {
+    font-size: clamp(1.6rem, 4vw, 2.8rem);
+    line-height: 1.4;
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.01em;
+    max-width: 900px;
+  }
+
+  .reveal-banner {
+    display: none;
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+  .reveal-banner.correct { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid var(--green); }
+  .reveal-banner.incorrect { background: rgba(231,76,60,0.15); color: var(--red); border: 1px solid var(--red); }
+
+  /* Bid countdown */
+  .bid-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .countdown-ring {
+    position: relative;
+    width: 90px;
+    height: 90px;
+  }
+  .countdown-ring svg {
+    transform: rotate(-90deg);
+  }
+  .countdown-ring .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 6; }
+  .countdown-ring .ring-fill {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 251.2;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear;
+    filter: drop-shadow(0 0 6px rgba(245,200,66,0.6));
+  }
+  .countdown-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: var(--gold);
+  }
+  .bid-leader-text {
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .bid-leader-name {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .current-bid-amount {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.1rem;
+    color: var(--gold);
+  }
+
+  /* Teams grid */
+  .teams-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .team-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .team-card.leading {
+    box-shadow: 0 0 20px var(--team-glow);
+  }
+  .team-card.winner-flash {
+    animation: winnerFlash 0.5s ease;
+  }
+  @keyframes winnerFlash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+  }
+
+  .team-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .team-name-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+  }
+  .team-money {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .bid-btn {
+    width: 100%;
+    padding: 0.85rem;
+    border: 2px solid;
+    border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  .bid-btn:active { transform: scale(0.97); }
+  .bid-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .bid-btn.active-bidder {
+    animation: pulseBid 0.8s ease infinite;
+  }
+  @keyframes pulseBid {
+    0%, 100% { box-shadow: 0 0 0 0 var(--team-color-alpha); }
+    50% { box-shadow: 0 0 0 8px transparent; }
+  }
+
+  .team-sentences {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .sentence-chip {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .sentence-chip.correct { background: rgba(46,204,113,0.2); color: var(--green); border: 1px solid var(--green); }
+  .sentence-chip.incorrect { background: rgba(231,76,60,0.2); color: var(--red); border: 1px solid var(--red); }
+  .sentence-chip.unknown { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+
+  /* Next / No bid controls */
+  .game-controls {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .ctrl-btn {
+    padding: 0.7rem 2rem;
+    border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover { border-color: var(--gold); color: var(--text); }
+  .ctrl-btn.primary { background: var(--gold); color: #000; border-color: var(--gold); }
+  .ctrl-btn.primary:hover { background: var(--gold2); }
+
+  /* ─── RESULTS SCREEN ─── */
+  #results {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+
+  .results-title {
+    font-size: clamp(3rem, 8vw, 5rem);
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(245,200,66,0.4);
+    text-align: center;
+  }
+
+  .results-table {
+    width: 100%;
+    max-width: 700px;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+  }
+  .results-table th {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 0 1rem 0.5rem;
+  }
+  .results-table td {
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+  }
+  .results-table tr td:first-child { border-radius: 10px 0 0 10px; }
+  .results-table tr td:last-child { border-radius: 0 10px 10px 0; text-align: right; }
+  .results-table .rank-cell { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: var(--muted); }
+  .results-table .rank-1 .rank-cell { color: var(--gold); }
+  .results-table .name-cell { font-weight: 600; font-size: 1rem; }
+  .results-table .final-cell { font-family: 'DM Mono', monospace; font-weight: 600; }
+
+  .winner-box {
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--gold);
+    border-radius: 16px;
+    padding: 1.5rem 2.5rem;
+    box-shadow: 0 0 30px rgba(245,200,66,0.2);
+  }
+  .winner-box .winner-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .winner-box .winner-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    color: var(--gold);
+    line-height: 1.1;
+  }
+
+  .play-again-btn {
+    padding: 0.9rem 3rem;
+    background: var(--gold);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(245,200,66,0.3);
+    transition: all 0.2s;
+  }
+  .play-again-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(245,200,66,0.4); }
+
+  /* Scrollable on small screens */
+  .results-scroll { width: 100%; max-width: 700px; overflow-x: auto; }
+
+  /* ─── Sentence Log ─── */
+  .sentence-log {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .sentence-log-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+  }
+  .sentence-log-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  .sentence-log-item .log-tag {
+    flex-shrink: 0;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    min-width: 76px;
+    text-align: center;
+  }
+  .log-tag.correct { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid rgba(46,204,113,0.4); }
+  .log-tag.incorrect { background: rgba(231,76,60,0.15); color: var(--red); border: 1px solid rgba(231,76,60,0.4); }
+  .log-tag.skipped { background: rgba(119,119,170,0.12); color: var(--muted); border: 1px solid rgba(119,119,170,0.3); }
+  .sentence-log-item .log-text { flex: 1; color: var(--text); }
+  .sentence-log-item .log-winner {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ─── Transitions ─── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-in { animation: fadeIn 0.3s ease forwards; }
+
+  /* ─── Confetti canvas ─── */
+  #confetti-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ═══════════════════════════════════════
+     SETUP SCREEN
+═══════════════════════════════════════ -->
+<div class="screen active" id="setup">
+  <div class="logo">
+    <h1>Sentence Auction</h1>
+    <p>EFL Classroom Game &nbsp;·&nbsp; CEFR Edition</p>
+  </div>
+
+  <div class="setup-card animate-in">
+
+    <!-- Number of teams -->
+    <div class="setup-group">
+      <label>Number of Teams</label>
+      <div class="option-row" id="team-count-opts">
+        <button class="opt-btn" data-val="2">2</button>
+        <button class="opt-btn selected" data-val="3">3</button>
+        <button class="opt-btn" data-val="4">4</button>
+        <button class="opt-btn" data-val="5">5</button>
+        <button class="opt-btn" data-val="6">6</button>
+        <button class="opt-btn" data-val="7">7</button>
+        <button class="opt-btn" data-val="8">8</button>
+      </div>
+    </div>
+
+    <!-- Team names -->
+    <div class="setup-group">
+      <label>Team Names</label>
+      <div class="name-inputs" id="team-name-inputs"></div>
+    </div>
+
+    <!-- CEFR Level -->
+    <div class="setup-group">
+      <label>CEFR Level</label>
+      <div class="option-row" id="level-opts">
+        <button class="opt-btn selected" data-val="A1">A1</button>
+        <button class="opt-btn" data-val="A2">A2</button>
+        <button class="opt-btn" data-val="B1">B1</button>
+        <button class="opt-btn" data-val="B2">B2</button>
+      </div>
+    </div>
+
+    <!-- Vanish Mode -->
+    <div class="setup-group">
+      <label>Vanish Mode</label>
+      <div class="vanish-toggle-row">
+        <button class="vanish-toggle" id="vanish-toggle" data-on="false">
+          <span class="vanish-knob"></span>
+        </button>
+        <span class="vanish-label" id="vanish-label">Off — sentence stays visible</span>
+      </div>
+      <p class="vanish-hint">When ON, the sentence disappears after 3 seconds. Teams must bid from memory.</p>
+    </div>
+
+    <button class="start-btn" id="start-btn">Start Auction</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     GAME SCREEN
+═══════════════════════════════════════ -->
+<div class="screen" id="game">
+  <div class="game-header">
+    <h2>Sentence Auction</h2>
+    <span class="round-info" id="round-label">Round 1 / 10</span>
+    <span class="level-badge" id="level-label">A1</span>
+  </div>
+
+  <div class="game-main">
+
+    <!-- Sentence -->
+    <div class="sentence-card">
+      <div class="sentence-text" id="sentence-display">Loading...</div>
+      <div class="vanish-badge" id="vanish-badge">👁 Sentence hidden — bid from memory!</div>
+      <div class="reveal-banner" id="reveal-banner"></div>
+    </div>
+
+    <!-- Bid countdown -->
+    <div class="bid-area">
+      <div class="countdown-ring" id="countdown-ring" style="display:none">
+        <svg viewBox="0 0 90 90" width="90" height="90">
+          <circle class="ring-bg" cx="45" cy="45" r="40"/>
+          <circle class="ring-fill" id="ring-fill" cx="45" cy="45" r="40"/>
+        </svg>
+        <div class="countdown-num" id="countdown-num">10</div>
+      </div>
+      <div class="bid-leader-text" id="bid-leader-text"></div>
+      <div class="current-bid-amount" id="current-bid-display"></div>
+    </div>
+
+    <!-- Teams -->
+    <div class="teams-grid" id="teams-grid"></div>
+
+    <!-- Controls -->
+    <div class="game-controls">
+      <button class="ctrl-btn" id="skip-btn">Skip Sentence</button>
+      <button class="ctrl-btn primary" id="next-btn" style="display:none">Next Sentence →</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     RESULTS SCREEN
+═══════════════════════════════════════ -->
+<div class="screen" id="results">
+  <div class="winner-box animate-in" id="winner-box"></div>
+  <div class="results-scroll">
+    <table class="results-table" id="results-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Team</th>
+          <th>Sentences Won</th>
+          <th>Correct</th>
+          <th>Wrong</th>
+          <th>Final $</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+  <div class="sentence-log" id="sentence-log"></div>
+  <button class="play-again-btn" id="play-again-btn">Play Again</button>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AUDIO ENGINE (Web Audio API — no external files needed)
+// ═══════════════════════════════════════════════════════════════
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let _actx = null;
+function getACtx() {
+  if (!_actx) _actx = new AudioCtx();
+  return _actx;
+}
+
+function playTone(opts) {
+  // opts: { freq, type, duration, gain, fadeOut, delay }
+  const ctx = getACtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = opts.type || 'sine';
+  osc.frequency.setValueAtTime(opts.freq || 440, ctx.currentTime + (opts.delay || 0));
+  gain.gain.setValueAtTime(opts.gain || 0.15, ctx.currentTime + (opts.delay || 0));
+  if (opts.fadeOut !== false) {
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (opts.delay || 0) + (opts.duration || 0.3));
+  }
+  osc.start(ctx.currentTime + (opts.delay || 0));
+  osc.stop(ctx.currentTime + (opts.delay || 0) + (opts.duration || 0.3) + 0.05);
+}
+
+function playNoise(duration, gain) {
+  const ctx = getACtx();
+  const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gain || 0.08, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+  src.connect(g);
+  g.connect(ctx.destination);
+  src.start();
+}
+
+const SFX = {
+  bid() {
+    // Short punchy click
+    playTone({ freq: 880, type: 'square', duration: 0.06, gain: 0.12 });
+    playTone({ freq: 660, type: 'square', duration: 0.04, gain: 0.08, delay: 0.05 });
+  },
+  tick() {
+    // Countdown tick
+    playTone({ freq: 1200, type: 'sine', duration: 0.05, gain: 0.07 });
+  },
+  lastTicks() {
+    // Urgent ticks for final 3 seconds
+    playTone({ freq: 1600, type: 'sine', duration: 0.07, gain: 0.12 });
+  },
+  win() {
+    // Gavel bang + rising chord
+    playNoise(0.08, 0.15);
+    [440, 554, 659, 880].forEach((f, i) => {
+      playTone({ freq: f, type: 'triangle', duration: 0.35, gain: 0.1, delay: i * 0.07 });
+    });
+  },
+  correct() {
+    // Happy arpeggio
+    [523, 659, 784, 1047].forEach((f, i) => {
+      playTone({ freq: f, type: 'sine', duration: 0.25, gain: 0.13, delay: i * 0.09 });
+    });
+  },
+  incorrect() {
+    // Descending buzz
+    [300, 220, 160].forEach((f, i) => {
+      playTone({ freq: f, type: 'sawtooth', duration: 0.2, gain: 0.1, delay: i * 0.1 });
+    });
+  },
+  skip() {
+    playTone({ freq: 400, type: 'sine', duration: 0.15, gain: 0.07 });
+  },
+  newRound() {
+    // Ascending two-note chime
+    playTone({ freq: 660, type: 'sine', duration: 0.2, gain: 0.1 });
+    playTone({ freq: 880, type: 'sine', duration: 0.25, gain: 0.1, delay: 0.18 });
+  },
+  victory() {
+    // Fanfare
+    const notes = [523, 659, 784, 659, 784, 1047];
+    notes.forEach((f, i) => {
+      playTone({ freq: f, type: 'triangle', duration: 0.28, gain: 0.14, delay: i * 0.13 });
+    });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SENTENCE DATABASE
+// ═══════════════════════════════════════════════════════════════
+const SENTENCES = {
+  A1: {
+    correct: [
+      "She is a good student.",
+      "I have two brothers.",
+      "He goes to school every day.",
+      "We eat dinner at seven o'clock.",
+      "They live in a small house.",
+      "My father works in a hospital.",
+      "The cat is under the table.",
+      "I like apples and oranges.",
+      "She has long hair.",
+      "There are three windows in this room.",
+      "He plays football on Saturdays.",
+      "I am from Brazil.",
+      "The book is on the shelf.",
+      "We have a big dog.",
+      "She drinks coffee every morning.",
+      "My name is Maria.",
+      "The children are in the garden.",
+      "I go to bed at ten o'clock.",
+      "He is my best friend.",
+      "There is a supermarket near my house.",
+      "They have a new car.",
+      "She speaks English very well.",
+      "I usually walk to school.",
+      "The sky is blue today.",
+      "My mother is a teacher."
+    ],
+    incorrect: [
+      "She have a good friend in Canada.",
+      "I has two sister.",
+      "He go to school every days.",
+      "They lives in a big house.",
+      "We eats dinner at six.",
+      "My father work in an office.",
+      "The cat is in the table.",
+      "I like the apples and the oranges.",
+      "She have a long hair.",
+      "There is three windows in this room.",
+      "He play football on Saturday.",
+      "I am from the Brazil.",
+      "The book is in the shelf.",
+      "We has a big dog.",
+      "She drink coffee every morning.",
+      "My name are Maria.",
+      "The children is in the garden.",
+      "I go to the bed at ten.",
+      "He are my best friend.",
+      "There are a supermarket near my house.",
+      "They has a new car.",
+      "She speak English very good.",
+      "I usually walks to school.",
+      "The sky are blue today.",
+      "My mother are a teacher."
+    ]
+  },
+
+  A2: {
+    correct: [
+      "She was reading a book when I called.",
+      "We went to the cinema last weekend.",
+      "He has already finished his homework.",
+      "I usually wake up before my alarm.",
+      "They decided to stay at home.",
+      "She can speak three languages.",
+      "I bought a new jacket yesterday.",
+      "He doesn't like spicy food.",
+      "We are going to visit my grandparents next week.",
+      "There were a lot of people at the concert.",
+      "She told me an interesting story.",
+      "I haven't seen that film yet.",
+      "He worked in a restaurant for two years.",
+      "They always argue about the same things.",
+      "She forgot to bring her umbrella.",
+      "We need to leave in ten minutes.",
+      "I met her at a party last month.",
+      "He was very tired after the match.",
+      "They didn't enjoy the weather in London.",
+      "She is taller than her brother.",
+      "I have never tried sushi before.",
+      "He missed the bus this morning.",
+      "They offered me a discount at the shop.",
+      "We left the hotel early in the morning.",
+      "She looked happy when she heard the news."
+    ],
+    incorrect: [
+      "She was reading a book when I have called.",
+      "We went to the cinema last weekend and we have enjoyed it.",
+      "He has already finish his homework.",
+      "I usually wake up before than my alarm.",
+      "They decided to staying at home.",
+      "She can to speak three languages.",
+      "I buyed a new jacket yesterday.",
+      "He doesn't likes spicy food.",
+      "We are going visit my grandparents next week.",
+      "There was a lot of people at the concert.",
+      "She told me an interested story.",
+      "I haven't seen that film already.",
+      "He worked in a restaurant since two years.",
+      "They always argues about the same things.",
+      "She forgot bringing her umbrella.",
+      "We need to leave in ten minutes ago.",
+      "I have met her at a party last month.",
+      "He was very tired after the match because he trained hardly.",
+      "They didn't enjoyed the weather in London.",
+      "She is more tall than her brother.",
+      "I never have tried sushi before.",
+      "He missed the bus this morning because he has woken up late.",
+      "They offered to me a discount at the shop.",
+      "We left the hotel early in the morning of Saturday.",
+      "She looked happily when she heard the news."
+    ]
+  },
+
+  B1: {
+    correct: [
+      "By the time she arrived, the film had already started.",
+      "I wish I had studied harder for the exam.",
+      "He suggested going for a walk after lunch.",
+      "She is used to waking up early since she started her new job.",
+      "Despite the rain, they enjoyed the festival.",
+      "If I had more time, I would learn a new language.",
+      "The manager asked us not to be late.",
+      "She managed to finish the report before the deadline.",
+      "He seems to have forgotten about our meeting.",
+      "The book I lent you was written by a local author.",
+      "We had been waiting for an hour when the train finally came.",
+      "She would rather stay in than go to the party.",
+      "It is worth taking a map in case you get lost.",
+      "He has been working on that project since January.",
+      "The meal was much better than I had expected.",
+      "I'm looking forward to hearing from you soon.",
+      "She admitted making a mistake in the report.",
+      "They kept talking even though the film had started.",
+      "We should have left earlier to avoid the traffic.",
+      "He is known for being very reliable.",
+      "The presentation was well-prepared and clearly structured.",
+      "She spent an hour trying to fix the problem.",
+      "They weren't able to find a solution in time.",
+      "I had no idea she was planning to move abroad.",
+      "The news made everyone in the office very concerned."
+    ],
+    incorrect: [
+      "By the time she arrived, the film already started.",
+      "I wish I studied harder for the exam.",
+      "He suggested to go for a walk after lunch.",
+      "She is used to wake up early since she started her new job.",
+      "Despite of the rain, they enjoyed the festival.",
+      "If I would have more time, I would learn a new language.",
+      "The manager asked us don't be late.",
+      "She managed finishing the report before the deadline.",
+      "He seems to forgotten about our meeting.",
+      "The book I lent you was wrote by a local author.",
+      "We have been waiting for an hour when the train finally came.",
+      "She would rather to stay in than go to the party.",
+      "It is worth to take a map in case you get lost.",
+      "He has been working on that project since three months.",
+      "The meal was much more better than I had expected.",
+      "I'm looking forward to hear from you soon.",
+      "She admitted to make a mistake in the report.",
+      "They kept to talk even though the film had started.",
+      "We should had left earlier to avoid the traffic.",
+      "He is known for be very reliable.",
+      "The presentation was good-prepared and clear structured.",
+      "She spent an hour to try to fix the problem.",
+      "They weren't able to find a solution in the time.",
+      "I had no idea she was planning moving abroad.",
+      "The news made everyone in the office very concerning."
+    ]
+  },
+
+  B2: {
+    correct: [
+      "Had she known about the cancellation, she would have changed her plans.",
+      "The evidence suggests that the policy has had little effect on crime rates.",
+      "It was not until he retired that he fully appreciated his colleagues.",
+      "The findings are consistent with what previous studies have shown.",
+      "She tends to underestimate how much time tasks actually take.",
+      "No sooner had the announcement been made than the share price dropped.",
+      "He was reluctant to commit to a decision without more information.",
+      "The extent to which social media influences teenagers remains debated.",
+      "She came across as highly competent during the interview.",
+      "The regulation, which came into force last year, has yet to be tested.",
+      "He attributed his success largely to the support of his team.",
+      "They struggled to reconcile their professional goals with personal commitments.",
+      "The data does not support the claim made in the original report.",
+      "She had mixed feelings about accepting the promotion.",
+      "The article raised several points that are worth considering.",
+      "What struck me most was how calmly she handled the situation.",
+      "The project fell behind schedule due to unforeseen complications.",
+      "He was hardly the most enthusiastic participant in the meeting.",
+      "Provided that all parties agree, the contract can be signed this week.",
+      "The committee failed to reach a consensus on the proposed changes.",
+      "She spoke at length about the implications of the new legislation.",
+      "The results varied considerably depending on the conditions.",
+      "He made it clear that he was unwilling to negotiate further.",
+      "The initiative, though well-intentioned, proved difficult to implement.",
+      "She found the criticism hard to accept, even if it was justified."
+    ],
+    incorrect: [
+      "Had she knew about the cancellation, she would have changed her plans.",
+      "The evidence suggests that the policy has had little effect in crime rates.",
+      "It was not until he retired that he fully appreciated his colleague's.",
+      "The findings are consistent to what previous studies have shown.",
+      "She tends to underestimate how much time do tasks actually take.",
+      "No sooner the announcement had been made than the share price dropped.",
+      "He was reluctant to commit on a decision without more information.",
+      "The extent to which social media influences teenagers remain debated.",
+      "She came across as highly competent at the interview.",
+      "The regulation, which came into force last year, is yet to be tested.",
+      "He attributed his success largely for the support of his team.",
+      "They struggled to reconcile their professional goals with personal commitments' demands.",
+      "The data do not support the claim made in the original report.",
+      "She had mixed feelings about to accept the promotion.",
+      "The article raised several points that are worth to consider.",
+      "What stroke me most was how calmly she handled the situation.",
+      "The project felt behind schedule due to unforeseen complications.",
+      "He was hardly the most enthusiastic participator in the meeting.",
+      "Providing to all parties agree, the contract can be signed this week.",
+      "The committee failed to reach a consensus about the proposed changes.",
+      "She spoke at length about the implications from the new legislation.",
+      "The results varied considerably depending on the condition.",
+      "He made it clear that he was unwillingly to negotiate further.",
+      "The initiative, although well-intentioned, proved difficult to implement it.",
+      "She found the criticism hardly to accept, even if it was justified."
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// TEAM COLORS
+// ═══════════════════════════════════════════════════════════════
+const TEAM_COLORS = [
+  '#e74c3c', '#3b82f6', '#2ecc71', '#f39c12',
+  '#9b59b6', '#1abc9c', '#e91e63', '#ff5722'
+];
+const TEAM_NAMES_DEFAULT = [
+  'Team Alpha', 'Team Beta', 'Team Gamma', 'Team Delta',
+  'Team Echo', 'Team Foxtrot', 'Team Golf', 'Team Hotel'
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let state = {
+  numTeams: 3,
+  level: 'A1',
+  vanishMode: false,
+  teams: [],
+  sentences: [],
+  currentRound: 0,
+  totalRounds: 10,
+  currentSentence: null,
+  bidTimer: null,
+  bidCountdown: 10,
+  currentBidder: null,
+  currentBid: 0,
+  auctionLive: false,
+  roundComplete: false,
+  phase: 'setup', // setup | auction | reveal | results
+  vanishTimer: null,
+  sentenceLog: []  // {text, correct, winner (name or null)}
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SETUP UI
+// ═══════════════════════════════════════════════════════════════
+function buildSetup() {
+  // Team count options
+  const teamCountOpts = document.getElementById('team-count-opts');
+  teamCountOpts.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      teamCountOpts.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.numTeams = parseInt(btn.dataset.val);
+      buildNameInputs();
+    });
+  });
+
+  // Level options
+  document.getElementById('level-opts').querySelectorAll('.opt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('level-opts').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.level = btn.dataset.val;
+    });
+  });
+
+  // Vanish mode toggle
+  const vanishToggle = document.getElementById('vanish-toggle');
+  const vanishLabel = document.getElementById('vanish-label');
+  vanishToggle.addEventListener('click', () => {
+    state.vanishMode = !state.vanishMode;
+    vanishToggle.dataset.on = state.vanishMode;
+    vanishLabel.textContent = state.vanishMode
+      ? 'On — sentence vanishes after 3 seconds'
+      : 'Off — sentence stays visible';
+  });
+
+  // Start
+  document.getElementById('start-btn').addEventListener('click', startGame);
+
+  buildNameInputs();
+}
+
+function buildNameInputs() {
+  const container = document.getElementById('team-name-inputs');
+  container.innerHTML = '';
+  for (let i = 0; i < state.numTeams; i++) {
+    const row = document.createElement('div');
+    row.className = 'team-name-row';
+    const dot = document.createElement('div');
+    dot.className = 'team-color-dot';
+    dot.style.background = TEAM_COLORS[i];
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = TEAM_NAMES_DEFAULT[i];
+    input.value = TEAM_NAMES_DEFAULT[i];
+    input.id = `team-name-${i}`;
+    row.appendChild(dot);
+    row.appendChild(input);
+    container.appendChild(row);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME INIT
+// ═══════════════════════════════════════════════════════════════
+function startGame() {
+  // Build teams
+  state.teams = [];
+  for (let i = 0; i < state.numTeams; i++) {
+    const nameInput = document.getElementById(`team-name-${i}`);
+    state.teams.push({
+      id: i,
+      name: nameInput.value.trim() || TEAM_NAMES_DEFAULT[i],
+      color: TEAM_COLORS[i],
+      money: 1000,
+      sentences: [] // {correct: bool, bid: number}
+    });
+  }
+
+  // Build sentence pool: 3-7 correct out of 10
+  const numCorrect = Math.floor(Math.random() * 5) + 3; // 3..7
+  const numWrong = 10 - numCorrect;
+  const pool = SENTENCES[state.level];
+  const correctPicked = shuffle([...pool.correct]).slice(0, numCorrect);
+  const wrongPicked   = shuffle([...pool.incorrect]).slice(0, numWrong);
+  const allSentences = shuffle([
+    ...correctPicked.map(s => ({ text: s, correct: true })),
+    ...wrongPicked.map(s => ({ text: s, correct: false }))
+  ]);
+
+  state.sentences = allSentences;
+  state.sentenceLog = [];
+  state.currentRound = 0;
+  state.phase = 'auction';
+
+  // Build team cards
+  buildTeamGrid();
+
+  // Switch screen
+  showScreen('game');
+  document.getElementById('level-label').textContent = state.level;
+
+  loadRound();
+}
+
+function buildTeamGrid() {
+  const grid = document.getElementById('teams-grid');
+  grid.innerHTML = '';
+  state.teams.forEach(team => {
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.id = `team-card-${team.id}`;
+    card.style.borderColor = team.color + '44';
+    card.style.setProperty('--team-glow', team.color + '55');
+
+    card.innerHTML = `
+      <div class="team-top">
+        <span class="team-name-label" style="color:${team.color}">${team.name}</span>
+        <span class="team-money" id="money-${team.id}" style="color:${team.color}">$1,000</span>
+      </div>
+      <button class="bid-btn" id="bid-btn-${team.id}"
+        style="border-color:${team.color};color:${team.color}"
+        data-team="${team.id}">
+        BID $100
+      </button>
+      <div class="team-sentences" id="chips-${team.id}"></div>
+    `;
+
+    grid.appendChild(card);
+
+    document.getElementById(`bid-btn-${team.id}`).addEventListener('click', () => onBid(team.id));
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ROUND
+// ═══════════════════════════════════════════════════════════════
+function loadRound() {
+  clearBidTimer();
+  state.auctionLive = true;
+  state.roundComplete = false;
+  state.currentBidder = null;
+  state.currentBid = 0;
+
+  const r = state.currentRound;
+  document.getElementById('round-label').textContent = `Round ${r + 1} / ${state.totalRounds}`;
+  document.getElementById('sentence-display').textContent = state.sentences[r].text;
+
+  const banner = document.getElementById('reveal-banner');
+  banner.style.display = 'none';
+  banner.className = 'reveal-banner';
+
+  document.getElementById('countdown-ring').style.display = 'none';
+  document.getElementById('bid-leader-text').textContent = 'No bids yet — press BID to start!';
+  document.getElementById('current-bid-display').textContent = '';
+
+  document.getElementById('skip-btn').style.display = '';
+  document.getElementById('next-btn').style.display = 'none';
+
+  // Vanish mode
+  const sentenceEl = document.getElementById('sentence-display');
+  const vanishBadge = document.getElementById('vanish-badge');
+  sentenceEl.classList.remove('vanishing', 'vanished');
+  sentenceEl.style.opacity = '';
+  vanishBadge.classList.remove('visible');
+
+  if (state.vanishTimer) { clearTimeout(state.vanishTimer); state.vanishTimer = null; }
+
+  if (state.vanishMode) {
+    state.vanishTimer = setTimeout(() => {
+      sentenceEl.classList.add('vanishing');
+      setTimeout(() => {
+        sentenceEl.classList.remove('vanishing');
+        sentenceEl.classList.add('vanished');
+        vanishBadge.classList.add('visible');
+      }, 600);
+    }, 3000);
+  }
+
+  SFX.newRound();
+  updateBidButtons();
+}
+
+function onBid(teamId) {
+  if (!state.auctionLive) return;
+  const team = state.teams[teamId];
+  const newBid = state.currentBid === 0
+    ? 100
+    : state.currentBid + 50;
+
+  if (team.money < newBid) return; // can't afford
+  if (state.currentBidder === teamId && state.currentBid > 0) {
+    // Outbid yourself by $50 more? Only if someone else is also in.
+    // For simplicity: re-pressing resets the timer and bumps bid
+  }
+
+  state.currentBid = newBid;
+  state.currentBidder = teamId;
+  SFX.bid();
+
+  // Update bid button labels
+  updateBidButtons();
+
+  // Update leader display
+  document.getElementById('bid-leader-text').innerHTML =
+    `<span class="bid-leader-name" style="color:${team.color}">${team.name}</span> is leading`;
+  document.getElementById('current-bid-display').textContent = `$${state.currentBid}`;
+
+  // Highlight card
+  document.querySelectorAll('.team-card').forEach(c => c.classList.remove('leading'));
+  const card = document.getElementById(`team-card-${teamId}`);
+  card.classList.add('leading');
+  card.style.borderColor = team.color;
+
+  // Pulse active bid btn
+  document.querySelectorAll('.bid-btn').forEach(b => b.classList.remove('active-bidder'));
+  document.getElementById(`bid-btn-${teamId}`).classList.add('active-bidder');
+
+  // Reset/start countdown
+  startBidCountdown();
+}
+
+function startBidCountdown() {
+  clearBidTimer();
+  state.bidCountdown = 10;
+  updateRing(10);
+
+  document.getElementById('countdown-ring').style.display = 'block';
+  document.getElementById('countdown-num').textContent = '10';
+
+  state.bidTimer = setInterval(() => {
+    state.bidCountdown--;
+    document.getElementById('countdown-num').textContent = state.bidCountdown;
+    updateRing(state.bidCountdown);
+    if (state.bidCountdown <= 3 && state.bidCountdown > 0) SFX.lastTicks();
+    else if (state.bidCountdown > 3) SFX.tick();
+
+    if (state.bidCountdown <= 0) {
+      clearBidTimer();
+      resolveAuction();
+    }
+  }, 1000);
+}
+
+function updateRing(val) {
+  const circumference = 251.2;
+  const fill = document.getElementById('ring-fill');
+  fill.style.strokeDashoffset = circumference - (circumference * val / 10);
+}
+
+function clearBidTimer() {
+  if (state.bidTimer) {
+    clearInterval(state.bidTimer);
+    state.bidTimer = null;
+  }
+}
+
+function updateBidButtons() {
+  const nextBid = state.currentBid === 0 ? 100 : state.currentBid + 50;
+  state.teams.forEach(team => {
+    const btn = document.getElementById(`bid-btn-${team.id}`);
+    if (!btn) return;
+    const canAfford = team.money >= nextBid;
+    btn.disabled = !state.auctionLive || !canAfford;
+    btn.textContent = `BID $${nextBid}`;
+  });
+
+  // Check if nobody can bid
+  const anyoneCanBid = state.teams.some(t => t.money >= nextBid);
+  if (!anyoneCanBid && state.currentBidder === null) {
+    endGameEarly();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUCTION RESOLUTION
+// ═══════════════════════════════════════════════════════════════
+function resolveAuction() {
+  state.auctionLive = false;
+  if (state.vanishTimer) { clearTimeout(state.vanishTimer); state.vanishTimer = null; }
+  // Restore sentence if vanished
+  const sentenceEl = document.getElementById('sentence-display');
+  sentenceEl.classList.remove('vanishing', 'vanished');
+  sentenceEl.style.opacity = '';
+  document.getElementById('vanish-badge').classList.remove('visible');
+  document.getElementById('countdown-ring').style.display = 'none';
+  document.querySelectorAll('.bid-btn').forEach(b => { b.disabled = true; b.classList.remove('active-bidder'); });
+
+  const sentence = state.sentences[state.currentRound];
+  const winner = state.teams[state.currentBidder];
+
+  // Deduct bid
+  winner.money -= state.currentBid;
+  // Record sentence
+  winner.sentences.push({ correct: sentence.correct, bid: state.currentBid });
+
+  // Log sentence
+  state.sentenceLog.push({ text: sentence.text, correct: sentence.correct, winner: winner.name });
+
+  // Reveal + sounds
+  SFX.win();
+  const banner = document.getElementById('reveal-banner');
+  banner.style.display = 'block';
+  if (sentence.correct) {
+    banner.className = 'reveal-banner correct';
+    banner.textContent = `✓ CORRECT — ${winner.name} wins $${Math.round(state.currentBid * 1.5)} at the end`;
+    setTimeout(() => SFX.correct(), 400);
+  } else {
+    banner.className = 'reveal-banner incorrect';
+    banner.textContent = `✗ INCORRECT — ${winner.name} loses their bid of $${state.currentBid}`;
+    setTimeout(() => SFX.incorrect(), 400);
+  }
+
+  // Update money display (bid already deducted; bonus at end)
+  updateMoneyDisplay();
+  updateChips();
+
+  document.getElementById('bid-leader-text').textContent = `${winner.name} wins this sentence`;
+  document.getElementById('skip-btn').style.display = 'none';
+  document.getElementById('next-btn').style.display = '';
+
+  document.getElementById(`team-card-${winner.id}`).classList.add('winner-flash');
+}
+
+function skipSentence() {
+  if (state.currentBidder !== null) return; // bid in progress
+  clearBidTimer();
+  if (state.vanishTimer) { clearTimeout(state.vanishTimer); state.vanishTimer = null; }
+  state.auctionLive = false;
+  const skippedSentence = state.sentences[state.currentRound];
+  state.sentenceLog.push({ text: skippedSentence.text, correct: skippedSentence.correct, winner: null });
+  SFX.skip();
+  document.getElementById('bid-leader-text').textContent = 'No bids — sentence skipped';
+  document.getElementById('skip-btn').style.display = 'none';
+  document.getElementById('next-btn').style.display = '';
+  document.querySelectorAll('.bid-btn').forEach(b => b.disabled = true);
+}
+
+function nextSentence() {
+  state.currentRound++;
+  if (state.currentRound >= state.totalRounds) {
+    showResults();
+  } else {
+    loadRound();
+  }
+}
+
+function endGameEarly() {
+  document.getElementById('bid-leader-text').textContent = 'No team can afford to bid — game over!';
+  document.getElementById('skip-btn').textContent = 'See Results';
+  document.getElementById('skip-btn').onclick = showResults;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI UPDATES
+// ═══════════════════════════════════════════════════════════════
+function updateMoneyDisplay() {
+  state.teams.forEach(t => {
+    const el = document.getElementById(`money-${t.id}`);
+    if (el) el.textContent = `$${t.money.toLocaleString()}`;
+  });
+}
+
+function updateChips() {
+  state.teams.forEach(t => {
+    const container = document.getElementById(`chips-${t.id}`);
+    if (!container) return;
+    container.innerHTML = '';
+    t.sentences.forEach(s => {
+      const chip = document.createElement('div');
+      chip.className = `sentence-chip ${s.correct ? 'correct' : 'incorrect'}`;
+      chip.textContent = s.correct ? '✓' : '✗';
+      chip.title = s.correct ? `Correct (+$${Math.round(s.bid * 1.5)})` : `Wrong (-$${s.bid})`;
+      container.appendChild(chip);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESULTS
+// ═══════════════════════════════════════════════════════════════
+function showResults() {
+  clearBidTimer();
+
+  // Calculate final scores
+  state.teams.forEach(t => {
+    let bonus = 0;
+    t.sentences.forEach(s => {
+      if (s.correct) bonus += Math.round(s.bid * 1.5);
+    });
+    t.finalScore = t.money + bonus;
+    t.correctCount = t.sentences.filter(s => s.correct).length;
+    t.wrongCount = t.sentences.filter(s => !s.correct).length;
+    t.totalSentences = t.sentences.length;
+  });
+
+  // Sort: primary = finalScore (money), tiebreak = correctCount
+  const ranked = [...state.teams].sort((a, b) => {
+    if (b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
+    return b.correctCount - a.correctCount;
+  });
+  const winner = ranked[0];
+
+  document.getElementById('winner-box').innerHTML = `
+    <div class="winner-label">🏆 Winner</div>
+    <div class="winner-name" style="color:${winner.color}">${winner.name}</div>
+    <div style="color:var(--muted);font-size:0.9rem;margin-top:0.3rem">Final Score: <span style="color:var(--gold);font-family:'DM Mono',monospace">$${winner.finalScore.toLocaleString()}</span></div>
+  `;
+
+  const tbody = document.getElementById('results-body');
+  tbody.innerHTML = '';
+  ranked.forEach((t, i) => {
+    const tr = document.createElement('tr');
+    tr.className = i === 0 ? 'rank-1' : '';
+    tr.innerHTML = `
+      <td class="rank-cell">#${i + 1}</td>
+      <td class="name-cell" style="color:${t.color}">${t.name}</td>
+      <td>${t.totalSentences}</td>
+      <td style="color:var(--green)">${t.correctCount}</td>
+      <td style="color:var(--red)">${t.wrongCount}</td>
+      <td class="final-cell" style="color:${t.finalScore >= 1000 ? 'var(--green)' : 'var(--red)'}">$${t.finalScore.toLocaleString()}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Sentence log
+  const logEl = document.getElementById('sentence-log');
+  logEl.innerHTML = '';
+  if (state.sentenceLog.length > 0) {
+    const title = document.createElement('div');
+    title.className = 'sentence-log-title';
+    title.textContent = 'All Sentences This Game';
+    logEl.appendChild(title);
+
+    state.sentenceLog.forEach(entry => {
+      const item = document.createElement('div');
+      item.className = 'sentence-log-item';
+
+      const tagClass = entry.winner === null ? 'skipped' : (entry.correct ? 'correct' : 'incorrect');
+      const tagText = entry.winner === null ? 'Skipped' : (entry.correct ? '✓ Correct' : '✗ Incorrect');
+
+      const winnerText = entry.winner === null ? 'no bids' : `won by ${entry.winner}`;
+
+      item.innerHTML = `
+        <span class="log-tag ${tagClass}">${tagText}</span>
+        <span class="log-text">${entry.text}</span>
+        <span class="log-winner">${winnerText}</span>
+      `;
+      logEl.appendChild(item);
+    });
+  }
+
+  showScreen('results');
+  SFX.victory();
+  launchConfetti();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFETTI
+// ═══════════════════════════════════════════════════════════════
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const pieces = Array.from({length: 120}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * -canvas.height,
+    r: Math.random() * 8 + 4,
+    d: Math.random() * 120 + 60,
+    color: TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)],
+    tilt: Math.random() * 20 - 10,
+    tiltAngle: 0,
+    tiltAngleIncrement: Math.random() * 0.07 + 0.05
+  }));
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.tiltAngle += p.tiltAngleIncrement;
+      p.y += (Math.cos(frame / 20 + p.d) + 2) * 1.5;
+      p.x += Math.sin(frame / 20);
+      p.tilt = Math.sin(p.tiltAngle) * 12;
+
+      ctx.beginPath();
+      ctx.lineWidth = p.r / 2;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+      ctx.stroke();
+    });
+    frame++;
+    if (frame < 200) requestAnimationFrame(draw);
+    else canvas.style.display = 'none';
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('skip-btn').addEventListener('click', skipSentence);
+document.getElementById('next-btn').addEventListener('click', nextSentence);
+document.getElementById('play-again-btn').addEventListener('click', () => showScreen('setup'));
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+buildSetup();
+</script>
+</body>
+</html>

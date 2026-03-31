@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORBIT</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #12121a;
+    --panel: #1a1a26;
+    --border: #2a2a40;
+    --p1: #00e5ff;
+    --p1-glow: rgba(0,229,255,0.4);
+    --p1-dark: #007a9e;
+    --p2: #ff4081;
+    --p2-glow: rgba(255,64,129,0.4);
+    --p2-dark: #9e1a40;
+    --accent: #7c4dff;
+    --accent-glow: rgba(124,77,255,0.4);
+    --text: #e0e0ff;
+    --text-dim: #6060a0;
+    --cell-bg: #0f0f1e;
+    --cell-hover: #1e1e35;
+    --win-flash: #ffd740;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,77,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,77,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridDrift 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes gridDrift {
+    from { background-position: 0 0; }
+    to   { background-position: 40px 40px; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  header { text-align: center; }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    letter-spacing: 0.3em;
+    background: linear-gradient(135deg, var(--p1), var(--accent), var(--p2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 30px var(--accent-glow));
+  }
+
+  .subtitle {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    color: var(--text-dim);
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+
+  .scoreboard {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .player-card {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .player-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .player-card.p1::before { background: linear-gradient(135deg, var(--p1-glow), transparent); }
+  .player-card.p2::before { background: linear-gradient(135deg, var(--p2-glow), transparent); }
+  .player-card.p1.active  { color: var(--p1); border-color: var(--p1); box-shadow: 0 0 20px var(--p1-glow); transform: scale(1.02); }
+  .player-card.p2.active  { color: var(--p2); border-color: var(--p2); box-shadow: 0 0 20px var(--p2-glow); transform: scale(1.02); }
+  .player-card.active::before { opacity: 1; }
+
+  .player-marble { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; position: relative; z-index: 1; }
+  .player-marble.p1 { background: radial-gradient(circle at 35% 35%, #80f7ff, var(--p1), var(--p1-dark)); box-shadow: 0 0 12px var(--p1-glow); }
+  .player-marble.p2 { background: radial-gradient(circle at 35% 35%, #ff9eb5, var(--p2), var(--p2-dark)); box-shadow: 0 0 12px var(--p2-glow); }
+
+  .player-info { position: relative; z-index: 1; }
+  .player-name  { font-family: 'Orbitron', sans-serif; font-size: 0.65rem; letter-spacing: 0.1em; opacity: 0.7; }
+  .player-score { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; font-weight: 700; }
+  .player-wins  { font-size: 0.6rem; letter-spacing: 0.08em; opacity: 0.55; margin-top: 1px; }
+  .vs-badge     { font-family: 'Orbitron', sans-serif; font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.1em; }
+
+  .status {
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    min-height: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+  }
+
+  /* ── Board wrapper ── */
+  .board-wrapper {
+    position: relative;
+  }
+
+  /* Overlay for sliding marbles during animation */
+  #anim-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(124,77,255,0.1), inset 0 0 60px rgba(0,0,0,0.5);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Cells ── */
+  .cell {
+    width: clamp(68px, 14vw, 90px);
+    height: clamp(68px, 14vw, 90px);
+    background: var(--cell-bg);
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    position: relative;
+    overflow: visible;
+  }
+
+  .cell:hover:not(.disabled) {
+    background: var(--cell-hover);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
+    transform: scale(1.05);
+  }
+
+  .cell.disabled         { cursor: not-allowed; }
+  .cell.disabled:hover   { transform: none; box-shadow: none; }
+
+  .cell.win-cell {
+    border-color: var(--win-flash);
+    box-shadow: 0 0 25px rgba(255,215,64,0.6);
+    animation: winPulse 0.6s ease-in-out infinite alternate;
+  }
+
+  @keyframes winPulse {
+    from { box-shadow: 0 0 15px rgba(255,215,64,0.4); }
+    to   { box-shadow: 0 0 35px rgba(255,215,64,0.9); }
+  }
+
+  /* ── Arrow SVGs inside cells ── */
+  .cell-arrow {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border-radius: 50%;
+    overflow: visible;
+  }
+
+  /* Gentle pulse when it's orbit phase */
+  .orbit-phase .cell-arrow .arrow-body,
+  .orbit-phase .cell-arrow .arrow-head {
+    animation: arrowPulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes arrowPulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+  }
+
+  /* ── Marbles ── */
+  .marble {
+    width: 75%;
+    height: 75%;
+    border-radius: 50%;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+  }
+
+  .marble.p1 {
+    background: radial-gradient(circle at 35% 35%, #80f7ff, var(--p1), var(--p1-dark));
+    box-shadow: 0 0 15px var(--p1-glow), inset 0 -3px 6px rgba(0,0,0,0.3);
+  }
+
+  .marble.p2 {
+    background: radial-gradient(circle at 35% 35%, #ff9eb5, var(--p2), var(--p2-dark));
+    box-shadow: 0 0 15px var(--p2-glow), inset 0 -3px 6px rgba(0,0,0,0.3);
+  }
+
+  .marble.placing {
+    animation: placeMarble 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  @keyframes placeMarble {
+    from { transform: scale(0) rotate(-180deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg);    opacity: 1; }
+  }
+
+  /* Sliding ghost marbles during FLIP animation */
+  .sliding-marble {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform;
+    z-index: 20;
+    transition: none; /* set via JS */
+  }
+
+  .sliding-marble.p1 {
+    background: radial-gradient(circle at 35% 35%, #80f7ff, var(--p1), var(--p1-dark));
+    box-shadow: 0 0 15px var(--p1-glow), inset 0 -3px 6px rgba(0,0,0,0.3);
+  }
+
+  .sliding-marble.p2 {
+    background: radial-gradient(circle at 35% 35%, #ff9eb5, var(--p2), var(--p2-dark));
+    box-shadow: 0 0 15px var(--p2-glow), inset 0 -3px 6px rgba(0,0,0,0.3);
+  }
+
+  /* ── Controls ── */
+  .orbit-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, var(--accent), #5c35cc);
+    border: none;
+    border-radius: 50px;
+    padding: 12px 28px;
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px var(--accent-glow);
+    text-transform: uppercase;
+  }
+
+  .orbit-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 35px var(--accent-glow); }
+  .orbit-btn:disabled              { opacity: 0.3; cursor: not-allowed; transform: none; }
+  .orbit-btn .icon                 { font-size: 1.2rem; display: inline-block; animation: rotateSlow 3s linear infinite; }
+
+  @keyframes rotateSlow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .controls     { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 9px 20px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+  }
+  .btn-secondary:hover { border-color: var(--text); color: var(--text); }
+
+  .instructions {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    max-width: 480px;
+    width: 100%;
+    font-size: 0.65rem;
+    line-height: 1.8;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .instructions h3 { font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+  .instructions ol { padding-left: 16px; }
+  .instructions li { margin-bottom: 3px; }
+
+  /* ── Win overlay ── */
+  .win-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    backdrop-filter: blur(8px);
+  }
+
+  .win-overlay.show { opacity: 1; pointer-events: all; }
+
+  .win-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(2rem, 8vw, 4rem);
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    margin-bottom: 12px;
+    animation: winBounce 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .win-title.p1   { color: var(--p1);        text-shadow: 0 0 40px var(--p1-glow); }
+  .win-title.p2   { color: var(--p2);        text-shadow: 0 0 40px var(--p2-glow); }
+  .win-title.draw { color: var(--win-flash); text-shadow: 0 0 40px rgba(255,215,64,0.5); }
+
+  @keyframes winBounce {
+    from { transform: scale(0.5) translateY(-30px); opacity: 0; }
+    to   { transform: scale(1)   translateY(0);     opacity: 1; }
+  }
+
+  .win-sub { font-size: 0.8rem; letter-spacing: 0.2em; color: var(--text-dim); margin-bottom: 32px; text-transform: uppercase; }
+
+  .btn-play-again {
+    background: linear-gradient(135deg, var(--accent), #5c35cc);
+    border: none;
+    border-radius: 50px;
+    padding: 14px 40px;
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 30px var(--accent-glow);
+    text-transform: uppercase;
+  }
+  .btn-play-again:hover { transform: scale(1.08); box-shadow: 0 0 50px var(--accent-glow); }
+
+  /* Particles */
+  .particle {
+    position: fixed;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99;
+    animation: particleFly 1.2s ease-out forwards;
+  }
+
+  @keyframes particleFly {
+    from { opacity: 1; transform: translate(0,0) scale(1); }
+    to   { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>ORBIT</h1>
+    <div class="subtitle">Rotation Strategy Game</div>
+  </header>
+
+  <div class="scoreboard">
+    <div class="player-card p1 active" id="card-p1">
+      <div class="player-marble p1"></div>
+      <div class="player-info">
+        <div class="player-name">Player 1</div>
+        <div class="player-score" id="score-p1">0</div>
+        <div class="player-wins"><span id="wins-p1">0</span> wins</div>
+      </div>
+    </div>
+    <div class="vs-badge">VS</div>
+    <div class="player-card p2" id="card-p2">
+      <div class="player-marble p2"></div>
+      <div class="player-info">
+        <div class="player-name">Player 2</div>
+        <div class="player-score" id="score-p2">0</div>
+        <div class="player-wins"><span id="wins-p2">0</span> wins</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status">Player 1's turn — place a marble</div>
+
+  <div class="board-wrapper" id="board-wrapper">
+    <div id="anim-layer"></div>
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="controls">
+    <button class="orbit-btn" id="orbit-btn" disabled>
+      <span class="icon">⟳</span>
+      ORBIT
+    </button>
+    <button class="btn-secondary" id="reset-btn">New Game</button>
+  </div>
+
+  <div class="instructions">
+    <h3>How to Play</h3>
+    <ol>
+      <li>Click an empty cell to place your marble</li>
+      <li>Press ORBIT — marbles slide one step clockwise</li>
+      <li>Get 4 in a row (horizontal, vertical, or diagonal) to win!</li>
+      <li>Arrows show the direction each cell orbits — plan ahead!</li>
+    </ol>
+  </div>
+</div>
+
+<div class="win-overlay" id="win-overlay">
+  <div class="win-title" id="win-title">PLAYER 1 WINS</div>
+  <div class="win-sub"   id="win-sub">4 in a row!</div>
+  <button class="btn-play-again" id="play-again-btn">Play Again</button>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// ORBIT RINGS  (clockwise order)
+// ─────────────────────────────────────────────
+const OUTER_RING = [
+  [0,0],[0,1],[0,2],[0,3],
+  [1,3],[2,3],[3,3],
+  [3,2],[3,1],[3,0],
+  [2,0],[1,0]
+];
+
+const INNER_RING = [
+  [1,1],[1,2],
+  [2,2],[2,1]
+];
+
+// For each cell, store which cell it moves TO in orbit
+function buildNextMap(ring) {
+  const m = {};
+  for (let i = 0; i < ring.length; i++) {
+    const [r, c]   = ring[i];
+    const [nr, nc] = ring[(i + 1) % ring.length];
+    m[`${r},${c}`] = [nr, nc];
+  }
+  return m;
+}
+
+const OUTER_NEXT = buildNextMap(OUTER_RING);
+const INNER_NEXT = buildNextMap(INNER_RING);
+const NEXT_MAP   = { ...OUTER_NEXT, ...INNER_NEXT };
+
+// Win lines
+const WIN_LINES = [];
+for (let r = 0; r < 4; r++) WIN_LINES.push([[r,0],[r,1],[r,2],[r,3]]);
+for (let c = 0; c < 4; c++) WIN_LINES.push([[0,c],[1,c],[2,c],[3,c]]);
+WIN_LINES.push([[0,0],[1,1],[2,2],[3,3]]);
+WIN_LINES.push([[0,3],[1,2],[2,1],[3,0]]);
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let board         = Array.from({length:4}, () => Array(4).fill(0));
+let currentPlayer = 1;
+let phase         = 'place';   // 'place' | 'orbit'
+let scores        = [0, 0];    // round scores (current game)
+let wins          = [0, 0];    // session win counts
+let gameOver      = false;
+
+// ─────────────────────────────────────────────
+// DOM REFS
+// ─────────────────────────────────────────────
+const boardEl     = document.getElementById('board');
+const animLayer   = document.getElementById('anim-layer');
+const boardWrap   = document.getElementById('board-wrapper');
+const statusEl    = document.getElementById('status');
+const orbitBtn    = document.getElementById('orbit-btn');
+const resetBtn    = document.getElementById('reset-btn');
+const winOverlay  = document.getElementById('win-overlay');
+const winTitle    = document.getElementById('win-title');
+const winSub      = document.getElementById('win-sub');
+const playAgainBtn= document.getElementById('play-again-btn');
+const card1       = document.getElementById('card-p1');
+const card2       = document.getElementById('card-p2');
+
+// ─────────────────────────────────────────────
+// SOUND ENGINE  (Web Audio API, no files needed)
+// ─────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playTone({ type = 'sine', freq = 440, freq2, gain = 0.18, attack = 0.005, decay = 0.12, duration = 0.18 } = {}) {
+  try {
+    const ctx = getAudio();
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.connect(env);
+    env.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    if (freq2) osc.frequency.exponentialRampToValueAtTime(freq2, ctx.currentTime + duration);
+    env.gain.setValueAtTime(0, ctx.currentTime);
+    env.gain.linearRampToValueAtTime(gain, ctx.currentTime + attack);
+    env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + attack + decay);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + attack + decay + 0.05);
+  } catch(e) {}
+}
+
+function soundPlace(player) {
+  playTone({ type: 'sine', freq: player === 1 ? 520 : 380, gain: 0.15, decay: 0.1 });
+}
+
+function soundOrbit() {
+  // Rising whoosh
+  playTone({ type: 'sine', freq: 220, freq2: 440, gain: 0.10, attack: 0.01, decay: 0.42, duration: 0.42 });
+  setTimeout(() => playTone({ type: 'triangle', freq: 330, freq2: 520, gain: 0.07, attack: 0.02, decay: 0.3, duration: 0.3 }), 60);
+}
+
+function soundWin(player) {
+  const base = player === 1 ? 523 : 392; // C5 or G4
+  const notes = [base, base * 1.26, base * 1.5, base * 2];
+  notes.forEach((f, i) => {
+    setTimeout(() => playTone({ type: 'triangle', freq: f, gain: 0.18, attack: 0.01, decay: 0.25 }), i * 100);
+  });
+}
+
+function soundDraw() {
+  playTone({ type: 'sawtooth', freq: 300, freq2: 200, gain: 0.10, attack: 0.01, decay: 0.5, duration: 0.5 });
+}
+
+function soundHover() {
+  playTone({ type: 'sine', freq: 660, gain: 0.04, attack: 0.002, decay: 0.05 });
+}
+
+// ─────────────────────────────────────────────
+// ARROW SVG BUILDER
+// Renders a slim curved-feeling arrow inside the circle
+// pointing in the direction the marble will orbit.
+// ─────────────────────────────────────────────
+function makeArrowSVG(r, c, isOrbitPhase) {
+  const key = `${r},${c}`;
+  const next = NEXT_MAP[key];
+  if (!next) return '';
+
+  const [nr, nc] = next;
+  // Unit direction vector (column = x, row = y)
+  const rawDx = nc - c;
+  const rawDy = nr - r;
+  const len   = Math.sqrt(rawDx*rawDx + rawDy*rawDy);
+  const dx    = rawDx / len;
+  const dy    = rawDy / len;
+
+  // Perpendicular
+  const px = -dy, py = dx;
+
+  // Arrow in a 100×100 viewBox (circle centred at 50,50, radius 50)
+  const cx = 50, cy = 50;
+  const shaft = 17;   // half-shaft length
+  const hw    = 5.5;  // arrowhead half-width
+  const hl    = 9;    // arrowhead length
+
+  const tx = cx + dx * shaft;  // arrow tip
+  const ty = cy + dy * shaft;
+  const bx = cx - dx * shaft;  // arrow base
+  const by = cy - dy * shaft;
+
+  // Head points
+  const hbx = tx - dx * hl;
+  const hby = ty - dy * hl;
+  const h1x = hbx + px * hw, h1y = hby + py * hw;
+  const h2x = hbx - px * hw, h2y = hby - py * hw;
+
+  const dim    = isOrbitPhase ? 'rgba(124,77,255,0.55)' : 'rgba(124,77,255,0.20)';
+  const bright = isOrbitPhase ? 'rgba(180,140,255,0.75)' : 'rgba(124,77,255,0.28)';
+
+  return `<svg class="cell-arrow" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <line class="arrow-body"
+      x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}"
+      stroke="${dim}" stroke-width="2.2" stroke-linecap="round"/>
+    <polygon class="arrow-head"
+      points="${tx},${ty} ${h1x},${h1y} ${h2x},${h2y}"
+      fill="${bright}"/>
+  </svg>`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER  (static, after every state change)
+// ─────────────────────────────────────────────
+function renderBoard() {
+  boardEl.innerHTML = '';
+  const orbitPhase = (phase === 'orbit');
+  if (orbitPhase) boardEl.classList.add('orbit-phase');
+  else            boardEl.classList.remove('orbit-phase');
+
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = `cell-${r}-${c}`;
+
+      // Arrow (always visible, brighter in orbit phase)
+      const arrowHTML = makeArrowSVG(r, c, orbitPhase);
+      if (arrowHTML) cell.insertAdjacentHTML('beforeend', arrowHTML);
+
+      // Marble
+      if (board[r][c] !== 0) {
+        const marble = document.createElement('div');
+        marble.className = `marble p${board[r][c]}`;
+        marble.id = `marble-${r}-${c}`;
+        cell.appendChild(marble);
+      }
+
+      // Interaction
+      if (!gameOver && phase === 'place' && board[r][c] === 0) {
+        cell.addEventListener('click', () => placeMarble(r, c));
+        cell.addEventListener('mouseenter', soundHover);
+      } else {
+        cell.classList.add('disabled');
+      }
+
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+function updateUI() {
+  const col = currentPlayer === 1 ? '#00e5ff' : '#ff4081';
+  if (phase === 'place') {
+    statusEl.innerHTML = `<span style="color:${col}">Player ${currentPlayer}</span>'s turn — place a marble`;
+  } else {
+    statusEl.innerHTML = `<span style="color:${col}">Player ${currentPlayer}</span> — press ORBIT to rotate!`;
+  }
+
+  card1.classList.toggle('active', currentPlayer === 1);
+  card2.classList.toggle('active', currentPlayer === 2);
+  orbitBtn.disabled = (phase !== 'orbit' || gameOver);
+}
+
+// ─────────────────────────────────────────────
+// PLACE MARBLE
+// ─────────────────────────────────────────────
+function placeMarble(r, c) {
+  if (gameOver || phase !== 'place' || board[r][c] !== 0) return;
+
+  board[r][c] = currentPlayer;
+  phase = 'orbit';
+  renderBoard();
+
+  const marble = document.getElementById(`marble-${r}-${c}`);
+  if (marble) marble.classList.add('placing');
+
+  soundPlace(currentPlayer);
+  spawnParticles(document.getElementById(`cell-${r}-${c}`));
+  updateUI();
+}
+
+// ─────────────────────────────────────────────
+// ORBIT  — FLIP sliding animation
+// ─────────────────────────────────────────────
+const ANIM_MS = 460;
+const EASING  = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+function doOrbit() {
+  if (gameOver || phase !== 'orbit') return;
+  orbitBtn.disabled = true;
+  soundOrbit(); // snapshot FROM positions of every marble ──
+  const wrapRect = boardWrap.getBoundingClientRect();
+
+  const moves = [];  // { player, fromX, fromY, size, toR, toC }
+
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      if (board[r][c] === 0) continue;
+      const key  = `${r},${c}`;
+      if (!NEXT_MAP[key]) continue;
+      const [toR, toC] = NEXT_MAP[key];
+
+      const cellEl = document.getElementById(`cell-${r}-${c}`);
+      const rect   = cellEl.getBoundingClientRect();
+      const size   = rect.width * 0.75;
+
+      moves.push({
+        player: board[r][c],
+        // top-left corner of the marble (centred in cell)
+        fromX: rect.left - wrapRect.left + (rect.width  - size) / 2,
+        fromY: rect.top  - wrapRect.top  + (rect.height - size) / 2,
+        size,
+        toR, toC
+      });
+    }
+  }
+
+  // ── Step 2: apply rotation to board state ──
+  const outerVals = OUTER_RING.map(([r,c]) => board[r][c]);
+  const outerRot  = [outerVals[outerVals.length-1], ...outerVals.slice(0,-1)];
+  OUTER_RING.forEach(([r,c], i) => board[r][c] = outerRot[i]);
+
+  const innerVals = INNER_RING.map(([r,c]) => board[r][c]);
+  const innerRot  = [innerVals[innerVals.length-1], ...innerVals.slice(0,-1)];
+  INNER_RING.forEach(([r,c], i) => board[r][c] = innerRot[i]);
+
+  // ── Step 3: render board with marbles hidden (arrows dim) ──
+  // We blank out marbles on orbit cells temporarily
+  const orbitKeys = new Set([
+    ...OUTER_RING.map(([r,c]) => `${r},${c}`),
+    ...INNER_RING.map(([r,c]) => `${r},${c}`)
+  ]);
+
+  boardEl.innerHTML = '';
+  boardEl.classList.remove('orbit-phase');
+
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell disabled';
+      cell.id = `cell-${r}-${c}`;
+
+      // Arrows dim during animation
+      const arrowHTML = makeArrowSVG(r, c, false);
+      if (arrowHTML) cell.insertAdjacentHTML('beforeend', arrowHTML);
+
+      // Non-orbit cells keep their marbles (there are none in 4x4 but for safety)
+      if (!orbitKeys.has(`${r},${c}`) && board[r][c] !== 0) {
+        const m = document.createElement('div');
+        m.className = `marble p${board[r][c]}`;
+        cell.appendChild(m);
+      }
+      boardEl.appendChild(cell);
+    }
+  }
+
+  // ── Step 4: resolve TO positions and spawn sliding marbles ──
+  // We need the new cell rects — they haven't moved so we can read right away
+  moves.forEach(({ player, fromX, fromY, size, toR, toC }) => {
+    const toCell = document.getElementById(`cell-${toR}-${toC}`);
+    const toRect = toCell.getBoundingClientRect();
+    const toX    = toRect.left - wrapRect.left + (toRect.width  - size) / 2;
+    const toY    = toRect.top  - wrapRect.top  + (toRect.height - size) / 2;
+
+    const el = document.createElement('div');
+    el.className = `sliding-marble p${player}`;
+    el.style.cssText = `
+      width:  ${size}px;
+      height: ${size}px;
+      left:   ${fromX}px;
+      top:    ${fromY}px;
+    `;
+    animLayer.appendChild(el);
+
+    // Force layout, then transition to destination
+    el.getBoundingClientRect(); // trigger reflow
+    el.style.transition = `transform ${ANIM_MS}ms ${EASING}`;
+    el.style.transform  = `translate(${toX - fromX}px, ${toY - fromY}px)`;
+  });
+
+  // ── Step 5: after animation ends, finalize ──
+  setTimeout(() => {
+    animLayer.innerHTML = '';
+    renderBoard();
+    updateUI();
+
+    const result = checkWin();
+    if (result.winner) {
+      triggerWin(result.winner, result.lines);
+    } else if (isBoardFull()) {
+      triggerDraw();
+    } else {
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      phase = 'place';
+      renderBoard();
+      updateUI();
+    }
+  }, ANIM_MS + 80);
+}
+
+// ─────────────────────────────────────────────
+// WIN / DRAW CHECK
+// ─────────────────────────────────────────────
+function checkWin() {
+  const winners = new Set();
+  const winningLines = [];
+
+  for (const line of WIN_LINES) {
+    const vals = line.map(([r,c]) => board[r][c]);
+    if (vals[0] !== 0 && vals.every(v => v === vals[0])) {
+      winners.add(vals[0]);
+      winningLines.push(line);
+    }
+  }
+
+  if (winners.size === 1) return { winner: [...winners][0], lines: winningLines };
+  if (winners.size > 1)  return { winner: 'draw',           lines: winningLines };
+  return { winner: null, lines: [] };
+}
+
+function isBoardFull() { return board.flat().every(v => v !== 0); }
+
+function triggerWin(winner, lines) {
+  gameOver = true;
+
+  if (winner !== 'draw') {
+    const cells = boardEl.querySelectorAll('.cell');
+    for (const line of lines)
+      for (const [r,c] of line) cells[r*4+c].classList.add('win-cell');
+
+    scores[winner - 1]++;
+    wins[winner - 1]++;
+    document.getElementById(`score-p${winner}`).textContent = scores[winner - 1];
+    document.getElementById(`wins-p${winner}`).textContent  = wins[winner - 1];
+    winTitle.textContent = `PLAYER ${winner} WINS`;
+    winTitle.className   = `win-title p${winner}`;
+    winSub.textContent   = '4 in a row!';
+    soundWin(winner);
+  } else {
+    winTitle.textContent = 'DRAW';
+    winTitle.className   = 'win-title draw';
+    winSub.textContent   = 'Both players got 4 in a row!';
+    soundDraw();
+  }
+
+  setTimeout(() => {
+    winOverlay.classList.add('show');
+    if (winner !== 'draw') spawnWinParticles(winner);
+  }, 400);
+}
+
+function triggerDraw() {
+  gameOver = true;
+  winTitle.textContent = 'DRAW';
+  winTitle.className   = 'win-title draw';
+  winSub.textContent   = 'The board is full!';
+  soundDraw();
+  setTimeout(() => winOverlay.classList.add('show'), 400);
+}
+
+function resetGame() {
+  board         = Array.from({length:4}, () => Array(4).fill(0));
+  currentPlayer = 1;
+  phase         = 'place';
+  gameOver      = false;
+  scores        = [0, 0];
+  animLayer.innerHTML = '';
+  winOverlay.classList.remove('show');
+  // Keep wins counter displayed
+  document.getElementById('wins-p1').textContent = wins[0];
+  document.getElementById('wins-p2').textContent = wins[1];
+  document.getElementById('score-p1').textContent = 0;
+  document.getElementById('score-p2').textContent = 0;
+  renderBoard();
+  updateUI();
+}
+
+// ─────────────────────────────────────────────
+// PARTICLES
+// ─────────────────────────────────────────────
+function spawnParticles(cellEl) {
+  if (!cellEl) return;
+  const rect  = cellEl.getBoundingClientRect();
+  const cx    = rect.left + rect.width  / 2;
+  const cy    = rect.top  + rect.height / 2;
+  const color = currentPlayer === 1 ? '#00e5ff' : '#ff4081';
+
+  for (let i = 0; i < 8; i++) {
+    const p     = document.createElement('div');
+    p.className = 'particle';
+    p.style.left       = cx + 'px';
+    p.style.top        = cy + 'px';
+    p.style.background = color;
+    const angle = (i / 8) * Math.PI * 2;
+    const dist  = 30 + Math.random() * 30;
+    p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1200);
+  }
+}
+
+function spawnWinParticles(player) {
+  const color = player === 1 ? '#00e5ff' : '#ff4081';
+  for (let i = 0; i < 40; i++) {
+    setTimeout(() => {
+      const p     = document.createElement('div');
+      p.className = 'particle';
+      p.style.left       = Math.random() * window.innerWidth  + 'px';
+      p.style.top        = Math.random() * window.innerHeight * 0.6 + 'px';
+      p.style.background = Math.random() > 0.5 ? color : '#7c4dff';
+      p.style.width      = (4 + Math.random() * 8) + 'px';
+      p.style.height     = p.style.width;
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 60 + Math.random() * 100;
+      p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+      p.style.setProperty('--ty', (Math.sin(angle) * dist - 80) + 'px');
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 1200);
+    }, i * 40);
+  }
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+orbitBtn.addEventListener('click', doOrbit);
+resetBtn.addEventListener('click', resetGame);
+playAgainBtn.addEventListener('click', resetGame);
+
+renderBoard();
+updateUI();
+</script>
+</body>
+</html>

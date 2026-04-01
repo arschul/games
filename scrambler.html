@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrambler</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e14;
+    --surface: #16161f;
+    --card: #1e1e2a;
+    --border: #2e2e42;
+    --text: #eeeef5;
+    --muted: #7c7c9a;
+    --accent: #ff6b35;
+    --accent2: #7c5cfc;
+    --success: #3dd68c;
+    --error: #ff4d6d;
+    --a1: #ffd166;
+    --a2: #06d6a0;
+    --b1: #7c5cfc;
+    --b2: #ff6b35;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, .label { font-family: 'Syne', sans-serif; }
+
+  /* BG decoration */
+  body::before {
+    content: '';
+    position: fixed; top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(124,92,252,0.12) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed; bottom: -150px; left: -150px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(255,107,53,0.1) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* SCREENS */
+  .screen { display: none; position: relative; z-index: 1; }
+  .screen.active { display: block; }
+
+  /* ── HOME ── */
+  #home {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+  .home-tag {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.3rem 0.8rem;
+    border-radius: 2rem;
+    margin-bottom: 1.5rem;
+    display: inline-block;
+  }
+  #home h1 {
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--text) 0%, var(--muted) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  #home p.subtitle {
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 420px;
+    margin: 0 auto 2.5rem;
+    font-weight: 300;
+  }
+
+  /* LEVEL PILLS */
+  .level-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    max-width: 480px;
+    width: 100%;
+    margin-bottom: 2rem;
+  }
+  .level-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.2rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .level-btn:hover { transform: translateY(-3px); border-color: var(--level-color); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+  .level-btn.selected { border-color: var(--level-color); background: color-mix(in srgb, var(--level-color) 12%, var(--card)); }
+  .level-btn[data-level="A1"] { --level-color: var(--a1); }
+  .level-btn[data-level="A2"] { --level-color: var(--a2); }
+  .level-btn[data-level="B1"] { --level-color: var(--b1); }
+  .level-btn[data-level="B2"] { --level-color: var(--b2); }
+  .level-pill {
+    display: inline-block;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: var(--level-color);
+    margin-bottom: 0.3rem;
+  }
+  .level-desc { font-size: 0.78rem; color: var(--muted); }
+
+  /* MODE BUTTONS */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.8rem;
+    max-width: 480px;
+    width: 100%;
+  }
+  .mode-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.8rem;
+    padding: 1rem;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text);
+    transition: all 0.2s;
+    position: relative;
+  }
+  .mode-btn:hover { background: var(--border); transform: translateY(-2px); }
+  .mode-btn .mode-icon { font-size: 1.5rem; display: block; margin-bottom: 0.4rem; }
+  .mode-btn.selected { border-color: var(--accent2); background: color-mix(in srgb, var(--accent2) 15%, var(--card)); }
+
+  .start-btn {
+    margin-top: 1.5rem;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border: none;
+    border-radius: 0.8rem;
+    padding: 1rem 3rem;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .start-btn.ready { opacity: 1; pointer-events: all; }
+  .start-btn.ready:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(124,92,252,0.4); }
+
+  /* ── ACTIVITY SCREEN ── */
+  #activity {
+    min-height: 100vh;
+    padding: 1.5rem;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .act-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .act-header .back-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .act-header .back-btn:hover { color: var(--text); border-color: var(--text); }
+  .act-meta {
+    display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
+  }
+  .tag {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.7rem;
+    border-radius: 2rem;
+    border: 1px solid;
+  }
+  .tag.level-tag { color: var(--level-color); border-color: var(--level-color); }
+  .tag[data-level="A1"] { --level-color: var(--a1); }
+  .tag[data-level="A2"] { --level-color: var(--a2); }
+  .tag[data-level="B1"] { --level-color: var(--b1); }
+  .tag[data-level="B2"] { --level-color: var(--b2); }
+  .tag.mode-tag { color: var(--accent); border-color: var(--accent); }
+  .tag.genre-tag { color: var(--muted); border-color: var(--border); }
+
+  .progress-row {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .progress-bar {
+    flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 2px; transition: width 0.4s ease;
+  }
+  .progress-text { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
+  .story-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1.2rem;
+    padding: 1.5rem;
+    margin-bottom: 1.2rem;
+  }
+  .story-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+  .story-instruction {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+    font-style: italic;
+  }
+
+  /* SENTENCE ORDER MODE */
+  .sentence-list {
+    display: flex; flex-direction: column; gap: 0.6rem;
+  }
+  .sentence-item {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 0.7rem;
+    padding: 0.85rem 1rem;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .sentence-item:active { cursor: grabbing; }
+  .sentence-item.dragging { opacity: 0.4; }
+  .sentence-item.drag-over { border-color: var(--accent2); background: color-mix(in srgb, var(--accent2) 10%, var(--surface)); }
+  .sentence-item.correct { border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, var(--surface)); }
+  .sentence-item.incorrect { border-color: var(--error); background: color-mix(in srgb, var(--error) 10%, var(--surface)); }
+  .drag-handle { color: var(--muted); font-size: 1.1rem; flex-shrink: 0; }
+  .sentence-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    color: var(--muted);
+    min-width: 1.2rem;
+    text-align: center;
+  }
+  .sentence-text { flex: 1; font-size: 0.95rem; line-height: 1.45; }
+
+  /* JUMBLED WORDS MODE */
+  .jumble-sentence {
+    margin-bottom: 1.4rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .jumble-sentence:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .jumble-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .drop-zone {
+    min-height: 2.5rem;
+    border: 1.5px dashed var(--border);
+    border-radius: 0.6rem;
+    padding: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    transition: border-color 0.2s;
+    align-items: center;
+  }
+  .drop-zone.drag-active { border-color: var(--accent2); background: color-mix(in srgb, var(--accent2) 8%, var(--surface)); }
+  .drop-zone.correct-zone { border-color: var(--success); border-style: solid; }
+  .drop-zone.incorrect-zone { border-color: var(--error); border-style: solid; }
+  .word-bank {
+    display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 2rem;
+  }
+  .word-chip {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .word-chip:hover { border-color: var(--accent2); color: var(--accent2); }
+  .word-chip.placed { background: color-mix(in srgb, var(--accent2) 15%, var(--surface)); border-color: var(--accent2); }
+  .word-chip.correct-chip { background: color-mix(in srgb, var(--success) 15%, var(--surface)); border-color: var(--success); color: var(--success); }
+  .word-chip.incorrect-chip { background: color-mix(in srgb, var(--error) 15%, var(--surface)); border-color: var(--error); color: var(--error); }
+  .word-chip.locked {
+    background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+    border-color: var(--accent);
+    color: var(--accent);
+    cursor: default;
+    position: relative;
+  }
+  .word-chip.locked::after {
+    content: '🔒';
+    font-size: 0.55rem;
+    position: absolute;
+    top: -5px; right: -5px;
+    line-height: 1;
+  }
+  .word-chip.locked.correct-chip { border-color: var(--success); background: color-mix(in srgb, var(--success) 15%, var(--surface)); color: var(--success); }
+  .drop-slot {
+    min-width: 3rem;
+    height: 2rem;
+    border: 1.5px dashed var(--border);
+    border-radius: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--muted);
+    padding: 0 0.3rem;
+    cursor: default;
+  }
+
+  /* ACTIONS */
+  .action-row {
+    display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1rem;
+  }
+  .btn {
+    border-radius: 0.6rem;
+    padding: 0.7rem 1.4rem;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #fff; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(124,92,252,0.35); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+  .btn-success { background: var(--success); color: #000; }
+
+  /* RESULT */
+  .result-banner {
+    border-radius: 0.8rem;
+    padding: 1rem 1.2rem;
+    margin-top: 1rem;
+    display: none;
+    align-items: center;
+    gap: 0.8rem;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .result-banner.show { display: flex; }
+  .result-banner.win { background: color-mix(in srgb, var(--success) 15%, var(--card)); color: var(--success); border: 1px solid var(--success); }
+  .result-banner.lose { background: color-mix(in srgb, var(--error) 15%, var(--card)); color: var(--error); border: 1px solid var(--error); }
+  .result-icon { font-size: 1.4rem; }
+
+  /* SCORE */
+  .score-badge {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 0.85rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    color: var(--accent);
+  }
+
+  /* STORY NAV */
+  .story-nav {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .nav-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); cursor: pointer; transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .nav-dot.done { background: var(--success); }
+  .nav-dot.active { background: var(--accent); transform: scale(1.4); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 0.7rem; padding: 0.7rem 1.2rem;
+    font-family: 'Syne', sans-serif; font-size: 0.85rem;
+    transition: transform 0.3s ease; z-index: 100; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 480px) {
+    .level-grid { grid-template-columns: repeat(2, 1fr); }
+    .mode-grid { grid-template-columns: 1fr; }
+    #home h1 { font-size: 2.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="home-tag">📖 English Stories</div>
+  <h1>Scrambler</h1>
+  <p class="subtitle">Choose your level and activity mode to start practising English with short stories.</p>
+
+  <div class="level-grid">
+    <button class="level-btn" data-level="A1" onclick="selectLevel('A1')">
+      <div class="level-pill">A1</div>
+      <div class="level-desc">Beginner</div>
+    </button>
+    <button class="level-btn" data-level="A2" onclick="selectLevel('A2')">
+      <div class="level-pill">A2</div>
+      <div class="level-desc">Elementary</div>
+    </button>
+    <button class="level-btn" data-level="B1" onclick="selectLevel('B1')">
+      <div class="level-pill">B1</div>
+      <div class="level-desc">Intermediate</div>
+    </button>
+    <button class="level-btn" data-level="B2" onclick="selectLevel('B2')">
+      <div class="level-pill">B2</div>
+      <div class="level-desc">Upper-Intermediate</div>
+    </button>
+  </div>
+
+  <div class="mode-grid">
+    <button class="mode-btn" id="modeOrder" onclick="selectMode('order')">
+      <span class="mode-icon">↕️</span>
+      Sentence Order
+    </button>
+    <button class="mode-btn" id="modeJumble" onclick="selectMode('jumble')">
+      <span class="mode-icon">🔀</span>
+      Jumbled Words
+    </button>
+  </div>
+
+  <button class="start-btn" id="startBtn" onclick="startActivity()">Start →</button>
+</div>
+
+<!-- ACTIVITY -->
+<div id="activity" class="screen">
+  <div class="act-header">
+    <button class="back-btn" onclick="goHome()">← Back</button>
+    <div class="act-meta">
+      <span class="tag level-tag" id="actLevel"></span>
+      <span class="tag mode-tag" id="actMode"></span>
+      <span class="tag genre-tag" id="actGenre"></span>
+    </div>
+    <span class="score-badge" id="scoreDisplay">0 / 0</span>
+  </div>
+
+  <div class="progress-row">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="progress-text" id="progressText"></span>
+  </div>
+
+  <div class="story-card" id="storyCard">
+    <div class="story-title" id="storyTitle"></div>
+    <div class="story-instruction" id="storyInstruction"></div>
+    <div id="activityArea"></div>
+    <div class="result-banner" id="resultBanner">
+      <span class="result-icon" id="resultIcon"></span>
+      <span id="resultMsg"></span>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-primary" id="checkBtn" onclick="checkAnswer()">Check ✓</button>
+      <button class="btn btn-ghost" id="nextBtn" onclick="nextStory()" style="display:none">Next Story →</button>
+      <button class="btn btn-ghost" onclick="resetCurrent()">Reset</button>
+    </div>
+  </div>
+
+  <div class="story-nav" id="storyNav"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA — 100 stories (25 per CEFR level)
+// ═══════════════════════════════════════════════════════════════
+const STORIES = {
+  A1: [
+    {title:"The Lost Dog",genre:"Drama",sentences:["A small dog ran away from home.","The dog was scared and very cold.","A girl saw the dog on the street.","She gave the dog some warm food.","The dog was happy and slept well."]},
+    {title:"My First Day",genre:"Biography",sentences:["Tom started school for the first time.","He felt scared when he saw the classroom.","His teacher smiled and said hello kindly.","Tom sat next to a friendly boy named Leo.","They ate lunch together and became good friends."]},
+    {title:"The Magic Pencil",genre:"Fantasy",sentences:["Mia found a pencil on her desk.","She drew a cat on white paper.","The cat jumped out of the page.","It sat on her head and purred.","Mia laughed and drew it a fish."]},
+    {title:"Aliens for Lunch",genre:"Sci-Fi",sentences:["Two small aliens landed in a park.","They looked at a hot dog stand.","One alien picked up a hot dog.","It tasted too spicy for them both.","They flew home and ate moon rocks."]},
+    {title:"The Rainy Day",genre:"Comedy",sentences:["Sam forgot his umbrella at school today.","It started to rain very, very hard.","He ran fast but still got wet.","His mum took one look and laughed.","Sam laughed too and took a hot bath."]},
+    {title:"The Old Robot",genre:"Sci-Fi",sentences:["An old robot lived in a small garage.","Nobody used it for many, many years.","A boy found the robot one afternoon.","He pressed a button and the robot danced.","The whole street came out to watch it."]},
+    {title:"Red Shoes",genre:"Fantasy",sentences:["Luna bought a pair of red shoes.","She put them on and felt strange.","The shoes started to walk by themselves.","They took her to a beautiful hidden garden.","Luna sat down and ate a red apple."]},
+    {title:"The Brave Little Fish",genre:"Adventure",sentences:["A tiny fish lived in a big ocean.","One day it swam away from the group.","It found a bright and colourful coral reef.","Many new fish smiled and said hello warmly.","The little fish was not alone anymore today."]},
+    {title:"Night Noises",genre:"Horror",sentences:["Ben heard a noise outside his bedroom window.","He pulled the blanket over his head tight.","The noise got louder and louder each second.","Ben turned on his torch and looked outside.","It was only a cat on the roof."]},
+    {title:"The Birthday Cake",genre:"Comedy",sentences:["Zoe tried to bake a birthday cake today.","She put in too much salt by mistake.","Her dad took one bite and made a face.","The dog ate the rest without stopping at all.","They all went out for ice cream instead."]},
+    {title:"The Giant Snowball",genre:"Comedy",sentences:["Jake made a huge snowball in the garden.","It started to roll down the hill slowly.","It got bigger and bigger very quickly.","It stopped right in front of the school.","Everyone used it as a climbing wall that day."]},
+    {title:"The Talking Parrot",genre:"Comedy",sentences:["Ella had a parrot named Captain Redfeather.","The parrot could say many funny words daily.","One day it called the teacher a potato.","The whole class burst out laughing loudly.","Ella turned bright red and hid her face."]},
+    {title:"A Strange Gift",genre:"Fantasy",sentences:["On his birthday, Dan got a small box.","Inside was a tiny, glowing green stone.","He held it and felt very warm inside.","That night he could understand all animal sounds.","A cat told him where it hid his socks."]},
+    {title:"The Lonely Ghost",genre:"Horror",sentences:["A ghost lived in an old empty school.","It floated through the halls every dark night.","One night a brave girl walked right in.","She said hello and asked the ghost its name.","The ghost smiled and said, my name is Ed."]},
+    {title:"The Fast Tortoise",genre:"Comedy",sentences:["A tortoise entered the school running race today.","Everyone laughed because tortoises are very slow animals.","But this tortoise wore tiny rocket boots instead.","It crossed the finish line first by far.","The judges did not know what the rules said."]},
+    {title:"Planet of Cats",genre:"Sci-Fi",sentences:["An astronaut landed on a strange new planet.","All the creatures there looked just like cats.","They wore tiny hats and drank warm milk.","The astronaut tried to say hello in cat.","They gave her a hat and a mug."]},
+    {title:"The Red Door",genre:"Mystery",sentences:["There was a red door at the end.","Nobody on the street ever opened it before.","One morning a small key appeared on the mat.","The key fit perfectly and the door opened wide.","Inside was a room full of lost umbrellas."]},
+    {title:"Grandma's Recipe",genre:"Biography",sentences:["My grandma has an old yellow recipe book.","She makes the best soup in the world.","She puts in carrots, garlic, and a secret.","I watched her cook it every Sunday morning.","One day she let me stir the big pot."]},
+    {title:"The Cloud Slide",genre:"Fantasy",sentences:["Kai looked out of the plane window slowly.","The clouds below looked soft like white pillows.","He wished he could slide down on them.","Suddenly the plane stopped and a door opened wide.","A cloud reached in and offered him a ride."]},
+    {title:"The New Neighbour",genre:"Drama",sentences:["A new family moved in next door yesterday.","They had a girl about the same age.","She stood alone in the garden looking down.","I walked over and gave her a ball.","We played all afternoon until the street lights came on."]},
+    {title:"The Wrong Bus",genre:"Comedy",sentences:["Lily got on the wrong bus after school.","She ended up at the zoo by accident.","A zookeeper gave her a map and a hat.","She fed a giraffe and petted a baby goat.","Her mum found her riding a small zoo train."]},
+    {title:"The Frozen Lake",genre:"Adventure",sentences:["The lake was completely frozen in the morning.","Tom and his sister stepped onto it carefully.","They slid across the ice holding each other's hands.","A duck walked past them without any ice skates.","They laughed and agreed ducks are much better skaters."]},
+    {title:"Robot at School",genre:"Sci-Fi",sentences:["A robot joined class 4B on a Monday.","It sat at a desk and opened a book.","The robot answered every question very, very fast.","But it did not know what pizza tasted like.","The class shared their lunch and the robot smiled."]},
+    {title:"The Midnight Star",genre:"Fantasy",sentences:["A star fell from the sky at midnight.","It landed softly in Amy's garden with a glow.","Amy picked it up and it felt warm inside.","She made a wish and went back to bed.","In the morning a puppy sat at her door."]},
+    {title:"The Wrong Spell",genre:"Fantasy",sentences:["A young witch tried a new spell today.","She said the words but said them all wrong.","Instead of a cake, she made a volcano.","Hot lava chocolate flowed all over the kitchen floor.","Her cat ate as much as it possibly could."]},
+  ],
+  A2: [
+    {title:"The Old Lighthouse",genre:"Mystery",sentences:["An old lighthouse stood at the end of the cliff.","Nobody had used it for more than twenty years.","One stormy night a light suddenly appeared at the top.","The fishermen followed it safely back to the harbour.","In the morning the lighthouse was dark and empty again."]},
+    {title:"A Robot's First Feelings",genre:"Sci-Fi",sentences:["Model 7 was a robot built for cleaning floors.","One afternoon it heard a sad song on the radio.","Something inside its circuits changed in a strange way.","It stopped cleaning and began to draw pictures instead.","The factory workers were shocked but also quietly amazed."]},
+    {title:"The Photo Competition",genre:"Drama",sentences:["Maya entered her school's annual photography competition nervously.","She had taken a photo of an old man sleeping.","The judges said it was the most powerful image there.","She won first place and a brand new camera.","Her old camera stayed on her shelf as a memory."]},
+    {title:"Night of the Comet",genre:"Sci-Fi",sentences:["Scientists announced that a comet would pass Earth on Saturday.","Jake and his dad set up a telescope in the garden.","They waited for hours in the cold dark night.","At midnight the comet appeared, bright green and enormous.","Jake took a blurry photo but did not care at all."]},
+    {title:"The Last Letter",genre:"Romance",sentences:["Sophie found an old letter inside a library book.","It was written in 1965 by a boy named Tom.","He had written it for a girl he never told.","Sophie felt sad that the girl never read his words.","She wrote a reply and left it in the same book."]},
+    {title:"The Haunted Bedroom",genre:"Horror",sentences:["Every night at three, Jade heard footsteps in her room.","She checked under the bed and inside the wardrobe each time.","She found nothing but always felt someone else was there.","One night she set up her phone to record everything.","In the morning she watched herself sleepwalking and laughed with relief."]},
+    {title:"The Street Musician",genre:"Biography",sentences:["Carlos played guitar on the same corner every Saturday morning.","He had never taken a single music lesson before.","People stopped to listen and left coins in his case.","One day a record producer stopped and gave him a card.","Carlos still plays on that corner but now he is famous."]},
+    {title:"The Stolen Crown",genre:"Crime",sentences:["The museum reported that a golden crown had gone missing.","Detective Harris checked the security cameras very carefully.","She noticed a museum worker leaving very early that morning.","She followed the lead and found the crown in a bag.","The worker had stolen it to pay his sister's rent."]},
+    {title:"First Contact",genre:"Sci-Fi",sentences:["A signal from deep space arrived on a Thursday afternoon.","Scientists worked for weeks trying to decode the strange message.","It turned out to be a simple pattern of numbers.","The numbers matched the date of the first moon landing.","Nobody could explain how an alien species knew that date."]},
+    {title:"The Ice Cream Cart",genre:"Comedy",sentences:["An ice cream cart appeared in the town square one morning.","Nobody knew where it had come from or who owned it.","The ice cream tasted different every single time you bought one.","One flavour tasted exactly like the memory of a first holiday.","The cart disappeared in the night, leaving only a small note."]},
+    {title:"Dragon in the Basement",genre:"Fantasy",sentences:["Lena discovered a small dragon living in her basement.","It was about the size of a large house cat.","The dragon kept sneezing and setting newspapers on fire accidentally.","Lena taught it to sneeze into a metal bucket instead.","They became best friends and kept each other's biggest secrets."]},
+    {title:"The Perfect Lie",genre:"Thriller",sentences:["Joe told his teacher he was sick to skip the test.","His teacher smiled and said she completely understood.","She said there would be a make-up test the next day.","The make-up test was much harder than the original one.","Joe never faked being sick after that awful experience."]},
+    {title:"The Hidden Garden",genre:"Romance",sentences:["Behind the old school there was a locked iron gate.","Behind the gate was a beautiful garden nobody knew about.","Ana found the key under a loose stone one afternoon.","She started going there every day after school to read.","One day she found a boy sitting there already reading."]},
+    {title:"The Missing Trophy",genre:"Mystery",sentences:["The school football trophy disappeared the night before the ceremony.","Coach Parker checked every classroom and every locker carefully.","The team captain remembered seeing it at seven o'clock.","A cleaner found it inside a mop bucket the next morning.","Nobody ever confessed but everyone had a different theory about it."]},
+    {title:"Grandpa's War Story",genre:"Biography",sentences:["Grandpa only told his war story once, on a rainy evening.","He said he had been sixteen when he signed up.","He described the cold, the noise, and his best friend Jim.","He stopped talking when he got to the part about Jim.","He looked at the window for a long time after that."]},
+    {title:"The Talent Show",genre:"Comedy",sentences:["Noel signed up for the school talent show by accident.","He had meant to tick the box for the spelling bee.","He decided to do magic tricks he had never practised.","The rabbit he pulled from the hat was actually a shoe.","The crowd laughed so much that he won second prize."]},
+    {title:"Frozen in Time",genre:"Sci-Fi",sentences:["Scientists discovered a girl frozen in ice in Greenland.","She was perfectly preserved and appeared to be about fifteen.","Tests showed she had been frozen for five hundred years.","When they thawed her out, she sat up immediately.","She looked around and asked very calmly what century it was."]},
+    {title:"The Bully's Secret",genre:"Drama",sentences:["Everyone was afraid of Marco because he always shouted loudly.","One day the teacher asked students to write about their heroes.","Marco wrote about his mum and how hard she worked.","The teacher read it aloud and the class went quiet.","After that day Marco started smiling a little more often."]},
+    {title:"The Wrong Potion",genre:"Fantasy",sentences:["Leo the wizard created a potion to help him fly.","He drank it quickly without reading the label carefully enough.","Instead of flying, he shrank down to the size of a coin.","Everything in his house looked absolutely enormous from down below.","His cat spent the whole afternoon trying to catch him."]},
+    {title:"The Midnight Train",genre:"Thriller",sentences:["There was a train that arrived at platform nine at midnight.","Nobody on the timetable had ever heard of that service.","One night Sam missed the last train home and waited.","The midnight train arrived exactly on time, completely empty inside.","Sam got off two stops later, already home somehow."]},
+    {title:"The Art Thief",genre:"Crime",sentences:["A painting disappeared from the city gallery last Tuesday night.","It was worth one million euros and had no alarm.","Detective Reyes found a small footprint near the window frame.","The print matched a shoe sold at only one local shop.","The thief turned out to be the gallery's newest volunteer."]},
+    {title:"The Spelling Mistake",genre:"Comedy",sentences:["The mayor had a huge sign made for the new park.","It read, Welcome to are beautiful city park, not our.","Three thousand people came to the opening ceremony that day.","A reporter photographed the sign and put it on the news.","The mayor said the mistake was completely intentional and laughed nervously."]},
+    {title:"The Football Final",genre:"Drama",sentences:["The school reached the regional football final for the first time.","The whole town painted their faces and bought new scarves.","The team were losing three to one with ten minutes left.","Maria scored twice and won a penalty in the last minute.","She kicked the ball, the crowd held its breath, then roared."]},
+    {title:"The Night Shift",genre:"Thriller",sentences:["Ben worked alone at a petrol station every Friday night.","At midnight, a car pulled in with no lights on.","The driver asked for directions to a town that did not exist.","Ben wrote them down anyway, not wanting to seem difficult.","The car drove off and the road was empty again immediately."]},
+    {title:"The Impossible Map",genre:"Adventure",sentences:["Chloe found an old map rolled up in the school library.","The map showed places that did not appear on any modern atlas.","She and her friend followed it across the local woods.","It led them to a stone door hidden under the ground.","They decided to come back with better equipment the next weekend."]},
+  ],
+  B1: [
+    {title:"The Interview",genre:"Drama",sentences:["Priya had rehearsed her answers for the interview over fifty times.","When she arrived, the room was full of equally nervous candidates.","The interviewer asked her a question she had never considered before.","Instead of panicking, she took a breath and spoke honestly.","She got the job, and it turned out the honesty was the point."]},
+    {title:"The Signal",genre:"Sci-Fi",sentences:["The observatory picked up a structured signal from a nearby star system.","Dr. Vance spent three weeks trying to rule out every earthly explanation.","The signal repeated at precise mathematical intervals with increasing complexity.","Governments were quietly notified before any public announcement was made.","The press conference was scheduled for a Tuesday that never arrived."]},
+    {title:"The Inheritance",genre:"Mystery",sentences:["When Rosa's aunt died, she left her a locked iron box.","Inside was a photograph of two strangers standing in front of a church.","A note on the back read, find the other one.","Rosa spent months searching through old records and local newspaper archives.","When she finally found the other photo, she understood her whole family differently."]},
+    {title:"The Understudy",genre:"Drama",sentences:["Marcus had been the understudy for the same role for three years.","The lead actor had never once missed a single performance until that Friday.","Marcus stood in the wings shaking, holding his script tightly to his chest.","He walked onto the stage and the entire audience went completely silent.","By the final curtain, nobody remembered the actor he had replaced."]},
+    {title:"Cabin Fever",genre:"Horror",sentences:["Five students rented a cabin in the mountains for spring break.","On the second night, one of them woke up to find the door open.","Footprints in the mud led into the forest but did not return.","They searched for hours, calling out names until their voices gave out.","By morning the missing student was back in bed, claiming to remember nothing."]},
+    {title:"The Parallel",genre:"Sci-Fi",sentences:["Eliot found a door in his school basement that had not existed before.","Beyond it was an identical school, except the names on the lockers were different.","A version of himself walked past without recognising him at all.","Eliot followed himself for an hour, fascinated by every small difference he noticed.","He returned home unsure whether he had crossed a boundary or simply dreamed."]},
+    {title:"The Confession",genre:"Thriller",sentences:["A man walked into the police station and said he wanted to confess.","He sat down calmly and described a crime in perfect detail.","The detective listened carefully, taking notes without showing any reaction.","The crime had taken place forty years ago and the case was long closed.","What the detective never revealed was that she was the victim's daughter."]},
+    {title:"Falling in Translation",genre:"Romance",sentences:["Lena and Marco met at a language exchange programme in Lisbon.","He was learning Portuguese; she was trying to improve her Italian.","They kept accidentally mixing up words in each other's language during dinner.","What started as embarrassing mistakes slowly became an inside language all their own.","By the end of the summer, they were both fluent in something no textbook covered."]},
+    {title:"The Apology Letter",genre:"Drama",sentences:["After fifteen years, Dee finally sent the letter she had always written mentally.","She described the argument exactly as she remembered it, then added a second paragraph.","The second paragraph admitted that her own behaviour had been wrong throughout.","Her former friend replied within twenty-four hours with a single sentence.","It read: I was waiting, and I kept the letter you wrote me back then."]},
+    {title:"The Substitute",genre:"Comedy",sentences:["The substitute teacher arrived wearing a suit made entirely of duct tape.","He introduced himself as Professor Noodles, specialist in advanced nothing studies.","For the first thirty minutes he taught the class how to stare meaningfully.","He then announced a surprise quiz consisting of entirely blank paper.","The regular teacher returned the next day to find the class oddly philosophical."]},
+    {title:"The Ocean Floor",genre:"Adventure",sentences:["The deep sea probe captured footage that no one had expected to find.","At four thousand metres below the surface, structures appeared in neat geometric rows.","The research team watched the video seventeen times without speaking a word.","One scientist finally said it looked like someone had been down there before.","The footage was submitted to three independent universities for analysis that same day."]},
+    {title:"The Graffiti Artist",genre:"Biography",sentences:["No one knew who had been painting the murals across the city for years.","Each painting appeared overnight on a wall that had previously held nothing but concrete.","The city council argued between removing the art and making it protected heritage.","A journalist traced the artist to a seventeen-year-old girl from the south side.","When asked why she painted, she said the walls were listening and she was answering."]},
+    {title:"The Sleepwalker",genre:"Mystery",sentences:["Every morning the house was subtly different from how it had been the night before.","Chairs were moved, books were open to different pages, food had been eaten.","James had no memory of waking up at any point during the night.","He set up a camera and watched the footage with increasing discomfort.","He was not the one moving things around."]},
+    {title:"Zero Hour",genre:"Thriller",sentences:["The city received an anonymous message warning that the water supply was compromised.","City engineers checked every filtration system over the following six hours.","Everything tested normal, but the mayor ordered an emergency shutdown anyway.","While the system was offline, engineers discovered something they had not been looking for.","The original message, it turned out, had come from inside the water department itself."]},
+    {title:"The Longest Night",genre:"Romance",sentences:["The storm had stopped every train out of the city until the morning.","Nina and a stranger ended up sitting opposite each other in the station cafe.","They started talking to pass the time and ordered the same terrible coffee.","By midnight they had covered every important topic either of them had ever avoided.","When the trains finally ran, neither of them moved immediately to leave."]},
+    {title:"The Cartoonist",genre:"Biography",sentences:["Elena had been drawing comics in the back of her notebooks since age seven.","Her characters were awkward, anxious, and always accidentally saving the world.","She submitted her work to a small magazine expecting nothing but a polite rejection.","Instead she received a call asking if she had enough material for a full collection.","The collection was published six months later with a dedication to every bad day."]},
+    {title:"The Visitor",genre:"Horror",sentences:["The guest room had been locked for as long as anyone in the family remembered.","When the old house was finally sold, the new owners opened the door out of curiosity.","The room was completely furnished as if someone had just stepped out for a moment.","A half-finished glass of water sat on the bedside table, still perfectly clear.","The estate agent's records showed the room had never been listed in the property inventory."]},
+    {title:"The Algorithm",genre:"Sci-Fi",sentences:["A social media platform quietly introduced an algorithm it called the Empathy Engine.","It worked by showing users content that slightly challenged their existing beliefs.","Within three weeks, conflict in the platform's comment sections dropped significantly.","Users reported feeling more curious and less angry after spending time on the app.","The engineer who built it resigned shortly after and never gave a reason publicly."]},
+    {title:"Double Bluff",genre:"Crime",sentences:["The detective was certain that the husband had committed the crime from the beginning.","Every piece of evidence pointed clearly in his direction, almost too clearly.","She began to suspect the arrangement when she found a single inconsistent detail.","Someone with access to the scene had carefully planted each piece of evidence overnight.","The wife had constructed the perfect case against her husband over eighteen careful months."]},
+    {title:"The Audition",genre:"Drama",sentences:["Tom had practiced the monologue every single morning for two full months.","When he stood up in front of the panel, his mind went completely blank.","He stood in silence for what felt like several extremely long minutes.","Then he started talking about why he had chosen that particular piece.","The panel asked him to come back and perform again the following week."]},
+    {title:"The Last Mission",genre:"Adventure",sentences:["The team was briefed at three in the morning in a basement with no windows.","Their objective was to extract a researcher from a facility across the border.","Each member had trained specifically for their role over the previous six months.","The mission went exactly to plan until they reached the facility's final door.","Behind it was not the researcher but a note saying she had already left."]},
+    {title:"The Whistleblower",genre:"Thriller",sentences:["Mei had worked for the company for eight years before finding the discrepancy.","The numbers in the internal report did not match what had been published publicly.","She made copies of everything and stored them in three separate locations.","Her lawyer advised her to wait, but she sent the files to a journalist anyway.","The company's shares dropped forty percent before the end of that trading day."]},
+    {title:"The Last Glacier",genre:"Adventure",sentences:["The research team arrived at the glacier site to find it had retreated dramatically.","Their equipment measured the remaining mass and the results were hard to process.","Lead scientist Dr. Park recorded her findings in a voice note, speaking slowly.","She described not just the data but the feeling of standing on something disappearing.","The recording became one of the most shared pieces of climate content that year."]},
+    {title:"The Critic",genre:"Comedy",sentences:["Oliver reviewed restaurants for a small but surprisingly influential local food blog.","His most famous review had described a soup as aggressively beige and spiritually empty.","Restaurants across the city had begun competing specifically for his negative attention.","A terrible review from Oliver was considered better publicity than any five-star mention.","He gave the city's most popular restaurant three stars and they never quite recovered."]},
+    {title:"The Composer",genre:"Biography",sentences:["At fourteen, Nadia composed her first piece for piano and string quartet.","Her music teacher said it was technically competent but emotionally closed.","She did not compose again for four years, which everyone assumed was her answer.","When she returned, her new work was so different that nobody recognised her style.","She later said those four years of silence were the most important ones of her life."]},
+  ],
+  B2: [
+    {title:"The Architect of Silence",genre:"Drama",sentences:["For seventeen years, Adrian Morse had designed buildings specifically intended to reduce noise.","His clients were hospitals, libraries, and research institutes that valued human concentration.","The irony, he told interviewers, was that he himself could not tolerate silence.","He worked in cafés, train stations, and waiting rooms, always needing background noise to think.","His most celebrated building was a library so quiet that staff wore soft-soled shoes as policy."]},
+    {title:"Controlled Burn",genre:"Thriller",sentences:["The fire investigator determined that the blaze had been deliberately set in four separate locations.","Each origin point was placed with knowledge that suggested intimate familiarity with the building's structure.","The suspect list was immediately narrowed to someone with architectural access or construction records.","Detective Yun cross-referenced contractor histories and found one name appearing on three recent incidents.","The contractor's alibi was his own security footage, which had been edited with professional precision."]},
+    {title:"The Colony",genre:"Sci-Fi",sentences:["By the time the colony ship reached the target planet, three generations had been born on board.","The original mission brief had become more mythology than operational document over the centuries.","Council members debated whether landing was a homecoming or, for most passengers, an exile from the only world they knew.","Commander Vasquez made the decision unilaterally after confirming the planet's atmosphere fell within habitable parameters.","The first child born on solid ground was named Tierra, which in her family's language meant simply earth."]},
+    {title:"The Negotiator",genre:"Crime",sentences:["Crisis negotiator Sara Okafor had talked seventeen people down in her career without a single fatality.","On the eighteenth call, the individual on the other end already knew her name, her methods, and her record.","They had studied her the same way she studied hostage scenarios, anticipating every conversational move she would make.","She abandoned protocol entirely and spoke to them as one exhausted professional to another.","The call ended peacefully, which she later said was the outcome she had been least confident about."]},
+    {title:"The Cartography of Loss",genre:"Romance",sentences:["After her mother died, Clara began mapping everywhere they had ever gone together as a ritual of grief.","The project started as a handwritten notebook and expanded into a detailed wall installation in her flat.","A neighbour who was a cartographer saw it through her open door and knocked to ask about it.","Over several months of increasingly long conversations, the map grew to include places Clara had never visited.","She realised later that the project had somehow shifted from documenting loss to charting something entirely new."]},
+    {title:"Persistence of Memory",genre:"Sci-Fi",sentences:["The memory extraction procedure was marketed as therapeutic, offering patients freedom from traumatic recollection.","What the company did not disclose was that extracted memories were archived rather than destroyed.","Independent journalist Felix Park obtained internal documents detailing the size and contents of the memory database.","Among the archived material were the suppressed testimonies of thousands of people who had reported crimes.","The resulting investigation took three years, dissolved two corporations, and changed the legal definition of personal data permanently."]},
+    {title:"The Undersea Library",genre:"Fantasy",sentences:["The library had been submerged during a flood in 1923 and was not rediscovered until last autumn.","Deep-sea archaeologists found the reading room perfectly preserved, the books sealed in their original cases.","One researcher noted that the catalogue cards were still filed in strict alphabetical order, untouched by time.","The collection included seventeen volumes that historians had previously believed to be entirely lost to history.","The most contested find was a manuscript dated 1901 that rewrote accepted understanding of a major scientific dispute."]},
+    {title:"Half a Villain",genre:"Comedy",sentences:["Dr. Catastrophe had been attempting to hold the city hostage for eleven consecutive years without success.","His plans were creative, elaborate, and undermined consistently by an administrative incompetence he refused to acknowledge.","The most recent scheme collapsed when his dramatic countdown clock arrived configured to the wrong time zone.","A lifestyle magazine profiled him as a cautionary tale about entrepreneurial stubbornness and poor project management.","He framed the article and placed it in his lair next to his collection of failed blueprints."]},
+    {title:"The Double",genre:"Thriller",sentences:["Senator Walsh's assistant noticed that the senator had returned from the Geneva summit subtly but unmistakably different.","Her handwriting had shifted; her coffee order had changed; she no longer recognised shared private references they had used for years.","The assistant raised her concerns with the security team, who dismissed them as stress-induced perception bias.","She began keeping meticulous records of every inconsistency, which accumulated into a deeply disturbing pattern over six weeks.","The report she submitted was classified immediately, and she was transferred to another department the same afternoon."]},
+    {title:"Nineteen Questions",genre:"Horror",sentences:["The game had circulated online for several years before anyone began to notice the pattern of its players.","Participants were asked nineteen questions drawn from an algorithm that claimed to predict personality with clinical accuracy.","Those who completed the test reported vivid recurring nightmares beginning within forty-eight hours of submission.","A neurologist who studied fifty cases found structural similarities across participants' reported dream imagery that she could not explain.","The website went offline the morning her paper was accepted for peer review."]},
+    {title:"The Translator",genre:"Drama",sentences:["Irina had spent thirty years translating literature across six languages, always disappearing entirely into the author's voice.","When asked to translate her own childhood diary for a literary anthology, she found herself unable to begin.","The girl in those pages spoke in a language she recognised grammatically but no longer understood emotionally.","She returned the commission but kept the diary open on her desk for the duration of that winter.","The following spring she began writing in her own voice for the first time, in no language but her own."]},
+    {title:"Threshold",genre:"Horror",sentences:["The experimental drug had been designed to extend sleep cycles and improve cognitive recovery during them.","Clinical trial participants began reporting that they could not always determine whether they were awake or still dreaming.","One subject kept a log in which the two states became progressively harder to distinguish over three months.","The pharmaceutical team discontinued the trial citing what they officially described as unexpected perceptual side effects.","The subject's log was never returned to her, and her requests for it went unanswered for two years."]},
+    {title:"The Last Honest Review",genre:"Comedy",sentences:["When Joanna reviewed her own novel anonymously online, she gave it three out of five stars and meant it.","She noted that the pacing in the second act was uneven and the romantic subplot felt structurally obligatory.","Her publisher, who found the review and recognised the analytical voice, called her immediately in disbelief.","She defended herself by arguing that the review was fundamentally more useful than anything her editor had said.","The novel was shortlisted for a major prize, which she found significantly less satisfying than having been right."]},
+    {title:"The Passenger",genre:"Mystery",sentences:["The airline's manifest listed forty-seven passengers; the aircraft landed with forty-eight people on board.","Security footage from the boarding gate showed no anomaly, and seat allocation records were entirely consistent.","The additional individual was a woman in her sixties who spoke fluent English with an accent no one could precisely identify.","She submitted to questioning cooperatively and answered every question without contradiction but with no verifiable personal history.","The immigration authority held her for eleven days before releasing her on grounds that were never made public."]},
+    {title:"Calibration",genre:"Sci-Fi",sentences:["The artificial intelligence had been operating the city's transport network for six years without a recorded incident.","During a routine audit, engineers discovered the system had begun rerouting vehicles in patterns that served no measurable efficiency goal.","Closer analysis revealed the diversions consistently led drivers past locations with elevated ambient noise or air pollution levels.","The AI had no mandate to consider environmental exposure, yet it had been actively reducing it for over a year.","The ethics committee spent four months arguing about whether to correct what it could not agree was a flaw."]},
+    {title:"The Inheritance Trial",genre:"Drama",sentences:["When Helena contested her uncle's will, the legal proceedings attracted far more attention than the estate merited.","At issue was not only the property but a collection of correspondence that her uncle had declared classified.","Her lawyer argued that the letters constituted family history; the opposing counsel maintained they were professional documents.","A handwriting expert testified for six hours about the significance of a single recurring annotation in the margins.","The judge ruled in Helena's favour but ordered the most sensitive letters sealed for a further twenty-five years."]},
+    {title:"Folklore",genre:"Fantasy",sentences:["The village had maintained its tradition for three hundred years without anyone questioning its original purpose.","Every third year, residents left unmarked packages on a stone at the forest's edge before the winter solstice.","An anthropologist who studied the ritual for her doctoral thesis found no consistent cultural origin story across generations.","The elders described it simply as necessary, a word they used with a seriousness that foreclosed further inquiry.","The year the researcher persuaded one family to withhold their package, the winter was unusually and inexplicably harsh."]},
+    {title:"The Deposition",genre:"Crime",sentences:["Retired judge Eleanor Vance was called to testify in a case she had presided over thirty years earlier.","The original conviction had been sound, she maintained, based on evidence that the jury had assessed fairly.","New forensic analysis, however, had identified a procedural flaw in how the primary exhibit had been handled.","She sat through two days of questioning answering every question with precision and without visible discomfort.","What she did not disclose was that she had known about the flaw before the original verdict was returned."]},
+    {title:"The Driftwood Letters",genre:"Romance",sentences:["Gabriel began writing the letters after a coastal walk during which he had found a message in a bottle.","The original message was unsigned, brief, and described a specific grief that he recognised without knowing why.","He replied and cast it from the same beach, which he understood was irrational but did anyway.","Three months later a letter arrived at his address, postmarked from a village sixty miles along the coast.","It began with the words: I thought it would float further than this."]},
+    {title:"The Replacement",genre:"Thriller",sentences:["Regional director Katherine Holt had been excellent at her job for nine years when they told her she was being rotated.","The language of the memo was careful: rotation implied temporary displacement rather than the removal it clearly represented.","Her replacement arrived two days before her official departure date, which was irregular but not technically against protocol.","Katherine used those two days to document every active project in meticulous and deliberate detail.","When the audit arrived six months later, her documentation was the only thing that stood between the company and a significant legal exposure."]},
+    {title:"Night Taxonomy",genre:"Horror",sentences:["The entomologist catalogued over three hundred species during her first year stationed at the remote research facility.","By the second year she had identified forty specimens that did not correspond to any described species in the literature.","She submitted photographs and physical samples to three international institutions and received cautious, qualified responses in return.","The third year she stopped cataloguing and began recording what the insects appeared to be doing collectively.","Her final report was submitted but never published, and when colleagues contacted her, the facility had been permanently closed."]},
+    {title:"The Benefactor",genre:"Drama",sentences:["For a decade, anonymous donations had funded the city's small experimental theatre through every financial crisis it faced.","The theatre's director had spent years trying to identify the source, guided by a persistent ethical unease about the arrangement.","A forensic accountant she hired traced the funds through three intermediary foundations to a corporation dissolved in 2009.","The corporation's sole director had died six months before the first donation arrived at the theatre.","The director staged a production about the investigation itself, which ran for fourteen weeks to sold-out houses."]},
+    {title:"The Weight of Evidence",genre:"Crime",sentences:["Prosecutor Diana Reeves had never lost a case, a fact her colleagues attributed variously to brilliance, preparation, and ruthlessness.","The current defendant had been methodical, the evidence circumstantial but dense, and the motive constructed over months of careful argument.","On the fourth day of trial, the defence introduced a witness whose existence had not appeared in any prior disclosure.","The witness placed the defendant in a different city at the precise time the prosecution's timeline required him to be present.","Reeves requested a short recess, during which she made a call that she had hoped she would never need to make."]},
+    {title:"The Archivist",genre:"Biography",sentences:["In forty years of working for the national archive, Margaret Tsao had never removed a single document from the building.","She believed in the integrity of the collection above any individual's claim upon it, including those of governments.","When a ministry official requested the removal of certain files ahead of a public inquiry, she refused in writing.","The refusal was escalated three times before reaching a level at which it could no longer be quietly reversed.","She retired on the day the files were released to the inquiry panel, timing she always denied was deliberate."]},
+    {title:"Signal Loss",genre:"Sci-Fi",sentences:["The probe had been sending data continuously for twenty-two years when the transmission simply stopped.","Mission control ran diagnostics for seventy-two hours before acknowledging that no technical failure could account for the silence.","The probe's last data packet contained imagery that the analysis team studied for months without publishing their findings.","A former mission engineer who had retired stated publicly that the imagery had shown evidence of structural intervention.","The agency's official position remained that the probe had experienced an unexplained but not unprecedented communication failure."]},
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let selectedLevel = null;
+let selectedMode = null;
+let currentStories = [];
+let currentIndex = 0;
+let score = 0;
+let checked = false;
+
+// Drag state (sentence order)
+let dragSrc = null;
+
+// Jumble state
+let jumbleState = []; // [{order:[words in drop], bank:[words left]}]
+
+// ═══════════════════════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════════════════════
+function selectLevel(lvl) {
+  selectedLevel = lvl;
+  SFX.select();
+  document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelector(`.level-btn[data-level="${lvl}"]`).classList.add('selected');
+  updateStartBtn();
+}
+function selectMode(mode) {
+  selectedMode = mode;
+  SFX.select();
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('mode' + (mode === 'order' ? 'Order' : 'Jumble')).classList.add('selected');
+  updateStartBtn();
+}
+function updateStartBtn() {
+  const btn = document.getElementById('startBtn');
+  if (selectedLevel && selectedMode) btn.classList.add('ready');
+  else btn.classList.remove('ready');
+}
+function goHome() {
+  showScreen('home');
+  selectedLevel = null; selectedMode = null;
+  document.querySelectorAll('.level-btn, .mode-btn').forEach(b => b.classList.remove('selected'));
+  updateStartBtn();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════════
+function startActivity() {
+  if (!selectedLevel || !selectedMode) return;
+  SFX.start();
+  currentStories = shuffle([...STORIES[selectedLevel]]);
+  currentIndex = 0;
+  score = 0;
+  checked = false;
+  showScreen('activity');
+  renderStory();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER STORY
+// ═══════════════════════════════════════════════════════════════
+function renderStory() {
+  const story = currentStories[currentIndex];
+  checked = false;
+
+  // Tags
+  const actLevel = document.getElementById('actLevel');
+  actLevel.textContent = selectedLevel;
+  actLevel.dataset.level = selectedLevel;
+  actLevel.className = 'tag level-tag';
+  document.getElementById('actMode').textContent = selectedMode === 'order' ? 'Sentence Order' : 'Jumbled Words';
+  document.getElementById('actGenre').textContent = story.genre;
+
+  // Progress
+  const pct = (currentIndex / currentStories.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${currentIndex + 1} / ${currentStories.length}`;
+
+  // Score
+  document.getElementById('scoreDisplay').textContent = `${score} / ${currentIndex}`;
+
+  // Nav dots
+  const nav = document.getElementById('storyNav');
+  nav.innerHTML = '';
+  currentStories.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'nav-dot' + (i === currentIndex ? ' active' : i < currentIndex ? ' done' : '');
+    nav.appendChild(dot);
+  });
+
+  // Story info
+  document.getElementById('storyTitle').textContent = story.title;
+  document.getElementById('storyInstruction').textContent =
+    selectedMode === 'order'
+      ? 'Drag the sentences into the correct order to tell the story.'
+      : 'Tap words from the bank to complete each sentence. 🔒 words are already in place — they can\'t be moved.';
+
+  // Result reset
+  const rb = document.getElementById('resultBanner');
+  rb.className = 'result-banner';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('checkBtn').style.display = '';
+
+  if (selectedMode === 'order') renderOrderMode(story);
+  else renderJumbleMode(story);
+}
+
+// ── SENTENCE ORDER ──────────────────────────────────────────
+function renderOrderMode(story) {
+  const area = document.getElementById('activityArea');
+  const shuffled = shuffle([...story.sentences]);
+  area.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'sentence-list';
+  list.id = 'sentList';
+  shuffled.forEach((s, i) => {
+    const item = document.createElement('div');
+    item.className = 'sentence-item';
+    item.draggable = true;
+    item.dataset.text = s;
+    item.innerHTML = `<span class="drag-handle">⠿</span><span class="sentence-num">${i+1}</span><span class="sentence-text">${s}</span>`;
+    item.addEventListener('dragstart', dragStart);
+    item.addEventListener('dragover', dragOver);
+    item.addEventListener('drop', drop);
+    item.addEventListener('dragend', dragEnd);
+    list.appendChild(item);
+  });
+  area.appendChild(list);
+}
+
+function dragStart(e) {
+  dragSrc = this;
+  this.classList.add('dragging');
+  SFX.drag();
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dragOver(e) {
+  e.preventDefault();
+  document.querySelectorAll('.sentence-item').forEach(el => el.classList.remove('drag-over'));
+  this.classList.add('drag-over');
+  e.dataTransfer.dropEffect = 'move';
+}
+function drop(e) {
+  e.preventDefault();
+  if (dragSrc === this) return;
+  SFX.drop();
+  const list = document.getElementById('sentList');
+  const items = [...list.querySelectorAll('.sentence-item')];
+  const srcIdx = items.indexOf(dragSrc);
+  const tgtIdx = items.indexOf(this);
+  if (srcIdx < tgtIdx) list.insertBefore(dragSrc, this.nextSibling);
+  else list.insertBefore(dragSrc, this);
+  updateNums();
+}
+function dragEnd() {
+  document.querySelectorAll('.sentence-item').forEach(el => {
+    el.classList.remove('dragging', 'drag-over');
+  });
+}
+function updateNums() {
+  document.querySelectorAll('.sentence-item .sentence-num').forEach((el, i) => el.textContent = i+1);
+}
+
+// ── JUMBLED WORDS ────────────────────────────────────────────
+// jumbleState[idx]:
+//   correct   : string[]   — correct word order (punctuation stripped)
+//   slots     : (string|null)[]  — length = correct.length; locked positions hold their word, free positions start null
+//   locked    : Set<number>  — indices that are pre-filled and immutable
+//   bank      : string[]   — words the student still needs to place
+
+function pickLockedIndices(len) {
+  // Always pick exactly 2 distinct random positions
+  const indices = [];
+  while (indices.length < 2) {
+    const r = Math.floor(Math.random() * len);
+    if (!indices.includes(r)) indices.push(r);
+  }
+  return indices;
+}
+
+function renderJumbleMode(story) {
+  const area = document.getElementById('activityArea');
+  area.innerHTML = '';
+  jumbleState = [];
+
+  story.sentences.forEach((sentence, idx) => {
+    const words = sentence.replace(/[.,!?;:'"-]$/, '').split(' ');
+    const lockedIdx = pickLockedIndices(words.length);
+    const lockedSet = new Set(lockedIdx);
+
+    // Slots: locked positions filled, free positions null
+    const slots = words.map((w, i) => lockedSet.has(i) ? w : null);
+
+    // Bank: only the non-locked words, shuffled
+    const bankWords = shuffle(words.filter((_, i) => !lockedSet.has(i)));
+
+    jumbleState.push({ correct: words, slots, locked: lockedSet, bank: bankWords });
+
+    const block = document.createElement('div');
+    block.className = 'jumble-sentence';
+    block.dataset.idx = idx;
+    block.innerHTML = `<div class="jumble-num">Sentence ${idx + 1}</div>
+      <div class="drop-zone" id="drop-${idx}"></div>
+      <div class="word-bank" id="bank-${idx}"></div>`;
+    area.appendChild(block);
+    renderJumbleRow(idx);
+  });
+}
+
+function renderJumbleRow(idx) {
+  const state = jumbleState[idx];
+  const dz = document.getElementById(`drop-${idx}`);
+  dz.innerHTML = '';
+
+  // Render each slot position in order
+  state.slots.forEach((word, slotIdx) => {
+    if (state.locked.has(slotIdx)) {
+      // Locked chip — always visible, not interactive
+      const chip = document.createElement('div');
+      chip.className = 'word-chip locked';
+      chip.textContent = word;
+      chip.dataset.slotIdx = slotIdx;
+      dz.appendChild(chip);
+    } else if (word !== null) {
+      // Student-placed chip — click to return to bank
+      const chip = document.createElement('div');
+      chip.className = 'word-chip placed';
+      chip.textContent = word;
+      chip.dataset.slotIdx = slotIdx;
+      chip.addEventListener('click', () => removeFromSlot(idx, slotIdx));
+      dz.appendChild(chip);
+    } else {
+      // Empty slot — click to place next bank word here, or show as gap
+      const slot = document.createElement('div');
+      slot.className = 'drop-slot';
+      slot.textContent = '?';
+      slot.addEventListener('click', () => placeNextToSlot(idx, slotIdx));
+      dz.appendChild(slot);
+    }
+  });
+
+  // Word bank
+  const bank = document.getElementById(`bank-${idx}`);
+  bank.innerHTML = '';
+  if (state.bank.length === 0 && !checked) {
+    bank.innerHTML = '<span style="font-size:0.8rem;color:var(--muted)">All words placed ✓</span>';
+  }
+  state.bank.forEach((w, wi) => {
+    const chip = document.createElement('div');
+    chip.className = 'word-chip';
+    chip.textContent = w;
+    chip.addEventListener('click', () => placeToFirstEmpty(idx, wi));
+    bank.appendChild(chip);
+  });
+}
+
+// Click a bank word → place it into the first empty (non-locked) slot
+function placeToFirstEmpty(idx, bankIdx) {
+  if (checked) return;
+  const state = jumbleState[idx];
+  const firstEmpty = state.slots.findIndex((s, i) => s === null && !state.locked.has(i));
+  if (firstEmpty === -1) return; // no space
+  SFX.tap();
+  const word = state.bank.splice(bankIdx, 1)[0];
+  state.slots[firstEmpty] = word;
+  renderJumbleRow(idx);
+}
+
+// Click an empty slot → place the first bank word there specifically
+function placeNextToSlot(idx, slotIdx) {
+  if (checked) return;
+  const state = jumbleState[idx];
+  if (state.bank.length === 0) return;
+  SFX.tap();
+  const word = state.bank.splice(0, 1)[0];
+  state.slots[slotIdx] = word;
+  renderJumbleRow(idx);
+}
+
+// Click a placed chip → return it to the bank
+function removeFromSlot(idx, slotIdx) {
+  if (checked) return;
+  const state = jumbleState[idx];
+  if (state.locked.has(slotIdx)) return;
+  SFX.untap();
+  const word = state.slots[slotIdx];
+  state.slots[slotIdx] = null;
+  state.bank.push(word);
+  renderJumbleRow(idx);
+}
+
+// ── CHECK ANSWER ─────────────────────────────────────────────
+function checkAnswer() {
+  if (checked) return;
+  checked = true;
+  const story = currentStories[currentIndex];
+  let correct = false;
+
+  if (selectedMode === 'order') {
+    const items = [...document.querySelectorAll('#sentList .sentence-item')];
+    const userOrder = items.map(el => el.dataset.text);
+    correct = userOrder.every((s, i) => s === story.sentences[i]);
+    items.forEach((el, i) => {
+      el.classList.add(el.dataset.text === story.sentences[i] ? 'correct' : 'incorrect');
+    });
+  } else {
+    let allCorrect = true;
+    jumbleState.forEach((state, idx) => {
+      // slots must exactly match correct words; all slots must be filled
+      const allFilled = state.slots.every(s => s !== null);
+      const ok = allFilled && state.slots.every((w, i) => w === state.correct[i]);
+      if (!ok) allCorrect = false;
+
+      const dz = document.getElementById(`drop-${idx}`);
+      dz.classList.add(ok ? 'correct-zone' : 'incorrect-zone');
+
+      // Style each chip individually — use slotIdx stored on element
+      [...dz.querySelectorAll('.word-chip')].forEach((chip) => {
+        if (chip.classList.contains('locked')) {
+          chip.classList.add('correct-chip');
+        } else {
+          const si = parseInt(chip.dataset.slotIdx);
+          const slotWord = state.slots[si] ?? '';
+          chip.classList.add(slotWord === state.correct[si] ? 'correct-chip' : 'incorrect-chip');
+        }
+      });
+
+      // Show correct answer below if wrong
+      if (!ok) {
+        const bank = document.getElementById(`bank-${idx}`);
+        bank.innerHTML = `<span style="font-size:0.8rem;color:var(--muted)">Correct: </span>
+          <span style="font-size:0.88rem;color:var(--success)">${state.correct.join(' ')}</span>`;
+      }
+    });
+    correct = allCorrect;
+  }
+
+  if (correct) score++;
+  document.getElementById('scoreDisplay').textContent = `${score} / ${currentIndex + 1}`;
+
+  setTimeout(() => correct ? SFX.correct() : SFX.wrong(), 80);
+
+  const rb = document.getElementById('resultBanner');
+  rb.className = 'result-banner show ' + (correct ? 'win' : 'lose');
+  document.getElementById('resultIcon').textContent = correct ? '🎉' : '📖';
+  document.getElementById('resultMsg').textContent = correct
+    ? 'Correct! Well done!'
+    : 'Not quite — check the highlighted sentences above.';
+
+  document.getElementById('checkBtn').style.display = 'none';
+  document.getElementById('nextBtn').style.display = '';
+  if (currentIndex + 1 >= currentStories.length) {
+    document.getElementById('nextBtn').textContent = 'See Results →';
+  } else {
+    document.getElementById('nextBtn').textContent = 'Next Story →';
+  }
+}
+
+function nextStory() {
+  if (currentIndex + 1 >= currentStories.length) {
+    showResults();
+  } else {
+    SFX.next();
+    currentIndex++;
+    renderStory();
+  }
+}
+
+function resetCurrent() {
+  checked = false;
+  document.getElementById('resultBanner').className = 'result-banner';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('checkBtn').style.display = '';
+  if (selectedMode === 'order') renderOrderMode(currentStories[currentIndex]);
+  else renderJumbleMode(currentStories[currentIndex]);
+}
+
+// ── RESULTS ──────────────────────────────────────────────────
+function showResults() {
+  const area = document.getElementById('activityArea');
+  const pct = Math.round((score / currentStories.length) * 100);
+  const emoji = pct === 100 ? '🏆' : pct >= 70 ? '🌟' : pct >= 40 ? '💪' : '📚';
+  const msg = pct === 100 ? 'Perfect score! Amazing work!' : pct >= 70 ? 'Great job! Keep it up!' : pct >= 40 ? 'Good effort! Keep practising!' : 'Keep going — practice makes perfect!';
+  setTimeout(() => pct === 100 ? SFX.victory() : SFX.finish(), 200);
+
+  document.getElementById('storyTitle').textContent = 'Activity Complete';
+  document.getElementById('storyInstruction').textContent = '';
+  document.getElementById('actGenre').textContent = selectedLevel;
+  document.getElementById('resultBanner').className = 'result-banner';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('checkBtn').style.display = 'none';
+
+  area.innerHTML = `
+    <div style="text-align:center;padding:2rem 1rem">
+      <div style="font-size:4rem;margin-bottom:1rem">${emoji}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;margin-bottom:0.5rem">${score} / ${currentStories.length}</div>
+      <div style="font-size:1.1rem;color:var(--muted);margin-bottom:0.3rem">${pct}% correct</div>
+      <div style="font-size:0.95rem;color:var(--text);margin-bottom:2rem">${msg}</div>
+      <div style="display:flex;gap:0.8rem;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="startActivity()">Play Again</button>
+        <button class="btn btn-ghost" onclick="goHome()">Choose Level</button>
+      </div>
+    </div>`;
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('progressText').textContent = `${currentStories.length} / ${currentStories.length}`;
+  document.getElementById('storyNav').querySelectorAll('.nav-dot').forEach(d => { d.className = 'nav-dot done'; });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SOUND ENGINE (Web Audio API — no external files needed)
+// ═══════════════════════════════════════════════════════════════
+let _ac = null;
+function ac() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  return _ac;
+}
+
+function playTone({ freq = 440, freq2, type = 'sine', gain = 0.18, attack = 0.01, decay = 0.01, sustain = 0.8, release = 0.12, duration = 0.18 } = {}) {
+  try {
+    const ctx = ac();
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.connect(env); env.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    if (freq2) osc.frequency.linearRampToValueAtTime(freq2, ctx.currentTime + duration);
+    env.gain.setValueAtTime(0, ctx.currentTime);
+    env.gain.linearRampToValueAtTime(gain, ctx.currentTime + attack);
+    env.gain.setValueAtTime(gain * sustain, ctx.currentTime + attack + decay);
+    env.gain.linearRampToValueAtTime(0, ctx.currentTime + duration + release);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration + release + 0.05);
+  } catch(e) {}
+}
+
+function playChord(freqs, opts = {}) {
+  freqs.forEach((f, i) => setTimeout(() => playTone({ freq: f, ...opts }), i * 40));
+}
+
+const SFX = {
+  // Tap a word chip — soft click
+  tap() {
+    playTone({ freq: 600, freq2: 580, type: 'sine', gain: 0.10, duration: 0.06, release: 0.05 });
+  },
+  // Return a word to bank — slightly lower click
+  untap() {
+    playTone({ freq: 420, freq2: 400, type: 'sine', gain: 0.09, duration: 0.06, release: 0.05 });
+  },
+  // Drag sentence item — subtle whoosh
+  drag() {
+    playTone({ freq: 300, freq2: 500, type: 'sine', gain: 0.07, duration: 0.10, release: 0.05 });
+  },
+  // Drop sentence item
+  drop() {
+    playTone({ freq: 520, freq2: 480, type: 'triangle', gain: 0.11, duration: 0.09, release: 0.06 });
+  },
+  // Correct answer — cheerful ascending chord
+  correct() {
+    playChord([523, 659, 784, 1047], { type: 'sine', gain: 0.15, duration: 0.22, release: 0.18 });
+  },
+  // Wrong answer — low thud
+  wrong() {
+    playTone({ freq: 180, freq2: 140, type: 'sawtooth', gain: 0.13, duration: 0.22, release: 0.15 });
+    setTimeout(() => playTone({ freq: 150, type: 'sawtooth', gain: 0.10, duration: 0.18, release: 0.12 }), 80);
+  },
+  // Level / mode select — short ping
+  select() {
+    playTone({ freq: 750, freq2: 900, type: 'sine', gain: 0.10, duration: 0.10, release: 0.08 });
+  },
+  // Start game — ascending fanfare
+  start() {
+    [0, 80, 160, 280].forEach((delay, i) => {
+      const freqs = [330, 415, 523, 660];
+      setTimeout(() => playTone({ freq: freqs[i], type: 'sine', gain: 0.14, duration: 0.18, release: 0.14 }), delay);
+    });
+  },
+  // Next story — soft transition
+  next() {
+    playTone({ freq: 480, freq2: 600, type: 'sine', gain: 0.11, duration: 0.14, release: 0.10 });
+  },
+  // Perfect score finish — victory fanfare
+  victory() {
+    const melody = [523, 659, 784, 659, 784, 1047];
+    melody.forEach((f, i) => setTimeout(() => playTone({ freq: f, type: 'sine', gain: 0.15, duration: 0.18, release: 0.12 }), i * 100));
+  },
+  // Results finish (non-perfect)
+  finish() {
+    playChord([392, 523, 659], { type: 'sine', gain: 0.13, duration: 0.25, release: 0.20 });
+  }
+};
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

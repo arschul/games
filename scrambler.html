@@ -429,6 +429,79 @@
     .mode-grid { grid-template-columns: 1fr; }
     #home h1 { font-size: 2.2rem; }
   }
+
+  /* ── STORY SELECTOR ── */
+  .story-selector {
+    display: none;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    max-width: 480px;
+    animation: fadeUp 0.25s ease;
+  }
+  .story-selector.visible { display: flex; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .selector-header {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Syne', sans-serif; font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  }
+  .selector-header span { color: var(--text); font-weight: 700; }
+  .selector-clear {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 0.75rem; font-family: 'Syne', sans-serif;
+    text-decoration: underline; padding: 0;
+  }
+  .selector-clear:hover { color: var(--text); }
+  .story-list {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 0.4rem;
+    padding-right: 0.3rem;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .story-list::-webkit-scrollbar { width: 4px; }
+  .story-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .story-pick {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    display: flex; align-items: center; gap: 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .story-pick:hover { border-color: var(--level-color, var(--accent2)); transform: translateX(3px); }
+  .story-pick.selected { border-color: var(--level-color, var(--accent2)); background: color-mix(in srgb, var(--level-color, var(--accent2)) 12%, var(--card)); }
+  .story-pick-num {
+    font-family: 'Syne', sans-serif; font-size: 0.7rem;
+    color: var(--muted); min-width: 1.4rem; text-align: right; flex-shrink: 0;
+  }
+  .story-pick-info { flex: 1; min-width: 0; }
+  .story-pick-title {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.88rem;
+    color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .story-pick-genre {
+    font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem;
+  }
+  .story-pick-check { font-size: 1rem; color: var(--level-color, var(--accent2)); flex-shrink: 0; }
+  .play-all-btn {
+    background: var(--card);
+    border: 1.5px dashed var(--border);
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    display: flex; align-items: center; gap: 0.7rem;
+    cursor: pointer; transition: all 0.15s;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .play-all-btn:hover { border-color: var(--accent2); color: var(--text); }
+  .play-all-btn.selected { border-color: var(--accent2); color: var(--accent2); border-style: solid; background: color-mix(in srgb, var(--accent2) 10%, var(--card)); }
 </style>
 </head>
 <body>
@@ -467,6 +540,18 @@
       <span class="mode-icon">🔀</span>
       Jumbled Words
     </button>
+  </div>
+
+  <!-- STORY SELECTOR -->
+  <div class="story-selector" id="storySelector">
+    <div class="selector-header">
+      <div>Choose a story — or play all</div>
+      <button class="selector-clear" onclick="clearStoryPick()">Clear</button>
+    </div>
+    <button class="play-all-btn selected" id="playAllBtn" onclick="selectStoryPick(null)">
+      <span>🎲</span> Play all 25 in random order
+    </button>
+    <div class="story-list" id="storyList"></div>
   </div>
 
   <button class="start-btn" id="startBtn" onclick="startActivity()">Start →</button>
@@ -640,14 +725,20 @@ let dragSrc = null;
 // Jumble state
 let jumbleState = []; // [{order:[words in drop], bank:[words left]}]
 
+// Story pick (null = all)
+let selectedStoryIndex = null;
+
 // ═══════════════════════════════════════════════════════════════
 // HOME
 // ═══════════════════════════════════════════════════════════════
 function selectLevel(lvl) {
   selectedLevel = lvl;
+  selectedStoryIndex = null;
   SFX.select();
   document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('selected'));
   document.querySelector(`.level-btn[data-level="${lvl}"]`).classList.add('selected');
+  buildStoryList(lvl);
+  document.getElementById('storySelector').classList.add('visible');
   updateStartBtn();
 }
 function selectMode(mode) {
@@ -664,9 +755,62 @@ function updateStartBtn() {
 }
 function goHome() {
   showScreen('home');
-  selectedLevel = null; selectedMode = null;
+  selectedLevel = null; selectedMode = null; selectedStoryIndex = null;
   document.querySelectorAll('.level-btn, .mode-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('storySelector').classList.remove('visible');
+  document.getElementById('playAllBtn').classList.add('selected');
   updateStartBtn();
+}
+
+// ── STORY LIST ───────────────────────────────────────────────
+function buildStoryList(lvl) {
+  const list = document.getElementById('storyList');
+  list.innerHTML = '';
+  // Set level colour on selector items
+  const levelColors = { A1: 'var(--a1)', A2: 'var(--a2)', B1: 'var(--b1)', B2: 'var(--b2)' };
+  const col = levelColors[lvl];
+
+  STORIES[lvl].forEach((story, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'story-pick';
+    btn.style.setProperty('--level-color', col);
+    btn.dataset.idx = i;
+    btn.innerHTML = `
+      <span class="story-pick-num">${i + 1}</span>
+      <span class="story-pick-info">
+        <div class="story-pick-title">${story.title}</div>
+        <div class="story-pick-genre">${story.genre}</div>
+      </span>
+      <span class="story-pick-check" style="display:none">✓</span>`;
+    btn.addEventListener('click', () => { SFX.select(); selectStoryPick(i); });
+    list.appendChild(btn);
+  });
+
+  // Reset play-all style
+  document.getElementById('playAllBtn').classList.add('selected');
+  document.getElementById('playAllBtn').style.setProperty('--level-color', col);
+}
+
+function selectStoryPick(idx) {
+  selectedStoryIndex = idx;
+  // Toggle play-all button
+  const playAll = document.getElementById('playAllBtn');
+  playAll.classList.toggle('selected', idx === null);
+  // Toggle story items
+  document.querySelectorAll('.story-pick').forEach(btn => {
+    const isSelected = parseInt(btn.dataset.idx) === idx;
+    btn.classList.toggle('selected', isSelected);
+    btn.querySelector('.story-pick-check').style.display = isSelected ? '' : 'none';
+  });
+  // Scroll selected into view
+  if (idx !== null) {
+    const el = document.querySelector(`.story-pick[data-idx="${idx}"]`);
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
+function clearStoryPick() {
+  selectStoryPick(null);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -675,7 +819,13 @@ function goHome() {
 function startActivity() {
   if (!selectedLevel || !selectedMode) return;
   SFX.start();
-  currentStories = shuffle([...STORIES[selectedLevel]]);
+  if (selectedStoryIndex !== null) {
+    // Single story mode
+    currentStories = [STORIES[selectedLevel][selectedStoryIndex]];
+  } else {
+    // All stories shuffled
+    currentStories = shuffle([...STORIES[selectedLevel]]);
+  }
   currentIndex = 0;
   score = 0;
   checked = false;

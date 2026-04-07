@@ -1,465 +1,1190 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Boletim do Aluno</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s, color 0.3s;
-        }
-        /* Cores do modo claro (padrão) */
-        body {
-            background-color: #ffffff;
-            color: #1f2937;
-        }
-        .light-mode .bg-white {
-            background-color: #ffffff;
-        }
-        /* Cores do modo escuro */
-        .dark-mode {
-            background-color: #1a202c;
-            color: #e2e8f0;
-        }
-        .dark-mode .bg-white {
-            background-color: #2d3748;
-        }
-        .dark-mode .shadow-lg {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
-        }
-        .dark-mode input, .dark-mode textarea {
-            background-color: #4a5568;
-            border-color: #718096;
-            color: #e2e8f0;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #2563eb;
-            cursor: pointer;
-            border-radius: 50%;
-            transition: background-color 0.3s;
-        }
-        .dark-mode input[type="range"]::-webkit-slider-thumb {
-            background: #60a5fa;
-        }
-        .light-mode-button {
-            background-color: #f7fafc;
-        }
-        .dark-mode-button {
-            background-color: #2d3748;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Boletim</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --card: #1c2030;
+    --card2: #212638;
+    --border: #2a3048;
+    --border2: #343d5c;
+    --text: #e8eaf2;
+    --muted: #7a84a8;
+    --accent: #5b8dee;
+    --accent2: #3d6bd4;
+
+    --c1: #e55555; /* 1 - ruim */
+    --c2: #e5873a; /* 2 */
+    --c3: #d4b93e; /* 3 */
+    --c4: #5aaf6e; /* 4 */
+    --c5: #3cb8a0; /* 5 - excelente */
+
+    --radius: 14px;
+    --font-body: 'DM Sans', sans-serif;
+    --font-display: 'DM Serif Display', serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+  }
+
+  #sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  #sidebar-header h2 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  #sidebar-header p {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  #student-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #student-list::-webkit-scrollbar { width: 4px; }
+  #student-list::-webkit-scrollbar-track { background: transparent; }
+  #student-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .student-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+    position: relative;
+  }
+  .student-item:hover { background: var(--card); }
+  .student-item.active {
+    background: var(--card2);
+    border-color: var(--border2);
+  }
+  .student-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    color: #fff;
+    letter-spacing: 0.03em;
+  }
+  .student-name-label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .student-delete {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .student-item:hover .student-delete { opacity: 1; }
+  .student-delete:hover { color: var(--c1); }
+
+  #add-student-btn {
+    margin: 0 10px 10px;
+    padding: 9px;
+    background: none;
+    border: 1px dashed var(--border2);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  #add-student-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(91,141,238,0.06);
+  }
+
+  /* ── MAIN ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  #topbar-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-style: italic;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  #topbar-title span { color: var(--accent); font-style: normal; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+  .btn-success { background: var(--c5); color: #0d1a17; }
+  .btn-success:hover { filter: brightness(1.1); }
+
+  #workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── EDITOR PANEL ── */
+  #editor-panel {
+    width: 380px;
+    min-width: 340px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 28px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  #editor-panel::-webkit-scrollbar { width: 4px; }
+  #editor-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .field-group label {
+    display: block;
+    font-size: 0.73rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .field-group input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field-group input[type="text"]:focus { border-color: var(--accent); }
+  .field-group input[type="text"]::placeholder { color: var(--muted); }
+
+  /* Slider row */
+  .slider-block { display: flex; flex-direction: column; gap: 8px; }
+  .slider-header {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .slider-label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .slider-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    color: #fff;
+    transition: background 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+    transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+  }
+
+  #editor-actions {
+    display: flex; gap: 10px;
+  }
+
+  /* ── PREVIEW PANEL ── */
+  #preview-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #preview-panel::-webkit-scrollbar { width: 6px; }
+  #preview-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── REPORT CARD ── */
+  #report-card {
+    width: 100%;
+    max-width: 580px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .rc-header {
+    padding: 28px 32px 22px;
+    background: linear-gradient(135deg, #1a2240 0%, #1c2a4a 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .rc-header-left {}
+  .rc-school {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .rc-student {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .rc-date {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .rc-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .rc-scores {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+  .rc-score-cell {
+    padding: 14px 8px;
+    text-align: center;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .rc-score-cell:last-child { border-right: none; }
+  .rc-score-icon { font-size: 1.1rem; margin-bottom: 4px; }
+  .rc-score-val {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    line-height: 1;
+    font-weight: 400;
+  }
+  .rc-score-key {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .rc-body { padding: 26px 32px 30px; display: flex; flex-direction: column; gap: 20px; }
+
+  .rc-section {}
+  .rc-section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .rc-section-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .rc-section-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    flex: 1;
+  }
+  .rc-section-stars {
+    display: flex; gap: 2px;
+  }
+  .rc-section-star {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+  }
+  .rc-section-text {
+    font-size: 0.88rem;
+    color: #c8cfe8;
+    line-height: 1.6;
+    padding-left: 18px;
+    border-left: 2px solid var(--border);
+  }
+
+  .rc-footer {
+    padding: 16px 32px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .rc-footer-text {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  #copy-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px;
+    background: var(--card2);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #copy-btn:hover { color: var(--text); border-color: var(--accent); }
+  #copy-btn.copied { color: var(--c5); border-color: var(--c5); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--c5);
+    color: #0d1a17;
+    padding: 10px 22px;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── EMPTY STATE ── */
+  #empty-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 12px;
+    color: var(--muted);
+    text-align: center;
+    padding: 40px;
+  }
+  #empty-state.show { display: flex; }
+  #empty-state .es-icon { font-size: 3rem; opacity: 0.4; }
+  #empty-state h3 { font-family: var(--font-display); font-size: 1.2rem; color: var(--text); }
+  #empty-state p { font-size: 0.83rem; max-width: 260px; }
+
+  /* scrollbar global */
+  * { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+</style>
 </head>
-<body class="light-mode transition-colors duration-500">
-    <div class="container mx-auto p-4 md:p-8 flex flex-col items-center">
-        <button id="theme-toggle" class="absolute top-4 right-4 p-2 rounded-full shadow-lg transition-colors duration-300 light-mode-button">
-            <svg id="sun-icon" class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zM12 4a1 1 0 011 1v2a1 1 0 11-2 0V5a1 1 0 011-1zm0 14a1 1 0 011 1v2a1 1 0 11-2 0v-2a1 1 0 011-1zm6.2-12.2a1 1 0 01-.707 1.707l-1.414-1.414a1 1 0 111.414-1.414l1.414 1.414a1 1 0 010 1.414zm-12.4 12.4a1 1 0 01-1.414-1.414l1.414-1.414a1 1 0 111.414 1.414l-1.414 1.414zm-3.535-6.7a1 1 0 011-1h2a1 1 0 110 2H5a1 1 0 01-1-1zm14 0a1 1 0 011 1h2a1 1 0 110-2h-2a1 1 0 01-1-1zM4.3 4.3a1 1 0 011.414 0l1.414 1.414a1 1 0 01-1.414 1.414L4.3 5.714A1 1 0 014.3 4.3zM19.7 19.7a1 1 0 01-1.414 0l-1.414-1.414a1 1 0 011.414-1.414l1.414 1.414a1 1 0 010 1.414z"/>
-            </svg>
-            <svg id="moon-icon" class="w-6 h-6 text-gray-400 hidden" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zM12 4a1 1 0 011 1v2a1 1 0 11-2 0V5a1 1 0 011-1zm0 14a1 1 0 011 1v2a1 1 0 11-2 0v-2a1 1 0 011-1zm6.2-12.2a1 1 0 01-.707 1.707l-1.414-1.414a1 1 0 111.414-1.414l1.414 1.414a1 1 0 010 1.414zm-12.4 12.4a1 1 0 01-1.414-1.414l1.414-1.414a1 1 0 111.414 1.414l-1.414 1.414zm-3.535-6.7a1 1 0 011-1h2a1 1 0 110 2H5a1 1 0 01-1-1zm14 0a1 1 0 011 1h2a1 1 0 110-2h-2a1 1 0 01-1-1zM4.3 4.3a1 1 0 011.414 0l1.414 1.414a1 1 0 01-1.414 1.414L4.3 5.714A1 1 0 014.3 4.3zM19.7 19.7a1 1 0 01-1.414 0l-1.414-1.414a1 1 0 011.414-1.414l1.414 1.414a1 1 0 010 1.414z"/>
-            </svg>
-        </button>
-        <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-4xl text-gray-900 dark:text-gray-100 transition-colors duration-500">
-            <h1 class="text-3xl font-bold mb-6 text-center">Gerador de Boletim</h1>
-            <div class="mb-6">
-                <label for="student-name" class="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Nome do Aluno(a):</label>
-                <input type="text" id="student-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" placeholder="Digite o nome do aluno">
-            </div>
+<body>
 
-            <!-- Vocabulary Slider -->
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                    <label for="vocab-slider" class="block font-semibold text-gray-700 dark:text-gray-300">Vocabulário:</label>
-                    <span id="vocab-level" class="font-bold text-lg text-blue-600 dark:text-blue-400">Excelente</span>
-                </div>
-                <input type="range" id="vocab-slider" min="1" max="5" value="5" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-blue-200 dark:bg-blue-800">
-            </div>
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <h2>Boletim</h2>
+    <p>Gerador de Relatórios</p>
+  </div>
+  <div id="student-list"></div>
+  <button id="add-student-btn">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    Adicionar Aluno
+  </button>
+</aside>
 
-            <!-- Grammar Slider -->
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                    <label for="grammar-slider" class="block font-semibold text-gray-700 dark:text-gray-300">Gramática:</label>
-                    <span id="grammar-level" class="font-bold text-lg text-blue-600 dark:text-blue-400">Excelente</span>
-                </div>
-                <input type="range" id="grammar-slider" min="1" max="5" value="5" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-blue-200 dark:bg-blue-800">
-            </div>
+<!-- MAIN -->
+<main id="main">
+  <div id="topbar">
+    <div id="topbar-title">Gerador de <span>Boletim</span></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" id="regen-btn">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5A4.5 4.5 0 0111 4M11 4V1.5M11 4H8.5M11 6.5A4.5 4.5 0 012 9M2 9v2.5M2 9h2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Regenerar Texto
+      </button>
+    </div>
+  </div>
 
-            <!-- Behavior Slider -->
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                    <label for="behavior-slider" class="block font-semibold text-gray-700 dark:text-gray-300">Comportamento:</label>
-                    <span id="behavior-level" class="font-bold text-lg text-blue-600 dark:text-blue-400">Excelente</span>
-                </div>
-                <input type="range" id="behavior-slider" min="1" max="5" value="5" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-blue-200 dark:bg-blue-800">
-            </div>
+  <div id="workspace">
+    <!-- EDITOR -->
+    <div id="editor-panel">
+      <div class="field-group">
+        <label>Nome do Aluno(a)</label>
+        <input type="text" id="student-name" placeholder="Ex: Maria Silva">
+      </div>
 
-            <!-- Portuguese Use Slider -->
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                    <label for="port-slider" class="block font-semibold text-gray-700 dark:text-gray-300">Uso de Português:</label>
-                    <span id="port-level" class="font-bold text-lg text-blue-600 dark:text-blue-400">Excelente</span>
-                </div>
-                <input type="range" id="port-slider" min="1" max="5" value="5" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-blue-200 dark:bg-blue-800">
-            </div>
+      <div class="divider"></div>
 
-            <!-- Homework Slider -->
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                    <label for="homework-slider" class="block font-semibold text-gray-700 dark:text-gray-300">Tarefas de Casa:</label>
-                    <span id="homework-level" class="font-bold text-lg text-blue-600 dark:text-blue-400">Excelente</span>
-                </div>
-                <input type="range" id="homework-slider" min="1" max="5" value="5" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-blue-200 dark:bg-blue-800">
-            </div>
-
-            <div class="flex justify-center space-x-4 mb-6">
-                <button id="next-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition-transform transform hover:scale-105">
-                    Próximo
-                </button>
-                <button id="copy-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition-transform transform hover:scale-105">
-                    Copiar
-                </button>
-            </div>
-
-            <!-- Boletim Preview -->
-            <div id="boletim-preview" class="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg shadow-inner min-h-64 mt-4 text-gray-800 dark:text-gray-200">
-                <p id="boletim-text" class="whitespace-pre-line"></p>
-            </div>
-            
+      <div class="slider-block">
+        <div class="slider-header">
+          <span class="slider-label">📚 Vocabulário</span>
+          <span class="slider-badge" id="badge-vocab">Excelente</span>
         </div>
-        <div id="message-box" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg z-50 transition-opacity duration-300 opacity-0">
-            Texto copiado para a área de transferência!
+        <input type="range" id="sl-vocab" min="1" max="5" value="5">
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-header">
+          <span class="slider-label">📝 Gramática</span>
+          <span class="slider-badge" id="badge-grammar">Excelente</span>
         </div>
+        <input type="range" id="sl-grammar" min="1" max="5" value="5">
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-header">
+          <span class="slider-label">🌟 Comportamento</span>
+          <span class="slider-badge" id="badge-behavior">Excelente</span>
+        </div>
+        <input type="range" id="sl-behavior" min="1" max="5" value="5">
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-header">
+          <span class="slider-label">🇧🇷 Uso de Português</span>
+          <span class="slider-badge" id="badge-port">Excelente</span>
+        </div>
+        <input type="range" id="sl-port" min="1" max="5" value="5">
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-header">
+          <span class="slider-label">📋 Tarefas de Casa</span>
+          <span class="slider-badge" id="badge-homework">Excelente</span>
+        </div>
+        <input type="range" id="sl-homework" min="1" max="5" value="5">
+      </div>
+
+      <div class="divider"></div>
+
+      <div id="editor-actions">
+        <button class="btn btn-primary" id="save-btn" style="flex:1;">Salvar Aluno</button>
+      </div>
     </div>
 
-    <script>
-        const studentNameInput = document.getElementById('student-name');
-        const vocabSlider = document.getElementById('vocab-slider');
-        const grammarSlider = document.getElementById('grammar-slider');
-        const behaviorSlider = document.getElementById('behavior-slider');
-        const portSlider = document.getElementById('port-slider');
-        const homeworkSlider = document.getElementById('homework-slider');
-        
-        const vocabLevelSpan = document.getElementById('vocab-level');
-        const grammarLevelSpan = document.getElementById('grammar-level');
-        const behaviorLevelSpan = document.getElementById('behavior-level');
-        const portLevelSpan = document.getElementById('port-level');
-        const homeworkLevelSpan = document.getElementById('homework-level');
+    <!-- PREVIEW -->
+    <div id="preview-panel">
+      <div id="report-card">
+        <div class="rc-header">
+          <div class="rc-header-left">
+            <div class="rc-school">Relatório de Desempenho</div>
+            <div class="rc-student" id="rc-name">—</div>
+            <div class="rc-date" id="rc-date"></div>
+          </div>
+          <div class="rc-avatar" id="rc-avatar"></div>
+        </div>
 
-        const nextButton = document.getElementById('next-button');
-        const copyButton = document.getElementById('copy-button');
-        const boletimText = document.getElementById('boletim-text');
+        <div class="rc-scores" id="rc-scores"></div>
 
-        const themeToggle = document.getElementById('theme-toggle');
-        const sunIcon = document.getElementById('sun-icon');
-        const moonIcon = document.getElementById('moon-icon');
-        const messageBox = document.getElementById('message-box');
+        <div class="rc-body" id="rc-body"></div>
 
-        const ratings = {
-            1: "Precisa melhorar muito",
-            2: "Precisa melhorar",
-            3: "Regular",
-            4: "Bom",
-            5: "Excelente"
-        };
+        <div class="rc-footer">
+          <span class="rc-footer-text">Gerado pelo professor(a)</span>
+          <button id="copy-btn">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="4.5" y="4.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8.5 4.5V3A1.5 1.5 0 007 1.5H3A1.5 1.5 0 001.5 3v4A1.5 1.5 0 003 8.5h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Copiar Texto
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
 
-        const comments = {
-            vocab: {
-                1: [
-                    "Seu vocabulário está muito limitado, o que pode dificultar a comunicação básica.",
-                    "É crucial que você foque em memorizar novas palavras para progredir.",
-                    "Sua falta de vocabulário pode comprometer seu desenvolvimento no idioma.",
-                    "Você precisa de um esforço extra para construir uma base de vocabulário mais sólida.",
-                    "Seu progresso está abaixo do esperado e requer atenção imediata."
-                ],
-                2: [
-                    "Seu vocabulário é suficiente para situações simples, mas precisa ser ampliado.",
-                    "Você consegue se expressar, mas comete erros frequentes de vocabulário.",
-                    "É importante que você se esforce mais para expandir seu repertório de palavras.",
-                    "Seu progresso pode ser acelerado com a aquisição de novas palavras.",
-                    "Você tem potencial, mas precisa focar mais na construção de vocabulário."
-                ],
-                3: [
-                    "Seu vocabulário é adequado para a maioria das situações, mas pode ser mais variado.",
-                    "Você tem um bom entendimento, mas ainda tem dificuldade com palavras mais complexas.",
-                    "Seu desempenho é consistente, mas há espaço para crescimento e aprimoramento.",
-                    "Você está no caminho certo, mas a prática contínua é essencial.",
-                    "Seu vocabulário permite a comunicação, mas a fluência pode ser melhorada com mais estudo."
-                ],
-                4: [
-                    "Seu vocabulário é amplo e você consegue usá-lo com segurança na maioria das situações.",
-                    "Você demonstra um ótimo domínio de vocabulário e se expressa com clareza.",
-                    "Você raramente precisa de ajuda para encontrar a palavra certa.",
-                    "Seu vocabulário é sólido e reflete seu comprometimento com o aprendizado.",
-                    "Você tem uma base excelente e está pronto para aprender vocabulário mais avançado."
-                ],
-                5: [
-                    "Seu vocabulário é rico e variado, permitindo uma comunicação fluente e sofisticada.",
-                    "Você tem um domínio excepcional do vocabulário, digno de elogios.",
-                    "Você se destaca pelo uso preciso e criativo das palavras.",
-                    "Seu conhecimento de vocabulário é impressionante e reflete sua dedicação.",
-                    "Você tem um controle avançado do vocabulário, o que eleva sua proficiência no idioma."
-                ]
-            },
-            grammar: {
-                1: [
-                    "Sua compreensão das regras gramaticais é muito limitada, dificultando a construção de frases.",
-                    "A estrutura das suas frases é consistentemente incorreta, o que compromete a clareza.",
-                    "Você tem grande dificuldade em aplicar as regras básicas de gramática.",
-                    "É essencial que você revise e pratique a gramática com urgência.",
-                    "Erros gramaticais graves e frequentes impedem seu progresso no idioma."
-                ],
-                2: [
-                    "Você consegue se comunicar, mas comete erros gramaticais que precisam ser corrigidos.",
-                    "A estrutura das suas frases é inconsistente e requer mais atenção.",
-                    "É importante que você revise as regras gramaticais para se comunicar com mais precisão.",
-                    "Seu progresso pode ser acelerado com o foco em gramática.",
-                    "Você demonstra conhecimento básico, mas ainda tem dificuldade em aplicar a gramática de forma consistente."
-                ],
-                3: [
-                    "Sua gramática é adequada para a maioria das situações, mas ainda há alguns erros.",
-                    "Você consegue estruturar frases corretamente, mas ainda comete deslizes em construções mais complexas.",
-                    "Seu desempenho é consistente, mas há espaço para aprimorar a precisão gramatical.",
-                    "Você está no caminho certo, mas a prática contínua é essencial para fixar as regras.",
-                    "Sua gramática permite a comunicação, mas a fluência pode ser melhorada com um estudo mais aprofundado."
-                ],
-                4: [
-                    "Sua gramática é sólida e você consegue construir frases claras e complexas.",
-                    "Você demonstra um ótimo domínio da estrutura da língua e se expressa com clareza.",
-                    "Você raramente comete erros gramaticais e usa as regras de forma confiante.",
-                    "Seu conhecimento de gramática é excelente e reflete seu comprometimento.",
-                    "Você tem uma base gramatical forte e está pronto para desafios mais avançados."
-                ],
-                5: [
-                    "Sua gramática é impecável, permitindo uma comunicação precisa e sofisticada.",
-                    "Você tem um domínio excepcional das regras e estruturas, digno de elogios.",
-                    "Você se destaca pela precisão e pela riqueza gramatical das suas frases.",
-                    "Seu conhecimento de gramática é impressionante e reflete sua dedicação.",
-                    "Você tem um controle avançado da gramática, o que eleva sua proficiência a um nível superior."
-                ]
-            },
-            behavior: {
-                1: [
-                    "Sua postura em sala de aula precisa de atenção urgente, pois afeta seu aprendizado e o dos colegas.",
-                    "O excesso de conversas paralelas e o comportamento agitado comprometem o ambiente de estudo.",
-                    "É crucial que você se esforce para manter o foco nas atividades propostas.",
-                    "Sua atitude tem impactado negativamente o andamento das aulas.",
-                    "É preciso que você mostre mais respeito e disciplina para progredir."
-                ],
-                2: [
-                    "A sua participação em sala de aula pode ser mais focada e disciplinada.",
-                    "Você consegue acompanhar as aulas, mas as conversas com os colegas distraem a todos.",
-                    "A sua atenção precisa ser direcionada para o conteúdo da aula.",
-                    "Pequenas mudanças no seu comportamento farão uma grande diferença no seu aprendizado.",
-                    "Seu potencial será melhor aproveitado se você focar mais nas explicações."
-                ],
-                3: [
-                    "Sua participação é geralmente boa, mas você ainda se distrai ocasionalmente.",
-                    "Você presta atenção na maior parte do tempo, mas pode se envolver mais nas atividades.",
-                    "O seu comportamento em sala de aula é adequado, mas há espaço para aprimoramento.",
-                    "Você consegue manter o foco, mas pode se beneficiar de uma maior concentração.",
-                    "Sua postura é consistente, mas o seu envolvimento com a aula pode ser mais ativo."
-                ],
-                4: [
-                    "Você demonstra uma excelente postura em sala de aula e participa de forma positiva.",
-                    "Você demonstra educação e prestatividade, contribuindo para um bom ambiente de estudo.",
-                    "Sua atenção é consistente, e você está sempre engajado nas atividades propostas.",
-                    "Seu comportamento exemplar serve de inspiração para os colegas.",
-                    "Você é responsável e maduro, com uma atitude que favorece o aprendizado."
-                ],
-                5: [
-                    "Seu comportamento é impecável, demonstrando respeito e dedicação.",
-                    "Você é um exemplo de disciplina e foco, contribuindo de maneira excepcional para a aula.",
-                    "Sua participação é ativa e sua atitude é sempre positiva, o que eleva a energia da sala.",
-                    "Sua maturidade e respeito demonstram um desempenho extraordinário.",
-                    "Você tem sido um exemplo, com uma postura que reflete sua seriedade com o aprendizado."
-                ]
-            },
-            port: {
-                1: [
-                    "O uso excessivo do português está dificultando a sua imersão e o seu aprendizado.",
-                    "É crucial que você se esforce para se comunicar em inglês e evite falar em português.",
-                    "O seu hábito de falar em português impede o desenvolvimento de sua fluência.",
-                    "Você precisa de uma mudança urgente para que o seu progresso não seja comprometido.",
-                    "A sua dependência do português em sala de aula limita a sua prática e a dos colegas."
-                ],
-                2: [
-                    "Você consegue se expressar em inglês, mas ainda recorre ao português com muita frequência.",
-                    "É importante que você se esforce mais para usar o inglês como sua principal ferramenta de comunicação.",
-                    "Você tem potencial para se comunicar em inglês, mas o uso do português ainda é um obstáculo.",
-                    "Seu progresso pode ser acelerado com a redução do uso do português em sala.",
-                    "Sua fluência no idioma pode ser prejudicada pela falta de prática."
-                ],
-                3: [
-                    "Você se comunica em inglês na maior parte do tempo, mas ainda utiliza o português ocasionalmente.",
-                    "Sua tentativa de usar o inglês é notável, mas ainda há espaço para aprimorar essa prática.",
-                    "É preciso que você continue a se esforçar para se comunicar apenas em inglês.",
-                    "Seu comportamento está no caminho certo, mas o uso do português ainda é um ponto de atenção.",
-                    "A sua imersão pode ser melhorada se você evitar o português mesmo para perguntas rápidas."
-                ],
-                4: [
-                    "Você se comunica em inglês com frequência e segurança, contribuindo para um ambiente de imersão.",
-                    "Seu esforço para evitar o português em sala de aula é louvável e ajuda no seu aprendizado.",
-                    "Você já se sente confortável para se expressar apenas em inglês, o que é excelente.",
-                    "Seu comprometimento em falar somente inglês reflete sua seriedade com o aprendizado.",
-                    "A sua prática constante do idioma em sala de aula é um grande ponto positivo."
-                ],
-                5: [
-                    "Você se comunica exclusivamente em inglês em sala de aula, o que otimiza seu aprendizado.",
-                    "Sua disciplina em usar o inglês o tempo todo é um exemplo para os colegas.",
-                    "Você demonstra um alto nível de maturidade e comprometimento ao manter a imersão completa.",
-                    "Seu uso consistente do inglês em sala de aula é impressionante e contribui imensamente para sua fluência.",
-                    "Você é um exemplo, pois entende que a imersão é a chave para o sucesso no aprendizado."
-                ]
-            },
-            homework: {
-                1: [
-                    "A entrega das suas tarefas é inconsistente, o que prejudica a fixação do conteúdo.",
-                    "É crucial que você comece a fazer todas as suas tarefas para progredir.",
-                    "A qualidade das suas tarefas está muito aquém do esperado e exige mais dedicação.",
-                    "Você precisa de um esforço extra para assumir a responsabilidade pelas suas atividades de casa.",
-                    "A falta de comprometimento com as tarefas tem impactado negativamente o seu aprendizado."
-                ],
-                2: [
-                    "Você entrega suas tarefas, mas a qualidade do trabalho precisa ser mais caprichada.",
-                    "O seu progresso pode ser acelerado com um maior comprometimento nas tarefas de casa.",
-                    "É importante que você se esforce para completar as atividades com mais atenção.",
-                    "A sua dedicação às tarefas é mediana e pode ser aprimorada para resultados melhores.",
-                    "Você tem potencial, mas precisa focar mais na consistência e na qualidade do seu trabalho."
-                ],
-                3: [
-                    "Você entrega suas tarefas na maior parte do tempo, mas a qualidade pode variar.",
-                    "A sua dedicação às atividades de casa é consistente, mas pode ser aprimorada.",
-                    "O seu desempenho é bom, mas você pode se beneficiar de um maior esforço em cada tarefa.",
-                    "Você está no caminho certo, mas a revisão do trabalho feito é fundamental para evitar erros.",
-                    "A sua atenção aos detalhes nas tarefas de casa pode ser melhorada."
-                ],
-                4: [
-                    "Você entrega todas as suas tarefas com consistência e pontualidade.",
-                    "A qualidade do seu trabalho é excelente e demonstra o seu comprometimento.",
-                    "Você se dedica às tarefas de casa, e isso tem um impacto positivo em sua performance.",
-                    "Seu comprometimento com as atividades de casa é sólido e reflete sua responsabilidade.",
-                    "Você está praticamente sempre em dia com suas tarefas, o que demonstra uma ótima organização."
-                ],
-                5: [
-                    "Você entrega todas as tarefas no prazo e com um nível de qualidade excepcional.",
-                    "Sua dedicação às atividades de casa é um exemplo para os colegas.",
-                    "A sua organização e o seu comprometimento com as tarefas são impecáveis.",
-                    "Você demonstra uma seriedade impressionante em cada trabalho que entrega.",
-                    "A sua performance está em um nível exemplar, e o seu esforço é digno de reconhecimento."
-                ]
-            }
-        };
+<div id="toast">✓ Copiado com sucesso!</div>
 
-        let currentComments = {};
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
 
-        function getRandomComment(category, level) {
-            const levelComments = comments[category][level];
-            const randomIndex = Math.floor(Math.random() * levelComments.length);
-            return levelComments[randomIndex];
-        }
+const RATINGS = {
+  1: "Precisa melhorar muito",
+  2: "Precisa melhorar",
+  3: "Regular",
+  4: "Bom",
+  5: "Excelente"
+};
 
-        function generateBoletim() {
-            const studentName = studentNameInput.value.trim() || 'Aluno(a)';
-            const vocabLevel = vocabSlider.value;
-            const grammarLevel = grammarSlider.value;
-            const behaviorLevel = behaviorSlider.value;
-            const portLevel = portSlider.value;
-            const homeworkLevel = homeworkSlider.value;
+const LEVEL_COLORS = {
+  1: '#e55555',
+  2: '#e5873a',
+  3: '#d4b93e',
+  4: '#5aaf6e',
+  5: '#3cb8a0'
+};
 
-            const vocabComment = currentComments.vocab || getRandomComment('vocab', vocabLevel);
-            const grammarComment = currentComments.grammar || getRandomComment('grammar', grammarLevel);
-            const behaviorComment = currentComments.behavior || getRandomComment('behavior', behaviorLevel);
-            const portComment = currentComments.port || getRandomComment('port', portLevel);
-            const homeworkComment = currentComments.homework || getRandomComment('homework', homeworkLevel);
+const AVATAR_COLORS = [
+  '#5b8dee','#9b6de0','#e06d8b','#e07a3a','#3abbe0','#5aaf6e','#e0b03a','#8b5ce0'
+];
 
-            currentComments = {
-                vocab: vocabComment,
-                grammar: grammarComment,
-                behavior: behaviorComment,
-                port: portComment,
-                homework: homeworkComment
-            };
+const COMMENTS = {
+  vocab: {
+    1: [
+      "Seu vocabulário está muito limitado, tornando a comunicação básica um desafio constante.",
+      "É urgente que você invista em memorizar novas palavras para conseguir se expressar com mais clareza.",
+      "A escassez de vocabulário está impedindo o seu progresso e requer atenção imediata.",
+      "Você encontra dificuldades frequentes para encontrar as palavras certas, o que compromete a comunicação.",
+      "Seu repertório de palavras é muito restrito para o nível esperado nesta etapa do curso.",
+      "Recomendo fortemente o uso de flashcards e listas de vocabulário para superar essa lacuna.",
+      "Sem uma base de vocabulário mais sólida, fica difícil avançar para conteúdos mais complexos.",
+      "Você precisa criar o hábito de anotar e revisar palavras novas diariamente."
+    ],
+    2: [
+      "Seu vocabulário cobre situações básicas, mas precisa ser ampliado para progredir no curso.",
+      "Você se faz entender, mas comete erros frequentes de vocabulário que afetam a precisão.",
+      "É importante que você dedique mais tempo à aquisição de novas palavras e expressões.",
+      "Você tem potencial, mas a falta de variedade de vocabulário limita sua expressão.",
+      "Com um pouco mais de esforço no estudo de vocabulário, seu desempenho vai melhorar bastante.",
+      "Muitas vezes você recorre às mesmas palavras repetidamente, o que empobrece o discurso.",
+      "Recomendo a leitura em inglês para enriquecer seu repertório de forma natural.",
+      "Sua evolução depende diretamente de quanto você investir em aprender palavras novas."
+    ],
+    3: [
+      "Seu vocabulário é adequado para a maioria das situações, mas ainda pode ser mais variado e preciso.",
+      "Você consegue se comunicar bem, mas tem dificuldades com palavras e expressões mais complexas.",
+      "Seu desempenho é consistente, mas há muito espaço para crescimento e aprimoramento.",
+      "Você está no caminho certo — continue expandindo seu vocabulário para chegar ao próximo nível.",
+      "A prática contínua com palavras novas vai fazer uma grande diferença na sua fluência.",
+      "Você compreende bem o vocabulário apresentado em aula, mas ainda depende de suporte para palavras novas.",
+      "Seu desempenho é sólido no básico, mas o vocabulário avançado ainda é um ponto de desenvolvimento.",
+      "Recomendo manter uma lista pessoal de palavras e revisá-las semanalmente."
+    ],
+    4: [
+      "Seu vocabulário é amplo e você o utiliza com segurança e naturalidade na maioria das situações.",
+      "Você demonstra um ótimo domínio de palavras e expressões, se comunicando com clareza e precisão.",
+      "Raramente você precisa de ajuda para encontrar a palavra certa — isso é um ótimo sinal.",
+      "Seu vocabulário sólido reflete o compromisso que você tem com seu aprendizado.",
+      "Você já domina um repertório rico e está pronto para explorar vocabulário ainda mais avançado.",
+      "A forma como você usa as palavras demonstra maturidade linguística e esforço contínuo.",
+      "Seu vocabulário está claramente acima da média da turma — continue assim.",
+      "Com esse nível de vocabulário, sua fluência vai evoluir muito rapidamente."
+    ],
+    5: [
+      "Seu vocabulário é rico, variado e sofisticado — você se comunica com fluência e precisão impressionantes.",
+      "Você tem um domínio excepcional das palavras, usando-as de forma criativa e sempre no contexto certo.",
+      "Você se destaca pelo uso preciso e diversificado do vocabulário, digno de muito reconhecimento.",
+      "Seu conhecimento lexical é impressionante e reflete anos de dedicação ao aprendizado.",
+      "Você usa o vocabulário com uma desenvoltura que eleva toda a sua comunicação a um nível superior.",
+      "Sua escolha de palavras é sempre precisa, rica e adequada ao contexto — parabéns!",
+      "Você tem um controle avançado do vocabulário que coloca você entre os melhores da turma.",
+      "Seu nível de vocabulário é uma das suas maiores forças — continue desenvolvendo essa habilidade."
+    ]
+  },
+  grammar: {
+    1: [
+      "Sua compreensão das regras gramaticais é muito limitada, dificultando bastante a construção de frases.",
+      "Erros gramaticais graves e frequentes prejudicam a clareza e a coerência das suas mensagens.",
+      "Você tem grande dificuldade em aplicar até mesmo as regras básicas de gramática do idioma.",
+      "É essencial que você revise os fundamentos gramaticais com urgência para poder progredir.",
+      "A estrutura das suas frases é constantemente incorreta, o que compromete a compreensão.",
+      "Sem melhorar a gramática, será muito difícil avançar para os próximos conteúdos do curso.",
+      "Recomendo fortemente exercícios gramaticais extras para consolidar os pontos mais básicos.",
+      "Você precisará de um esforço considerável para superar as lacunas gramaticais identificadas."
+    ],
+    2: [
+      "Você consegue se comunicar minimamente, mas comete erros gramaticais que prejudicam a clareza.",
+      "A estrutura das suas frases é inconsistente e precisa de atenção e prática contínua.",
+      "É importante revisar as regras gramaticais para conseguir se comunicar com mais precisão e confiança.",
+      "Você demonstra conhecimento básico, mas tem dificuldade em aplicar as regras de forma consistente.",
+      "Com foco nas regras fundamentais, seu desempenho vai evoluir consideravelmente.",
+      "Muitos dos erros que você comete são os mesmos repetidamente — revise e pratique mais.",
+      "Seu progresso será acelerado com exercícios específicos nos pontos onde você mais erra.",
+      "Ainda há confusão entre estruturas básicas que precisam ser consolidadas."
+    ],
+    3: [
+      "Sua gramática é adequada para a maioria das situações, mas ainda ocorrem erros em construções complexas.",
+      "Você estrutura frases corretamente na maior parte do tempo, mas ainda comete deslizes ocasionais.",
+      "Seu desempenho é consistente, mas há espaço para aprimorar a precisão e a naturalidade das construções.",
+      "Você está no caminho certo — a prática contínua é essencial para consolidar as regras.",
+      "Sua gramática permite uma comunicação eficiente, mas a fluência pode ser melhorada com mais estudo.",
+      "Você entende as regras, mas às vezes hesita na aplicação — mais prática oral vai ajudar bastante.",
+      "Com um pouco mais de atenção aos detalhes gramaticais, seu nível vai dar um salto significativo.",
+      "Seu desempenho é sólido, mas você ainda depende de verificação para construções mais elaboradas."
+    ],
+    4: [
+      "Sua gramática é sólida e você constrói frases claras, corretas e cada vez mais complexas.",
+      "Você demonstra ótimo domínio da estrutura da língua, se expressando com clareza e segurança.",
+      "Você raramente comete erros gramaticais e usa as regras de forma natural e confiante.",
+      "Seu conhecimento gramatical é excelente e reflete o comprometimento com o aprendizado.",
+      "Você tem uma base gramatical muito forte e está pronto para explorar estruturas mais avançadas.",
+      "A precisão gramatical das suas falas e textos está claramente acima da média da turma.",
+      "Você domina as estruturas do idioma com desenvoltura — isso faz toda a diferença na comunicação.",
+      "Sua gramática é um dos seus pontos fortes e contribui muito para sua fluência geral."
+    ],
+    5: [
+      "Sua gramática é impecável, permitindo uma comunicação precisa, elegante e completamente natural.",
+      "Você tem um domínio excepcional das regras e estruturas do idioma — digno de grande reconhecimento.",
+      "Você se destaca pela precisão gramatical e pela riqueza das suas construções.",
+      "Seu conhecimento gramatical é impressionante e coloca você no topo da turma.",
+      "Você usa a gramática com uma fluidez que eleva toda a sua proficiência a um nível avançado.",
+      "Seus textos e falas demonstram gramática impecável mesmo em situações de comunicação espontânea.",
+      "Você tem controle pleno das estruturas do idioma — parabéns pelo esforço e dedicação.",
+      "Sua gramática é exemplar e serve de referência para toda a turma."
+    ]
+  },
+  behavior: {
+    1: [
+      "Sua postura em sala de aula precisa de atenção urgente, pois está prejudicando seu aprendizado e o dos colegas.",
+      "O excesso de conversas paralelas e a agitação comprometem o ambiente e o andamento das aulas.",
+      "É fundamental que você se esforce para manter o foco e respeitar o espaço coletivo de aprendizado.",
+      "Sua atitude tem impactado negativamente a dinâmica da turma e precisa mudar.",
+      "Falta de respeito e disciplina em sala são pontos que precisam ser trabalhados com urgência.",
+      "Você demonstra dificuldade em seguir as regras da aula, o que prejudica sua própria evolução.",
+      "É preciso que você compreenda que o ambiente de sala de aula exige responsabilidade de todos.",
+      "Conversas fora de hora e falta de atenção são hábitos que precisam ser corrigidos imediatamente."
+    ],
+    2: [
+      "Sua participação em sala pode ser mais focada e disciplinada para aproveitar melhor as aulas.",
+      "Você consegue acompanhar as aulas, mas as conversas com os colegas acabam dispersando a todos.",
+      "Pequenas mudanças no seu comportamento fariam uma grande diferença no seu aprendizado.",
+      "Você tem potencial, mas a distração frequente impede que você aproveite todo o conteúdo.",
+      "Seria muito bom ver você mais engajado e menos distraído durante as explicações.",
+      "Você às vezes perde momentos importantes da aula por falta de atenção — vale prestar mais cuidado.",
+      "Com mais foco e disciplina, seu desempenho poderia melhorar consideravelmente.",
+      "Seu comportamento é aceitável, mas ainda há muito espaço para evoluir em termos de postura."
+    ],
+    3: [
+      "Sua participação é geralmente boa, mas você ainda se distrai ocasionalmente durante as atividades.",
+      "Você presta atenção na maior parte do tempo, mas pode se envolver ainda mais nas propostas da aula.",
+      "Seu comportamento é adequado, mas há espaço para uma postura ainda mais ativa e participativa.",
+      "Você consegue manter o foco, mas pode se beneficiar de uma maior concentração nos momentos-chave.",
+      "Sua postura é consistente, mas o engajamento com a aula pode ser mais ativo e entusiasmado.",
+      "Você respeita o ambiente da sala, mas às vezes se desconecta da dinâmica da aula.",
+      "Com uma atitude um pouco mais proativa, você aproveitaria muito mais as oportunidades de aprendizado.",
+      "Você é tranquilo e respeitoso, mas poderia participar mais das discussões e atividades."
+    ],
+    4: [
+      "Você demonstra excelente postura em sala de aula e participa de forma positiva e construtiva.",
+      "Sua educação e prestatividade contribuem para um ambiente de aprendizado mais agradável para todos.",
+      "Você está sempre engajado nas atividades propostas — isso reflete sua maturidade e responsabilidade.",
+      "Seu comportamento exemplar serve de inspiração para os colegas da turma.",
+      "Você é responsável, focado e tem uma atitude que favorece muito o seu próprio aprendizado.",
+      "Sua presença em sala é sempre positiva — você agrega tanto para o grupo quanto para você mesmo.",
+      "Você demonstra respeito consistente pelas regras e pelos colegas — parabéns pela maturidade.",
+      "Sua atitude em sala de aula é muito elogiável e contribui para um ambiente mais produtivo."
+    ],
+    5: [
+      "Seu comportamento em sala é impecável — você demonstra respeito, foco e dedicação em todo momento.",
+      "Você é um exemplo de disciplina e postura para toda a turma — sua atitude eleva a energia da aula.",
+      "Sua participação é sempre ativa e construtiva, contribuindo enormemente para a dinâmica do grupo.",
+      "Sua maturidade e respeito em sala são dignos de muito reconhecimento e admiração.",
+      "Você tem sido um exemplo para os colegas pelo compromisso e seriedade com que leva o aprendizado.",
+      "Sua atitude positiva e engajada torna as aulas mais ricas e produtivas para todos.",
+      "Você combina entusiasmo com respeito — é uma combinação rara e muito valiosa em sala de aula.",
+      "Seu comportamento exemplar reflete o quanto você valoriza o seu próprio desenvolvimento."
+    ]
+  },
+  port: {
+    1: [
+      "O uso excessivo do português em sala está comprometendo sua imersão e dificultando seu progresso.",
+      "É essencial que você faça um esforço consciente para se comunicar em inglês durante as aulas.",
+      "O hábito de recorrer ao português impede o desenvolvimento natural da sua fluência.",
+      "Você precisa de uma mudança urgente nesse aspecto para não comprometer sua evolução no idioma.",
+      "A dependência do português em sala limita a prática tanto sua quanto dos seus colegas.",
+      "Entendo que é desafiador, mas falar apenas em inglês é fundamental para o seu aprendizado.",
+      "Quanto menos você usar o português, mais rápido você vai desenvolver confiança no idioma.",
+      "Mesmo para perguntas simples, tente sempre usar o inglês — isso faz uma diferença enorme."
+    ],
+    2: [
+      "Você consegue se expressar em inglês, mas ainda recorre ao português com mais frequência do que o ideal.",
+      "É importante que você se esforce mais para usar o inglês como principal ferramenta de comunicação.",
+      "Você tem potencial para se comunicar em inglês, mas o uso do português ainda é um obstáculo.",
+      "Seu progresso pode ser acelerado com a redução do uso do português durante as aulas.",
+      "Tente se desafiar a pensar e responder sempre em inglês, mesmo que seja mais difícil.",
+      "Cada momento em que você escolhe o inglês ao invés do português é uma vitória importante.",
+      "Com mais comprometimento com o inglês em sala, sua fluência vai evoluir muito mais rápido.",
+      "O uso frequente do português é um hábito que pode ser mudado com determinação e prática."
+    ],
+    3: [
+      "Você se comunica em inglês na maior parte do tempo, mas ainda utiliza o português ocasionalmente.",
+      "Sua tentativa de manter o inglês é notável, mas há espaço para aprimorar ainda mais essa disciplina.",
+      "Continue se esforçando para se comunicar apenas em inglês — você está no caminho certo.",
+      "Seu comportamento está evoluindo bem, mas o uso do português ainda é um ponto de atenção.",
+      "Mesmo em momentos de dúvida, tente formular sua pergunta em inglês — você vai conseguir.",
+      "Você já demonstra boa disposição para usar o inglês, mas ainda há momentos de recaída para o português.",
+      "Com uma pequena mudança de hábito, você conseguirá manter a imersão completa em inglês.",
+      "Você está progredindo bem nesse aspecto — um pouquinho mais de esforço e chega lá!"
+    ],
+    4: [
+      "Você se comunica em inglês com frequência e segurança, contribuindo para um ambiente de imersão.",
+      "Seu esforço para evitar o português em sala de aula é muito louvável e impacta diretamente no seu aprendizado.",
+      "Você já se sente confortável para se expressar apenas em inglês — isso é um avanço enorme.",
+      "Seu comprometimento em falar somente inglês reflete a seriedade com que você leva o curso.",
+      "A prática constante do idioma em sala de aula é um grande diferencial no seu aprendizado.",
+      "Você raramente recorre ao português, e isso mostra muita maturidade e disciplina.",
+      "Sua imersão em sala é consistente e serve de exemplo positivo para os colegas.",
+      "Você entendeu que falar em inglês o tempo todo é uma das chaves mais importantes para a fluência."
+    ],
+    5: [
+      "Você se comunica exclusivamente em inglês em sala de aula — isso otimiza muito o seu aprendizado.",
+      "Sua disciplina em manter o inglês o tempo todo é um exemplo notável de comprometimento.",
+      "Você demonstra alto nível de maturidade ao manter a imersão completa durante toda a aula.",
+      "Seu uso consistente do inglês é impressionante e contribui imensamente para o desenvolvimento da sua fluência.",
+      "Você compreendeu que a imersão é a chave do sucesso e aplica isso com excelência.",
+      "Mesmo em situações difíceis, você insiste no inglês — isso faz toda a diferença na sua evolução.",
+      "Sua dedicação à imersão em sala é exemplar e inspira os colegas a fazerem o mesmo.",
+      "Você é um modelo de como deve ser a postura de um aluno comprometido com a fluência."
+    ]
+  },
+  homework: {
+    1: [
+      "A entrega das suas tarefas é muito inconsistente, o que prejudica a fixação do conteúdo trabalhado.",
+      "É fundamental que você comece a realizar todas as tarefas de casa para consolidar o que foi aprendido.",
+      "A qualidade das tarefas entregues está abaixo do esperado e exige muito mais dedicação.",
+      "Você precisa assumir a responsabilidade pelas suas atividades de casa para progredir no curso.",
+      "A falta de comprometimento com as tarefas tem impactado negativamente o seu aprendizado.",
+      "Sem a prática em casa, o conteúdo visto em aula não se consolida — as tarefas são essenciais.",
+      "Você está perdendo uma oportunidade importante de praticar e fixar o que foi ensinado.",
+      "É preciso uma mudança urgente de postura em relação à realização das atividades de casa."
+    ],
+    2: [
+      "Você entrega suas tarefas, mas a qualidade do trabalho precisa ser bem mais caprichada.",
+      "Seu progresso pode ser acelerado com um maior comprometimento nas atividades de casa.",
+      "É importante que você complete as atividades com mais atenção, cuidado e dedicação.",
+      "Sua dedicação às tarefas é mediana e pode ser bastante aprimorada para resultados melhores.",
+      "Você tem potencial, mas precisa focar mais na consistência e na qualidade das entregas.",
+      "As tarefas que você entrega mostram que foi feito às pressas — vale dedicar mais tempo.",
+      "Com mais capricho e atenção nos detalhes, suas tarefas vão refletir melhor o seu potencial.",
+      "Uma entrega incompleta ou descuidada não ajuda na fixação do conteúdo — vale o esforço extra."
+    ],
+    3: [
+      "Você entrega suas tarefas na maior parte do tempo, mas a qualidade pode variar bastante.",
+      "Sua dedicação às atividades de casa é consistente, mas ainda pode ser aprimorada.",
+      "Você está no caminho certo com as tarefas, mas a revisão do trabalho é fundamental para evitar erros.",
+      "Sua atenção aos detalhes nas tarefas de casa pode ser aprimorada — capriche um pouco mais.",
+      "Você entrega com regularidade, mas às vezes as tarefas parecem não ter sido revisadas antes de entregar.",
+      "Seu desempenho é bom, mas você pode se beneficiar de um maior esforço e cuidado em cada atividade.",
+      "Uma leitura extra antes de entregar pode fazer uma grande diferença na qualidade das suas tarefas.",
+      "Continue entregando com regularidade — é um bom hábito, agora foque em melhorar a qualidade."
+    ],
+    4: [
+      "Você entrega todas as suas tarefas com consistência e pontualidade — muito bom!",
+      "A qualidade do seu trabalho é excelente e demonstra o comprometimento que você tem com o curso.",
+      "Você se dedica às tarefas de casa e isso tem um impacto positivo muito claro na sua performance.",
+      "Seu comprometimento com as atividades de casa é sólido e reflete muita responsabilidade.",
+      "Você está sempre em dia com as tarefas, o que demonstra ótima organização e disciplina.",
+      "A qualidade e a regularidade das suas entregas estão claramente acima da média da turma.",
+      "Você leva as tarefas a sério, e isso faz toda a diferença nos resultados que você alcança.",
+      "Sua dedicação fora da sala de aula é um dos fatores que mais contribuem para seu progresso."
+    ],
+    5: [
+      "Você entrega todas as tarefas no prazo e com qualidade excepcional — parabéns!",
+      "Sua dedicação às atividades de casa é um exemplo para toda a turma.",
+      "Sua organização e comprometimento com as tarefas são simplesmente impecáveis.",
+      "Você demonstra uma seriedade impressionante em cada trabalho que entrega.",
+      "Sua performance com as tarefas está em um nível exemplar — o esforço é muito digno de reconhecimento.",
+      "Você nunca falha nas entregas e sempre apresenta trabalhos de altíssima qualidade — excelente!",
+      "Sua disciplina fora da sala de aula é um dos seus maiores diferenciais no aprendizado.",
+      "Cada tarefa entregada por você reflete cuidado, atenção e dedicação genuína — continue assim!"
+    ]
+  }
+};
 
-            const boletim = `
-${studentName}, aqui vai um resumo do seu desempenho:
+// ── STATE ──────────────────────────────────────────────────────────────────────
 
-Vocabulário:
-${vocabComment}
+let students = [];
+let activeId = null;
+let currentComments = {};
 
-Gramática:
-${grammarComment}
+function newStudent() {
+  return {
+    id: Date.now() + Math.random(),
+    name: '',
+    vocab: 5, grammar: 5, behavior: 5, port: 5, homework: 5,
+    comments: {}
+  };
+}
 
-Comportamento em Sala de Aula:
-${behaviorComment}
+function getStudent() { return students.find(s => s.id === activeId); }
 
-Uso de Português em Sala:
-${portComment}
+// ── INIT ──────────────────────────────────────────────────────────────────────
 
-Tarefas de Casa:
-${homeworkComment}
-            `;
+function init() {
+  const s = newStudent();
+  students.push(s);
+  activeId = s.id;
+  renderSidebar();
+  loadStudent(s.id);
+  updateDate();
+}
 
-            boletimText.textContent = boletim;
-        }
+function updateDate() {
+  const now = new Date();
+  const months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  document.getElementById('rc-date').textContent =
+    `${now.getDate()} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
+}
 
-        function updateSliderAndBoletim(slider, levelSpan, category) {
-            levelSpan.textContent = ratings[slider.value];
-            currentComments[category] = getRandomComment(category, slider.value);
-            generateBoletim();
-        }
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
 
-        vocabSlider.addEventListener('input', () => updateSliderAndBoletim(vocabSlider, vocabLevelSpan, 'vocab'));
-        grammarSlider.addEventListener('input', () => updateSliderAndBoletim(grammarSlider, grammarLevelSpan, 'grammar'));
-        behaviorSlider.addEventListener('input', () => updateSliderAndBoletim(behaviorSlider, behaviorLevelSpan, 'behavior'));
-        portSlider.addEventListener('input', () => updateSliderAndBoletim(portSlider, portLevelSpan, 'port'));
-        homeworkSlider.addEventListener('input', () => updateSliderAndBoletim(homeworkSlider, homeworkLevelSpan, 'homework'));
-        studentNameInput.addEventListener('input', generateBoletim);
+function renderSidebar() {
+  const list = document.getElementById('student-list');
+  list.innerHTML = '';
+  students.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'student-item' + (s.id === activeId ? ' active' : '');
+    div.dataset.id = s.id;
 
-        nextButton.addEventListener('click', () => {
-            currentComments = {};
-            generateBoletim();
-        });
+    const initials = s.name
+      ? s.name.trim().split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase()
+      : '?';
+    const color = AVATAR_COLORS[students.indexOf(s) % AVATAR_COLORS.length];
 
-        copyButton.addEventListener('click', () => {
-            const textToCopy = boletimText.textContent;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                messageBox.classList.add('opacity-100');
-                setTimeout(() => {
-                    messageBox.classList.remove('opacity-100');
-                }, 2000);
-            }).catch(err => {
-                console.error('Falha ao copiar texto: ', err);
-            });
-        });
+    div.innerHTML = `
+      <div class="student-avatar" style="background:${color}">${initials}</div>
+      <span class="student-name-label">${s.name || 'Novo Aluno'}</span>
+      <button class="student-delete" data-id="${s.id}" title="Remover">×</button>
+    `;
+    div.addEventListener('click', e => {
+      if (e.target.classList.contains('student-delete')) return;
+      saveCurrentStudent();
+      activeId = s.id;
+      renderSidebar();
+      loadStudent(s.id);
+    });
+    div.querySelector('.student-delete').addEventListener('click', e => {
+      e.stopPropagation();
+      removeStudent(s.id);
+    });
+    list.appendChild(div);
+  });
+}
 
-        themeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            document.body.classList.toggle('light-mode');
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            
-            if (isDarkMode) {
-                moonIcon.classList.remove('hidden');
-                sunIcon.classList.add('hidden');
-                themeToggle.classList.remove('light-mode-button');
-                themeToggle.classList.add('dark-mode-button');
-            } else {
-                sunIcon.classList.remove('hidden');
-                moonIcon.classList.add('hidden');
-                themeToggle.classList.remove('dark-mode-button');
-                themeToggle.classList.add('light-mode-button');
-            }
-        });
+function removeStudent(id) {
+  if (students.length <= 1) {
+    showToast('Deve haver pelo menos um aluno.');
+    return;
+  }
+  students = students.filter(s => s.id !== id);
+  if (activeId === id) {
+    activeId = students[0].id;
+    loadStudent(activeId);
+  }
+  renderSidebar();
+}
 
-        document.addEventListener('DOMContentLoaded', () => {
-            generateBoletim();
-        });
-    </script>
+// ── LOAD / SAVE ───────────────────────────────────────────────────────────────
+
+function loadStudent(id) {
+  const s = students.find(st => st.id === id);
+  if (!s) return;
+  document.getElementById('student-name').value = s.name;
+  document.getElementById('sl-vocab').value = s.vocab;
+  document.getElementById('sl-grammar').value = s.grammar;
+  document.getElementById('sl-behavior').value = s.behavior;
+  document.getElementById('sl-port').value = s.port;
+  document.getElementById('sl-homework').value = s.homework;
+  updateAllBadges();
+  currentComments = { ...s.comments };
+  // generate comments if missing
+  ['vocab','grammar','behavior','port','homework'].forEach(cat => {
+    if (!currentComments[cat]) currentComments[cat] = pickComment(cat, s[cat === 'port' ? 'port' : cat]);
+  });
+  renderPreview();
+}
+
+function saveCurrentStudent() {
+  const s = getStudent();
+  if (!s) return;
+  s.name = document.getElementById('student-name').value.trim();
+  s.vocab = +document.getElementById('sl-vocab').value;
+  s.grammar = +document.getElementById('sl-grammar').value;
+  s.behavior = +document.getElementById('sl-behavior').value;
+  s.port = +document.getElementById('sl-port').value;
+  s.homework = +document.getElementById('sl-homework').value;
+  s.comments = { ...currentComments };
+}
+
+function pickComment(cat, level) {
+  const pool = COMMENTS[cat][level];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ── BADGES ───────────────────────────────────────────────────────────────────
+
+const sliderMap = {
+  'sl-vocab': { badge: 'badge-vocab', cat: 'vocab' },
+  'sl-grammar': { badge: 'badge-grammar', cat: 'grammar' },
+  'sl-behavior': { badge: 'badge-behavior', cat: 'behavior' },
+  'sl-port': { badge: 'badge-port', cat: 'port' },
+  'sl-homework': { badge: 'badge-homework', cat: 'homework' }
+};
+
+function updateBadge(sliderId) {
+  const { badge, cat } = sliderMap[sliderId];
+  const val = +document.getElementById(sliderId).value;
+  const el = document.getElementById(badge);
+  el.textContent = RATINGS[val];
+  el.style.background = LEVEL_COLORS[val];
+
+  // update slider track
+  const sl = document.getElementById(sliderId);
+  const pct = ((val - 1) / 4) * 100;
+  sl.style.background = `linear-gradient(to right, ${LEVEL_COLORS[val]} ${pct}%, #2a3048 ${pct}%)`;
+}
+
+function updateAllBadges() {
+  Object.keys(sliderMap).forEach(updateBadge);
+}
+
+// ── PREVIEW ──────────────────────────────────────────────────────────────────
+
+const CAT_META = [
+  { key: 'vocab',    label: 'Vocabulário',        icon: '📚', slId: 'sl-vocab' },
+  { key: 'grammar',  label: 'Gramática',           icon: '📝', slId: 'sl-grammar' },
+  { key: 'behavior', label: 'Comportamento',       icon: '🌟', slId: 'sl-behavior' },
+  { key: 'port',     label: 'Uso de Português',    icon: '🇧🇷', slId: 'sl-port' },
+  { key: 'homework', label: 'Tarefas de Casa',     icon: '📋', slId: 'sl-homework' }
+];
+
+function renderPreview() {
+  const name = document.getElementById('student-name').value.trim() || 'Aluno(a)';
+  const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const s = getStudent();
+  const colorIdx = s ? students.indexOf(s) % AVATAR_COLORS.length : 0;
+
+  // Header
+  document.getElementById('rc-name').textContent = name;
+  const av = document.getElementById('rc-avatar');
+  av.textContent = initials;
+  av.style.background = AVATAR_COLORS[colorIdx];
+
+  // Scores row
+  const scoresEl = document.getElementById('rc-scores');
+  scoresEl.innerHTML = '';
+  CAT_META.forEach(m => {
+    const val = +document.getElementById(m.slId).value;
+    const col = LEVEL_COLORS[val];
+    const cell = document.createElement('div');
+    cell.className = 'rc-score-cell';
+    cell.innerHTML = `
+      <div class="rc-score-icon">${m.icon}</div>
+      <div class="rc-score-val" style="color:${col}">${val}</div>
+      <div class="rc-score-key">${m.label.split(' ')[0]}</div>
+    `;
+    scoresEl.appendChild(cell);
+  });
+
+  // Body sections
+  const bodyEl = document.getElementById('rc-body');
+  bodyEl.innerHTML = '';
+  CAT_META.forEach(m => {
+    const val = +document.getElementById(m.slId).value;
+    const col = LEVEL_COLORS[val];
+    const text = currentComments[m.key] || pickComment(m.key, val);
+
+    // Build mini stars (5 squares)
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+      stars += `<span class="rc-section-star" style="background:${i<=val?col:'#2a3048'}"></span>`;
+    }
+
+    const sec = document.createElement('div');
+    sec.className = 'rc-section';
+    sec.innerHTML = `
+      <div class="rc-section-header">
+        <span class="rc-section-dot" style="background:${col}"></span>
+        <span class="rc-section-title">${m.label}</span>
+        <div class="rc-section-stars">${stars}</div>
+      </div>
+      <div class="rc-section-text">${text}</div>
+    `;
+    bodyEl.appendChild(sec);
+  });
+}
+
+function buildPlainText() {
+  const name = document.getElementById('student-name').value.trim() || 'Aluno(a)';
+  const now = new Date();
+  const months=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  let txt = `RELATÓRIO DE DESEMPENHO\n${name}\n${now.getDate()} de ${months[now.getMonth()]} de ${now.getFullYear()}\n\n`;
+  CAT_META.forEach(m => {
+    const val = +document.getElementById(m.slId).value;
+    txt += `${m.label}: ${RATINGS[val]}\n`;
+    txt += `${currentComments[m.key] || ''}\n\n`;
+  });
+  return txt.trim();
+}
+
+// ── EVENTS ───────────────────────────────────────────────────────────────────
+
+document.getElementById('student-name').addEventListener('input', () => {
+  const s = getStudent();
+  if (s) s.name = document.getElementById('student-name').value.trim();
+  renderSidebar();
+  renderPreview();
+});
+
+Object.keys(sliderMap).forEach(slId => {
+  document.getElementById(slId).addEventListener('input', () => {
+    const { cat } = sliderMap[slId];
+    const val = +document.getElementById(slId).value;
+    currentComments[cat] = pickComment(cat, val);
+    updateBadge(slId);
+    renderPreview();
+  });
+});
+
+document.getElementById('add-student-btn').addEventListener('click', () => {
+  saveCurrentStudent();
+  const s = newStudent();
+  students.push(s);
+  activeId = s.id;
+  currentComments = {};
+  renderSidebar();
+  loadStudent(s.id);
+});
+
+document.getElementById('save-btn').addEventListener('click', () => {
+  saveCurrentStudent();
+  renderSidebar();
+  showToast('Aluno salvo com sucesso!');
+});
+
+document.getElementById('regen-btn').addEventListener('click', () => {
+  currentComments = {};
+  CAT_META.forEach(m => {
+    const val = +document.getElementById(m.slId).value;
+    currentComments[m.key] = pickComment(m.key, val);
+  });
+  renderPreview();
+  showToast('Textos regenerados!');
+});
+
+document.getElementById('copy-btn').addEventListener('click', () => {
+  navigator.clipboard.writeText(buildPlainText()).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.querySelector('svg').innerHTML = '<path d="M2 7l4 4L11 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>';
+    showToast('Boletim copiado!');
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.querySelector('svg').innerHTML = '<rect x="4.5" y="4.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8.5 4.5V3A1.5 1.5 0 007 1.5H3A1.5 1.5 0 001.5 3v4A1.5 1.5 0 003 8.5h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>';
+    }, 2500);
+  });
+});
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = '✓ ' + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── GO ────────────────────────────────────────────────────────────────────────
+init();
+</script>
 </body>
 </html>

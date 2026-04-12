@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mistake Hunters — EFL Grammar Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #161a23;
+  --surface2: #1e2333;
+  --border: #2a3045;
+  --text: #e8ecf4;
+  --muted: #6b7592;
+  --accent: #f0c040;
+
+  --spelling:    #f05a5a;
+  --word-form:   #5aabf0;
+  --verb-tense:  #a05af0;
+  --word-order:  #40d490;
+
+  --spelling-bg:   rgba(240,90,90,0.13);
+  --word-form-bg:  rgba(90,171,240,0.13);
+  --verb-tense-bg: rgba(160,90,240,0.13);
+  --word-order-bg: rgba(64,212,144,0.13);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
+
+/* ── SCREENS ── */
+.screen { display: none; width: 100%; max-width: 860px; padding: 32px 20px; }
+.screen.active { display: block; }
+
+/* Correct checkbox */
+.correct-check-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  user-select: none;
+  width: fit-content;
+}
+.correct-check-wrap input { display: none; }
+.correct-check-box {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  border: 2px solid var(--border);
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all .2s;
+}
+.correct-check-wrap input:checked ~ .correct-check-box {
+  background: rgba(64,212,144,0.2);
+  border-color: var(--word-order);
+  color: var(--word-order);
+}
+.correct-check-wrap input:checked ~ .correct-check-box::after { content: '✓'; }
+.correct-check-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color .2s;
+  letter-spacing: 0.02em;
+}
+.correct-check-wrap input:checked ~ .correct-check-label { color: var(--word-order); }
+.correct-check-wrap.disabled { opacity: .4; pointer-events: none; }
+
+
+.start-hero {
+  text-align: center;
+  padding: 40px 0 32px;
+}
+.start-hero h1 { font-size: clamp(52px, 10vw, 96px); color: var(--accent); line-height: 1; }
+.start-hero p { color: var(--muted); margin-top: 8px; font-size: 15px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 28px;
+}
+@media(max-width:600px){ .config-grid { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+.card h3 { font-size: 18px; color: var(--muted); margin-bottom: 14px; }
+
+.pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.pill:hover { border-color: var(--accent); color: var(--accent); }
+.pill.selected { border-color: var(--accent); background: rgba(240,192,64,0.12); color: var(--accent); }
+
+.teams-section { grid-column: 1/-1; }
+.team-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
+.team-input-wrap { display: flex; flex-direction: column; gap: 5px; }
+.team-input-wrap label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.team-input-wrap input {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color .2s;
+}
+.team-input-wrap input:focus { border-color: var(--accent); }
+
+.num-row { display: flex; align-items: center; gap: 12px; }
+.num-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .2s;
+}
+.num-btn:hover { border-color: var(--accent); }
+.num-display { font-family: 'Bebas Neue'; font-size: 28px; color: var(--accent); min-width: 32px; text-align: center; }
+
+.start-btn {
+  display: block;
+  width: 100%;
+  margin-top: 28px;
+  padding: 18px;
+  background: var(--accent);
+  color: #0d0f14;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.1em;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+}
+.start-btn:hover { opacity: .9; transform: translateY(-1px); }
+.start-btn:active { transform: translateY(0); }
+
+/* ── GAME SCREEN ── */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.round-badge {
+  font-family: 'Bebas Neue';
+  font-size: 22px;
+  color: var(--muted);
+}
+.round-badge span { color: var(--accent); }
+.level-badge {
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  font-family: 'DM Mono';
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Scoreboard */
+.scoreboard {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.score-card {
+  flex: 1;
+  min-width: 100px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: border-color .3s, box-shadow .3s;
+}
+.score-card.active-team {
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(240,192,64,0.18);
+}
+.score-card .tname {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+.score-card .tscore {
+  font-family: 'Bebas Neue';
+  font-size: 30px;
+  color: var(--text);
+}
+
+/* Current team banner */
+.turn-banner {
+  text-align: center;
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.turn-banner strong { color: var(--accent); font-size: 16px; }
+
+/* Labels */
+.labels-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.label-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 2px solid;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+}
+.label-btn .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.label-btn.spelling { border-color: var(--spelling); color: var(--spelling); }
+.label-btn.word-form { border-color: var(--word-form); color: var(--word-form); }
+.label-btn.verb-tense { border-color: var(--verb-tense); color: var(--verb-tense); }
+.label-btn.word-order { border-color: var(--word-order); color: var(--word-order); }
+.label-btn.spelling .dot { background: var(--spelling); }
+.label-btn.word-form .dot { background: var(--word-form); }
+.label-btn.verb-tense .dot { background: var(--verb-tense); }
+.label-btn.word-order .dot { background: var(--word-order); }
+.label-btn.selected { color: #0d0f14 !important; }
+.label-btn.spelling.selected { background: var(--spelling); }
+.label-btn.word-form.selected { background: var(--word-form); }
+.label-btn.verb-tense.selected { background: var(--verb-tense); }
+.label-btn.word-order.selected { background: var(--word-order); }
+.word-order-hint { font-size: 11px; opacity: .7; margin-left: 4px; }
+
+/* Sentence */
+.sentence-box {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 24px;
+  margin-bottom: 22px;
+  min-height: 100px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 4px;
+  align-items: center;
+  font-size: clamp(18px, 3.5vw, 26px);
+  line-height: 1.6;
+}
+.word {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all .15s;
+  user-select: none;
+  font-weight: 500;
+  position: relative;
+}
+.word:hover { background: var(--surface2); border-color: var(--border); }
+.word.tagged-spelling   { background: var(--spelling-bg);    border-color: var(--spelling);    color: var(--spelling); }
+.word.tagged-word-form  { background: var(--word-form-bg);   border-color: var(--word-form);   color: var(--word-form); }
+.word.tagged-verb-tense { background: var(--verb-tense-bg);  border-color: var(--verb-tense);  color: var(--verb-tense); }
+.word.tagged-word-order { background: var(--word-order-bg);  border-color: var(--word-order);  color: var(--word-order); }
+.word.wo-first  { border-style: solid; }
+.word.wo-second { border-style: dashed; }
+
+/* Punctuation attached to word */
+.word .punct { color: var(--muted); font-weight: 400; }
+
+/* Feedback overlay on word after submit */
+.word.correct-tag::after {
+  content: '✓';
+  position: absolute;
+  top: -10px; right: -8px;
+  font-size: 11px;
+  color: #40d490;
+  font-weight: 700;
+}
+.word.wrong-tag::after {
+  content: '✗';
+  position: absolute;
+  top: -10px; right: -8px;
+  font-size: 11px;
+  color: #f05a5a;
+  font-weight: 700;
+}
+
+/* Submit / Next */
+.action-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+.submit-btn, .next-btn {
+  flex: 1;
+  padding: 15px;
+  border-radius: 12px;
+  border: none;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+}
+.submit-btn { background: var(--accent); color: #0d0f14; }
+.next-btn   { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); display: none; }
+.submit-btn:hover, .next-btn:hover { opacity: .88; transform: translateY(-1px); }
+.submit-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+/* Feedback panel */
+.feedback-panel {
+  display: none;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-top: 18px;
+}
+.feedback-panel.visible { display: block; }
+.feedback-panel h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent); }
+.corrected-sentence {
+  font-size: 18px;
+  line-height: 1.7;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+.corrected-sentence .fix { font-weight: 700; }
+.corrected-sentence .fix.spelling    { color: var(--spelling); }
+.corrected-sentence .fix.word-form   { color: var(--word-form); }
+.corrected-sentence .fix.verb-tense  { color: var(--verb-tense); }
+.corrected-sentence .fix.word-order  { color: var(--word-order); }
+
+.points-awarded {
+  font-family: 'Bebas Neue';
+  font-size: 36px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.points-breakdown { font-size: 13px; color: var(--muted); }
+
+/* Legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend span { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* ── RESULTS SCREEN ── */
+.results-screen { text-align: center; }
+.results-screen h1 { font-size: 64px; color: var(--accent); margin-bottom: 8px; }
+.results-screen p { color: var(--muted); margin-bottom: 28px; }
+
+.podium {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 32px 0;
+}
+.podium-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.podium-bar {
+  width: 90px;
+  border-radius: 10px 10px 0 0;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 10px;
+  transition: height .6s ease;
+}
+.podium-bar.rank-1 { background: rgba(240,192,64,0.18); border-color: var(--accent); }
+.podium-bar .rank-num { font-family: 'Bebas Neue'; font-size: 32px; color: var(--muted); }
+.podium-bar.rank-1 .rank-num { color: var(--accent); }
+.podium-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.podium-score { font-family: 'Bebas Neue'; font-size: 26px; color: var(--text); }
+
+.play-again-btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 16px 48px;
+  background: var(--accent);
+  color: #0d0f14;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  letter-spacing: 0.1em;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.play-again-btn:hover { opacity: .88; }
+
+/* all-teams table */
+.all-teams-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  text-align: left;
+}
+.all-teams-table th {
+  font-family: 'DM Mono'; font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.all-teams-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+}
+.all-teams-table tr:first-child td { color: var(--accent); font-weight: 700; }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     START SCREEN
+════════════════════════════════════════ -->
+<div class="screen active" id="screen-start">
+  <div class="start-hero">
+    <h1>Mistake Hunters</h1>
+    <p>Find the grammar mistakes — EFL Competition Game</p>
+  </div>
+
+  <div class="config-grid">
+    <!-- CEFR Level -->
+    <div class="card">
+      <h3>CEFR Level</h3>
+      <div class="pill-group" id="level-pills">
+        <button class="pill selected" data-level="A1">A1</button>
+        <button class="pill" data-level="A2">A2</button>
+        <button class="pill" data-level="B1">B1</button>
+        <button class="pill" data-level="B2">B2</button>
+      </div>
+    </div>
+
+    <!-- Rounds -->
+    <div class="card">
+      <h3>Rounds per Team</h3>
+      <div class="num-row">
+        <button class="num-btn" id="rounds-down">−</button>
+        <div class="num-display" id="rounds-display">5</div>
+        <button class="num-btn" id="rounds-up">+</button>
+      </div>
+    </div>
+
+    <!-- Number of teams -->
+    <div class="card">
+      <h3>Number of Teams</h3>
+      <div class="num-row">
+        <button class="num-btn" id="teams-down">−</button>
+        <div class="num-display" id="teams-display">2</div>
+        <button class="num-btn" id="teams-up">+</button>
+      </div>
+    </div>
+
+    <!-- Placeholder for alignment -->
+    <div class="card" style="background:transparent;border-color:transparent;"></div>
+
+    <!-- Team names -->
+    <div class="card teams-section">
+      <h3>Team Names</h3>
+      <div class="team-inputs" id="team-inputs"></div>
+    </div>
+  </div>
+
+  <button class="start-btn" id="start-btn">START GAME</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     GAME SCREEN
+════════════════════════════════════════ -->
+<div class="screen" id="screen-game">
+  <div class="game-header">
+    <div class="round-badge">Round <span id="round-num">1</span> / <span id="round-total">5</span></div>
+    <div class="level-badge" id="level-display">A1</div>
+  </div>
+
+  <!-- Scoreboard -->
+  <div class="scoreboard" id="scoreboard"></div>
+
+  <!-- Turn banner -->
+  <div class="turn-banner">It's <strong id="current-team-name">Team 1</strong>'s turn</div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span><span class="legend-dot" style="background:var(--spelling)"></span> Spelling</span>
+    <span><span class="legend-dot" style="background:var(--word-form)"></span> Wrong Word Form</span>
+    <span><span class="legend-dot" style="background:var(--verb-tense)"></span> Wrong Verb Tense</span>
+    <span><span class="legend-dot" style="background:var(--word-order)"></span> Wrong Word Order</span>
+  </div>
+
+  <!-- Error type labels -->
+  <div class="labels-row">
+    <button class="label-btn spelling" data-type="spelling">
+      <span class="dot"></span> Spelling
+    </button>
+    <button class="label-btn word-form" data-type="word-form">
+      <span class="dot"></span> Wrong Word Form
+    </button>
+    <button class="label-btn verb-tense" data-type="verb-tense">
+      <span class="dot"></span> Wrong Verb Tense <span class="word-order-hint">(click all words in the verb)</span>
+    </button>
+    <button class="label-btn word-order" data-type="word-order">
+      <span class="dot"></span> Wrong Word Order <span class="word-order-hint">(click 2 words)</span>
+    </button>
+  </div>
+
+  <!-- CORRECT checkbox -->
+  <label class="correct-check-wrap" id="correct-check-wrap">
+    <input type="checkbox" id="correct-checkbox">
+    <span class="correct-check-box"></span>
+    <span class="correct-check-label">✓ This sentence is CORRECT — no mistakes</span>
+  </label>
+
+  <!-- Sentence -->
+  <div class="sentence-box" id="sentence-box"></div>
+
+  <!-- Actions -->
+  <div class="action-row">
+    <button class="submit-btn" id="submit-btn">SUBMIT ANSWER</button>
+    <button class="next-btn"   id="next-btn">NEXT →</button>
+  </div>
+
+  <!-- Feedback -->
+  <div class="feedback-panel" id="feedback-panel">
+    <h3>Result</h3>
+    <div class="points-awarded" id="points-awarded"></div>
+    <div class="points-breakdown" id="points-breakdown"></div>
+    <div style="margin-top:14px;font-size:13px;color:var(--muted);margin-bottom:6px;">CORRECTED SENTENCE:</div>
+    <div class="corrected-sentence" id="corrected-sentence"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     RESULTS SCREEN
+════════════════════════════════════════ -->
+<div class="screen" id="screen-results">
+  <div class="results-screen">
+    <h1>GAME OVER</h1>
+    <p>Final Scores</p>
+
+    <div class="podium" id="podium"></div>
+    <table class="all-teams-table" id="all-teams-table">
+      <thead><tr><th>Place</th><th>Team</th><th>Points</th></tr></thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+
+    <button class="play-again-btn" onclick="location.reload()">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SENTENCE DATA
+// Each entry: { sentence, errors: [ {wordIndex, type, correct} ], corrected }
+// type: 'spelling' | 'word-form' | 'verb-tense' | 'word-order'
+// For word-order: two wordIndex values and corrected shows swapped
+// wordIndex is 0-based index into words array (punctuation stripped)
+// ═══════════════════════════════════════════════════════════════
+
+// Errors use {w:'errorword', t:'type'} for single-word errors
+// and {w:'word1', w2:'word2', t:'word-order'} for word-order errors.
+// Indices are resolved at runtime by resolveIndices().
+const SENTENCES_RAW = {
+
+A1: [
+  // ── originals ──
+  {s:"I have a bleu pen.",            errors:[{w:'bleu',t:'spelling'}],                        fix:"I have a blue pen.",            expl:"blue"},
+  {s:"She is my frend.",              errors:[{w:'frend',t:'spelling'}],                        fix:"She is my friend.",             expl:"friend"},
+  {s:"He has a buk.",                 errors:[{w:'buk',t:'spelling'}],                          fix:"He has a book.",                expl:"book"},
+  {s:"The cat is whyte.",             errors:[{w:'whyte',t:'spelling'}],                        fix:"The cat is white.",             expl:"white"},
+  {s:"I like appels.",                errors:[{w:'appels',t:'spelling'}],                       fix:"I like apples.",                expl:"apples"},
+  {s:"We go to scool.",               errors:[{w:'scool',t:'spelling'}],                        fix:"We go to school.",              expl:"school"},
+  {s:"The dog is bigg.",              errors:[{w:'bigg',t:'spelling'}],                         fix:"The dog is big.",               expl:"big"},
+  {s:"She has a nise dress.",         errors:[{w:'nise',t:'spelling'}],                         fix:"She has a nice dress.",         expl:"nice"},
+  {s:"I see a hous.",                 errors:[{w:'hous',t:'spelling'}],                         fix:"I see a house.",                expl:"house"},
+  {s:"He is a techer.",               errors:[{w:'techer',t:'spelling'}],                       fix:"He is a teacher.",              expl:"teacher"},
+  {s:"She is very beauty.",           errors:[{w:'beauty',t:'word-form'}],                      fix:"She is very beautiful.",        expl:"beautiful (adjective, not noun)"},
+  {s:"The food is taste.",            errors:[{w:'taste',t:'word-form'}],                       fix:"The food is tasty.",            expl:"tasty (adjective)"},
+  {s:"This is a happiness day.",      errors:[{w:'happiness',t:'word-form'}],                   fix:"This is a happy day.",          expl:"happy (adjective)"},
+  {s:"The music is beauty.",          errors:[{w:'beauty',t:'word-form'}],                      fix:"The music is beautiful.",       expl:"beautiful"},
+  {s:"My brother is a kindness person.", errors:[{w:'kindness',t:'word-form'}],                 fix:"My brother is a kind person.",  expl:"kind (adjective)"},
+  {s:"Yesterday I go to the park.",   errors:[{w:'go',t:'verb-tense'}],                         fix:"Yesterday I went to the park.", expl:"went (past simple)"},
+  {s:"She buyed a new bag.",          errors:[{w:'buyed',t:'verb-tense'}],                      fix:"She bought a new bag.",         expl:"bought (past simple)"},
+  {s:"We eated pizza last night.",    errors:[{w:'eated',t:'verb-tense'}],                      fix:"We ate pizza last night.",      expl:"ate (past simple)"},
+  {s:"He come to school yesterday.",  errors:[{w:'come',t:'verb-tense'}],                       fix:"He came to school yesterday.",  expl:"came (past simple)"},
+  {s:"I see a film last Saturday.",   errors:[{w:'see',t:'verb-tense'}],                        fix:"I saw a film last Saturday.",   expl:"saw (past simple)"},
+  {s:"I have a car red.",             errors:[{w:'car',w2:'red',t:'word-order'}],               fix:"I have a red car.",             expl:"red car (adjective before noun)"},
+  {s:"She has eyes blue.",            errors:[{w:'eyes',w2:'blue',t:'word-order'}],             fix:"She has blue eyes.",            expl:"blue eyes"},
+  {s:"He has a car fast.",            errors:[{w:'car',w2:'fast',t:'word-order'}],              fix:"He has a fast car.",            expl:"fast car (adjective before noun)"},
+  {s:"I have a dress new.",           errors:[{w:'dress',w2:'new',t:'word-order'}],             fix:"I have a new dress.",           expl:"new dress (adjective before noun)"},
+  {s:"She has a brother big.",        errors:[{w:'brother',w2:'big',t:'word-order'}],           fix:"She has a big brother.",        expl:"big brother (adjective before noun)"},
+  {s:"She go to the scool.",          errors:[{w:'go',t:'verb-tense'},{w:'scool',t:'spelling'}],fix:"She goes to the school.",       expl:"goes / school"},
+  {s:"I buyed a nise shirt.",         errors:[{w:'buyed',t:'verb-tense'},{w:'nise',t:'spelling'}],fix:"I bought a nice shirt.",      expl:"bought / nice"},
+  {s:"He have a car bleu.",           errors:[{w:'have',t:'verb-tense'},{w:'car',w2:'bleu',t:'word-order'}],fix:"He has a blue car.",expl:"has / blue car"},
+  {s:"We eated a taisty cake.",       errors:[{w:'eated',t:'verb-tense'},{w:'taisty',t:'spelling'}],fix:"We ate a tasty cake.",     expl:"ate / tasty"},
+  {s:"She is very beauty and kindness.", errors:[{w:'beauty',t:'word-form'},{w:'kindness',t:'word-form'}],fix:"She is very beautiful and kind.",expl:"beautiful / kind"},
+  // ── error twins of A1 correct sentences ──
+  {s:"He has a bigg dog.",            errors:[{w:'bigg',t:'spelling'}],                         fix:"He has a big dog.",             expl:"big"},
+  {s:"My brother is tall very.",      errors:[{w:'tall',w2:'very',t:'word-order'}],             fix:"My brother is very tall.",      expl:"very tall (adverb before adjective)"},
+  {s:"She is very happiness.",        errors:[{w:'happiness',t:'word-form'}],                   fix:"She is very happy.",            expl:"happy (adjective)"},
+  {s:"This is a good day very.",      errors:[{w:'day',w2:'very',t:'word-order'}],              fix:"This is a very good day.",      expl:"very good (adverb before adjective)"},
+  {s:"My sister is a kindness person.",errors:[{w:'kindness',t:'word-form'}],                   fix:"My sister is a kind person.",   expl:"kind (adjective)"},
+  {s:"They are my frends.",           errors:[{w:'frends',t:'spelling'}],                       fix:"They are my friends.",          expl:"friends"},
+  {s:"We live in a house small.",     errors:[{w:'house',w2:'small',t:'word-order'}],           fix:"We live in a small house.",     expl:"small house (adjective before noun)"},
+  {s:"He plays football very good.",  errors:[{w:'good',t:'word-form'}],                        fix:"He plays football very well.",  expl:"well (adverb)"},
+  {s:"She drink coffee in the morning.",errors:[{w:'drink',t:'verb-tense'}],                    fix:"She drinks coffee in the morning.",expl:"drinks (3rd person singular)"},
+  {s:"I readed a book at night.",     errors:[{w:'readed',t:'verb-tense'}],                     fix:"I read a book at night.",       expl:"read (past simple)"},
+  {s:"The children is in the garden.",errors:[{w:'is',t:'verb-tense'}],                         fix:"The children are in the garden.",expl:"are (plural subject)"},
+  {s:"My mother is a good cooker.",   errors:[{w:'cooker',t:'word-form'}],                      fix:"My mother is a good cook.",     expl:"cook (noun for person)"},
+  {s:"He have two sisters.",          errors:[{w:'have',t:'verb-tense'}],                       fix:"He has two sisters.",           expl:"has (3rd person singular)"},
+  {s:"She want a glass of water.",    errors:[{w:'want',t:'verb-tense'}],                       fix:"She wants a glass of water.",   expl:"wants (3rd person singular)"},
+  {s:"We watches TV after dinner.",   errors:[{w:'watches',t:'verb-tense'}],                    fix:"We watch TV after dinner.",     expl:"watch (we = no -s)"},
+  {s:"The dog run fast.",             errors:[{w:'run',t:'verb-tense'}],                         fix:"The dog runs fast.",            expl:"runs (3rd person singular)"},
+  {s:"I like ice cream chocolate.",   errors:[{w:'cream',w2:'chocolate',t:'word-order'}],       fix:"I like chocolate ice cream.",   expl:"chocolate ice cream (adjective before noun)"},
+  {s:"She have long hair.",           errors:[{w:'have',t:'verb-tense'}],                       fix:"She has long hair.",            expl:"has (3rd person singular)"},
+  {s:"He is twelve year old.",        errors:[{w:'year',t:'word-form'}],                        fix:"He is twelve years old.",       expl:"years (plural)"},
+  {s:"We is happy today.",            errors:[{w:'is',t:'verb-tense'}],                         fix:"We are happy today.",           expl:"are (plural)"},
+  {s:"I have a cat black.",           errors:[{w:'cat',w2:'black',t:'word-order'}],             fix:"I have a black cat.",           expl:"black cat (adjective before noun)"},
+  {s:"She like to dance.",            errors:[{w:'like',t:'verb-tense'}],                       fix:"She likes to dance.",           expl:"likes (3rd person singular)"},
+  {s:"He go to bed early.",           errors:[{w:'go',t:'verb-tense'}],                         fix:"He goes to bed early.",         expl:"goes (3rd person singular)"},
+  {s:"We eats breakfast every morning.",errors:[{w:'eats',t:'verb-tense'}],                     fix:"We eat breakfast every morning.",expl:"eat (we = no -s)"},
+  {s:"The sky are blue.",             errors:[{w:'are',t:'verb-tense'}],                        fix:"The sky is blue.",              expl:"is (singular subject)"},
+  {s:"She is wearing a shirt red.",   errors:[{w:'shirt',w2:'red',t:'word-order'}],             fix:"She is wearing a red shirt.",   expl:"red shirt (adjective before noun)"},
+  {s:"He have a good job.",           errors:[{w:'have',t:'verb-tense'}],                       fix:"He has a good job.",            expl:"has (3rd person singular)"},
+  {s:"I lives near the school.",      errors:[{w:'lives',t:'verb-tense'}],                      fix:"I live near the school.",       expl:"live (I = no -s)"},
+  {s:"They plays in the park.",       errors:[{w:'plays',t:'verb-tense'}],                      fix:"They play in the park.",        expl:"play (they = no -s)"},
+  {s:"My father work in an office.",  errors:[{w:'work',t:'verb-tense'}],                       fix:"My father works in an office.", expl:"works (3rd person singular)"},
+],
+
+A2: [
+  // ── originals ──
+  {s:"He is going to travell to France.", errors:[{w:'travell',t:'spelling'}],                  fix:"He is going to travel to France.", expl:"travel"},
+  {s:"She recieved a letter.",          errors:[{w:'recieved',t:'spelling'}],                   fix:"She received a letter.",          expl:"received"},
+  {s:"We are haveing lunch.",           errors:[{w:'haveing',t:'spelling'}],                    fix:"We are having lunch.",            expl:"having"},
+  {s:"They livd in London for two years.", errors:[{w:'livd',t:'spelling'}],                    fix:"They lived in London for two years.", expl:"lived"},
+  {s:"I don't beleive it.",             errors:[{w:'beleive',t:'spelling'}],                    fix:"I don't believe it.",             expl:"believe"},
+  {s:"She is studing English.",         errors:[{w:'studing',t:'spelling'}],                    fix:"She is studying English.",        expl:"studying"},
+  {s:"He worrys too much.",             errors:[{w:'worrys',t:'spelling'}],                     fix:"He worries too much.",            expl:"worries"},
+  {s:"They didn't arived yet.",         errors:[{w:'arived',t:'spelling'}],                     fix:"They didn't arrive yet.",         expl:"arrive"},
+  {s:"I writed a long email.",          errors:[{w:'writed',t:'spelling'}],                     fix:"I wrote a long email.",           expl:"wrote"},
+  {s:"She feeled sad.",                 errors:[{w:'feeled',t:'spelling'}],                     fix:"She felt sad.",                   expl:"felt"},
+  {s:"He runs very fastly.",            errors:[{w:'fastly',t:'word-form'}],                    fix:"He runs very fast.",              expl:"fast (adverb, not fastly)"},
+  {s:"She is more taller than her sister.", errors:[{w:'more',t:'word-form'}],                  fix:"She is taller than her sister.",  expl:"taller (no more needed)"},
+  {s:"This is the most easiest question.", errors:[{w:'most',t:'word-form'}],                   fix:"This is the easiest question.",   expl:"easiest (no most needed)"},
+  {s:"He speaks English very good.",    errors:[{w:'good',t:'word-form'}],                      fix:"He speaks English very well.",    expl:"well (adverb)"},
+  {s:"The test was difficulty.",        errors:[{w:'difficulty',t:'word-form'}],                fix:"The test was difficult.",         expl:"difficult (adjective)"},
+  {s:"When I arrived, she already left.",  errors:[{w:'already',w2:'left',t:'verb-tense'}],     fix:"When I arrived, she had already left.", expl:"had already left (past perfect)"},
+  {s:"He don't like coffee.",           errors:[{w:'don\'t',t:'verb-tense'}],                  fix:"He doesn't like coffee.",         expl:"doesn't (3rd person singular)"},
+  {s:"We was watching TV.",             errors:[{w:'was',t:'verb-tense'}],                      fix:"We were watching TV.",            expl:"were"},
+  {s:"She have lived here for years.",  errors:[{w:'have',t:'verb-tense'}],                     fix:"She has lived here for years.",   expl:"has (3rd person singular)"},
+  {s:"I am go to the market.",          errors:[{w:'go',t:'verb-tense'}],                       fix:"I am going to the market.",       expl:"going"},
+  {s:"She always is on time.",          errors:[{w:'always',w2:'is',t:'word-order'}],           fix:"She is always on time.",          expl:"is always (adverb after be)"},
+  {s:"I met friend your yesterday.",    errors:[{w:'friend',w2:'your',t:'word-order'}],         fix:"I met your friend yesterday.",    expl:"your friend (possessive before noun)"},
+  {s:"He goes often to the gym.",       errors:[{w:'goes',w2:'often',t:'word-order'}],          fix:"He often goes to the gym.",       expl:"often goes (frequency adverb before verb)"},
+  {s:"She tried on it.",                errors:[{w:'on',w2:'it',t:'word-order'}],               fix:"She tried it on.",                expl:"tried it on (pronoun before particle)"},
+  {s:"She finished already it.",        errors:[{w:'already',w2:'it',t:'word-order'}],          fix:"She finished it already.",        expl:"it already (already at end with pronoun)"},
+  {s:"She don't recieve emails often.", errors:[{w:'don\'t',t:'verb-tense'},{w:'recieve',t:'spelling'}],fix:"She doesn't receive emails often.",expl:"doesn't / receive"},
+  {s:"He runs more fastly than me.",    errors:[{w:'more',t:'word-form'},{w:'fastly',t:'word-form'}],fix:"He runs faster than me.",      expl:"faster (comparative adverb)"},
+  {s:"We was studing for the test.",    errors:[{w:'was',t:'verb-tense'},{w:'studing',t:'spelling'}],fix:"We were studying for the test.",expl:"were / studying"},
+  {s:"She always is late and feeled bad.", errors:[{w:'always',w2:'is',t:'word-order'},{w:'feeled',t:'spelling'}],fix:"She is always late and felt bad.",expl:"is always / felt"},
+  {s:"He don't beleive you.",           errors:[{w:'don\'t',t:'verb-tense'},{w:'beleive',t:'spelling'}],fix:"He doesn't believe you.",  expl:"doesn't / believe"},
+  // ── error twins of A2 correct sentences ──
+  {s:"I usually wake early up in the morning.", errors:[{w:'early',w2:'up',t:'word-order'}],   fix:"I usually wake up early in the morning.", expl:"wake up (phrasal verb, particle before adverb)"},
+  {s:"She have been to Paris twice.",   errors:[{w:'have',t:'verb-tense'}],                    fix:"She has been to Paris twice.",    expl:"has (3rd person singular)"},
+  {s:"He is go to call you later.",     errors:[{w:'go',t:'verb-tense'}],                       fix:"He is going to call you later.",  expl:"going"},
+  {s:"We didn't saw the film.",         errors:[{w:'saw',t:'verb-tense'}],                      fix:"We didn't see the film.",         expl:"see (base form after did)"},
+  {s:"She was cook when I arrived.",    errors:[{w:'cook',t:'verb-tense'}],                     fix:"She was cooking when I arrived.", expl:"cooking (past continuous)"},
+  {s:"I have already ate lunch.",       errors:[{w:'ate',t:'verb-tense'}],                      fix:"I have already eaten lunch.",     expl:"eaten (past participle)"},
+  {s:"They was playing outside.",       errors:[{w:'was',t:'verb-tense'}],                      fix:"They were playing outside.",      expl:"were (plural)"},
+  {s:"He taked the bus to work.",       errors:[{w:'taked',t:'spelling'}],                      fix:"He took the bus to work.",        expl:"took (past simple)"},
+  {s:"She telled me the news.",         errors:[{w:'telled',t:'verb-tense'}],                   fix:"She told me the news.",           expl:"told (past simple)"},
+  {s:"We meeted at the café yesterday.",errors:[{w:'meeted',t:'verb-tense'}],                   fix:"We met at the café yesterday.",   expl:"met (past simple)"},
+  {s:"I haven't finished yet already.", errors:[{w:'already',t:'word-form'}],                   fix:"I haven't finished yet.",         expl:"yet (not already with negatives)"},
+  {s:"He is learning drive.",           errors:[{w:'drive',t:'verb-tense'}],                    fix:"He is learning to drive.",        expl:"to drive (infinitive)"},
+  {s:"She wore a beauty dress.",        errors:[{w:'beauty',t:'word-form'}],                    fix:"She wore a beautiful dress.",     expl:"beautiful (adjective)"},
+  {s:"They move to a new city last year.", errors:[{w:'move',t:'verb-tense'}],                  fix:"They moved to a new city last year.", expl:"moved (past simple)"},
+  {s:"I need buying some milk.",        errors:[{w:'buying',t:'verb-tense'}],                   fix:"I need to buy some milk.",        expl:"to buy (infinitive after need)"},
+  {s:"He finded his keys in the car.",  errors:[{w:'finded',t:'verb-tense'}],                   fix:"He found his keys in the car.",   expl:"found (past simple)"},
+  {s:"She forget to call me.",          errors:[{w:'forget',t:'verb-tense'}],                   fix:"She forgot to call me.",          expl:"forgot (past simple)"},
+  {s:"We have a great time yesterday.", errors:[{w:'have',t:'verb-tense'}],                     fix:"We had a great time yesterday.",  expl:"had (past simple)"},
+  {s:"He is more tall than his brother.", errors:[{w:'more',t:'word-form'}],                    fix:"He is taller than his brother.",  expl:"taller (comparative adjective)"},
+  {s:"I use to live near the park.",    errors:[{w:'use',t:'verb-tense'}],                      fix:"I used to live near the park.",   expl:"used to"},
+],
+
+B1: [
+  // ── originals ──
+  {s:"The goverment announced new policies.", errors:[{w:'goverment',t:'spelling'}],            fix:"The government announced new policies.", expl:"government"},
+  {s:"She has alot of experience.",     errors:[{w:'alot',t:'spelling'}],                       fix:"She has a lot of experience.",    expl:"a lot (two words)"},
+  {s:"He gave a speech infront of hundreds.", errors:[{w:'infront',t:'spelling'}],              fix:"He gave a speech in front of hundreds.", expl:"in front (two words)"},
+  {s:"The enviroment needs our protection.", errors:[{w:'enviroment',t:'spelling'}],            fix:"The environment needs our protection.", expl:"environment"},
+  {s:"She is definitly the best candidate.", errors:[{w:'definitly',t:'spelling'}],             fix:"She is definitely the best candidate.", expl:"definitely"},
+  {s:"He spoke eloquantly.",            errors:[{w:'eloquantly',t:'spelling'}],                 fix:"He spoke eloquently.",            expl:"eloquently"},
+  {s:"The commitee approved the budget.", errors:[{w:'commitee',t:'spelling'}],                 fix:"The committee approved the budget.", expl:"committee"},
+  {s:"She was greatful for the help.",  errors:[{w:'greatful',t:'spelling'}],                   fix:"She was grateful for the help.",  expl:"grateful"},
+  {s:"He is an independant worker.",    errors:[{w:'independant',t:'spelling'}],                fix:"He is an independent worker.",    expl:"independent"},
+  {s:"They are looking foward to the trip.", errors:[{w:'foward',t:'spelling'}],                fix:"They are looking forward to the trip.", expl:"forward"},
+  {s:"The situation is very differ from last year.", errors:[{w:'differ',t:'word-form'}],       fix:"The situation is very different from last year.", expl:"different (adjective)"},
+  {s:"She acted very profession.",      errors:[{w:'profession',t:'word-form'}],                fix:"She acted very professionally.",  expl:"professionally (adverb)"},
+  {s:"His behave was inappropriate.",   errors:[{w:'behave',t:'word-form'}],                    fix:"His behaviour was inappropriate.", expl:"behaviour (noun)"},
+  {s:"The economy grow is slow.",       errors:[{w:'grow',t:'word-form'}],                      fix:"The economic growth is slow.",    expl:"growth (noun)"},
+  {s:"She is very rely on others.",     errors:[{w:'rely',t:'word-form'}],                      fix:"She is very reliant on others.",  expl:"reliant (adjective)"},
+  {s:"By the time we arrived, they already left.", errors:[{w:'already',w2:'left',t:'verb-tense'}], fix:"By the time we arrived, they had already left.", expl:"had already left (past perfect)"},
+  {s:"She told me she will come.",      errors:[{w:'will',t:'verb-tense'}],                     fix:"She told me she would come.",     expl:"would come (reported speech)"},
+  {s:"He is working here since 2015.",  errors:[{w:'is',w2:'working',t:'verb-tense'}],          fix:"He has been working here since 2015.", expl:"has been working (present perfect continuous)"},
+  {s:"If I knew, I will tell you.",     errors:[{w:'will',t:'verb-tense'}],                     fix:"If I knew, I would tell you.",    expl:"would (second conditional)"},
+  {s:"She uses to live in Paris.",      errors:[{w:'uses',t:'verb-tense'}],                     fix:"She used to live in Paris.",      expl:"used to"},
+  {s:"He just has arrived home.",       errors:[{w:'just',w2:'has',t:'word-order'}],            fix:"He has just arrived home.",       expl:"has just (adverb after auxiliary)"},
+  {s:"She misses rarely class.",        errors:[{w:'misses',w2:'rarely',t:'word-order'}],       fix:"She rarely misses class.",        expl:"rarely misses (frequency adverb before verb)"},
+  {s:"She hasn't yet replied.",         errors:[{w:'yet',w2:'replied',t:'word-order'}],         fix:"She hasn't replied yet.",         expl:"replied yet (yet at end of clause)"},
+  {s:"I have been feeling lately tired.", errors:[{w:'lately',w2:'tired',t:'word-order'}],      fix:"I have been feeling tired lately.", expl:"tired lately"},
+  {s:"They have tried on it before.",   errors:[{w:'on',w2:'it',t:'word-order'}],               fix:"They have tried it on before.",   expl:"tried it on (pronoun before particle)"},
+  {s:"The goverment said they will support.", errors:[{w:'goverment',t:'spelling'},{w:'will',t:'verb-tense'}],fix:"The government said they would support.",expl:"government / would"},
+  {s:"She acted very profession and greatful.", errors:[{w:'profession',t:'word-form'},{w:'greatful',t:'spelling'}],fix:"She acted very professionally and gratefully.",expl:"professionally / gratefully"},
+  {s:"He is working here since 2010 and definitly loves it.", errors:[{w:'is',t:'verb-tense'},{w:'definitly',t:'spelling'}],fix:"He has been working here since 2010 and definitely loves it.",expl:"has been working / definitely"},
+  {s:"His behave was differ from normal.", errors:[{w:'behave',t:'word-form'},{w:'differ',t:'word-form'}],fix:"His behaviour was different from normal.",expl:"behaviour / different"},
+  {s:"She told me she will come and be independant.", errors:[{w:'will',t:'verb-tense'},{w:'independant',t:'spelling'}],fix:"She told me she would come and be independent.",expl:"would / independent"},
+  // ── error twins of B1 correct sentences ──
+  {s:"She is very hardwork.",           errors:[{w:'hardwork',t:'word-form'}],                  fix:"She is very hardworking.",        expl:"hardworking (adjective)"},
+  {s:"He has just arrive home.",        errors:[{w:'arrive',t:'verb-tense'}],                   fix:"He has just arrived home.",       expl:"arrived (past participle)"},
+  {s:"She rarely miss class.",          errors:[{w:'miss',t:'verb-tense'}],                     fix:"She rarely misses class.",        expl:"misses (3rd person singular)"},
+  {s:"I have been feeling tired lately very.", errors:[{w:'lately',w2:'very',t:'word-order'}],  fix:"I have been feeling very tired lately.", expl:"very tired (adverb before adjective)"},
+  {s:"Despite the rain, they continued match the.", errors:[{w:'match',w2:'the',t:'word-order'}],fix:"Despite the rain, they continued the match.", expl:"the match (article before noun)"},
+  {s:"I wish I have more time to study.", errors:[{w:'have',t:'verb-tense'}],                   fix:"I wish I had more time to study.", expl:"had (subjunctive after wish)"},
+  {s:"He suggested that we left early.", errors:[{w:'left',t:'verb-tense'}],                    fix:"He suggested that we leave early.", expl:"leave (subjunctive after suggest)"},
+  {s:"The project was completed ahead schedule of.", errors:[{w:'schedule',w2:'of',t:'word-order'}],fix:"The project was completed ahead of schedule.", expl:"ahead of schedule"},
+  {s:"They are use to working under pressure.", errors:[{w:'use',t:'verb-tense'}],              fix:"They are used to working under pressure.", expl:"used to (adjective phrase)"},
+  {s:"She managed finishing the report on time.", errors:[{w:'finishing',t:'verb-tense'}],      fix:"She managed to finish the report on time.", expl:"to finish (infinitive after manage)"},
+  {s:"He should called before coming.",  errors:[{w:'called',t:'verb-tense'}],                  fix:"He should have called before coming.", expl:"should have called (modal perfect)"},
+  {s:"The results were more better than expected.", errors:[{w:'more',t:'word-form'}],          fix:"The results were better than expected.", expl:"better (no more needed)"},
+  {s:"We need considering all the options.", errors:[{w:'considering',t:'verb-tense'}],         fix:"We need to consider all the options.", expl:"to consider (infinitive after need)"},
+  {s:"She tends working late on Fridays.", errors:[{w:'working',t:'verb-tense'}],               fix:"She tends to work late on Fridays.", expl:"to work (infinitive after tend)"},
+  {s:"He had never visit Rome before.", errors:[{w:'visit',t:'verb-tense'}],                    fix:"He had never visited Rome before.", expl:"visited (past participle)"},
+  {s:"The company has expanded significally.", errors:[{w:'significally',t:'spelling'}],        fix:"The company has expanded significantly.", expl:"significantly"},
+  {s:"She is know for her attention to detail.", errors:[{w:'know',t:'verb-tense'}],            fix:"She is known for her attention to detail.", expl:"known (past participle passive)"},
+  {s:"They agreed meeting the following day.", errors:[{w:'meeting',t:'verb-tense'}],           fix:"They agreed to meet the following day.", expl:"to meet (infinitive after agree)"},
+  {s:"He pointed out several flaws in plan the.", errors:[{w:'plan',w2:'the',t:'word-order'}],  fix:"He pointed out several flaws in the plan.", expl:"the plan (article before noun)"},
+  {s:"We are looking into matter the.", errors:[{w:'matter',w2:'the',t:'word-order'}],          fix:"We are looking into the matter.", expl:"the matter (article before noun)"},
+],
+
+B2: [
+  // ── originals ──
+  {s:"His arguement was not convincing.", errors:[{w:'arguement',t:'spelling'}],                fix:"His argument was not convincing.",  expl:"argument"},
+  {s:"The phenomemon has been widely studied.", errors:[{w:'phenomemon',t:'spelling'}],          fix:"The phenomenon has been widely studied.", expl:"phenomenon"},
+  {s:"She has an excelent reputation.", errors:[{w:'excelent',t:'spelling'}],                   fix:"She has an excellent reputation.", expl:"excellent"},
+  {s:"The concensus among experts is clear.", errors:[{w:'concensus',t:'spelling'}],            fix:"The consensus among experts is clear.", expl:"consensus"},
+  {s:"He is refered to as a pioneer.",  errors:[{w:'refered',t:'spelling'}],                    fix:"He is referred to as a pioneer.",  expl:"referred"},
+  {s:"The ocurrence of such events is rare.", errors:[{w:'ocurrence',t:'spelling'}],            fix:"The occurrence of such events is rare.", expl:"occurrence"},
+  {s:"She is liasoning with several departments.", errors:[{w:'liasoning',t:'spelling'}],       fix:"She is liaising with several departments.", expl:"liaising"},
+  {s:"This is a preceedent-setting case.", errors:[{w:'preceedent-setting',t:'spelling'}],      fix:"This is a precedent-setting case.", expl:"precedent"},
+  {s:"The burocratic process was lengthy.", errors:[{w:'burocratic',t:'spelling'}],             fix:"The bureaucratic process was lengthy.", expl:"bureaucratic"},
+  {s:"She gave an inflamatory speech.", errors:[{w:'inflamatory',t:'spelling'}],                fix:"She gave an inflammatory speech.", expl:"inflammatory"},
+  {s:"The decline is attribute to poor planning.", errors:[{w:'attribute',t:'word-form'}],      fix:"The decline is attributable to poor planning.", expl:"attributable (adjective)"},
+  {s:"Her speak at the conference was remarkable.", errors:[{w:'speak',t:'word-form'}],         fix:"Her speech at the conference was remarkable.", expl:"speech (noun)"},
+  {s:"They need to strength their position.", errors:[{w:'strength',t:'word-form'}],            fix:"They need to strengthen their position.", expl:"strengthen (verb)"},
+  {s:"The critic acclaimed film won three awards.", errors:[{w:'critic',t:'word-form'}],        fix:"The critically acclaimed film won three awards.", expl:"critically (adverb)"},
+  {s:"She argued persistent for change.", errors:[{w:'persistent',t:'word-form'}],              fix:"She argued persistently for change.", expl:"persistently (adverb)"},
+  {s:"Had I known, I will have helped.", errors:[{w:'will',w2:'have',t:'verb-tense'}],          fix:"Had I known, I would have helped.", expl:"would have (third conditional)"},
+  {s:"She is reported to earn over a million.", errors:[{w:'to',w2:'earn',t:'verb-tense'}],     fix:"She is reported to have earned over a million.", expl:"to have earned (perfect infinitive in passive)"},
+  {s:"The results were better than expect.", errors:[{w:'expect',t:'verb-tense'}],              fix:"The results were better than expected.", expl:"expected (past participle)"},
+  {s:"They have been argued about it for days.", errors:[{w:'argued',t:'verb-tense'}],          fix:"They have been arguing about it for days.", expl:"arguing (present participle)"},
+  {s:"No sooner she arrived than it started.", errors:[{w:'no',w2:'she',t:'verb-tense'}],       fix:"No sooner had she arrived than it started.", expl:"had she (inversion after no sooner)"},
+  {s:"Under no circumstances we should compromise.", errors:[{w:'we',w2:'should',t:'word-order'}],fix:"Under no circumstances should we compromise.", expl:"should we (inversion after negative)"},
+  {s:"She put off it until Friday.",    errors:[{w:'off',w2:'it',t:'word-order'}],              fix:"She put it off until Friday.",      expl:"put it off (pronoun before particle)"},
+  {s:"They carried out it efficiently.", errors:[{w:'out',w2:'it',t:'word-order'}],             fix:"They carried it out efficiently.", expl:"carried it out (pronoun before particle)"},
+  {s:"She has spoken rarely about the issue.", errors:[{w:'spoken',w2:'rarely',t:'word-order'}],fix:"She has rarely spoken about the issue.", expl:"rarely spoken (adverb after auxiliary)"},
+  {s:"Never I have seen such talent.",  errors:[{w:'I',w2:'have',t:'word-order'}],              fix:"Never have I seen such talent.",   expl:"have I (inversion after negative adverb)"},
+  {s:"Had I known, I will have helped and felt greatful.", errors:[{w:'will',t:'verb-tense'},{w:'greatful',t:'spelling'}],fix:"Had I known, I would have helped and felt grateful.",expl:"would have / grateful"},
+  {s:"Her speak at the concensus meeting was notable.", errors:[{w:'speak',t:'word-form'},{w:'concensus',t:'spelling'}],fix:"Her speech at the consensus meeting was notable.",expl:"speech / consensus"},
+  {s:"Under no circumstances we should compromise or behave arguement.", errors:[{w:'we',w2:'should',t:'word-order'},{w:'arguement',t:'spelling'}],fix:"Under no circumstances should we compromise or behave argumentatively.",expl:"should we / argument"},
+  {s:"They need to strength and excelent manage.", errors:[{w:'strength',t:'word-form'},{w:'excelent',t:'spelling'}],fix:"They need to strengthen and excellently manage.",expl:"strengthen / excellently"},
+  {s:"The critic acclaimed film is attribute to her vision.", errors:[{w:'critic',t:'word-form'},{w:'attribute',t:'word-form'}],fix:"The critically acclaimed film is attributable to her vision.",expl:"critically / attributable"},
+  // ── error twins of B2 correct sentences ──
+  {s:"Not only she failed, she refused to try.", errors:[{w:'she',w2:'failed',t:'word-order'}], fix:"Not only did she fail, she refused to try.", expl:"did she (inversion after not only)"},
+  {s:"She took the criticism personal.", errors:[{w:'personal',t:'word-form'}],                 fix:"She took the criticism personally.", expl:"personally (adverb)"},
+  {s:"He identified the problem quick.", errors:[{w:'quick',t:'word-form'}],                    fix:"He identified the problem quickly.", expl:"quickly (adverb)"},
+  {s:"Seldom she makes the same mistake twice.", errors:[{w:'she',w2:'makes',t:'word-order'}],  fix:"Seldom does she make the same mistake twice.", expl:"does she (inversion after seldom)"},
+  {s:"The report was more comprehensive than anticipate.", errors:[{w:'anticipate',t:'verb-tense'}],fix:"The report was more comprehensive than anticipated.", expl:"anticipated (past participle)"},
+  {s:"She has consistent outperformed her peers.", errors:[{w:'consistent',t:'word-form'}],     fix:"She has consistently outperformed her peers.", expl:"consistently (adverb)"},
+  {s:"The implications of this decision are far-reach.", errors:[{w:'far-reach',t:'word-form'}],fix:"The implications of this decision are far-reaching.", expl:"far-reaching (adjective)"},
+  {s:"He was reluctant admitting his mistake.", errors:[{w:'admitting',t:'verb-tense'}],        fix:"He was reluctant to admit his mistake.", expl:"to admit (infinitive after reluctant)"},
+  {s:"The committee reached an unanimous decision.", errors:[{w:'an',t:'word-form'}],           fix:"The committee reached a unanimous decision.", expl:"a unanimous (u- sounds like 'y')"},
+  {s:"She demonstrated an exceptional grasp of subject the.", errors:[{w:'subject',w2:'the',t:'word-order'}],fix:"She demonstrated an exceptional grasp of the subject.", expl:"the subject"},
+  {s:"The policy has been met with wide criticism.", errors:[{w:'wide',t:'word-form'}],         fix:"The policy has been met with widespread criticism.", expl:"widespread (adjective)"},
+  {s:"He tends underestimate the complexity of the task.", errors:[{w:'underestimate',t:'verb-tense'}],fix:"He tends to underestimate the complexity of the task.", expl:"to underestimate (infinitive after tend)"},
+  {s:"The findings coroborate the initial hypothesis.", errors:[{w:'coroborate',t:'spelling'}],  fix:"The findings corroborate the initial hypothesis.", expl:"corroborate"},
+  {s:"She was commend for her innovative approach.", errors:[{w:'commend',t:'verb-tense'}],     fix:"She was commended for her innovative approach.", expl:"commended (past participle passive)"},
+  {s:"He is wide regarded as an authority on the subject.", errors:[{w:'wide',t:'word-form'}],  fix:"He is widely regarded as an authority on the subject.", expl:"widely (adverb)"},
+  {s:"She articulate her position clearly and confidently.", errors:[{w:'articulate',t:'verb-tense'}],fix:"She articulated her position clearly and confidently.", expl:"articulated (past simple)"},
+  {s:"The data suggest a strong correlation between the two variables.", errors:[{w:'suggest',t:'verb-tense'}],fix:"The data suggests a strong correlation between the two variables.", expl:"suggests (singular subject)"},
+  {s:"He acknowledge the shortcomings of his earlier work.", errors:[{w:'acknowledge',t:'verb-tense'}],fix:"He acknowledged the shortcomings of his earlier work.", expl:"acknowledged (past simple)"},
+  {s:"The negotiations broke down over clause a single.", errors:[{w:'clause',w2:'a',t:'word-order'}],fix:"The negotiations broke down over a single clause.", expl:"a single clause (article before adjective)"},
+  {s:"The proposal was met with considerable resistance unexpected.", errors:[{w:'resistance',w2:'unexpected',t:'word-order'}],fix:"The proposal was met with considerable unexpected resistance.", expl:"unexpected resistance (adjective before noun)"},
+]
+
+};
+
+// ─── CORRECT SENTENCES (no errors) ──────────────────────────
+const CORRECT_SENTENCES = {
+A1: [
+  // ── originals (standalone correct sentences) ──
+  "I have a blue pen.",
+  "She is my friend.",
+  "He has a big dog.",
+  "The cat is white.",
+  "I like apples.",
+  "We go to school.",
+  "She has a nice dress.",
+  "I see a house.",
+  "He is a teacher.",
+  "My brother is tall.",
+  "She is very happy.",
+  "The food is tasty.",
+  "This is a good day.",
+  "The music is beautiful.",
+  "My sister is a kind person.",
+  "I went to the park yesterday.",
+  "She bought a new bag.",
+  "We ate pizza last night.",
+  "He came to school yesterday.",
+  "I saw a film last Saturday.",
+  "I have a red car.",
+  "She has blue eyes.",
+  "He has a fast car.",
+  "I have a new dress.",
+  "She has a big brother.",
+  "They are my friends.",
+  "We live in a small house.",
+  "He plays football every day.",
+  "She drinks coffee in the morning.",
+  "I read a book at night.",
+  "The children are in the garden.",
+  "My mother is a good cook.",
+  "He has two sisters.",
+  "She wants a glass of water.",
+  "We watch TV after dinner.",
+  "The dog runs fast.",
+  "I like chocolate ice cream.",
+  "She has long hair.",
+  "He is twelve years old.",
+  "We are happy today.",
+  "I have a black cat.",
+  "She likes to dance.",
+  "He goes to bed early.",
+  "We eat breakfast every morning.",
+  "The sky is blue.",
+  "She is wearing a red shirt.",
+  "He has a good job.",
+  "I live near the school.",
+  "They play in the park.",
+  "My father works in an office.",
+  // ── correct twins of A1 error sentences ──
+  "I have a blue pen.",
+  "She is my friend.",
+  "He has a book.",
+  "The cat is white.",
+  "I like apples.",
+  "We go to school.",
+  "The dog is big.",
+  "She has a nice dress.",
+  "I see a house.",
+  "He is a teacher.",
+  "She is very beautiful.",
+  "The food is tasty.",
+  "This is a happy day.",
+  "The music is beautiful.",
+  "My brother is a kind person.",
+  "Yesterday I went to the park.",
+  "She bought a new bag.",
+  "We ate pizza last night.",
+  "He came to school yesterday.",
+  "I saw a film last Saturday.",
+  "I have a red car.",
+  "She has blue eyes.",
+  "He has a fast car.",
+  "I have a new dress.",
+  "She has a big brother.",
+  "She goes to the school.",
+  "I bought a nice shirt.",
+  "He has a blue car.",
+  "We ate a tasty cake.",
+  "She is very beautiful and kind.",
+],
+A2: [
+  // ── originals ──
+  "He is going to travel to France.",
+  "She received a letter.",
+  "We are having lunch.",
+  "They lived in London for two years.",
+  "I don't believe it.",
+  "She is studying English.",
+  "He worries too much.",
+  "They didn't arrive yet.",
+  "I wrote a long email.",
+  "She felt sad.",
+  "He runs very fast.",
+  "She is taller than her sister.",
+  "This is the easiest question.",
+  "He speaks English very well.",
+  "The test was difficult.",
+  "When I arrived, she had already left.",
+  "He doesn't like coffee.",
+  "We were watching TV.",
+  "She has lived here for years.",
+  "I am going to the market.",
+  "She is always on time.",
+  "I met your friend yesterday.",
+  "He often goes to the gym.",
+  "She tried it on.",
+  "She finished it already.",
+  "She doesn't receive emails often.",
+  "He runs faster than me.",
+  "We were studying for the test.",
+  "She is always late and felt bad.",
+  "He doesn't believe you.",
+  "I usually wake up at seven.",
+  "She has been to Paris twice.",
+  "He is going to call you later.",
+  "We didn't see the film.",
+  "She was cooking when I arrived.",
+  "I have already eaten lunch.",
+  "They were playing outside.",
+  "He took the bus to work.",
+  "She told me the news.",
+  "We met at the café yesterday.",
+  "I haven't finished yet.",
+  "He is learning to drive.",
+  "She wore a beautiful dress.",
+  "They moved to a new city.",
+  "I need to buy some milk.",
+  "He found his keys in the car.",
+  "She forgot to call me.",
+  "We had a great time.",
+  "He is taller than his brother.",
+  "I used to live near the park.",
+  // ── correct twins of A2 error sentences ──
+  "He is going to travel to France.",
+  "She received a letter.",
+  "We are having lunch.",
+  "They lived in London for two years.",
+  "I don't believe it.",
+  "She is studying English.",
+  "He worries too much.",
+  "They didn't arrive yet.",
+  "I wrote a long email.",
+  "She felt sad.",
+  "He runs very fast.",
+  "She is taller than her sister.",
+  "This is the easiest question.",
+  "He speaks English very well.",
+  "The test was difficult.",
+  "When I arrived, she had already left.",
+  "He doesn't like coffee.",
+  "We were watching TV.",
+  "She has lived here for years.",
+  "I am going to the market.",
+  "She is always on time.",
+  "I met your friend yesterday.",
+  "He often goes to the gym.",
+  "She tried it on.",
+  "She finished it already.",
+  "She doesn't receive emails often.",
+  "He runs faster than me.",
+  "We were studying for the test.",
+  "She is always late and felt bad.",
+  "He doesn't believe you.",
+],
+B1: [
+  // ── originals ──
+  "The government announced new policies.",
+  "She has a lot of experience.",
+  "He gave a speech in front of hundreds.",
+  "The environment needs our protection.",
+  "She is definitely the best candidate.",
+  "He spoke eloquently.",
+  "The committee approved the budget.",
+  "She was grateful for the help.",
+  "He is an independent worker.",
+  "They are looking forward to the trip.",
+  "The situation is very different from last year.",
+  "She acted very professionally.",
+  "His behaviour was inappropriate.",
+  "The economic growth is slow.",
+  "She is very reliant on others.",
+  "By the time we arrived, they had already left.",
+  "She told me she would come.",
+  "He has been working here since 2015.",
+  "If I knew, I would tell you.",
+  "She used to live in Paris.",
+  "She is very hardworking.",
+  "He has just arrived home.",
+  "She rarely misses class.",
+  "She hasn't replied yet.",
+  "I have been feeling tired lately.",
+  "They have tried it on before.",
+  "The government said they would support.",
+  "She acted very professionally and gratefully.",
+  "He has been working here since 2010 and definitely loves it.",
+  "His behaviour was different from normal.",
+  "She told me she would come and be independent.",
+  "Despite the rain, they continued the match.",
+  "She would have helped if she had known.",
+  "I wish I had more time to study.",
+  "He suggested that we leave early.",
+  "The project was completed ahead of schedule.",
+  "They are used to working under pressure.",
+  "She managed to finish the report on time.",
+  "He should have called before coming.",
+  "The results were better than expected.",
+  "We need to consider all the options.",
+  "She tends to work late on Fridays.",
+  "He had never visited Rome before.",
+  "The company has expanded significantly.",
+  "She is known for her attention to detail.",
+  "They agreed to meet the following day.",
+  "He pointed out several flaws in the plan.",
+  "We are looking into the matter.",
+  "I have already told you.",
+  "She rarely misses class.",
+  // ── correct twins of B1 error sentences ──
+  "The government announced new policies.",
+  "She has a lot of experience.",
+  "He gave a speech in front of hundreds.",
+  "The environment needs our protection.",
+  "She is definitely the best candidate.",
+  "He spoke eloquently.",
+  "The committee approved the budget.",
+  "She was grateful for the help.",
+  "He is an independent worker.",
+  "They are looking forward to the trip.",
+  "The situation is very different from last year.",
+  "She acted very professionally.",
+  "His behaviour was inappropriate.",
+  "The economic growth is slow.",
+  "She is very reliant on others.",
+  "By the time we arrived, they had already left.",
+  "She told me she would come.",
+  "He has been working here since 2015.",
+  "If I knew, I would tell you.",
+  "She used to live in Paris.",
+  "He has just arrived home.",
+  "She rarely misses class.",
+  "She hasn't replied yet.",
+  "I have been feeling tired lately.",
+  "They have tried it on before.",
+  "The government said they would support.",
+  "She acted very professionally and gratefully.",
+  "He has been working here since 2010 and definitely loves it.",
+  "His behaviour was different from normal.",
+  "She told me she would come and be independent.",
+],
+B2: [
+  // ── originals ──
+  "His argument was not convincing.",
+  "The phenomenon has been widely studied.",
+  "She has an excellent reputation.",
+  "The consensus among experts is clear.",
+  "He is referred to as a pioneer.",
+  "The occurrence of such events is rare.",
+  "She is liaising with several departments.",
+  "This is a precedent-setting case.",
+  "The bureaucratic process was lengthy.",
+  "She gave an inflammatory speech.",
+  "The decline is attributable to poor planning.",
+  "Her speech at the conference was remarkable.",
+  "They need to strengthen their position.",
+  "The critically acclaimed film won three awards.",
+  "She argued persistently for change.",
+  "Had I known, I would have helped.",
+  "She is reported to have earned over a million.",
+  "The results were better than expected.",
+  "They have been arguing about it for days.",
+  "No sooner had she arrived than it started.",
+  "Under no circumstances should we compromise.",
+  "She put it off until Friday.",
+  "They carried it out efficiently.",
+  "She has rarely spoken about the issue.",
+  "Never have I seen such talent.",
+  "Had I known, I would have helped and felt grateful.",
+  "Her speech at the consensus meeting was notable.",
+  "Under no circumstances should we compromise or behave argumentatively.",
+  "They need to strengthen and excellently manage.",
+  "The critically acclaimed film is attributable to her vision.",
+  "Not only did she fail, she refused to try.",
+  "She took the criticism personally.",
+  "He identified the problem quickly.",
+  "Seldom does she make the same mistake twice.",
+  "The report was more comprehensive than anticipated.",
+  "She has consistently outperformed her peers.",
+  "The implications of this decision are far-reaching.",
+  "He was reluctant to admit his mistake.",
+  "The committee reached a unanimous decision.",
+  "She demonstrated an exceptional grasp of the subject.",
+  "The policy has been met with widespread criticism.",
+  "He tends to underestimate the complexity of the task.",
+  "The findings corroborate the initial hypothesis.",
+  "She was commended for her innovative approach.",
+  "The negotiations broke down over a single clause.",
+  "He is widely regarded as an authority on the subject.",
+  "The proposal was met with considerable resistance.",
+  "She articulated her position clearly and confidently.",
+  "The data suggests a strong correlation between the two variables.",
+  "He acknowledged the shortcomings of his earlier work.",
+  // ── correct twins of B2 error sentences ──
+  "His argument was not convincing.",
+  "The phenomenon has been widely studied.",
+  "She has an excellent reputation.",
+  "The consensus among experts is clear.",
+  "He is referred to as a pioneer.",
+  "The occurrence of such events is rare.",
+  "She is liaising with several departments.",
+  "This is a precedent-setting case.",
+  "The bureaucratic process was lengthy.",
+  "She gave an inflammatory speech.",
+  "The decline is attributable to poor planning.",
+  "Her speech at the conference was remarkable.",
+  "They need to strengthen their position.",
+  "The critically acclaimed film won three awards.",
+  "She argued persistently for change.",
+  "Had I known, I would have helped.",
+  "She is reported to have earned over a million.",
+  "The results were better than expected.",
+  "They have been arguing about it for days.",
+  "No sooner had she arrived than it started.",
+  "Under no circumstances should we compromise.",
+  "She put it off until Friday.",
+  "They carried it out efficiently.",
+  "She has rarely spoken about the issue.",
+  "Never have I seen such talent.",
+  "Had I known, I would have helped and felt grateful.",
+  "Her speech at the consensus meeting was notable.",
+  "Under no circumstances should we compromise or behave argumentatively.",
+  "They need to strengthen and excellently manage.",
+  "The critically acclaimed film is attributable to her vision.",
+],
+};
+
+
+function resolveIndices(raw) {
+  const result = {};
+  for (const level in raw) {
+    result[level] = raw[level].map(entry => {
+      const tokens = tokenize(entry.s);
+      const words = tokens.map(t => t.word.toLowerCase().replace(/['"",]/g,''));
+
+      const errors = entry.errors.map(err => {
+        if (err.t === 'word-order') {
+          const w1 = err.w.toLowerCase().replace(/['"",]/g,'');
+          const w2 = err.w2.toLowerCase().replace(/['"",]/g,'');
+          let i1 = words.indexOf(w1);
+          let i2 = words.indexOf(w2);
+          if (i1 === -1) i1 = words.findIndex(w => w.startsWith(w1.substring(0,4)));
+          if (i2 === -1) i2 = words.findIndex(w => w.startsWith(w2.substring(0,4)));
+          return { i: i1, i2: i2, t: 'word-order' };
+        } else {
+          const w = err.w.toLowerCase().replace(/['"",]/g,'');
+          let idx = words.indexOf(w);
+          if (idx === -1) idx = words.findIndex(word => word.startsWith(w.substring(0,4)));
+          if (err.w2 !== undefined) {
+            const w2 = err.w2.toLowerCase().replace(/['"",]/g,'');
+            let idx2 = words.indexOf(w2);
+            if (idx2 === -1) idx2 = words.findIndex(word => word.startsWith(w2.substring(0,4)));
+            return { i: idx, i2: idx2, t: err.t };
+          }
+          return { i: idx, t: err.t };
+        }
+      });
+      return { s: entry.s, errors, fix: entry.fix, expl: entry.expl, correct: false };
+    });
+  }
+  return result;
+}
+
+function buildPool(level) {
+  const errorSents = SENTENCES[level];
+  const correctSents = (CORRECT_SENTENCES[level] || []).map(s => ({
+    s, errors: [], fix: s, expl: "This sentence has no mistakes!", correct: true
+  }));
+  return [...errorSents, ...correctSents];
+}
+
+// Build a shuffled queue of n sentences guaranteeing 40–100% are error sentences.
+function buildQueue(level, n) {
+  const pool = buildPool(level);
+  const errorPool   = pool.filter(s => !s.correct);
+  const correctPool = pool.filter(s => s.correct);
+
+  // Clamp: at least 40% errors, at most 100%
+  const minErrors = Math.ceil(n * 0.4);
+  const maxErrors = n;
+  // Pick a random count between min and max, but never ALL correct
+  const numErrors  = minErrors + Math.floor(Math.random() * (maxErrors - minErrors + 1));
+  const numCorrect = n - numErrors;
+
+  // Shuffle helpers
+  const shuffle = arr => {
+    const a = [...arr]; 
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  // Pick without repetition, cycling if needed
+  const pick = (src, count) => {
+    const shuffled = shuffle(src);
+    const result = [];
+    while (result.length < count) {
+      result.push(...shuffled.slice(0, count - result.length));
+    }
+    return result.slice(0, count);
+  };
+
+  const chosen = [
+    ...pick(errorPool, numErrors),
+    ...pick(correctPool, numCorrect),
+  ];
+  return shuffle(chosen);
+}
+
+const SENTENCES = resolveIndices(SENTENCES_RAW);
+
+// ═══════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════
+let state = {
+  level: 'A1',
+  roundsPerTeam: 5,
+  numTeams: 2,
+  teams: [],
+  scores: [],
+  currentTeamIdx: 0,
+  currentRound: 1,   // global round counter (each team plays once = 1 turn each = 1 cycle)
+  totalRounds: 0,    // roundsPerTeam * numTeams
+  turnsPlayed: 0,
+  usedSentences: [],
+  sentenceQueue: [],
+  currentSentence: null,
+  selectedLabel: null,
+  taggedWords: {},  // wordIdx -> {type, ...}
+  woFirstWord: null,
+  submitted: false,
+  correctChecked: false,
+};
+
+// ─── Start screen logic ───────────────────────────────────────
+
+let cfgLevel = 'A1';
+let cfgRounds = 5;
+let cfgNumTeams = 2;
+
+document.querySelectorAll('#level-pills .pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#level-pills .pill').forEach(x => x.classList.remove('selected'));
+    p.classList.add('selected');
+    cfgLevel = p.dataset.level;
+  });
+});
+
+function updateRoundsDisplay() { document.getElementById('rounds-display').textContent = cfgRounds; }
+document.getElementById('rounds-down').addEventListener('click', () => { if (cfgRounds > 1) { cfgRounds--; updateRoundsDisplay(); } });
+document.getElementById('rounds-up').addEventListener('click', () => { if (cfgRounds < 20) { cfgRounds++; updateRoundsDisplay(); } });
+
+function updateTeamsDisplay() {
+  document.getElementById('teams-display').textContent = cfgNumTeams;
+  renderTeamInputs();
+}
+document.getElementById('teams-down').addEventListener('click', () => { if (cfgNumTeams > 1) { cfgNumTeams--; updateTeamsDisplay(); } });
+document.getElementById('teams-up').addEventListener('click', () => { if (cfgNumTeams < 4) { cfgNumTeams++; updateTeamsDisplay(); } });
+
+function renderTeamInputs() {
+  const container = document.getElementById('team-inputs');
+  const existing = [...container.querySelectorAll('input')].map(i => i.value);
+  container.innerHTML = '';
+  for (let i = 0; i < cfgNumTeams; i++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'team-input-wrap';
+    wrap.innerHTML = `<label>Team ${i+1}</label><input type="text" placeholder="Team ${i+1}" value="${existing[i] || ''}">`;
+    container.appendChild(wrap);
+  }
+}
+renderTeamInputs();
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  const inputs = document.querySelectorAll('#team-inputs input');
+  const names = [...inputs].map((inp, i) => inp.value.trim() || `Team ${i+1}`);
+
+  state.level = cfgLevel;
+  state.roundsPerTeam = cfgRounds;
+  state.numTeams = cfgNumTeams;
+  state.teams = names;
+  state.scores = new Array(cfgNumTeams).fill(0);
+  state.currentTeamIdx = 0;
+  state.currentRound = 1;
+  state.totalRounds = cfgRounds * cfgNumTeams;
+  state.turnsPlayed = 0;
+  state.usedSentences = [];
+  state.sentenceQueue = buildQueue(cfgLevel, state.totalRounds);
+
+  document.getElementById('round-total').textContent = cfgRounds;
+  document.getElementById('level-display').textContent = cfgLevel;
+
+  showScreen('game');
+  buildScoreboard();
+  nextTurn();
+});
+
+// ─── Screen switcher ─────────────────────────────────────────
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// ─── Scoreboard ───────────────────────────────────────────────
+
+function buildScoreboard() {
+  const sb = document.getElementById('scoreboard');
+  sb.innerHTML = state.teams.map((name, i) => `
+    <div class="score-card ${i === state.currentTeamIdx ? 'active-team' : ''}" id="sc-${i}">
+      <div class="tname">${name}</div>
+      <div class="tscore" id="score-${i}">${state.scores[i]}</div>
+    </div>
+  `).join('');
+}
+
+function refreshScoreboard() {
+  state.teams.forEach((_, i) => {
+    document.getElementById(`score-${i}`).textContent = state.scores[i];
+    document.getElementById(`sc-${i}`).classList.toggle('active-team', i === state.currentTeamIdx);
+  });
+}
+
+// ─── Next turn ───────────────────────────────────────────────
+
+function nextTurn() {
+  // Check game over
+  if (state.turnsPlayed >= state.totalRounds) {
+    showResults();
+    return;
+  }
+
+  // Pick round number for display (how many times this team has played)
+  const teamTurnsPlayed = Math.floor(state.turnsPlayed / state.numTeams) + 1;
+  const globalCycle = Math.floor(state.turnsPlayed / state.numTeams) + 1;
+  document.getElementById('round-num').textContent = globalCycle;
+
+  // Reset UI
+  state.selectedLabel = null;
+  state.taggedWords = {};
+  state.woFirstWord = null;
+  state.submitted = false;
+  state.correctChecked = false;
+  const correctCb = document.getElementById('correct-checkbox');
+  if (correctCb) { correctCb.checked = false; correctCb.disabled = false; }
+  document.getElementById('correct-check-wrap').classList.remove('disabled');
+
+  document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('feedback-panel').classList.remove('visible');
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('submit-btn').style.display = '';
+  document.getElementById('submit-btn').disabled = false;
+
+  // Current team
+  document.getElementById('current-team-name').textContent = state.teams[state.currentTeamIdx];
+  refreshScoreboard();
+
+  // Pick sentence from pre-planned queue
+  state.currentSentence = state.sentenceQueue[state.turnsPlayed] || buildQueue(state.level, 1)[0];
+
+  renderSentence();
+}
+
+// ─── Render sentence ─────────────────────────────────────────
+
+function tokenize(sentence) {
+  // Split preserving punctuation attached to words
+  const raw = sentence.split(/\s+/);
+  return raw.map(tok => {
+    const match = tok.match(/^(.*?)([.,!?;:'""]*)$/);
+    return { word: match[1], punct: match[2] };
+  });
+}
+
+function renderSentence() {
+  const box = document.getElementById('sentence-box');
+  box.innerHTML = '';
+  const tokens = tokenize(state.currentSentence.s);
+  tokens.forEach((tok, i) => {
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.dataset.idx = i;
+    span.innerHTML = tok.word + (tok.punct ? `<span class="punct">${tok.punct}</span>` : '');
+    span.addEventListener('click', () => onWordClick(i, span));
+    box.appendChild(span);
+  });
+}
+
+// ─── Label selection ─────────────────────────────────────────
+
+document.querySelectorAll('.label-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (state.submitted) return;
+    const t = btn.dataset.type;
+    if (state.selectedLabel === t) {
+      state.selectedLabel = null;
+      btn.classList.remove('selected');
+    } else {
+      document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('selected'));
+      state.selectedLabel = t;
+      btn.classList.add('selected');
+      state.woFirstWord = null; // reset word-order first pick if label changes
+    }
+  });
+});
+
+// ─── Correct checkbox ─────────────────────────────────────────
+
+document.getElementById('correct-checkbox').addEventListener('change', function() {
+  if (state.submitted) return;
+  state.correctChecked = this.checked;
+  if (this.checked) {
+    // Clear all word tags and deselect labels
+    Object.keys(state.taggedWords).forEach(k => untagWord(parseInt(k)));
+    state.taggedWords = {};
+    state.woFirstWord = null;
+    document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('selected'));
+    state.selectedLabel = null;
+  }
+});
+
+function onWordClick(idx, span) {
+  if (state.submitted) return;
+  if (!state.selectedLabel) return;
+
+  // Tagging a word means "there IS a mistake" — uncheck CORRECT
+  if (state.correctChecked) {
+    state.correctChecked = false;
+    document.getElementById('correct-checkbox').checked = false;
+  }
+
+  const type = state.selectedLabel;
+
+  if (type === 'word-order') {
+    if (state.woFirstWord === null) {
+      // If already tagged as word-order, untag
+      if (state.taggedWords[idx] && state.taggedWords[idx].type === 'word-order') {
+        untagWord(idx);
+        return;
+      }
+      state.woFirstWord = idx;
+      tagWord(idx, 'word-order', 'wo-first');
+    } else {
+      if (state.woFirstWord === idx) {
+        untagWord(idx);
+        state.woFirstWord = null;
+        return;
+      }
+      // Second word
+      tagWord(idx, 'word-order', 'wo-second');
+      state.taggedWords[idx] = { type: 'word-order', pair: state.woFirstWord };
+      state.taggedWords[state.woFirstWord] = { type: 'word-order', pair: idx };
+      state.woFirstWord = null;
+    }
+    return;
+  }
+
+  // Toggle: if already tagged with same type, remove
+  if (state.taggedWords[idx] && state.taggedWords[idx].type === type) {
+    untagWord(idx);
+    return;
+  }
+
+  // Tag with current type (overwrite)
+  tagWord(idx, type);
+}
+
+function tagWord(idx, type, extraClass) {
+  const span = document.querySelector(`.word[data-idx="${idx}"]`);
+  if (!span) return;
+  span.className = 'word tagged-' + type + (extraClass ? ' ' + extraClass : '');
+  state.taggedWords[idx] = { type };
+}
+
+function untagWord(idx) {
+  const span = document.querySelector(`.word[data-idx="${idx}"]`);
+  if (!span) return;
+  span.className = 'word';
+  delete state.taggedWords[idx];
+}
+
+// ─── Submit ───────────────────────────────────────────────────
+
+document.getElementById('submit-btn').addEventListener('click', () => {
+  if (state.submitted) return;
+  state.submitted = true;
+
+  const sentence = state.currentSentence;
+  const errors = sentence.errors;
+  const numErrors = errors.length;
+  const isCorrectSentence = sentence.correct === true;
+
+  let pointsEarned = 0;
+  let breakdown = [];
+
+  // ── CORRECT SENTENCE BRANCH ──────────────────────────────────
+  if (isCorrectSentence) {
+    if (state.correctChecked && Object.keys(state.taggedWords).length === 0) {
+      // Team correctly identified no mistakes
+      pointsEarned = 100;
+      breakdown.push('✓ Correctly identified as error-free: +100');
+      // Flash the whole sentence green
+      document.querySelectorAll('.word').forEach(w => w.classList.add('correct-tag'));
+    } else if (!state.correctChecked && Object.keys(state.taggedWords).length === 0) {
+      // Team submitted nothing — neither checkbox nor tags
+      pointsEarned = 0;
+      breakdown.push('✗ No answer given: +0');
+      document.querySelectorAll('.word').forEach(w => {
+        w.className = 'word tagged-spelling wrong-tag';
+      });
+    } else {
+      // Team tagged words on a correct sentence — all wrong
+      pointsEarned = 0;
+      const numWrong = Object.keys(state.taggedWords).length;
+      breakdown.push(`✗ Marked ${numWrong} word(s) as errors on a correct sentence: +0`);
+      Object.keys(state.taggedWords).forEach(k => {
+        const sp = document.querySelector(`.word[data-idx="${k}"]`);
+        if (sp) sp.classList.add('wrong-tag');
+      });
+    }
+
+  // ── ERROR SENTENCE BRANCH ────────────────────────────────────
+  } else {
+    if (state.correctChecked) {
+      // Team said "correct" but sentence has errors — 0 pts, reveal mistakes
+      pointsEarned = 0;
+      breakdown.push('✗ Marked as correct but sentence has mistakes: +0');
+    } else {
+      const playerTags = {};
+      Object.entries(state.taggedWords).forEach(([k, v]) => { playerTags[parseInt(k)] = v.type; });
+
+      errors.forEach(err => {
+        const maxPerError = numErrors === 1 ? 100 : 50;
+
+        if (err.t === 'word-order') {
+          const firstTagged = playerTags[err.i] === 'word-order';
+          const secondTagged = playerTags[err.i2] === 'word-order';
+          if (firstTagged && secondTagged) {
+            pointsEarned += maxPerError;
+            breakdown.push(`✓ Word order (${getWordText(err.i)} / ${getWordText(err.i2)}): +${maxPerError}`);
+          } else if (firstTagged || secondTagged) {
+            const partial = Math.round(maxPerError * 0.5);
+            pointsEarned += partial;
+            breakdown.push(`~ Word order partially identified: +${partial}`);
+          } else {
+            breakdown.push(`✗ Missed word order mistake: +0`);
+          }
+        } else if (err.i2 !== undefined) {
+          const tag1 = playerTags[err.i];
+          const tag2 = playerTags[err.i2];
+          const correct1 = tag1 === err.t;
+          const correct2 = tag2 === err.t;
+          const wrong1 = tag1 && tag1 !== err.t;
+          const wrong2 = tag2 && tag2 !== err.t;
+          const tagged1 = !!tag1;
+          const tagged2 = !!tag2;
+          if (correct1 && correct2) {
+            pointsEarned += maxPerError;
+            breakdown.push(`✓ ${labelName(err.t)} on "${getWordText(err.i)} + ${getWordText(err.i2)}": +${maxPerError}`);
+          } else if (correct1 || correct2) {
+            const partial = Math.round(maxPerError * 0.6);
+            pointsEarned += partial;
+            const which = correct1 ? getWordText(err.i) : getWordText(err.i2);
+            breakdown.push(`~ ${labelName(err.t)}: only "${which}" tagged (verb phrase needs both words): +${partial}`);
+          } else if ((wrong1 && tagged2) || (tagged1 && wrong2)) {
+            const partial = Math.round(maxPerError * 0.3);
+            pointsEarned += partial;
+            breakdown.push(`~ Right words, wrong label: +${partial}`);
+          } else if (wrong1 || wrong2) {
+            const partial = Math.round(maxPerError * 0.2);
+            pointsEarned += partial;
+            breakdown.push(`~ One word found, wrong label: +${partial}`);
+          } else {
+            breakdown.push(`✗ Missed ${labelName(err.t)} on "${getWordText(err.i)} ${getWordText(err.i2)}": +0`);
+          }
+        } else {
+          const pTag = playerTags[err.i];
+          if (pTag === err.t) {
+            pointsEarned += maxPerError;
+            breakdown.push(`✓ ${labelName(err.t)} on "${getWordText(err.i)}": +${maxPerError}`);
+          } else if (pTag && pTag !== err.t) {
+            const partial = Math.round(maxPerError * 0.5);
+            pointsEarned += partial;
+            breakdown.push(`~ Right word, wrong label ("${getWordText(err.i)}" tagged as ${labelName(pTag)}): +${partial}`);
+          } else {
+            breakdown.push(`✗ Missed ${labelName(err.t)} on "${getWordText(err.i)}": +0`);
+          }
+        }
+      });
+
+      // Penalty for false positives
+      const correctWordIdxs = new Set();
+      errors.forEach(e => { correctWordIdxs.add(e.i); if (e.i2 !== undefined) correctWordIdxs.add(e.i2); });
+      let wrongTags = 0;
+      Object.keys(playerTags).forEach(k => {
+        if (!correctWordIdxs.has(parseInt(k))) wrongTags++;
+      });
+      if (wrongTags > 0) {
+        const penalty = wrongTags * 10;
+        pointsEarned = Math.max(0, pointsEarned - penalty);
+        breakdown.push(`✗ ${wrongTags} incorrect word(s) tagged: -${penalty}`);
+      }
+    }
+
+    // Show word-level feedback for error sentences
+    const playerTags2 = {};
+    Object.entries(state.taggedWords).forEach(([k, v]) => { playerTags2[parseInt(k)] = v.type; });
+    showWordFeedback(errors, playerTags2);
+  }
+
+  pointsEarned = Math.max(0, pointsEarned);
+  state.scores[state.currentTeamIdx] += pointsEarned;
+
+  // Feedback panel
+  document.getElementById('points-awarded').textContent = `+${pointsEarned} pts`;
+  document.getElementById('points-breakdown').textContent = breakdown.join('  |  ');
+  document.getElementById('corrected-sentence').innerHTML = isCorrectSentence
+    ? `<span style="color:var(--word-order)">✓ ${sentence.s}</span>`
+    : buildCorrectedHTML(sentence);
+
+  document.getElementById('feedback-panel').classList.add('visible');
+  document.getElementById('submit-btn').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'block';
+
+  // Disable checkbox after submit
+  document.getElementById('correct-checkbox').disabled = true;
+  document.getElementById('correct-check-wrap').classList.add('disabled');
+
+  refreshScoreboard();
+  state.turnsPlayed++;
+});
+
+function getWordText(idx) {
+  const span = document.querySelector(`.word[data-idx="${idx}"]`);
+  if (!span) return '';
+  return span.childNodes[0].textContent.trim();
+}
+
+function labelName(t) {
+  return {spelling:'Spelling','word-form':'Word Form','verb-tense':'Verb Tense','word-order':'Word Order'}[t] || t;
+}
+
+function showWordFeedback(errors, playerTags) {
+  const correctIdxs = new Set();
+  errors.forEach(e => { correctIdxs.add(e.i); if (e.i2 !== undefined) correctIdxs.add(e.i2); });
+
+  // Mark each error word
+  errors.forEach(err => {
+    if (err.t === 'word-order') {
+      [err.i, err.i2].forEach(idx => {
+        const span = document.querySelector(`.word[data-idx="${idx}"]`);
+        if (!span) return;
+        const isTagged = playerTags[idx] === 'word-order';
+        if (isTagged) span.classList.add('correct-tag');
+        else { span.className = 'word tagged-word-order'; span.classList.add('wrong-tag'); }
+      });
+    } else if (err.i2 !== undefined) {
+      // Multi-word verb phrase error — handle each word individually
+      [err.i, err.i2].forEach(idx => {
+        const span = document.querySelector(`.word[data-idx="${idx}"]`);
+        if (!span) return;
+        if (playerTags[idx] === err.t) {
+          span.classList.add('correct-tag');
+        } else if (playerTags[idx]) {
+          span.classList.add('wrong-tag');
+        } else {
+          span.className = `word tagged-${err.t} wrong-tag`;
+        }
+      });
+    } else {
+      const span = document.querySelector(`.word[data-idx="${err.i}"]`);
+      if (!span) return;
+      if (playerTags[err.i] === err.t) {
+        span.classList.add('correct-tag');
+      } else if (playerTags[err.i]) {
+        span.classList.add('wrong-tag');
+      } else {
+        // Show where the missed mistake was
+        span.className = `word tagged-${err.t} wrong-tag`;
+      }
+    }
+  });
+
+  // Mark incorrectly tagged words (false positives)
+  Object.keys(playerTags).forEach(k => {
+    const idx = parseInt(k);
+    if (!correctIdxs.has(idx)) {
+      const span = document.querySelector(`.word[data-idx="${idx}"]`);
+      if (span) span.classList.add('wrong-tag');
+    }
+  });
+}
+
+function buildCorrectedHTML(sentence) {
+  const tokens = tokenize(sentence.fix);
+  const errTokens = tokenize(sentence.s);
+  // Find which indices changed
+  const changedIdxs = new Set();
+  sentence.errors.forEach(e => {
+    changedIdxs.add(e.i);
+    if (e.i2 !== undefined) changedIdxs.add(e.i2);
+  });
+
+  return tokens.map((tok, i) => {
+    const changed = changedIdxs.has(i) || (errTokens[i] && errTokens[i].word !== tok.word);
+    const errType = sentence.errors.find(e => e.i === i || e.i2 === i);
+    const cls = errType ? errType.t : '';
+    if (changed) {
+      return `<span class="fix ${cls}">${tok.word}</span>${tok.punct}`;
+    }
+    return tok.word + tok.punct;
+  }).join(' ');
+}
+
+// ─── Next button ─────────────────────────────────────────────
+
+document.getElementById('next-btn').addEventListener('click', () => {
+  // Move to next team
+  state.currentTeamIdx = (state.currentTeamIdx + 1) % state.numTeams;
+  nextTurn();
+});
+
+// ─── Results screen ───────────────────────────────────────────
+
+function showResults() {
+  showScreen('results');
+
+  const ranked = state.teams.map((name, i) => ({ name, score: state.scores[i] }))
+    .sort((a, b) => b.score - a.score);
+
+  // Podium (top 3)
+  const podium = document.getElementById('podium');
+  podium.innerHTML = '';
+  const maxScore = ranked[0].score || 1;
+  const order = ranked.length >= 3 ? [1, 0, 2] : (ranked.length === 2 ? [1, 0] : [0]);
+  order.forEach(rank => {
+    if (!ranked[rank]) return;
+    const { name, score } = ranked[rank];
+    const heightPct = [100, 75, 55][rank] || 55;
+    const barH = Math.max(60, Math.round((score / maxScore) * 140));
+    const item = document.createElement('div');
+    item.className = 'podium-item';
+    item.innerHTML = `
+      <div class="podium-name">${name}</div>
+      <div class="podium-score">${score}</div>
+      <div class="podium-bar rank-${rank + 1}" style="height:${barH}px">
+        <div class="rank-num">${rank + 1}</div>
+      </div>`;
+    podium.appendChild(item);
+  });
+
+  // Table
+  const tbody = document.getElementById('results-tbody');
+  tbody.innerHTML = ranked.map((r, i) => `
+    <tr><td>${i + 1}</td><td>${r.name}</td><td>${r.score}</td></tr>
+  `).join('');
+}
+</script>
+</body>
+</html>

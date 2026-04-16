@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Up! — Team Ranking Game</title>
+<style>
+  :root {
+    --bg:#1a1a2e;--bg2:#16213e;--bg3:#0f3460;
+    --accent:#e94560;--accent2:#f5a623;--green:#2ecc71;
+    --text:#eaeaea;--muted:#888;--card:#1e2a45;
+    --border:rgba(255,255,255,0.12);--bw:400px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;overflow-x:hidden;}
+  .screen{display:none;min-height:100vh;}
+  .screen.active{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem;}
+
+  /* SETUP */
+  #setup{background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 100%);}
+  .logo{font-size:3.5rem;font-weight:800;letter-spacing:-2px;margin-bottom:.25rem;}
+  .logo span{color:var(--accent);}
+  .tagline{color:var(--muted);font-size:1rem;margin-bottom:2.5rem;}
+  .setup-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:2rem;width:100%;max-width:560px;}
+  .setup-section{margin-bottom:1.8rem;}
+  .setup-section:last-child{margin-bottom:0;}
+  .setup-label{font-size:.75rem;font-weight:600;letter-spacing:1px;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;}
+  .row-btns{display:flex;gap:.5rem;}
+  .cnt-btn,.tim-btn{flex:1;padding:.6rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;cursor:pointer;transition:all .15s;}
+  .cnt-btn:hover,.tim-btn:hover{background:var(--bg3);}
+  .cnt-btn.sel{background:var(--accent);border-color:var(--accent);font-weight:700;}
+  .tim-btn.sel{background:var(--accent2);color:#1a1a1a;border-color:var(--accent2);font-weight:700;}
+  .team-names-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+  .team-input-wrap{display:flex;align-items:center;gap:.5rem;}
+  .team-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .team-input{width:100%;padding:.5rem .75rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.95rem;}
+  .team-input:focus{outline:none;border-color:var(--accent2);}
+  .start-btn{width:100%;padding:1rem;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:1rem;transition:transform .1s,opacity .1s;}
+  .start-btn:hover{opacity:.9;}
+  .start-btn:active{transform:scale(.98);}
+
+  /* GAME */
+  #game{background:var(--bg);padding:0;align-items:stretch;justify-content:flex-start;}
+  .game-layout{display:flex;flex-direction:column;height:100vh;width:100%;max-width:900px;margin:0 auto;}
+  .top-bar{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:.5rem;}
+  .turn-info{display:flex;flex-direction:column;}
+  .turn-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+  .turn-name{font-size:1.1rem;font-weight:700;}
+  .cat-pill{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.4rem 1rem;font-size:.85rem;color:var(--accent2);font-weight:600;text-align:center;flex:1;max-width:360px;}
+  .timer{font-size:1.6rem;font-weight:800;min-width:56px;text-align:right;}
+  .timer.warn{color:var(--accent);}
+  .scores-bar{display:flex;gap:.5rem;padding:.5rem 1rem;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
+  .score-chip{display:flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:20px;border:1px solid var(--border);font-size:.85rem;white-space:nowrap;}
+  .score-chip .sd{width:8px;height:8px;border-radius:50%;}
+  .score-chip.act{border-width:2px;}
+  .game-main{display:flex;flex:1;overflow:hidden;}
+  .tray{width:160px;flex-shrink:0;padding:.75rem .5rem;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:.4rem;overflow-y:auto;}
+  .tray-lbl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:0 .25rem .3rem;border-bottom:1px solid var(--border);margin-bottom:.2rem;}
+  .piece{padding:.55rem .65rem;border-radius:8px;cursor:grab;user-select:none;font-size:.82rem;font-weight:600;border:1px solid rgba(255,255,255,.15);transition:transform .1s,opacity .1s;text-align:center;line-height:1.3;}
+  .piece:active{cursor:grabbing;transform:scale(1.04);}
+  .piece.dragging{opacity:.3;}
+  .piece.placed{opacity:.4;cursor:not-allowed;font-style:italic;background:rgba(255,255,255,.04)!important;border-color:transparent!important;color:var(--muted)!important;}
+  .board-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:.75rem;overflow:hidden;}
+  .board-wrap{display:flex;gap:8px;align-items:center;}
+  .axis{display:flex;flex-direction:column;align-items:center;justify-content:space-between;width:28px;flex-shrink:0;}
+  .axis-lbl{font-size:.6rem;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:1px;}
+  .axis-line{width:2px;flex:1;background:linear-gradient(to top,rgba(255,255,255,.1),rgba(255,255,255,.3));border-radius:1px;margin:4px 0;}
+  .board{display:flex;flex-direction:column;gap:4px;}
+  .board-row{width:var(--bw);height:52px;background:var(--bg2);border:1.5px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;transition:background .1s,border-color .1s;}
+  .board-row.filled{border-style:solid;}
+  .board-row.hover{background:rgba(233,69,96,.15);border-color:var(--accent);}
+  .rnum{position:absolute;left:8px;font-size:.65rem;color:var(--muted);}
+  .bpiece{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.85rem;font-weight:700;cursor:grab;padding:0 2.5rem;text-align:center;line-height:1.3;}
+  .bpiece:active{cursor:grabbing;}
+  .rhint{font-size:.7rem;color:var(--muted);position:absolute;right:8px;}
+  .board-hint{font-size:.7rem;color:var(--muted);margin-top:.5rem;text-align:center;}
+  .action-bar{display:flex;gap:.5rem;padding:.75rem 1rem;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;}
+  .abtn{flex:1;padding:.75rem;border:1.5px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s;}
+  .abtn:hover{background:var(--bg3);}
+  .abtn.primary{background:var(--accent);border-color:var(--accent);}
+  .abtn.primary:hover{opacity:.85;}
+
+  /* GUESS SCREEN */
+  #guess-screen{background:var(--bg);}
+  .mid-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;width:100%;max-width:520px;}
+  .mc-title{font-size:1.1rem;font-weight:700;margin-bottom:.25rem;text-align:center;}
+  .mc-sub{font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:1.25rem;}
+  .active-band{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:var(--bg2);border-radius:10px;margin-bottom:1.25rem;font-weight:600;}
+  .gs-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;}
+  .gs-team{display:flex;align-items:center;gap:.5rem;flex:1;}
+  .gs-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .gs-name{font-size:.9rem;font-weight:600;}
+  .gs-btns{display:flex;gap:.3rem;}
+  .gs-btn{width:36px;height:32px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;font-weight:700;cursor:pointer;transition:all .12s;}
+  .gs-btn:hover{background:var(--bg3);}
+  .gs-btn.sel{background:var(--accent2);color:#1a1a1a;border-color:var(--accent2);}
+  .big-btn{width:100%;padding:.85rem;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:1.25rem;}
+  .big-btn:hover{opacity:.88;}
+  .skip-lnk{text-align:center;margin-top:.6rem;font-size:.8rem;color:var(--muted);cursor:pointer;text-decoration:underline;}
+
+  /* REVEAL */
+  #reveal{background:var(--bg);}
+  .rv-cat{font-size:.9rem;color:var(--accent2);font-weight:600;margin-bottom:1rem;text-align:center;}
+  .rv-list{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.25rem;}
+  .rv-row{display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:8px;font-size:.9rem;}
+  .rv-row.ok{background:rgba(46,204,113,.15);border:1px solid rgba(46,204,113,.3);}
+  .rv-row.no{background:rgba(233,69,96,.12);border:1px solid rgba(233,69,96,.25);}
+  .rv-pos{font-size:.75rem;color:var(--muted);min-width:70px;}
+  .rv-ico{font-size:1rem;min-width:18px;}
+  .rv-name{flex:1;font-weight:600;}
+  .rv-fix{font-size:.75rem;color:var(--muted);}
+  .big-score{text-align:center;font-size:2rem;font-weight:800;margin-bottom:.2rem;}
+  .big-score span{color:var(--green);}
+  .big-score-sub{text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;}
+  .gr-section{border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem;}
+  .gr-title{font-size:.75rem;font-weight:600;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;}
+  .gr-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;font-size:.9rem;}
+  .gr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .gr-name{flex:1;}
+  .gr-guess{font-weight:700;}
+  .gr-pts{font-size:.8rem;padding:2px 8px;border-radius:10px;font-weight:700;}
+  .gr-pts.hit{background:rgba(46,204,113,.2);color:#2ecc71;}
+  .gr-pts.miss{background:rgba(233,69,96,.15);color:var(--accent);}
+
+  /* SCORES */
+  #scores{background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 100%);}
+  .sc-title{font-size:2rem;font-weight:800;margin-bottom:.25rem;}
+  .sc-title span{color:var(--accent);}
+  .sc-sub{color:var(--muted);margin-bottom:2rem;font-size:.9rem;}
+  .leaderboard{width:100%;max-width:480px;display:flex;flex-direction:column;gap:.6rem;margin-bottom:2rem;}
+  .lb-row{display:flex;align-items:center;gap:1rem;padding:.85rem 1.2rem;background:var(--card);border:1px solid var(--border);border-radius:12px;}
+  .lb-rank{font-size:1.3rem;min-width:28px;}
+  .lb-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+  .lb-name{flex:1;font-weight:600;font-size:1rem;}
+  .lb-score{font-size:1.3rem;font-weight:800;color:var(--accent2);}
+  .sc-btns{display:flex;gap:.75rem;}
+  .sb{padding:.8rem 2rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;border:none;}
+  .sb.next{background:var(--accent);color:#fff;}
+  .sb.end{background:transparent;color:var(--muted);border:1px solid var(--border);}
+
+  #ghost{position:fixed;pointer-events:none;z-index:9999;display:none;padding:.55rem .9rem;border-radius:8px;font-size:.82rem;font-weight:700;color:#fff;opacity:.92;transform:translate(-50%,-50%);white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+</style>
+</head>
+<body>
+<div id="ghost"></div>
+
+<!-- ═══ SETUP ═══ -->
+<div id="setup" class="screen active">
+  <div class="logo">Order <span>Up!</span></div>
+  <div class="tagline">Drag items into the correct order — fastest team wins!</div>
+  <div class="setup-card">
+    <div class="setup-section">
+      <div class="setup-label">Number of Teams</div>
+      <div class="row-btns" id="cnt-btns">
+        <button class="cnt-btn" data-n="1">1</button>
+        <button class="cnt-btn" data-n="2">2</button>
+        <button class="cnt-btn sel" data-n="3">3</button>
+        <button class="cnt-btn" data-n="4">4</button>
+        <button class="cnt-btn" data-n="5">5</button>
+        <button class="cnt-btn" data-n="6">6</button>
+      </div>
+    </div>
+    <div class="setup-section">
+      <div class="setup-label">Team Names</div>
+      <div class="team-names-grid" id="names-grid"></div>
+    </div>
+    <div class="setup-section">
+      <div class="setup-label">Timer per Round</div>
+      <div class="row-btns" id="tim-btns">
+        <button class="tim-btn" data-t="60">1 min</button>
+        <button class="tim-btn sel" data-t="120">2 min</button>
+        <button class="tim-btn" data-t="180">3 min</button>
+      </div>
+    </div>
+    <button class="start-btn" id="start-btn">Let's Play!</button>
+  </div>
+</div>
+
+<!-- ═══ GAME ═══ -->
+<div id="game" class="screen">
+  <div class="game-layout">
+    <div class="top-bar">
+      <div class="turn-info">
+        <span class="turn-label">Playing</span>
+        <span class="turn-name" id="turn-name"></span>
+      </div>
+      <div class="cat-pill" id="cat-pill"></div>
+      <div class="timer" id="timer">2:00</div>
+    </div>
+    <div class="scores-bar" id="scores-bar"></div>
+    <div class="game-main">
+      <div class="tray">
+        <div class="tray-lbl">Items to place</div>
+        <div id="tray-items"></div>
+      </div>
+      <div class="board-area">
+        <div class="board-wrap">
+          <div class="axis" id="axis" style="height:calc(7*52px + 6*4px);">
+            <div class="axis-lbl">HIGHEST</div>
+            <div class="axis-line"></div>
+            <div class="axis-lbl">LOWEST</div>
+          </div>
+          <div class="board" id="board"></div>
+        </div>
+        <div class="board-hint">Drag items from the tray into any row &bull; Drag to rearrange</div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="abtn" id="clear-btn">Clear Board</button>
+      <button class="abtn primary" id="submit-btn">Submit Answer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GUESS ═══ -->
+<div id="guess-screen" class="screen">
+  <div class="mid-card">
+    <div class="mc-title">Before the reveal…</div>
+    <div class="mc-sub">How many did they get right? Correct guess = +3 pts!</div>
+    <div class="active-band" id="active-band"></div>
+    <div id="gs-rows"></div>
+    <button class="big-btn" id="gs-reveal-btn">Reveal the Answer!</button>
+    <div class="skip-lnk" id="gs-skip">Skip guessing →</div>
+  </div>
+</div>
+
+<!-- ═══ REVEAL ═══ -->
+<div id="reveal" class="screen">
+  <div class="mid-card">
+    <div class="rv-cat" id="rv-cat"></div>
+    <div class="rv-list" id="rv-list"></div>
+    <div class="big-score" id="big-score"><span>0</span>/5</div>
+    <div class="big-score-sub" id="big-score-sub"></div>
+    <div class="gr-section" id="gr-section"></div>
+    <button class="big-btn" id="rv-next-btn">View Scoreboard →</button>
+  </div>
+</div>
+
+<!-- ═══ SCORES ═══ -->
+<div id="scores" class="screen">
+  <div class="sc-title">Score<span>board</span></div>
+  <div class="sc-sub" id="sc-sub">After round 1</div>
+  <div class="leaderboard" id="leaderboard"></div>
+  <div class="sc-btns">
+    <button class="sb next" id="next-btn">Next Round →</button>
+    <button class="sb end" id="end-btn">End Game</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// DATABASE — 100 fun, teen-friendly categories
+// ans[]: indices into items[] sorted ascending (0=lowest/least/fewest/slowest/cheapest)
+// ════════════════════════════════════════
+const DB=[
+  // ANIMALS
+  {cat:"Weight of these animals (lightest → heaviest)",items:["Chihuahua","Golden Retriever","Giant Panda","Polar Bear","Hippo"],ans:[0,1,2,3,4]},
+  {cat:"Height of these animals (shortest → tallest)",items:["Penguin","Wolf","Horse","Camel","Giraffe"],ans:[0,1,2,3,4]},
+  {cat:"Top speed (slowest → fastest)",items:["Elephant","Human sprinter","Greyhound","Cheetah","Peregrine Falcon (dive)"],ans:[0,1,2,3,4]},
+  {cat:"Lifespan (shortest → longest)",items:["Hamster","Dog","Lion","Elephant","Giant Tortoise"],ans:[0,1,2,3,4]},
+  {cat:"Weight of these sea creatures (lightest → heaviest)",items:["Goldfish","Octopus","Dolphin","Great White Shark","Blue Whale"],ans:[0,1,2,3,4]},
+  {cat:"How long they sleep per day (least → most)",items:["Elephant","Human","Cat","Koala","Sloth"],ans:[0,1,2,3,4]},
+  {cat:"Pregnancy length (shortest → longest)",items:["Hamster","Cat","Human","Cow","Elephant"],ans:[0,1,2,3,4]},
+  {cat:"Wingspan (smallest → largest)",items:["Hummingbird","Robin","Crow","Bald Eagle","Wandering Albatross"],ans:[0,1,2,3,4]},
+  {cat:"How long they can hold their breath (shortest → longest)",items:["Human (untrained)","Dog","Dolphin","Sea Turtle","Sperm Whale"],ans:[0,1,2,3,4]},
+  // FOOD
+  {cat:"Caffeine per cup/can (least → most)",items:["Decaf coffee","Green tea","Coca-Cola (330ml)","Red Bull (250ml)","Espresso shot"],ans:[0,1,2,3,4]},
+  {cat:"Calories in one serving (fewest → most)",items:["Apple","Banana","Slice of pizza","Big Mac","Large slice of chocolate cake"],ans:[0,1,2,3,4]},
+  {cat:"Sugar in a standard serving (least → most)",items:["Water","Sparkling water","Orange juice","Gatorade","Coca-Cola can"],ans:[0,1,2,3,4]},
+  {cat:"Spiciness on the Scoville scale (mildest → hottest)",items:["Bell pepper","Jalapeño","Habanero","Ghost pepper","Carolina Reaper"],ans:[0,1,2,3,4]},
+  {cat:"Big Mac price — cheapest country first",items:["India","South Africa","Brazil","United Kingdom","Switzerland"],ans:[0,1,2,3,4]},
+  // SPORTS
+  {cat:"Weight of these sports balls (lightest → heaviest)",items:["Table tennis ball","Tennis ball","Baseball","Basketball","Bowling ball"],ans:[0,1,2,3,4]},
+  {cat:"All-time Olympic gold medals (fewest → most)",items:["Brazil","Australia","France","Germany","USA"],ans:[0,1,2,3,4]},
+  {cat:"Average player salary by league (lowest → highest)",items:["MLS (soccer)","NHL (ice hockey)","NFL (American football)","MLB (baseball)","NBA (basketball)"],ans:[0,1,2,3,4]},
+  {cat:"Length of playing field/court (shortest → longest)",items:["Table tennis table","Badminton court","Tennis court","Basketball court","American football field"],ans:[0,1,2,3,4]},
+  {cat:"World record 100m times — slowest → fastest (highest → lowest seconds)",items:["Harold Abrahams 1924","Jesse Owens 1936","Carl Lewis 1991","Asafa Powell","Usain Bolt"],ans:[4,3,2,1,0]},
+  // SOCIAL MEDIA & TECH
+  {cat:"Instagram followers (fewest → most)",items:["Billie Eilish","Ariana Grande","Lionel Messi","Kylie Jenner","Cristiano Ronaldo"],ans:[0,1,2,3,4]},
+  {cat:"TikTok followers (fewest → most)",items:["Katy Perry","Will Smith","Selena Gomez","Khaby Lame","Charli D'Amelio"],ans:[0,1,2,3,4]},
+  {cat:"When these platforms launched (oldest → newest)",items:["TikTok","Instagram","Snapchat","Twitter","Facebook"],ans:[4,3,2,1,0]},
+  {cat:"Most downloaded apps all-time (fewest → most downloads)",items:["Snapchat","Twitter","YouTube","Facebook","TikTok"],ans:[0,1,2,3,4]},
+  {cat:"YouTube subscribers (fewest → most)",items:["MKBHD (Marques Brownlee)","PewDiePie","Cocomelon","MrBeast","T-Series"],ans:[0,1,2,4,3]},
+  {cat:"Storage capacity (smallest → largest)",items:["Floppy disk","CD","DVD","Blu-Ray","Modern USB stick (common)"],ans:[0,1,2,3,4]},
+  {cat:"Year released — oldest game first",items:["Fortnite","Minecraft","GTA V","Call of Duty (first game)","Super Mario Bros"],ans:[4,3,2,1,0]},
+  // Super Mario 1985, CoD 2003, Minecraft 2011, GTA V 2013, Fortnite 2017
+  {cat:"Screen size (smallest → largest)",items:["Apple Watch","iPhone 15","iPad","MacBook Pro 14\"","Samsung 75\" TV"],ans:[0,1,2,3,4]},
+  // MOVIES & TV
+  {cat:"Box office earnings (lowest → highest)",items:["Shrek 2","The Lion King 2019","Titanic","Avengers: Endgame","Avatar"],ans:[0,1,2,3,4]},
+  {cat:"Movie budget (smallest → biggest)",items:["Paranormal Activity","Napoleon Dynamite","Jaws","Inception","Avengers: Endgame"],ans:[0,1,2,3,4]},
+  {cat:"Number of seasons (fewest → most)",items:["Game of Thrones","Stranger Things","Friends","Grey's Anatomy","The Simpsons"],ans:[1,0,2,3,4]},
+  {cat:"Age of these fictional characters (youngest → oldest)",items:["Simba (The Lion King, start)","Harry Potter (book 1)","Bart Simpson","Homer Simpson","Grandpa Simpson"],ans:[0,1,2,3,4]},
+  {cat:"Rotten Tomatoes score — lowest → highest",items:["Cats 2019","Batman v Superman","Morbius","Shrek","The Dark Knight"],ans:[1,0,2,3,4]},
+  // MUSIC
+  {cat:"Spotify streams of these songs (fewest → most)",items:["Smells Like Teen Spirit","Bohemian Rhapsody","Shape of You","Blinding Lights","As It Was"],ans:[0,1,2,3,4]},
+  {cat:"Grammy Awards won (fewest → most)",items:["Olivia Rodrigo","Lady Gaga","Taylor Swift","Beyoncé","Georg Solti (classical)"],ans:[0,1,2,3,4]},
+  {cat:"Length of these songs (shortest → longest)",items:["You Suffer — Napalm Death","Happy Birthday","Bohemian Rhapsody","American Pie","In-A-Gadda-Da-Vida"],ans:[0,1,2,3,4]},
+  {cat:"Age when they released their debut album (youngest first)",items:["Michael Jackson (Jackson 5)","Stevie Wonder","Billie Eilish","Justin Bieber","Taylor Swift"],ans:[0,1,2,3,4]},
+  // MJ ~10, Wonder ~12, Bieber ~16, Eilish ~17, Swift ~17
+  {cat:"Number of studio albums released (fewest → most)",items:["Olivia Rodrigo","Billie Eilish","Ariana Grande","Taylor Swift","Eminem"],ans:[0,1,2,3,4]},
+  // GEOGRAPHY
+  {cat:"Population of these countries (smallest → largest)",items:["Australia","Brazil","USA","India","China"],ans:[0,1,2,3,4]},
+  {cat:"Land area (smallest → largest)",items:["UK","India","USA","China","Russia"],ans:[0,1,2,3,4]},
+  {cat:"Population of these cities (smallest → largest)",items:["Amsterdam","Chicago","Istanbul","Tokyo","Shanghai"],ans:[0,1,2,3,4]},
+  {cat:"Average height of men — shortest country first",items:["Indonesia","India","Brazil","USA","Netherlands"],ans:[0,1,2,3,4]},
+  {cat:"Number of tourists per year (fewest → most)",items:["Brazil","UK","China","Spain","France"],ans:[0,1,2,3,4]},
+  // CELEBRITIES
+  {cat:"Estimated net worth (lowest → highest)",items:["Dwayne Johnson","Kim Kardashian","Jay-Z","Elon Musk","Jeff Bezos"],ans:[0,1,2,3,4]},
+  {cat:"Age — youngest first",items:["Billie Eilish","Zendaya","Selena Gomez","Beyoncé","Rihanna"],ans:[0,1,2,3,4]},
+  {cat:"Height (shortest → tallest)",items:["Kevin Hart","Bruno Mars","Ariana Grande","Taylor Swift","LeBron James"],ans:[0,1,2,3,4]},
+  {cat:"Age when they became famous (youngest first)",items:["Justin Bieber","Billie Eilish","Miley Cyrus","Ed Sheeran","Adele"],ans:[0,2,1,3,4]},
+  // VIDEO GAMES
+  {cat:"Copies sold all-time (fewest → most)",items:["Among Us","Minecraft","Wii Sports","GTA V","Tetris (all versions)"],ans:[0,1,2,3,4]},
+  {cat:"Year these consoles launched — oldest first",items:["PlayStation 5","Nintendo Switch","Xbox One","PlayStation 3","Nintendo 64"],ans:[4,3,2,1,0]},
+  {cat:"Number of games in these franchises (fewest → most)",items:["God of War","Uncharted","Mario Kart","The Legend of Zelda","Call of Duty"],ans:[0,1,2,3,4]},
+  {cat:"Launch price in USD (cheapest → most expensive)",items:["Nintendo DS","PlayStation 2","PlayStation 4","PlayStation 5","Atari 2600 (inflation-adjusted)"],ans:[0,1,2,3,4]},
+  // SCIENCE & SPACE
+  {cat:"Distance from Earth (closest → farthest)",items:["Moon","Mars","Jupiter","Nearest star (Alpha Centauri)","Andromeda Galaxy"],ans:[0,1,2,3,4]},
+  {cat:"Planet size (smallest → largest)",items:["Mercury","Mars","Venus","Neptune","Jupiter"],ans:[0,1,2,3,4]},
+  {cat:"Temperature — coldest first",items:["Dry ice surface","North Pole in winter","Room temperature","Human body","Surface of the Sun"],ans:[0,1,2,3,4]},
+  {cat:"Speed — slowest first",items:["Walking human","Cheetah","Speed of sound","Bullet from rifle","Speed of light"],ans:[0,1,2,3,4]},
+  // MONEY & BRANDS
+  {cat:"Company value / market cap (lowest → highest)",items:["Spotify","Netflix","Nike","Google","Apple"],ans:[0,1,2,3,4]},
+  {cat:"Luxury item price (cheapest → most expensive)",items:["Louis Vuitton wallet","Rolex Submariner","Hermès Birkin bag","Bugatti Chiron","Private island (average)"],ans:[0,1,2,3,4]},
+  {cat:"Yearly revenue (lowest → highest)",items:["Twitter/X","Spotify","Netflix","McDonald's","Walmart"],ans:[0,1,2,3,4]},
+  {cat:"Price of a movie ticket in the USA — oldest era first",items:["1950s USA","1970s USA","1990s USA","2010 USA","2024 USA IMAX"],ans:[0,1,2,3,4]},
+  // EVERYDAY LIFE
+  {cat:"Average salary of these jobs — lowest first",items:["Fast food worker","Primary school teacher","Police officer","Software engineer","Brain surgeon"],ans:[0,1,2,3,4]},
+  {cat:"Years of education required (shortest → longest)",items:["Hairdresser","Police officer","Nurse","Lawyer","Brain surgeon"],ans:[0,1,2,3,4]},
+  {cat:"Monthly rent in these cities — cheapest first",items:["Detroit USA","Warsaw Poland","Berlin Germany","London UK","New York City USA"],ans:[0,1,2,3,4]},
+  {cat:"How long phone battery lasts — shortest first",items:["Apple Watch","AirPods","iPhone","iPad","MacBook Pro"],ans:[0,1,2,3,4]},
+  // HISTORY
+  {cat:"Duration of these wars — shortest first",items:["Anglo-Zanzibar War","Six-Day War","Falklands War","Vietnam War","Hundred Years' War"],ans:[0,1,2,3,4]},
+  {cat:"Age of these ancient structures — newest first (built most recently)",items:["Notre-Dame Cathedral","Colosseum in Rome","Parthenon in Athens","Great Wall of China (first parts)","Pyramids of Giza"],ans:[0,1,2,3,4]},
+  {cat:"How long these leaders were in power — shortest first",items:["Liz Truss (UK PM)","Abdurrahman Wahid (Indonesia)","Boris Johnson (UK PM)","Angela Merkel (Germany)","Fidel Castro (Cuba)"],ans:[0,1,2,3,4]},
+  // FUN
+  {cat:"Most-viewed YouTube videos — fewest views first",items:["PSY — Gangnam Style","See You Again — Wiz Khalifa","Despacito — Luis Fonsi","Baby Shark — Pinkfong","Baby Shark — Pinkfong 2nd upload"],ans:[3,0,2,4,1]},
+  {cat:"Stadium capacity — smallest first",items:["Wimbledon Centre Court","Madison Square Garden","Wembley Stadium","Camp Nou (Barcelona)","Rungrado (North Korea)"],ans:[0,1,2,3,4]},
+  {cat:"Sneaker price — cheapest first",items:["Converse Chuck Taylor","Nike Air Force 1","Air Jordan 1 (retail)","Nike Air Yeezy 2","Air Jordan 1 Travis Scott (resale avg)"],ans:[0,1,2,3,4]},
+  {cat:"Number of episodes — fewest first",items:["Death Note","Attack on Titan (all seasons)","Fullmetal Alchemist: Brotherhood","Dragon Ball Z","One Piece"],ans:[0,1,2,3,4]},
+  {cat:"Followers on X / Twitter — fewest first",items:["Kim Kardashian","Justin Bieber","Elon Musk","Barack Obama","Katy Perry"],ans:[0,1,2,3,4]},
+  {cat:"Video game price at launch — cheapest first",items:["Angry Birds (original mobile)","Minecraft (mobile)","Switch game (standard)","PlayStation 5 game","World of Warcraft + year sub"],ans:[0,1,2,3,4]},
+  {cat:"Length of these famous walls / routes — shortest first",items:["Hollywood Walk of Fame","Las Vegas Strip","Hadrian's Wall","Route 66","Great Wall of China (all)"],ans:[0,1,2,3,4]},
+  {cat:"Weight of these everyday objects — lightest first",items:["Post-it note","Dollar bill","iPhone","Laptop","Car tire"],ans:[0,1,2,3,4]},
+  {cat:"How fast these things travel (slowest → fastest)",items:["Snail","Cycling speed (Tour de France stage)","Commercial plane","Space Shuttle reentry","Fastest internet speed (fiber lab record)"],ans:[0,1,2,3,4]},
+  {cat:"Number of floors in these skyscrapers — fewest first",items:["Flatiron Building","Empire State Building","Petronas Towers","Shanghai Tower","Burj Khalifa"],ans:[0,1,2,3,4]},
+  {cat:"Cost of the most expensive item in these video game franchises — cheapest first",items:["Minecraft","Roblox","Fortnite","FIFA (Ultimate Team)","CS2 / Counter-Strike skin"],ans:[0,1,2,3,4]},
+  {cat:"Number of Twitter/X characters allowed — least first",items:["Original tweet limit (2006)","Old 140-char era","New 280-char limit","Twitter Blue extended","Twitter Blue with article"],ans:[0,1,2,3,4]},
+  {cat:"Age when they became billionaires — youngest first",items:["Kylie Jenner","Mark Zuckerberg","Evan Spiegel","Bill Gates","Jeff Bezos"],ans:[0,1,2,3,4]},
+  {cat:"Length of these songs — shortest first",items:["TikTok max video (original)","Average pop song","Bohemian Rhapsody","November Rain — Guns N' Roses","American Pie — Don McLean"],ans:[0,1,2,3,4]},
+  {cat:"Box office opening weekend — lowest first",items:["Paranormal Activity","The Blair Witch Project","Spider-Man: No Way Home","Avengers: Endgame","Avatar: The Way of Water"],ans:[1,0,2,3,4]},
+  {cat:"Number of countries in these continents — fewest first",items:["Oceania","North America","South America","Europe","Africa"],ans:[0,1,2,3,4]},
+  {cat:"Hardness on the Mohs scale — softest first",items:["Talc","Gypsum","Copper coin","Glass","Diamond"],ans:[0,1,2,3,4]},
+  {cat:"How many languages these things are translated into — fewest first",items:["The Hobbit","The Bible (NT only)","Harry Potter","The Quran","The Bible (complete)"],ans:[0,1,2,3,4]},
+  {cat:"Time zones crossed by these countries — fewest first",items:["Brazil","Australia","China","USA","Russia"],ans:[0,1,2,3,4]},
+  {cat:"Age of these memes — newest first (most recent origin)",items:["Distracted Boyfriend","Doge","This is fine (dog)","Rickroll","Keyboard Cat"],ans:[0,1,2,3,4]},
+  // Keyboard Cat ~2007, Rickroll ~2007, This is Fine ~2013, Doge ~2013, Distracted Boyfriend ~2017
+  {cat:"Number of keys on these keyboards — fewest first",items:["Standard phone keyboard (T9)","Laptop keyboard","Desktop keyboard (tenkeyless)","Full desktop keyboard","Professional music keyboard (88 key)"],ans:[0,1,2,3,4]},
+  {cat:"Cost of a Starbucks drink — cheapest first",items:["Drip coffee (short)","Iced coffee","Caramel Frappuccino","Venti custom drink","Limited edition seasonal drink"],ans:[0,1,2,3,4]},
+  {cat:"How long people wait in line — shortest wait first",items:["McDonald's drive-thru","Doctor's appointment","US passport renewal","Getting a driver's license","Disney World — most popular ride"],ans:[0,1,2,3,4]},
+  {cat:"Number of emoji in each set — fewest first",items:["Original set (2010)","iOS 6 era","iOS 12 era","iOS 15 era","Current full Unicode set"],ans:[0,1,2,3,4]},
+  {cat:"How far these things have traveled — shortest first",items:["Longest golf drive ever","Height of Everest","Circumference of Earth","Moon distance from Earth","Voyager 1 from Earth (2024)"],ans:[0,1,2,3,4]},
+  {cat:"Price of concert tickets — cheapest first",items:["Local indie band","Average pop concert","Taylor Swift Eras Tour (avg resale)","Beyoncé Renaissance Tour","Super Bowl halftime VIP package"],ans:[0,1,2,3,4]},
+];
+
+const COLORS=['#e94560','#f5a623','#2ecc71','#3498db','#9b59b6','#1abc9c'];
+
+const S={
+  teams:[],timerSecs:120,roundsPlayed:0,teamIdx:0,
+  cat:null,usedCats:new Set(),
+  board:Array(7).fill(null),
+  interval:null,timeLeft:0,
+  dragItem:null,dragSrc:null,
+  guesses:{},lastCorrect:0
+};
+
+function show(id){
+  ['setup','game','guess-screen','reveal','scores'].forEach(sid=>{
+    const el=document.getElementById(sid);
+    if(el)el.classList.remove('active');
+  });
+  const t=document.getElementById(id);
+  if(t)t.classList.add('active');
+}
+
+// ── SETUP ──
+let nTeams=3,tSecs=120;
+document.getElementById('cnt-btns').addEventListener('click',e=>{
+  const b=e.target.closest('[data-n]');if(!b)return;
+  nTeams=+b.dataset.n;
+  document.querySelectorAll('.cnt-btn').forEach(x=>x.classList.toggle('sel',x.dataset.n==nTeams));
+  buildNameInputs();
+});
+document.getElementById('tim-btns').addEventListener('click',e=>{
+  const b=e.target.closest('[data-t]');if(!b)return;
+  tSecs=+b.dataset.t;
+  document.querySelectorAll('.tim-btn').forEach(x=>x.classList.toggle('sel',x===b));
+});
+function buildNameInputs(){
+  const g=document.getElementById('names-grid');g.innerHTML='';
+  const defs=['Alpha','Beta','Gamma','Delta','Epsilon','Zeta'];
+  for(let i=0;i<nTeams;i++){
+    const d=document.createElement('div');d.className='team-input-wrap';
+    d.innerHTML=`<div class="team-dot" style="background:${COLORS[i]}"></div><input class="team-input" id="ti-${i}" placeholder="Team ${defs[i]}">`;
+    g.appendChild(d);
+  }
+}
+buildNameInputs();
+document.getElementById('start-btn').addEventListener('click',()=>{
+  const defs=['Alpha','Beta','Gamma','Delta','Epsilon','Zeta'];
+  S.teams=[];
+  for(let i=0;i<nTeams;i++){
+    const inp=document.getElementById(`ti-${i}`);
+    S.teams.push({name:inp.value.trim()||`Team ${defs[i]}`,score:0,color:COLORS[i]});
+  }
+  S.timerSecs=tSecs;S.roundsPlayed=0;S.teamIdx=0;S.usedCats=new Set();
+  startRound();
+});
+
+// ── ROUND ──
+function pickCat(){
+  let idx,tries=0;
+  do{idx=Math.floor(Math.random()*DB.length);tries++;}while(S.usedCats.has(idx)&&tries<300);
+  S.usedCats.add(idx);
+  return{...DB[idx]};
+}
+function startRound(){
+  S.cat=pickCat();S.board=Array(7).fill(null);S.timeLeft=S.timerSecs;S.guesses={};
+  show('game');
+  const t=S.teams[S.teamIdx];
+  const tn=document.getElementById('turn-name');tn.textContent=t.name;tn.style.color=t.color;
+  document.getElementById('cat-pill').textContent=S.cat.cat;
+  renderBar();renderTray();renderBoard();startTimer();
+}
+function renderBar(){
+  const bar=document.getElementById('scores-bar');bar.innerHTML='';
+  S.teams.forEach((t,i)=>{
+    const c=document.createElement('div');
+    c.className='score-chip'+(i===S.teamIdx?' act':'');
+    c.style.borderColor=i===S.teamIdx?t.color:'';
+    c.innerHTML=`<div class="sd" style="background:${t.color}"></div><span>${t.name}</span><strong style="margin-left:4px">${t.score}</strong>`;
+    bar.appendChild(c);
+  });
+}
+function renderTray(){
+  const tray=document.getElementById('tray-items');tray.innerHTML='';
+  S.cat.items.forEach(item=>{
+    const placed=S.board.includes(item);
+    const d=document.createElement('div');
+    d.className='piece'+(placed?' placed':'');
+    if(!placed){d.style.background=S.teams[S.teamIdx].color+'22';d.style.borderColor=S.teams[S.teamIdx].color+'66';}
+    d.textContent=item;
+    if(!placed)d.addEventListener('mousedown',e=>startDrag(e,item,'tray'));
+    tray.appendChild(d);
+  });
+}
+function renderBoard(){
+  const board=document.getElementById('board');board.innerHTML='';
+  const col=S.teams[S.teamIdx].color;
+  for(let r=0;r<7;r++){
+    const row=document.createElement('div');
+    row.className='board-row'+(S.board[r]?' filled':'');
+    row.dataset.row=r;
+    const rn=document.createElement('span');rn.className='rnum';rn.textContent=7-r;row.appendChild(rn);
+    if(S.board[r]){
+      const bp=document.createElement('div');bp.className='bpiece';
+      bp.style.background=col+'2e';bp.style.border=`1px solid ${col}77`;
+      bp.textContent=S.board[r];
+      bp.addEventListener('mousedown',e=>startDrag(e,S.board[r],r));
+      row.appendChild(bp);
+    }else{
+      const rh=document.createElement('span');rh.className='rhint';
+      rh.textContent=r===0?'highest':r===6?'lowest':'';row.appendChild(rh);
+    }
+    row.addEventListener('mouseenter',()=>{if(S.dragItem!==null)row.classList.add('hover');});
+    row.addEventListener('mouseleave',()=>row.classList.remove('hover'));
+    board.appendChild(row);
+  }
+}
+
+// ── DRAG ──
+const ghost=document.getElementById('ghost');
+function startDrag(e,item,src){
+  e.preventDefault();S.dragItem=item;S.dragSrc=src;
+  ghost.style.display='block';ghost.style.background=S.teams[S.teamIdx].color;ghost.textContent=item;
+  ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';
+  const mv=ev=>{ghost.style.left=ev.clientX+'px';ghost.style.top=ev.clientY+'px';};
+  const up=ev=>{
+    ghost.style.display='none';
+    const el=document.elementFromPoint(ev.clientX,ev.clientY);
+    const rEl=el?el.closest('[data-row]'):null;
+    if(rEl)drop(+rEl.dataset.row);
+    document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
+    S.dragItem=null;S.dragSrc=null;
+  };
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+}
+function drop(ri){
+  if(S.dragItem===null)return;
+  const displaced=S.board[ri];
+  if(typeof S.dragSrc==='number')S.board[S.dragSrc]=null;
+  if(displaced&&typeof S.dragSrc==='number')S.board[S.dragSrc]=displaced;
+  S.board[ri]=S.dragItem;
+  renderTray();renderBoard();
+}
+document.getElementById('clear-btn').addEventListener('click',()=>{S.board=Array(7).fill(null);renderTray();renderBoard();});
+document.getElementById('submit-btn').addEventListener('click',()=>{clearInterval(S.interval);goGuess();});
+
+// ── TIMER ──
+function startTimer(){
+  clearInterval(S.interval);updateTimer();
+  S.interval=setInterval(()=>{S.timeLeft--;updateTimer();if(S.timeLeft<=0){clearInterval(S.interval);goGuess();}},1000);
+}
+function updateTimer(){
+  const el=document.getElementById('timer');
+  const m=Math.floor(S.timeLeft/60),s=S.timeLeft%60;
+  el.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+  el.classList.toggle('warn',S.timeLeft<=20);
+}
+
+// ── GUESS PHASE ──
+function goGuess(){
+  show('guess-screen');S.guesses={};
+  const at=S.teams[S.teamIdx];
+  document.getElementById('active-band').innerHTML=`<div style="width:12px;height:12px;border-radius:50%;background:${at.color};flex-shrink:0;"></div><span>Just played: <strong>${at.name}</strong></span>`;
+  const gr=document.getElementById('gs-rows');gr.innerHTML='';
+  const others=S.teams.filter((_,i)=>i!==S.teamIdx);
+  if(!others.length){gr.innerHTML='<p style="color:var(--muted);font-size:.85rem;text-align:center;">Solo play — no guessing!</p>';return;}
+  others.forEach(t=>{
+    const ti=S.teams.indexOf(t);S.guesses[ti]=null;
+    const row=document.createElement('div');row.className='gs-row';
+    const btns=[0,1,2,3,4,5].map(n=>`<button class="gs-btn" data-ti="${ti}" data-n="${n}">${n}</button>`).join('');
+    row.innerHTML=`<div class="gs-team"><div class="gs-dot" style="background:${t.color}"></div><span class="gs-name">${t.name}</span></div><div class="gs-btns">${btns}</div>`;
+    gr.appendChild(row);
+  });
+  gr.addEventListener('click',e=>{
+    const b=e.target.closest('.gs-btn');if(!b)return;
+    const ti=+b.dataset.ti,n=+b.dataset.n;S.guesses[ti]=n;
+    gr.querySelectorAll(`[data-ti="${ti}"]`).forEach(x=>x.classList.toggle('sel',+x.dataset.n===n));
+  });
+}
+document.getElementById('gs-reveal-btn').addEventListener('click',goReveal);
+document.getElementById('gs-skip').addEventListener('click',goReveal);
+
+// ── REVEAL ──
+function goReveal(){
+  show('reveal');
+  const cat=S.cat;
+  document.getElementById('rv-cat').textContent=`"${cat.cat}"`;
+  const placed=[];
+  for(let r=6;r>=0;r--){if(S.board[r])placed.push(S.board[r]);}
+  const correct=cat.ans.map(i=>cat.items[i]);
+  let cnt=0;
+  const results=correct.map((ci,pos)=>{
+    const ti=placed[pos]||null;const ok=ti===ci;if(ok)cnt++;
+    return{pos,ci,ti,ok};
+  });
+  S.lastCorrect=cnt;
+  S.teams[S.teamIdx].score+=cnt*2;
+  const list=document.getElementById('rv-list');list.innerHTML='';
+  [...results].reverse().forEach(r=>{
+    const row=document.createElement('div');row.className='rv-row '+(r.ok?'ok':'no');
+    const lbl=['1st (lowest)','2nd','3rd','4th','5th (highest)'][r.pos];
+    row.innerHTML=`<span class="rv-pos">${lbl}</span><span class="rv-ico">${r.ok?'✓':'✗'}</span><span class="rv-name">${r.ti||'—'}</span>${!r.ok?`<span class="rv-fix">→ ${r.ci}</span>`:''}`;
+    list.appendChild(row);
+  });
+  document.getElementById('big-score').innerHTML=`<span>${cnt}</span>/5`;
+  document.getElementById('big-score-sub').textContent=`items correct for ${S.teams[S.teamIdx].name} (+${cnt*2} pts)`;
+  const grs=document.getElementById('gr-section');grs.innerHTML='';
+  const others=S.teams.filter((_,i)=>i!==S.teamIdx);
+  if(others.length){
+    const ttl=document.createElement('div');ttl.className='gr-title';ttl.textContent='Guess results';grs.appendChild(ttl);
+    others.forEach(t=>{
+      const ti=S.teams.indexOf(t);const g=S.guesses[ti];const hit=g===cnt;
+      if(hit)S.teams[ti].score+=3;
+      const row=document.createElement('div');row.className='gr-row';
+      row.innerHTML=`<div class="gr-dot" style="background:${t.color}"></div><span class="gr-name">${t.name}</span><span class="gr-guess">${g!==null&&g!==undefined?`guessed ${g}`:'no guess'}</span><span class="gr-pts ${hit?'hit':'miss'}">${hit?'+3 pts':'+0'}</span>`;
+      grs.appendChild(row);
+    });
+  }
+}
+document.getElementById('rv-next-btn').addEventListener('click',()=>{S.roundsPlayed++;showScores();});
+
+// ── SCORES ──
+function showScores(){
+  show('scores');
+  document.getElementById('sc-sub').textContent=`After round ${S.roundsPlayed}`;
+  const sorted=[...S.teams].sort((a,b)=>b.score-a.score);
+  const lb=document.getElementById('leaderboard');lb.innerHTML='';
+  ['🥇','🥈','🥉'].forEach((_,i)=>{});
+  sorted.forEach((t,i)=>{
+    const row=document.createElement('div');row.className='lb-row';
+    const medals=['🥇','🥈','🥉'];
+    row.innerHTML=`<div class="lb-rank">${medals[i]||i+1}</div><div class="lb-dot" style="background:${t.color}"></div><div class="lb-name">${t.name}</div><div class="lb-score">${t.score} pts</div>`;
+    lb.appendChild(row);
+  });
+}
+document.getElementById('next-btn').addEventListener('click',()=>{S.teamIdx=(S.teamIdx+1)%S.teams.length;startRound();});
+document.getElementById('end-btn').addEventListener('click',()=>{clearInterval(S.interval);show('setup');});
+</script>
+</body>
+</html>

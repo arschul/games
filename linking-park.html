@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linking Park</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a2e1a;
+  --surface: rgba(20,40,20,0.88);
+  --surface2: rgba(30,55,25,0.85);
+  --surface3: rgba(15,50,30,0.9);
+  --accent: #5a9e3a;
+  --accent2: #c8a84b;
+  --gold: #d4a017;
+  --text: #e8f0e0;
+  --muted: #8aaa78;
+  --border: rgba(120,180,80,0.25);
+  --correct: #4ec94e;
+  --wrong: #e05050;
+  --slot-bg: rgba(90,158,58,0.18);
+  --slot-border: #5a9e3a;
+  --water: #2a6080;
+  --bark: #5c3d1e;
+  --leaf: #3a7a28;
+  --leaf2: #2d6020;
+}
+body.light {
+  --bg: #c8e6a0;
+  --surface: rgba(255,252,240,0.92);
+  --surface2: rgba(230,245,210,0.9);
+  --surface3: rgba(200,230,180,0.88);
+  --accent: #3a7a1e;
+  --accent2: #9a6a10;
+  --gold: #b08010;
+  --text: #1a2e0a;
+  --muted: #5a7040;
+  --border: rgba(60,120,30,0.2);
+  --correct: #28a028;
+  --wrong: #c03030;
+  --slot-bg: rgba(60,130,20,0.12);
+  --slot-border: #3a7a1e;
+  --water: #4a90b0;
+  --bark: #7a5030;
+  --leaf: #4a9a30;
+  --leaf2: #3a7a20;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-height:100vh;overflow-x:hidden;}
+h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
+
+/* ===== PARK BACKGROUND SVG ===== */
+#parkBg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+#parkBg svg{width:100%;height:100%;display:block;}
+
+.screen{position:relative;z-index:1;display:none;min-height:100vh;padding:24px;}
+.screen.active{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#startScreen{gap:20px;}
+#gameScreen{display:none;flex-direction:column;min-height:100vh;padding:0;}
+#gameScreen.active{display:flex;}
+
+/* ===== THEME TOGGLE ===== */
+#themeToggle{position:fixed;top:14px;right:14px;z-index:1000;background:var(--surface);border:1.5px solid var(--border);border-radius:50px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text);backdrop-filter:blur(8px);}
+
+/* ===== LOGO ===== */
+.logo{text-align:center;}
+.logo h1{font-size:clamp(52px,10vw,100px);color:var(--accent);line-height:0.9;text-shadow:2px 4px 0 var(--leaf2),4px 8px 0 rgba(0,0,0,0.3);}
+.logo .sub{color:var(--accent2);font-family:'Bebas Neue',sans-serif;font-size:clamp(14px,2.5vw,22px);letter-spacing:4px;margin-top:6px;}
+.logo .tagline{color:var(--muted);font-size:14px;margin-top:4px;}
+
+/* ===== SETUP CARD ===== */
+.setup-card{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:26px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:18px;backdrop-filter:blur(12px);}
+.setup-row{display:flex;flex-direction:column;gap:8px;}
+.setup-row label{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-opt{flex:1;min-width:55px;background:var(--surface2);border:2px solid var(--border);color:var(--text);border-radius:10px;padding:10px 6px;font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:1px;cursor:pointer;transition:all 0.2s;text-align:center;}
+.btn-opt:hover{border-color:var(--accent);}
+.btn-opt.selected{border-color:var(--accent);background:var(--accent);color:#fff;}
+
+/* Teams setup */
+.teams-setup{display:flex;flex-direction:column;gap:10px;}
+.teams-count-row{display:flex;align-items:center;gap:12px;}
+.teams-count-row label{font-weight:700;font-size:13px;color:var(--muted);white-space:nowrap;}
+.team-count-select{background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:32px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238aaa78' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+.team-inputs-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.team-input{background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:9px 13px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;width:100%;outline:none;transition:border-color 0.2s;}
+.team-input:focus{border-color:var(--accent);}
+.team-input:disabled{opacity:0.3;}
+
+.btn-start{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:15px 32px;font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;cursor:pointer;width:100%;transition:all 0.2s;text-shadow:0 2px 4px rgba(0,0,0,0.3);}
+.btn-start:hover{transform:scale(1.02);filter:brightness(1.1);}
+
+/* ===== GAME HEADER ===== */
+.game-header{background:var(--surface);border-bottom:1.5px solid var(--border);padding:11px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;backdrop-filter:blur(10px);}
+.current-team-badge{background:var(--accent);color:#fff;border-radius:8px;padding:5px 13px;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;}
+.round-info{color:var(--muted);font-size:13px;font-weight:700;}
+.level-badge{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:12px;font-weight:700;color:var(--accent2);letter-spacing:1px;}
+.timer-display{margin-left:auto;background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:5px 14px;font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text);letter-spacing:2px;min-width:80px;text-align:center;}
+.timer-display.urgent{border-color:var(--wrong);color:var(--wrong);animation:pulse 0.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.scoreboard-mini{display:flex;gap:7px;flex-wrap:wrap;}
+.score-chip{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;}
+.score-chip span{color:var(--accent2);margin-left:5px;}
+
+/* ===== GAME BODY ===== */
+.game-body{flex:1;display:flex;flex-direction:column;padding:20px;gap:16px;max-width:1000px;width:100%;margin:0 auto;}
+.paragraph-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:24px 28px;backdrop-filter:blur(10px);}
+.paragraph-card h3{color:var(--muted);font-size:11px;letter-spacing:1px;margin-bottom:14px;text-transform:uppercase;}
+.topic-label{display:inline-block;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:700;color:var(--accent2);letter-spacing:1px;margin-bottom:12px;}
+.paragraph-text{font-size:21px;line-height:3.0;font-weight:600;}
+
+/* ===== SLOTS ===== */
+.drop-slot{display:inline-flex;align-items:center;justify-content:center;min-width:148px;height:42px;padding:0 12px;background:var(--slot-bg);border:2px dashed var(--slot-border);border-radius:10px;margin:0 3px;vertical-align:middle;transition:all 0.15s;font-weight:700;color:var(--accent);font-size:15px;user-select:none;cursor:default;}
+.drop-slot.drag-over{background:rgba(200,168,75,0.3);border-color:var(--accent2);border-style:solid;transform:scale(1.06);}
+.drop-slot.has-word{background:var(--surface3);border-style:solid;border-color:var(--accent2);color:var(--text);cursor:grab;}
+.drop-slot.has-word:active{cursor:grabbing;}
+.drop-slot.correct{background:rgba(78,201,78,0.2);border-color:var(--correct);border-style:solid;color:var(--correct);}
+.drop-slot.wrong{background:rgba(224,80,80,0.2);border-color:var(--wrong);border-style:solid;color:var(--wrong);}
+
+/* ===== WORD BANK ===== */
+.wordbank-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:18px 22px;backdrop-filter:blur(10px);}
+.wordbank-card h3{color:var(--muted);font-size:11px;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase;}
+.words-container{display:flex;flex-wrap:wrap;gap:10px;}
+.word-chip{background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:11px 20px;font-weight:700;font-size:16px;cursor:grab;transition:all 0.2s;user-select:none;color:var(--text);}
+.word-chip:hover{border-color:var(--accent);transform:translateY(-2px);}
+.word-chip.dragging{opacity:0.35;}
+.word-chip.used{opacity:0.25;cursor:default;pointer-events:none;text-decoration:line-through;}
+
+#dragGhost{position:fixed;pointer-events:none;z-index:9999;background:var(--accent);color:#fff;border-radius:8px;padding:8px 16px;font-weight:700;font-size:15px;font-family:'Nunito',sans-serif;white-space:nowrap;transform:translate(-50%,-50%);display:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+
+/* ===== ACTIONS ===== */
+.game-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-action{border:2px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;padding:10px 20px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;cursor:pointer;transition:all 0.2s;backdrop-filter:blur(6px);}
+.btn-action:hover{border-color:var(--accent);}
+.btn-action.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-action.primary:hover{filter:brightness(1.1);}
+.btn-action.gold{background:var(--gold);border-color:var(--gold);color:#fff;}
+
+/* ===== MODALS ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(5,20,5,0.85);z-index:500;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;backdrop-filter:blur(4px);}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:28px;max-width:680px;width:100%;animation:popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);margin:auto;backdrop-filter:blur(16px);}
+@keyframes popIn{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h2{font-size:34px;color:var(--accent);margin-bottom:10px;}
+.modal p{color:var(--muted);font-size:15px;margin-bottom:14px;line-height:1.6;}
+.guess-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.guess-row label{font-weight:700;font-size:14px;min-width:90px;}
+.guess-chips{display:flex;gap:7px;flex-wrap:wrap;}
+.guess-chip{background:var(--surface2);border:2px solid var(--border);color:var(--text);border-radius:8px;padding:7px 13px;font-family:'Bebas Neue',sans-serif;font-size:18px;cursor:pointer;transition:all 0.2s;}
+.guess-chip:hover{border-color:var(--accent2);}
+.guess-chip.selected{border-color:var(--accent2);background:var(--accent2);color:#000;}
+.reveal-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0;}
+.stat-box{background:var(--surface2);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border);}
+.stat-box .num{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--accent);}
+.stat-box .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.reveal-paragraph{background:var(--surface2);border-radius:12px;padding:16px 18px;margin:14px 0;font-size:16px;line-height:2.8;font-weight:600;border:1px solid var(--border);}
+.rs-correct{display:inline-block;background:rgba(78,201,78,0.22);border:1.5px solid var(--correct);border-radius:6px;padding:2px 10px;color:var(--correct);margin:0 2px;vertical-align:middle;font-size:14px;}
+.rs-wrong{display:inline-block;background:rgba(224,80,80,0.18);border:1.5px solid var(--wrong);border-radius:6px;padding:2px 10px;color:var(--wrong);margin:0 2px;vertical-align:middle;font-size:14px;}
+.rs-alts{display:inline-block;background:rgba(200,168,75,0.18);border:1.5px solid var(--accent2);border-radius:6px;padding:2px 8px;color:var(--accent2);margin:0 2px;vertical-align:middle;font-size:12px;font-weight:700;}
+.alt-legend{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic;}
+
+/* ===== FINAL ===== */
+#finalScreen{gap:20px;}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:16px 0;}
+.podium-step{text-align:center;}
+.podium-block{background:var(--surface);border:2px solid var(--border);border-radius:8px 8px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:10px 8px;min-width:100px;backdrop-filter:blur(8px);}
+.podium-step:nth-child(1) .podium-block{height:150px;border-color:silver;}
+.podium-step:nth-child(2) .podium-block{height:190px;border-color:var(--gold);}
+.podium-step:nth-child(3) .podium-block{height:110px;border-color:#cd7f32;}
+.podium-rank{font-family:'Bebas Neue',sans-serif;font-size:38px;}
+.podium-name{font-weight:800;font-size:13px;margin-top:4px;color:var(--muted);}
+.podium-score{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--accent2);}
+</style>
+</head>
+<body>
+
+<!-- PARK BACKGROUND -->
+<div id="parkBg">
+<svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a3a5c"/>
+      <stop offset="100%" stop-color="#2a5a3a"/>
+    </linearGradient>
+    <linearGradient id="skyGradL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#87ceeb"/>
+      <stop offset="100%" stop-color="#c8e6a0"/>
+    </linearGradient>
+    <linearGradient id="lakeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e4d70"/>
+      <stop offset="100%" stop-color="#142e44"/>
+    </linearGradient>
+    <linearGradient id="lakeGradL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5ba3c9"/>
+      <stop offset="100%" stop-color="#3a7a9a"/>
+    </linearGradient>
+    <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a5a1a"/>
+      <stop offset="100%" stop-color="#1a3a0a"/>
+    </linearGradient>
+    <linearGradient id="grassGradL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a8a2a"/>
+      <stop offset="100%" stop-color="#3a6a1a"/>
+    </linearGradient>
+  </defs>
+  <!-- Sky -->
+  <rect id="skyRect" width="1440" height="900" fill="url(#skyGrad)"/>
+  <!-- Stars (dark mode only) -->
+  <g id="stars" opacity="0.6">
+    <circle cx="120" cy="60" r="1.2" fill="white"/><circle cx="340" cy="30" r="1" fill="white"/>
+    <circle cx="580" cy="80" r="1.4" fill="white"/><circle cx="780" cy="25" r="1" fill="white"/>
+    <circle cx="950" cy="55" r="1.2" fill="white"/><circle cx="1100" cy="35" r="1.5" fill="white"/>
+    <circle cx="1280" cy="70" r="1" fill="white"/><circle cx="200" cy="110" r="1" fill="white"/>
+    <circle cx="450" cy="45" r="1.3" fill="white"/><circle cx="670" cy="95" r="1" fill="white"/>
+    <circle cx="1350" cy="40" r="1.2" fill="white"/>
+  </g>
+  <!-- Moon (dark) / Sun (light) -->
+  <circle id="moonSun" cx="1340" cy="80" r="32" fill="#f0e080" opacity="0.85"/>
+  <circle id="moonSunInner" cx="1318" cy="68" r="26" fill="#1a3a5c" opacity="0"/>
+  <!-- Back trees left -->
+  <ellipse cx="80" cy="310" rx="55" ry="70" fill="#1e4a12" opacity="0.7"/>
+  <rect x="72" y="340" width="16" height="60" fill="#3d2008" opacity="0.7"/>
+  <ellipse cx="155" cy="280" rx="48" ry="65" fill="#236018" opacity="0.7"/>
+  <rect x="148" y="315" width="14" height="55" fill="#3d2008" opacity="0.7"/>
+  <!-- Back trees right -->
+  <ellipse cx="1360" cy="290" rx="58" ry="72" fill="#1e4a12" opacity="0.7"/>
+  <rect x="1352" y="325" width="16" height="65" fill="#3d2008" opacity="0.7"/>
+  <ellipse cx="1290" cy="270" rx="50" ry="60" fill="#245c18" opacity="0.7"/>
+  <rect x="1283" y="305" width="14" height="50" fill="#3d2008" opacity="0.7"/>
+  <!-- Grass ground back -->
+  <path d="M0 480 Q360 440 720 460 Q1080 480 1440 450 L1440 900 L0 900Z" fill="url(#grassGrad)" id="grassBack"/>
+  <!-- Lake -->
+  <ellipse cx="720" cy="560" rx="380" ry="90" fill="url(#lakeGrad)" id="lakeEl" opacity="0.9"/>
+  <!-- Lake shimmer -->
+  <ellipse cx="620" cy="555" rx="80" ry="12" fill="white" opacity="0.04"/>
+  <ellipse cx="780" cy="570" rx="60" ry="8" fill="white" opacity="0.04"/>
+  <path d="M560 555 Q580 550 600 555 Q620 560 640 555" stroke="white" stroke-width="1.5" fill="none" opacity="0.12"/>
+  <path d="M780 568 Q800 562 820 568 Q840 574 860 568" stroke="white" stroke-width="1.5" fill="none" opacity="0.1"/>
+  <!-- Grass foreground -->
+  <path d="M0 620 Q200 590 400 610 Q600 630 720 615 Q840 600 1040 618 Q1240 636 1440 610 L1440 900 L0 900Z" fill="url(#grassGrad)" id="grassFront"/>
+  <!-- Path around lake -->
+  <path d="M360 580 Q480 640 720 650 Q960 640 1080 580" stroke="#5a4010" stroke-width="18" fill="none" opacity="0.35"/>
+  <!-- Bench left -->
+  <rect x="210" y="598" width="70" height="8" rx="3" fill="#6a4820"/>
+  <rect x="216" y="606" width="8" height="18" rx="2" fill="#5a3a15"/>
+  <rect x="266" y="606" width="8" height="18" rx="2" fill="#5a3a15"/>
+  <rect x="214" y="592" width="72" height="6" rx="3" fill="#7a5828"/>
+  <!-- Bench right -->
+  <rect x="1160" y="598" width="70" height="8" rx="3" fill="#6a4820"/>
+  <rect x="1166" y="606" width="8" height="18" rx="2" fill="#5a3a15"/>
+  <rect x="1216" y="606" width="8" height="18" rx="2" fill="#5a3a15"/>
+  <rect x="1164" y="592" width="72" height="6" rx="3" fill="#7a5828"/>
+  <!-- Front tree left -->
+  <rect x="268" y="500" width="22" height="120" fill="#4a2e0a"/>
+  <ellipse cx="279" cy="475" rx="70" ry="85" fill="#2a6018"/>
+  <ellipse cx="250" cy="510" rx="45" ry="55" fill="#236014"/>
+  <ellipse cx="310" cy="505" rx="40" ry="50" fill="#2a6a1a"/>
+  <!-- Front tree right -->
+  <rect x="1148" y="500" width="22" height="120" fill="#4a2e0a"/>
+  <ellipse cx="1159" cy="475" rx="70" ry="85" fill="#2a6018"/>
+  <ellipse cx="1130" cy="510" rx="45" ry="55" fill="#236014"/>
+  <ellipse cx="1190" cy="505" rx="40" ry="50" fill="#2a6a1a"/>
+  <!-- Ducks on lake -->
+  <ellipse cx="630" cy="555" rx="14" ry="7" fill="white" opacity="0.7"/>
+  <ellipse cx="626" cy="549" rx="7" ry="5" fill="white" opacity="0.7"/>
+  <ellipse cx="820" cy="565" rx="13" ry="6" fill="white" opacity="0.65"/>
+  <ellipse cx="816" cy="560" rx="6" ry="4" fill="white" opacity="0.65"/>
+  <!-- Flowers -->
+  <circle cx="330" cy="618" r="4" fill="#e06080" opacity="0.8"/>
+  <circle cx="345" cy="622" r="3" fill="#f0a0c0" opacity="0.8"/>
+  <circle cx="1100" cy="620" r="4" fill="#e08040" opacity="0.8"/>
+  <circle cx="1115" cy="616" r="3" fill="#f0c060" opacity="0.8"/>
+  <circle cx="500" cy="628" r="3.5" fill="#c060c0" opacity="0.7"/>
+  <circle cx="940" cy="625" r="3.5" fill="#80c0e0" opacity="0.7"/>
+</svg>
+</div>
+
+<div id="dragGhost"></div>
+<button id="themeToggle">☀️</button>
+
+<!-- START SCREEN -->
+<div id="startScreen" class="screen active">
+  <div class="logo">
+    <h1>LINKING<br>PARK</h1>
+    <div class="sub">TRANSITION WORD GAME</div>
+    <div class="tagline">Drag the right connectors into the gaps</div>
+  </div>
+  <div class="setup-card">
+    <div class="setup-row">
+      <label>CEFR Level</label>
+      <div class="btn-group" id="levelGroup">
+        <div class="btn-opt selected" data-val="A1">A1</div>
+        <div class="btn-opt" data-val="A2">A2</div>
+        <div class="btn-opt" data-val="B1">B1</div>
+      </div>
+    </div>
+    <div class="setup-row">
+      <label>Timer per Round</label>
+      <div class="btn-group" id="timerGroup">
+        <div class="btn-opt" data-val="60">1 min</div>
+        <div class="btn-opt selected" data-val="120">2 min</div>
+        <div class="btn-opt" data-val="180">3 min</div>
+      </div>
+    </div>
+    <div class="setup-row">
+      <label>Rounds</label>
+      <div class="btn-group" id="roundsGroup">
+        <div class="btn-opt" data-val="3">3</div>
+        <div class="btn-opt selected" data-val="5">5</div>
+        <div class="btn-opt" data-val="8">8</div>
+        <div class="btn-opt" data-val="10">10</div>
+      </div>
+    </div>
+    <div class="setup-row">
+      <label>Teams</label>
+      <div class="teams-setup">
+        <div class="teams-count-row">
+          <label>Number of teams:</label>
+          <select class="team-count-select" id="teamCountSelect">
+            <option value="2">2 teams</option>
+            <option value="3">3 teams</option>
+            <option value="4">4 teams</option>
+            <option value="5">5 teams</option>
+            <option value="6">6 teams</option>
+          </select>
+        </div>
+        <div class="team-inputs-grid" id="teamInputsGrid">
+          <input class="team-input" id="ti0" value="Team 1">
+          <input class="team-input" id="ti1" value="Team 2">
+          <input class="team-input" id="ti2" value="Team 3" disabled>
+          <input class="team-input" id="ti3" value="Team 4" disabled>
+          <input class="team-input" id="ti4" value="Team 5" disabled>
+          <input class="team-input" id="ti5" value="Team 6" disabled>
+        </div>
+      </div>
+    </div>
+    <button class="btn-start" id="startBtn">🌿 START GAME</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="gameScreen" class="screen">
+  <div class="game-header">
+    <div class="current-team-badge" id="headerTeam">TEAM 1</div>
+    <div class="round-info" id="headerRound">Round 1 / 5</div>
+    <div class="level-badge" id="headerLevel">A1</div>
+    <div class="scoreboard-mini" id="scoreboardMini"></div>
+    <div class="timer-display" id="timerDisplay">2:00</div>
+  </div>
+  <div class="game-body">
+    <div class="paragraph-card">
+      <div class="topic-label" id="topicLabel">Topic</div>
+      <h3>Drag words from the bank into any gap — swap freely</h3>
+      <div class="paragraph-text" id="paragraphText"></div>
+    </div>
+    <div class="wordbank-card">
+      <h3>Word Bank — drag to any slot, drop back here to remove</h3>
+      <div class="words-container" id="wordsContainer"></div>
+    </div>
+    <div class="game-actions">
+      <button class="btn-action" id="clearBtn">CLEAR ALL</button>
+      <button class="btn-action primary" id="submitBtn">SUBMIT ANSWERS</button>
+    </div>
+  </div>
+</div>
+
+<!-- GUESS MODAL -->
+<div class="modal-overlay" id="guessModal">
+  <div class="modal">
+    <h2>🌳 BEFORE THE REVEAL...</h2>
+    <p>Other teams: how many gaps did <strong id="guessingTeamName"></strong> fill correctly?</p>
+    <div id="guessRows"></div>
+    <button class="btn-action primary" id="confirmGuesses" style="width:100%;margin-top:12px;">REVEAL ANSWERS</button>
+  </div>
+</div>
+
+<!-- REVEAL MODAL -->
+<div class="modal-overlay" id="revealModal">
+  <div class="modal">
+    <h2>🍃 RESULTS</h2>
+    <div class="reveal-stats" id="revealStats"></div>
+    <div id="revealGuessResults"></div>
+    <div id="revealParagraph"></div>
+    <button class="btn-action gold" id="nextRoundBtn" style="width:100%;margin-top:14px;font-size:22px;">NEXT ROUND →</button>
+  </div>
+</div>
+
+<!-- FINAL SCREEN -->
+<div id="finalScreen" class="screen">
+  <h1 style="color:var(--accent);font-size:clamp(40px,8vw,70px);">🏆 FINAL SCORES</h1>
+  <div class="podium" id="podium"></div>
+  <div id="fullScoreboard" style="width:100%;max-width:500px;display:flex;flex-direction:column;gap:10px;"></div>
+  <button class="btn-action primary" id="restartBtn" style="margin-top:20px;font-size:22px;padding:14px 40px;">PLAY AGAIN</button>
+</div>
+
+<script>
+// ===========================
+// PARAGRAPH DATA
+// RULES:
+// - answers[i] = ALL accepted strings for slot i (lowercase, comma included if sentence-initial)
+// - First item = bank representative displayed on chip
+// - altNote[i] = teacher note for reveal (null = skip)
+// - Slots ALWAYS sentence-initial → no mid-sentence also/too
+// - Contrast connectors include: however, / nevertheless, / by contrast, / on the other hand,
+// - Cause-result include: therefore, / as a result, / consequently, / so
+// - Addition include: in addition, / furthermore, / moreover, / also,
+// - Example include: for example, / for instance,
+// ===========================
+const PARAGRAPHS = {
+A1:[
+  { text:["I wake up early.", "___", "I brush my teeth.", "___", "I eat breakfast.", "___", "I go to school."],
+    answers:[["first"],["then","next,","after that,"],["finally"]],
+    altNote:[null,"'then', 'next,' or 'after that,' all work",null], topic:"Morning routine" },
+  { text:["My sister is tall and funny.", "I like her.", "___", "she can be annoying sometimes."],
+    answers:[["but","however,","still,"]],
+    altNote:["'but', 'however,' or 'still,' all work"], topic:"My sister" },
+  { text:["I like dogs.", "___", "I like cats.", "___", "I don't like spiders."],
+    answers:[["and","also,"],["but","however,"]],
+    altNote:["'and' or 'also,' both work","'but' or 'however,' both work"], topic:"Animals" },
+  { text:["It is cold today.", "___", "wear a jacket.", "___", "don't forget your umbrella."],
+    answers:[["so","therefore,"],["also,","and"]],
+    altNote:[null,"'also,' or 'and' both work"], topic:"Weather" },
+  { text:["She studies very hard.", "___", "she always gets good grades.", "Her friends study a lot.", "___", "they do well in school."],
+    answers:[["so","therefore,"],["also,","as a result,"]],
+    altNote:[null,"'also,' or 'as a result,' both work"], topic:"Study habits" },
+  { text:["He is my best friend.", "___", "we play soccer together.", "___", "we do homework together."],
+    answers:[["and"],["also,","in addition,"]],
+    altNote:[null,"'also,' or 'in addition,' both work"], topic:"Best friend" },
+  { text:["First, I open my book.", "___", "I read the title.", "___", "I start reading."],
+    answers:[["then","next,","after that,"],["finally"]],
+    altNote:["'then', 'next,' or 'after that,' all work",null], topic:"Reading" },
+  { text:["The movie is long.", "___", "it is very good.", "I really enjoyed it."],
+    answers:[["but","however,","still,"]],
+    altNote:["'but', 'however,' or 'still,' all work"], topic:"A movie" },
+  { text:["I want to travel.", "___", "I need money first.", "___", "I will save every week."],
+    answers:[["but","however,"],["so","therefore,"]],
+    altNote:[null,null], topic:"Travel plans" },
+  { text:["She is a great singer.", "___", "she plays the guitar.", "___", "she teaches music at school."],
+    answers:[["also,","and"],["in addition,","furthermore,"]],
+    altNote:["'also,' or 'and' both work","'in addition,' or 'furthermore,' both work"], topic:"Music" },
+  { text:["We were tired.", "___", "we kept walking.", "___", "we found a bench and sat down."],
+    answers:[["but","however,","still,"],["finally","eventually,"]],
+    altNote:["'but', 'however,' or 'still,' all work","'finally' or 'eventually,' both work"], topic:"Walking" },
+  { text:["It was raining.", "___", "we went outside.", "We got wet.", "___", "we had a lot of fun."],
+    answers:[["but","still,"],["however,","nevertheless,"]],
+    altNote:["'but' or 'still,' both work","'however,' or 'nevertheless,' both work"], topic:"Rain" },
+  { text:["He likes pizza.", "___", "he loves pasta.", "___", "he doesn't like vegetables at all."],
+    answers:[["and","also,"],["but","however,"]],
+    altNote:["'and' or 'also,' both work","'but' or 'however,' both work"], topic:"Food" },
+  { text:["The test was hard.", "___", "I studied a lot.", "___", "I passed."],
+    answers:[["but","however,"],["finally","in the end,"]],
+    altNote:[null,"'finally' or 'in the end,' both work"], topic:"Test" },
+  { text:["She woke up late.", "___", "she missed the bus.", "___", "a friend gave her a lift."],
+    answers:[["so","therefore,"],["luckily,","fortunately,"]],
+    altNote:[null,"'luckily,' or 'fortunately,' both work"], topic:"Late morning" },
+  { text:["I opened the window.", "___", "some fresh air came in.", "It felt great.", "___", "I did it again the next day."],
+    answers:[["so","therefore,"],["so","as a result,"]],
+    altNote:[null,"'so' or 'as a result,' both work"], topic:"Fresh air" },
+  { text:["I am hungry.", "___", "I will eat lunch now.", "___", "I will drink some water."],
+    answers:[["so","therefore,"],["also,","and"]],
+    altNote:[null,"'also,' or 'and' both work"], topic:"Lunchtime" },
+],
+A2:[
+  { text:["Social media is popular.", "___", "it can be addictive.", "___", "some people spend hours online every day."],
+    answers:[["however,","but","by contrast,","on the other hand,"],["for example,","for instance,"]],
+    altNote:["'however,', 'but', 'by contrast,' or 'on the other hand,' all work","'for example,' or 'for instance,' both work — comma required"], topic:"Social media" },
+  { text:["Exercise is important.", "___", "many people don't do enough.", "___", "they watch TV instead."],
+    answers:[["however,","but","by contrast,"],["instead,","rather,"]],
+    altNote:["'however,', 'but' or 'by contrast,' all work",null], topic:"Exercise" },
+  { text:["She wanted a new phone.", "___", "it was too expensive.", "___", "she saved money for three months."],
+    answers:[["however,","but","by contrast,"],["therefore,","so","as a result,"]],
+    altNote:["'however,', 'but' or 'by contrast,' all work","'therefore,', 'so' or 'as a result,' all work"], topic:"Saving money" },
+  { text:["Learning English takes time.", "___", "with practice, you improve.", "___", "you can watch films and speak with native speakers."],
+    answers:[["however,","but","on the other hand,"],["for example,","for instance,"]],
+    altNote:["'however,', 'but' or 'on the other hand,' all work","'for example,' or 'for instance,' both work"], topic:"Learning English" },
+  { text:["The restaurant was full.", "___", "we waited twenty minutes.", "___", "we got a great table."],
+    answers:[["so","therefore,"],["finally,","eventually,","in the end,"]],
+    altNote:[null,"'finally,', 'eventually,' or 'in the end,' all work"], topic:"Restaurant" },
+  { text:["He plays basketball and football.", "___", "he is on two school teams."],
+    answers:[["in fact,","actually,","as a result,"]],
+    altNote:["'in fact,', 'actually,' or 'as a result,' all work"], topic:"Sports" },
+  { text:["The weather was bad.", "___", "we stayed inside.", "We played board games.", "___", "we had a great time."],
+    answers:[["so","therefore,"],["in the end,","finally,"]],
+    altNote:[null,"'in the end,' or 'finally,' both work"], topic:"Bad weather day" },
+  { text:["Travelling is expensive.", "___", "you can save money by planning ahead.", "___", "book flights early."],
+    answers:[["however,","but","on the other hand,"],["for example,","for instance,"]],
+    altNote:["'however,', 'but' or 'on the other hand,' all work","'for example,' or 'for instance,' both work"], topic:"Travel tips" },
+  { text:["She is very creative.", "___", "she draws beautiful pictures.", "___", "she writes short stories."],
+    answers:[["for example,","for instance,"],["in addition,","furthermore,","also,"]],
+    altNote:["'for example,' or 'for instance,' both work","'in addition,', 'furthermore,' or 'also,' all work"], topic:"Creativity" },
+  { text:["The exam was the next day.", "___", "we studied all night.", "___", "we were exhausted."],
+    answers:[["so","therefore,"],["as a result,","consequently,","therefore,"]],
+    altNote:[null,"'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Studying" },
+  { text:["The city is beautiful.", "___", "it is very expensive to live there.", "___", "many young people move away."],
+    answers:[["however,","but","by contrast,","on the other hand,"],["as a result,","therefore,","consequently,"]],
+    altNote:["'however,', 'but', 'by contrast,' or 'on the other hand,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"City life" },
+  { text:["Vegetarian food is healthy.", "___", "it is better for the environment.", "___", "more people are trying it."],
+    answers:[["in addition,","furthermore,","also,"],["as a result,","so","therefore,"]],
+    altNote:["'in addition,', 'furthermore,' or 'also,' all work","'as a result,', 'so' or 'therefore,' all work"], topic:"Food choices" },
+  { text:["She missed the train.", "___", "she took a taxi.", "She arrived late.", "___", "she got the job done."],
+    answers:[["so","therefore,"],["still,","nevertheless,"]],
+    altNote:[null,"'still,' or 'nevertheless,' both work"], topic:"Transport" },
+  { text:["The book is very long.", "___", "it is extremely interesting.", "___", "I finished it in two days."],
+    answers:[["however,","but","on the other hand,"],["so","therefore,","as a result,"]],
+    altNote:["'however,', 'but' or 'on the other hand,' all work","'so', 'therefore,' or 'as a result,' all work"], topic:"Reading a book" },
+  { text:["Plastic pollution is a big problem.", "___", "we now use less plastic.", "___", "we still need to do more."],
+    answers:[["fortunately,","luckily,"],["however,","still,","on the other hand,"]],
+    altNote:["'fortunately,' or 'luckily,' both work","'however,', 'still,' or 'on the other hand,' all work"], topic:"Environment" },
+  { text:["My brother loves cooking.", "___", "he makes pasta every weekend.", "___", "I always eat at his house on Sundays."],
+    answers:[["for example,","for instance,"],["so","therefore,","as a result,"]],
+    altNote:["'for example,' or 'for instance,' both work","'so', 'therefore,' or 'as a result,' all work"], topic:"Family" },
+  { text:["The film got mixed reviews.", "___", "it had a great soundtrack.", "___", "I would recommend it."],
+    answers:[["however,","but","by contrast,"],["still,","nevertheless,"]],
+    altNote:["'however,', 'but' or 'by contrast,' all work","'still,' or 'nevertheless,' both work"], topic:"Cinema" },
+],
+B1:[
+  { text:["Remote work became common during the pandemic.", "___", "some employees struggled with isolation.", "___", "companies had to rethink their communication strategies."],
+    answers:[["however,","nevertheless,","by contrast,","on the other hand,"],["as a result,","consequently,","therefore,"]],
+    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Remote work" },
+  { text:["Fast fashion is cheap and widely available.", "___", "the environmental cost is enormous.", "___", "some brands are now offering sustainable alternatives."],
+    answers:[["however,","nevertheless,","by contrast,","on the other hand,"],["therefore,","as a result,","consequently,"]],
+    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Fast fashion" },
+  { text:["Social media has many benefits.", "___", "it can damage mental health.", "___", "young people should limit their screen time."],
+    answers:[["however,","on the other hand,","by contrast,","nevertheless,"],["therefore,","consequently,","as a result,"]],
+    altNote:["'however,', 'on the other hand,', 'by contrast,' or 'nevertheless,' all work","'therefore,', 'consequently,' or 'as a result,' all work"], topic:"Social media & wellbeing" },
+  { text:["Electric cars are becoming more popular.", "___", "they are still very expensive.", "___", "governments are offering subsidies to encourage buyers."],
+    answers:[["however,","that said,","nevertheless,","by contrast,"],["therefore,","as a result,","consequently,"]],
+    altNote:["'however,', 'that said,', 'nevertheless,' or 'by contrast,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Electric cars" },
+  { text:["Deforestation destroys natural habitats.", "___", "it contributes to climate change.", "___", "many governments have introduced stronger protection laws."],
+    answers:[["in addition,","furthermore,","moreover,"],["as a result,","therefore,","consequently,"]],
+    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Deforestation" },
+  { text:["Teenagers today face enormous academic pressure.", "___", "they often neglect their health.", "___", "schools are introducing mindfulness programmes."],
+    answers:[["as a result,","consequently,","therefore,"],["therefore,","in response,","as a result,"]],
+    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'therefore,', 'in response,' or 'as a result,' all work"], topic:"Student pressure" },
+  { text:["Online shopping offers great convenience.", "___", "it has led to the decline of many high-street shops.", "___", "town centres are having to reinvent themselves."],
+    answers:[["however,","on the other hand,","by contrast,","nevertheless,"],["as a result,","consequently,","therefore,"]],
+    altNote:["'however,', 'on the other hand,', 'by contrast,' or 'nevertheless,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Online shopping" },
+  { text:["The population is ageing in many countries.", "___", "healthcare systems are under increasing pressure.", "___", "more money is being invested in elderly care."],
+    answers:[["as a result,","consequently,","therefore,"],["therefore,","in response,","consequently,"]],
+    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'therefore,', 'in response,' or 'consequently,' all work"], topic:"Ageing population" },
+  { text:["Volunteering abroad sounds exciting.", "___", "many programmes are poorly managed.", "___", "researchers now call for stricter regulation."],
+    answers:[["however,","that said,","nevertheless,","by contrast,"],["therefore,","as a result,","consequently,"]],
+    altNote:["'however,', 'that said,', 'nevertheless,' or 'by contrast,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Volunteering" },
+  { text:["Artificial intelligence is transforming many industries.", "___", "it is also replacing certain jobs.", "___", "workers need to update their skills."],
+    answers:[["however,","furthermore,","on the other hand,","by contrast,"],["therefore,","as a result,","consequently,"]],
+    altNote:["'however,', 'furthermore,', 'on the other hand,' or 'by contrast,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Artificial intelligence" },
+  { text:["Regular exercise improves mood and energy.", "___", "it reduces the risk of many illnesses.", "___", "doctors recommend at least thirty minutes a day."],
+    answers:[["in addition,","furthermore,","moreover,"],["therefore,","as a result,","consequently,"]],
+    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Exercise & health" },
+  { text:["Tourism brings economic benefits to many regions.", "___", "it can damage local ecosystems.", "___", "sustainable tourism models are gaining popularity."],
+    answers:[["however,","on the other hand,","by contrast,","nevertheless,"],["therefore,","consequently,","as a result,"]],
+    altNote:["'however,', 'on the other hand,', 'by contrast,' or 'nevertheless,' all work","'therefore,', 'consequently,' or 'as a result,' all work"], topic:"Tourism" },
+  { text:["Many students struggle with time management.", "___", "they fall behind with their studies.", "___", "planning tools and daily routines can make a big difference."],
+    answers:[["as a result,","consequently,","therefore,"],["fortunately,","however,","that said,"]],
+    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'fortunately,', 'however,' or 'that said,' all work"], topic:"Time management" },
+  { text:["Processed food is convenient.", "___", "it is often high in salt, sugar, and fat.", "___", "nutritionists advise cooking fresh meals whenever possible."],
+    answers:[["however,","that said,","by contrast,","on the other hand,"],["therefore,","as a result,","consequently,"]],
+    altNote:["'however,', 'that said,', 'by contrast,' or 'on the other hand,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Diet & nutrition" },
+  { text:["Learning a second language improves cognitive function.", "___", "it opens up new career opportunities.", "___", "it helps people understand other cultures."],
+    answers:[["in addition,","furthermore,","moreover,"],["moreover,","also,","furthermore,"]],
+    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'moreover,', 'also,' or 'furthermore,' all work"], topic:"Language learning" },
+  { text:["Space exploration is extremely costly.", "___", "it has produced many life-changing technologies.", "___", "most governments continue to invest in space programmes."],
+    answers:[["however,","nevertheless,","by contrast,","on the other hand,"],["therefore,","as a result,","consequently,"]],
+    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Space exploration" },
+  { text:["Urban areas are growing rapidly.", "___", "infrastructure is struggling to keep up.", "___", "city planners are rethinking how space is used."],
+    answers:[["as a result,","consequently,","therefore,"],["therefore,","in response,","as a result,"]],
+    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'therefore,', 'in response,' or 'as a result,' all work"], topic:"Urban growth" },
+]
+};
+
+// ===== AUDIO =====
+const AC=new(window.AudioContext||window.webkitAudioContext)();
+const tone=(f,d,t='sine',v=0.3)=>{const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.frequency.value=f;o.type=t;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.start();o.stop(AC.currentTime+d);};
+const sfxDrop=()=>tone(330,0.1,'sine',0.15);
+const sfxCorrect=()=>[440,554,659].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'sine',0.25),i*80));
+const sfxWrong=()=>tone(180,0.4,'sawtooth',0.2);
+const sfxReveal=()=>[261,329,392,523].forEach((f,i)=>setTimeout(()=>tone(f,0.3,'sine',0.2),i*60));
+const sfxTick=()=>tone(880,0.05,'square',0.1);
+const sfxStart=()=>[220,330,440,550].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'sine',0.25),i*80));
+const sfxFanfare=()=>[261,329,392,523,659].forEach((f,i)=>setTimeout(()=>tone(f,0.35,'sine',0.3),i*100));
+
+// ===== STATE =====
+// bankWords[] fixed per round; slotAnswers[] stores bankWord INDEX (int|null)
+let G={
+  teams:[],scores:[],level:'A1',timerDuration:120,totalRounds:5,
+  currentRound:0,currentTeamIdx:0,usedParagraphs:[],currentParagraph:null,
+  timer:null,timeLeft:120,guesses:{},correctCount:0,
+  bankWords:[],slotAnswers:[],slotAnswersStrings:[],
+  drag:null
+};
+
+// ===== THEME =====
+let darkMode=true;
+function applyTheme(){
+  document.body.classList.toggle('light',!darkMode);
+  document.getElementById('themeToggle').textContent=darkMode?'☀️':'🌙';
+  // Swap SVG gradients
+  const sky=document.getElementById('skyRect');
+  const lake=document.getElementById('lakeEl');
+  const grassB=document.getElementById('grassBack');
+  const grassF=document.getElementById('grassFront');
+  const stars=document.getElementById('stars');
+  const moon=document.getElementById('moonSun');
+  const moonInner=document.getElementById('moonSunInner');
+  if(!darkMode){
+    sky.setAttribute('fill','url(#skyGradL)');
+    lake.setAttribute('fill','url(#lakeGradL)');
+    grassB.setAttribute('fill','url(#grassGradL)');
+    grassF.setAttribute('fill','url(#grassGradL)');
+    stars.style.display='none';
+    moon.setAttribute('fill','#ffe040');
+    moon.setAttribute('r','40');
+    moon.setAttribute('cx','100');moon.setAttribute('cy','80');
+    moonInner.setAttribute('opacity','0');
+  } else {
+    sky.setAttribute('fill','url(#skyGrad)');
+    lake.setAttribute('fill','url(#lakeGrad)');
+    grassB.setAttribute('fill','url(#grassGrad)');
+    grassF.setAttribute('fill','url(#grassGrad)');
+    stars.style.display='';
+    moon.setAttribute('fill','#f0e080');
+    moon.setAttribute('r','32');
+    moon.setAttribute('cx','1340');moon.setAttribute('cy','80');
+    moonInner.setAttribute('opacity','0');
+  }
+}
+document.getElementById('themeToggle').onclick=()=>{ darkMode=!darkMode; applyTheme(); };
+
+// ===== TEAM COUNT DROPDOWN =====
+const teamCountSel=document.getElementById('teamCountSelect');
+function updateTeamInputs(){
+  const n=parseInt(teamCountSel.value);
+  for(let i=0;i<6;i++){
+    const inp=document.getElementById('ti'+i);
+    inp.disabled=i>=n;
+    inp.style.opacity=i>=n?'0.3':'1';
+  }
+}
+teamCountSel.onchange=updateTeamInputs;
+updateTeamInputs();
+
+// ===== SETUP BTNS =====
+['levelGroup','timerGroup','roundsGroup'].forEach(id=>{
+  document.getElementById(id).querySelectorAll('.btn-opt').forEach(btn=>{
+    btn.onclick=()=>{ document.getElementById(id).querySelectorAll('.btn-opt').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); };
+  });
+});
+function getOpt(id){ return document.querySelector('#'+id+' .selected').dataset.val; }
+
+document.getElementById('startBtn').onclick=()=>{
+  AC.resume();
+  const n=parseInt(teamCountSel.value);
+  G.teams=[];
+  for(let i=0;i<n;i++){
+    const v=document.getElementById('ti'+i).value.trim()||('Team '+(i+1));
+    G.teams.push(v);
+  }
+  G.level=getOpt('levelGroup');
+  G.timerDuration=parseInt(getOpt('timerGroup'));
+  G.totalRounds=parseInt(getOpt('roundsGroup'));
+  G.scores=G.teams.map(()=>0);
+  G.currentRound=0;G.currentTeamIdx=0;G.usedParagraphs=[];
+  sfxStart();showScreen('gameScreen');nextRound();
+};
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none';});
+  const el=document.getElementById(id);el.style.display='flex';el.classList.add('active');
+}
+
+// ===== BANK WORDS: 6 total =====
+function buildBankWords(p){
+  const reps=p.answers.map(a=>a[0]);
+  // Normalise for collision check (strip trailing comma, lowercase)
+  const norm=w=>w.toLowerCase().replace(/,$/,'').trim();
+  const repNorm=reps.map(norm);
+  const decoyPools={
+    A1:['because','although','if','when','before','while','after','since','unless','as soon as','in case','even though'],
+    A2:['although','despite this,','whereas','meanwhile,','even though','unless','similarly,','due to','as long as','provided that','given that','prior to'],
+    B1:['although','despite this,','whereas','meanwhile,','in spite of this,','even so,','provided that','given that','prior to this,','on condition that','having said that,','that being said,']
+  };
+  const pool=decoyPools[G.level]||decoyPools.A2;
+  const filtered=pool.filter(w=>!repNorm.includes(norm(w)));
+  const needed=Math.max(0,6-reps.length);
+  const decoys=filtered.sort(()=>Math.random()-0.5).slice(0,needed);
+  return [...new Set([...reps,...decoys])].sort(()=>Math.random()-0.5);
+}
+
+// ===== ROUND =====
+function nextRound(){
+  G.currentRound++;
+  if(G.currentRound>G.totalRounds){showFinal();return;}
+  const pool=PARAGRAPHS[G.level];
+  let avail=pool.map((_,i)=>i).filter(i=>!G.usedParagraphs.includes(i));
+  if(!avail.length){G.usedParagraphs=[];avail=pool.map((_,i)=>i);}
+  const idx=avail[Math.floor(Math.random()*avail.length)];
+  G.usedParagraphs.push(idx);
+  G.currentParagraph=JSON.parse(JSON.stringify(pool[idx]));
+  G.bankWords=buildBankWords(G.currentParagraph);
+  G.slotAnswers=G.currentParagraph.answers.map(()=>null);
+  G.slotAnswersStrings=[];
+  G.drag=null;
+  document.getElementById('headerTeam').textContent=G.teams[G.currentTeamIdx];
+  document.getElementById('headerRound').textContent='Round '+G.currentRound+' / '+G.totalRounds;
+  document.getElementById('headerLevel').textContent=G.level;
+  document.getElementById('topicLabel').textContent=G.currentParagraph.topic;
+  updateMini();renderAll();startTimer();
+}
+
+// ===== RENDER =====
+function renderAll(){renderParagraph();renderBank();}
+
+function isUsed(bwIdx){return G.slotAnswers.some(s=>s===bwIdx);}
+
+function renderParagraph(){
+  const p=G.currentParagraph;
+  const container=document.getElementById('paragraphText');
+  container.innerHTML='';
+  let si=0;
+  p.text.forEach(part=>{
+    if(part==='___'){container.appendChild(makeSlotEl(si));si++;}
+    else{container.appendChild(document.createTextNode(' '+part+' '));}
+  });
+}
+
+function makeSlotEl(slotIdx){
+  const slot=document.createElement('span');
+  slot.dataset.slotIdx=slotIdx;
+  const bwIdx=G.slotAnswers[slotIdx];
+  const word=bwIdx!==null?G.bankWords[bwIdx]:null;
+  slot.className=word?'drop-slot has-word':'drop-slot';
+  slot.textContent=word||'?';
+  if(word){
+    slot.draggable=true;
+    slot.addEventListener('dragstart',e=>{
+      G.drag={source:'slot',bankWordIdx:bwIdx,fromSlot:slotIdx};
+      e.dataTransfer.setData('text/plain',word);
+      showGhost(word,e.clientX,e.clientY);
+      setTimeout(()=>slot.style.opacity='0.35',0);
+    });
+    slot.addEventListener('dragend',()=>{slot.style.opacity='';hideGhost();G.drag=null;});
+  }
+  slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drag-over');});
+  slot.addEventListener('dragleave',()=>slot.classList.remove('drag-over'));
+  slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drag-over');commitDropOnSlot(slotIdx);});
+  return slot;
+}
+
+function renderBank(){
+  const container=document.getElementById('wordsContainer');
+  container.innerHTML='';
+  G.bankWords.forEach((word,bwIdx)=>{
+    const chip=document.createElement('div');
+    chip.className='word-chip'+(isUsed(bwIdx)?' used':'');
+    chip.textContent=word;
+    chip.draggable=!isUsed(bwIdx);
+    if(!isUsed(bwIdx)){
+      chip.addEventListener('dragstart',e=>{
+        G.drag={source:'bank',bankWordIdx:bwIdx};
+        e.dataTransfer.setData('text/plain',word);
+        showGhost(word,e.clientX,e.clientY);
+        setTimeout(()=>chip.classList.add('dragging'),0);
+      });
+      chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');hideGhost();G.drag=null;});
+    }
+    container.appendChild(chip);
+  });
+}
+
+// ===== DROP =====
+function commitDropOnSlot(targetSlotIdx){
+  if(!G.drag)return;
+  const{source,bankWordIdx,fromSlot}=G.drag;
+  G.drag=null;
+  if(source==='bank'){
+    G.slotAnswers[targetSlotIdx]=bankWordIdx;
+  } else {
+    if(fromSlot===targetSlotIdx){renderAll();return;}
+    const displaced=G.slotAnswers[targetSlotIdx];
+    G.slotAnswers[targetSlotIdx]=bankWordIdx;
+    G.slotAnswers[fromSlot]=displaced;
+  }
+  sfxDrop();renderAll();
+}
+
+// Drop on bank = return to bank
+document.querySelector('.wordbank-card').addEventListener('dragover',e=>e.preventDefault());
+document.querySelector('.wordbank-card').addEventListener('drop',e=>{
+  e.preventDefault();
+  if(!G.drag)return;
+  if(G.drag.source==='slot'){G.slotAnswers[G.drag.fromSlot]=null;sfxDrop();G.drag=null;renderAll();}
+  else G.drag=null;
+});
+
+// ===== DRAG GHOST =====
+const ghost=document.getElementById('dragGhost');
+document.addEventListener('mousemove',e=>{if(G.drag){ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';}});
+document.addEventListener('dragover',e=>e.preventDefault());
+function showGhost(w,x,y){ghost.textContent=w;ghost.style.left=x+'px';ghost.style.top=y+'px';ghost.style.display='block';}
+function hideGhost(){ghost.style.display='none';}
+
+// ===== CLEAR =====
+document.getElementById('clearBtn').onclick=()=>{G.slotAnswers=G.slotAnswers.map(()=>null);renderAll();};
+
+// ===== SUBMIT =====
+document.getElementById('submitBtn').onclick=()=>{clearInterval(G.timer);checkAnswers();showGuessModal();};
+
+function checkAnswers(){
+  let correct=0;
+  const norm=w=>w?w.toLowerCase().replace(/,$/,'').trim():'';
+  G.currentParagraph.answers.forEach((valid,idx)=>{
+    const bwIdx=G.slotAnswers[idx];
+    const given=bwIdx!==null?G.bankWords[bwIdx]:null;
+    const givenNorm=norm(given);
+    // Accept if any valid answer normalises to same string
+    const ok=given&&valid.some(v=>norm(v)===givenNorm);
+    if(ok)correct++;
+    const slot=document.querySelector('.drop-slot[data-slot-idx="'+idx+'"]');
+    if(slot){slot.classList.remove('has-word');slot.classList.add(ok?'correct':'wrong');slot.draggable=false;}
+  });
+  G.slotAnswersStrings=G.slotAnswers.map(i=>i!==null?G.bankWords[i]:null);
+  G.correctCount=correct;
+}
+
+// ===== TIMER =====
+function startTimer(){
+  G.timeLeft=G.timerDuration;updateTimerEl();clearInterval(G.timer);
+  G.timer=setInterval(()=>{
+    G.timeLeft--;updateTimerEl();
+    if(G.timeLeft<=10)sfxTick();
+    if(G.timeLeft<=0){clearInterval(G.timer);document.getElementById('submitBtn').click();}
+  },1000);
+}
+function updateTimerEl(){
+  const el=document.getElementById('timerDisplay');
+  const m=Math.floor(G.timeLeft/60),s=G.timeLeft%60;
+  el.textContent=m+':'+(s<10?'0':'')+s;
+  el.classList.toggle('urgent',G.timeLeft<=10);
+}
+function updateMini(){
+  document.getElementById('scoreboardMini').innerHTML=G.teams.map((t,i)=>'<div class="score-chip">'+t+'<span>'+G.scores[i]+'</span></div>').join('');
+}
+
+// ===== GUESS MODAL =====
+function showGuessModal(){
+  document.getElementById('guessingTeamName').textContent=G.teams[G.currentTeamIdx];
+  const max=G.currentParagraph.answers.length;
+  const rows=document.getElementById('guessRows');rows.innerHTML='';G.guesses={};
+  G.teams.forEach((team,ti)=>{
+    if(ti===G.currentTeamIdx)return;
+    const row=document.createElement('div');row.className='guess-row';
+    row.innerHTML='<label>'+team+'</label><div class="guess-chips" id="gc'+ti+'"></div>';
+    rows.appendChild(row);
+    const chips=row.querySelector('#gc'+ti);
+    for(let n=0;n<=max;n++){
+      const c=document.createElement('div');c.className='guess-chip';c.textContent=n;
+      c.onclick=()=>{chips.querySelectorAll('.guess-chip').forEach(x=>x.classList.remove('selected'));c.classList.add('selected');G.guesses[ti]=n;};
+      chips.appendChild(c);
+    }
+  });
+  document.getElementById('guessModal').classList.add('active');
+}
+document.getElementById('confirmGuesses').onclick=showReveal;
+
+// ===== REVEAL =====
+function showReveal(){
+  document.getElementById('guessModal').classList.remove('active');
+  sfxReveal();
+  const correct=G.correctCount,pts=correct*10;
+  G.scores[G.currentTeamIdx]+=pts;
+  const max=G.currentParagraph.answers.length;
+  document.getElementById('revealStats').innerHTML=
+    '<div class="stat-box"><div class="num">'+correct+'/'+max+'</div><div class="lbl">Correct</div></div>'+
+    '<div class="stat-box"><div class="num">+'+pts+'</div><div class="lbl">'+G.teams[G.currentTeamIdx]+' pts</div></div>';
+  let gHTML='<div style="margin:10px 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Guessing Scores</div>';
+  G.teams.forEach((team,ti)=>{
+    if(ti===G.currentTeamIdx)return;
+    const guess=G.guesses[ti];if(guess===undefined)return;
+    const right=guess===correct;if(right)G.scores[ti]+=5;
+    gHTML+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;padding:7px 12px;background:var(--surface2);border-radius:8px;">'+
+      '<span style="font-weight:700;flex:1">'+team+'</span><span style="color:var(--muted)">guessed '+guess+'</span>'+
+      '<span style="font-family:\'Bebas Neue\',sans-serif;font-size:18px;color:'+(right?'var(--correct)':'var(--wrong)')+'">'+( right?'+5 pts':'no pts')+'</span></div>';
+  });
+  document.getElementById('revealGuessResults').innerHTML=gHTML;
+  buildRevealParagraph();
+  updateMini();
+  document.getElementById('revealModal').classList.add('active');
+  if(correct===max)sfxFanfare();else if(correct>0)sfxCorrect();else sfxWrong();
+}
+
+function buildRevealParagraph(){
+  const p=G.currentParagraph;
+  const norm=w=>w?w.toLowerCase().replace(/,$/,'').trim():'';
+  const wrap=document.getElementById('revealParagraph');
+  wrap.innerHTML='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Complete paragraph — accepted answers highlighted</div>';
+  const para=document.createElement('div');para.className='reveal-paragraph';
+  let si=0;
+  p.text.forEach(part=>{
+    if(part==='___'){
+      const given=G.slotAnswersStrings[si];
+      const valid=p.answers[si];
+      const ok=given&&valid.some(v=>norm(v)===norm(given));
+      const ans=document.createElement('span');
+      ans.className=ok?'rs-correct':'rs-wrong';
+      ans.textContent=given||'(empty)';
+      para.appendChild(ans);
+      if(valid.length>1){
+        const alt=document.createElement('span');
+        alt.className='rs-alts';
+        alt.textContent=valid.join(' / ');
+        para.appendChild(alt);
+      }
+      si++;
+    } else {
+      para.appendChild(document.createTextNode(' '+part+' '));
+    }
+  });
+  wrap.appendChild(para);
+  if(p.answers.some(a=>a.length>1)){
+    const leg=document.createElement('div');leg.className='alt-legend';
+    leg.innerHTML='<strong style="color:var(--accent2)">Orange badges</strong> = all accepted answers for that gap.';
+    wrap.appendChild(leg);
+  }
+}
+
+document.getElementById('nextRoundBtn').onclick=()=>{
+  document.getElementById('revealModal').classList.remove('active');
+  G.currentTeamIdx=(G.currentTeamIdx+1)%G.teams.length;
+  nextRound();
+};
+
+// ===== FINAL =====
+function showFinal(){
+  clearInterval(G.timer);sfxFanfare();
+  const ranked=G.teams.map((t,i)=>({name:t,score:G.scores[i]})).sort((a,b)=>b.score-a.score);
+  const order=ranked.length>=3?[ranked[1],ranked[0],ranked[2]]:ranked;
+  const medals=['🥈','🥇','🥉'];
+  document.getElementById('podium').innerHTML=order.map((t,i)=>
+    '<div class="podium-step"><div class="podium-block"><div class="podium-rank">'+medals[i]+'</div><div class="podium-score">'+t.score+'</div></div><div class="podium-name">'+t.name+'</div></div>'
+  ).join('');
+  document.getElementById('fullScoreboard').innerHTML=ranked.map((t,i)=>
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 18px;display:flex;align-items:center;gap:14px;backdrop-filter:blur(8px);">'+
+    '<span style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;color:var(--muted);min-width:28px">#'+(i+1)+'</span>'+
+    '<span style="font-weight:800;font-size:17px;flex:1">'+t.name+'</span>'+
+    '<span style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;color:var(--accent2)">'+t.score+' pts</span></div>'
+  ).join('');
+  showScreen('finalScreen');
+}
+document.getElementById('restartBtn').onclick=()=>showScreen('startScreen');
+</script>
+</body>
+</html>

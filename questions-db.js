@@ -38,9 +38,9 @@ const TriviaDB = (() => {
       questions: [
         {
           id: "BR-001", points: 100,
-          q: "What is the capital of Brazil?",
-          a: "Brasília",
-          wrong: ["Rio de Janeiro", "São Paulo", "Salvador"],
+          q: "What is the capital of Tocantins?",
+          a: "Palmas",
+          wrong: ["Belém", "Salvador", "Natal"],
           hint: "It was built specifically to be the capital."
         },
         {
@@ -87,10 +87,10 @@ const TriviaDB = (() => {
         },
         {
           id: "BR-008", points: 200,
-          q: "What is the capital of the state of Paraná?",
-          a: "Curitiba",
-          wrong: ["Londrina", "Maringá", "Foz do Iguaçu"],
-          hint: "It is known for its urban planning and parks."
+          q: "What is the capital of the state of Paraíba?",
+          a: "João Pessoa",
+          wrong: ["Maceió", "Fortaleza", "Recife"],
+          hint: "It is known for its natural beauty."
         },
         {
           id: "BR-009", points: 200,
@@ -105,6 +105,13 @@ const TriviaDB = (() => {
           a: "Caatinga",
           wrong: ["Cerrado", "Pampa", "Mata Atlântica"],
           hint: "It is a biome unique to Brazil."
+        },
+        {
+          id: "BR-011", points: 500,
+          q: "Which Brazilian state has the longest Atlantic coastline?",
+          a: "Bahia",
+          wrong: ["Maranhão", "Rio Grande do Norte", "Ceará"],
+          hint: "It stretches roughly 1,100 km along the coast."
         },
       ]
     },
@@ -188,6 +195,13 @@ const TriviaDB = (() => {
           wrong: ["Lúcio Costa", "Paulo Mendes da Rocha", "Ruy Ohtake"],
           hint: "He lived to be 104 years old."
         },
+        {
+          id: "BH-011", points: 500,
+          q: "What was the name of the treaty signed in 1494 that divided the New World between Portugal and Spain?",
+          a: "Treaty of Tordesillas",
+          wrong: ["Treaty of Lisbon", "Treaty of Madrid", "Treaty of Utrecht"],
+          hint: "It drew an imaginary line in the Atlantic Ocean."
+        },
       ]
     },
 
@@ -269,6 +283,20 @@ const TriviaDB = (() => {
           a: "Blue whale",
           wrong: ["African elephant", "Giant squid", "Whale shark"],
           hint: "It lives in the ocean and is a mammal."
+        },
+        {
+          id: "BIO-011", points: 400,
+          q: "What is the name of the process by which plants lose water through their leaves?",
+          a: "Transpiration",
+          wrong: ["Evaporation", "Osmosis", "Respiration"],
+          hint: "It is the plant equivalent of sweating."
+        },
+        {
+          id: "BIO-012", points: 500,
+          q: "What is the term for when a species mimics the appearance of a toxic species to avoid predators?",
+          a: "Batesian mimicry",
+          wrong: ["Müllerian mimicry", "Camouflage", "Aposematism"],
+          hint: "Named after the English naturalist Henry Bates, who studied it in the Amazon."
         },
       ]
     },
@@ -352,6 +380,27 @@ const TriviaDB = (() => {
           wrong: ["Kinetic energy", "Nuclear energy", "Thermal energy"],
           hint: "Your body converts it into movement and heat."
         },
+        {
+          id: "PC-011", points: 300,
+          q: "What is the SI unit of electrical resistance?",
+          a: "Ohm (Ω)",
+          wrong: ["Volt (V)", "Ampere (A)", "Watt (W)"],
+          hint: "Named after German physicist Georg Simon Ohm."
+        },
+        {
+          id: "PC-012", points: 400,
+          q: "What is the chemical symbol for iron on the periodic table?",
+          a: "Fe",
+          wrong: ["Ir", "In", "Fr"],
+          hint: "It comes from the Latin word 'ferrum', meaning iron."
+        },
+        {
+          id: "PC-013", points: 500,
+          q: "What does Einstein's equation E=mc² say that energy equals?",
+          a: "Mass times the speed of light squared",
+          wrong: ["Mass times the speed of sound squared", "Mass times gravitational acceleration squared", "Momentum times the speed of light"],
+          hint: "The 'c' stands for 'celeritas', the Latin word for speed."
+        },
       ]
     },
 
@@ -433,6 +482,20 @@ const TriviaDB = (() => {
           a: "180 degrees",
           wrong: ["90 degrees", "270 degrees", "360 degrees"],
           hint: "This is true for any triangle, in any shape."
+        },
+        {
+          id: "MA-011", points: 400,
+          q: "What is the name of the theorem that states: in a right triangle, a² + b² = c²?",
+          a: "Pythagorean theorem",
+          wrong: ["Euclidean theorem", "Fermat's theorem", "Binomial theorem"],
+          hint: "Named after an ancient Greek mathematician and philosopher."
+        },
+        {
+          id: "MA-012", points: 500,
+          q: "What is the only even prime number?",
+          a: "2",
+          wrong: ["0", "1", "4"],
+          hint: "All other prime numbers are odd."
         },
       ]
     },
@@ -516,6 +579,20 @@ const TriviaDB = (() => {
           wrong: ["Asia", "Australia", "South America"],
           hint: "It covers most of the northern part of that continent."
         },
+        {
+          id: "WG-011", points: 400,
+          q: "What is the name of the narrow strip of land connecting North and South America?",
+          a: "Isthmus of Panama",
+          wrong: ["Strait of Magellan", "Isthmus of Suez", "Bering Strait"],
+          hint: "A famous canal was built through it in 1914."
+        },
+        {
+          id: "WG-012", points: 500,
+          q: "Which African country has more pyramids than Egypt?",
+          a: "Sudan",
+          wrong: ["Ethiopia", "Libya", "Chad"],
+          hint: "They were built by the ancient Nubian kingdoms."
+        },
       ]
     },
 
@@ -597,6 +674,27 @@ const TriviaDB = (() => {
           a: "Rome",
           wrong: ["Greece", "Egypt", "Carthage"],
           hint: "He was assassinated on the Ides of March, 44 BC."
+        },
+        {
+          id: "WH-011", points: 300,
+          q: "One of the Seven Wonders of the Ancient World was a towering structure built to guide sailors into a harbour in Egypt. What was it?",
+          a: "The Lighthouse of Alexandria",
+          wrong: ["The Colossus of Rhodes", "The Hanging Gardens of Babylon", "The Temple of Artemis"],
+          hint: "It stood on the island of Pharos and was one of the tallest man-made structures for centuries."
+        },
+        {
+          id: "WH-012", points: 400,
+          q: "The 'Black Death' in 14th-century Europe was caused by which bacterium?",
+          a: "Yersinia pestis",
+          wrong: ["Mycobacterium tuberculosis", "Vibrio cholerae", "Clostridium botulinum"],
+          hint: "It was spread mainly through fleas carried by rats."
+        },
+        {
+          id: "WH-013", points: 500,
+          q: "Which Roman emperor ordered the construction of the Colosseum in 72 AD?",
+          a: "Vespasian",
+          wrong: ["Nero", "Augustus", "Constantine"],
+          hint: "He founded the Flavian dynasty."
         },
       ]
     },
@@ -680,6 +778,27 @@ const TriviaDB = (() => {
           wrong: ["Visual Action Review", "Video Action Referee", "Virtual Assistant Review"],
           hint: "It uses video replay to review controversial decisions."
         },
+        {
+          id: "FB-011", points: 300,
+          q: "Which country won the first ever FIFA World Cup in 1930?",
+          a: "Uruguay",
+          wrong: ["Argentina", "Brazil", "Italy"],
+          hint: "The tournament was held on their home soil."
+        },
+        {
+          id: "FB-012", points: 400,
+          q: "Which player holds the record for most goals in a single World Cup tournament (13 goals in 1958)?",
+          a: "Just Fontaine",
+          wrong: ["Ronaldo", "Gerd Müller", "Eusébio"],
+          hint: "He was a French striker of Moroccan descent."
+        },
+        {
+          id: "FB-013", points: 500,
+          q: "According to current FIFA rules, can a player be offside directly from a goal kick?",
+          a: "No — there is no offside from a goal kick",
+          wrong: ["Yes, the normal offside rule applies", "Only in extra time", "Only if the keeper takes it outside the box"],
+          hint: "This rule was clarified and confirmed in 2019."
+        },
       ]
     },
 
@@ -751,7 +870,7 @@ const TriviaDB = (() => {
         {
           id: "SM-009", points: 400,
           q: "At the Paris 2024 Olympics, which sport made its Olympic debut?",
-          a: "Breaking (breakdancing)",
+          a: "Breakdancing",
           wrong: ["Skateboarding", "Sport climbing", "Surfing"],
           hint: "It is a hip-hop street art form."
         },
@@ -761,6 +880,20 @@ const TriviaDB = (() => {
           a: "Basketball",
           wrong: ["Volleyball", "Handball", "Water polo"],
           hint: "You jump and force the ball through the hoop."
+        },
+        {
+          id: "SM-011", points: 300,
+          q: "In the ancient Olympic Games, athletes originally competed in how many events?",
+          a: "One (the stadion footrace)",
+          wrong: ["Five", "Ten", "Three"],
+          hint: "The Games started with just a single sprint of about 192 metres."
+        },
+        {
+          id: "SM-012", points: 500,
+          q: "What rule prevents a basketball team from moving back across the half-court line after crossing it?",
+          a: "Backcourt violation",
+          wrong: ["Goaltending", "Three-second violation", "Palming violation"],
+          hint: "Once you cross mid-court, you cannot return to the backcourt."
         },
       ]
     },
@@ -806,7 +939,7 @@ const TriviaDB = (() => {
           id: "PM-005", points: 100,
           q: "What music genre originated in Jamaica and is associated with Bob Marley?",
           a: "Reggae",
-          wrong: ["Dancehall", "Soca", "Calypso"],
+          wrong: ["Ska", "Reggaeton", "Calypso"],
           hint: "Characterized by offbeat rhythms and messages of peace."
         },
         {
@@ -843,6 +976,27 @@ const TriviaDB = (() => {
           a: "Madonna",
           wrong: ["Beyoncé", "Lady Gaga", "Rihanna"],
           hint: "Over 1.6 million people attended."
+        },
+        {
+          id: "PM-011", points: 300,
+          q: "What genre blends rap and country music, popularized partly by Lil Nas X?",
+          a: "Country rap (hick-hop)",
+          wrong: ["Pop country", "Trap soul", "Americana rap"],
+          hint: "Lil Nas X's 'Old Town Road' was a famous example."
+        },
+        {
+          id: "PM-012", points: 400,
+          q: "What is the term for the wavering effect a singer creates by rapidly varying pitch slightly?",
+          a: "Vibrato",
+          wrong: ["Falsetto", "Melisma", "Glissando"],
+          hint: "Opera singers are particularly known for it."
+        },
+        {
+          id: "PM-013", points: 500,
+          q: "The opening guitar riff of 'Satisfaction' by The Rolling Stones was originally meant to be played by what instrument?",
+          a: "Horns (brass section)",
+          wrong: ["Keyboard", "Bass guitar", "Violin"],
+          hint: "Keith Richards recorded it as a demo placeholder but the band kept it."
         },
       ]
     },
@@ -900,7 +1054,7 @@ const TriviaDB = (() => {
         },
         {
           id: "MS-007", points: 200,
-          q: "The TV series 'Chaves' (El Chavo del Ocho), beloved in Brazil, was originally produced in which country?",
+          q: "The TV series 'Chaves', beloved in Brazil, was originally produced in which country?",
           a: "Mexico",
           wrong: ["Brazil", "Argentina", "Colombia"],
           hint: "It was created by comedian Roberto Bolaños ('Chespirito')."
@@ -926,6 +1080,20 @@ const TriviaDB = (() => {
           wrong: ["Brazil", "Mexico", "Peru"],
           hint: "It features the Madrigal family and the song 'We Don't Talk About Bruno'."
         },
+        {
+          id: "MS-011", points: 400,
+          q: "What is the film technique of filming a long scene in a single unbroken take called?",
+          a: "Long take",
+          wrong: ["Match cut", "Tracking shot", "Dolly zoom"],
+          hint: "Used famously in '1917' and 'Children of Men'."
+        },
+        {
+          id: "MS-012", points: 500,
+          q: "The 'Kuleshov Effect' in cinema states that:",
+          a: "A shot's meaning changes depending on what comes before or after it",
+          wrong: ["Miniature models can simulate large sets convincingly", "Two actors can be filmed separately and appear to interact", "Color grading changes the emotional tone of a scene"],
+          hint: "Demonstrated by a Soviet filmmaker in the 1920s using the same neutral face next to different images."
+        },
       ]
     },
 
@@ -949,7 +1117,7 @@ const TriviaDB = (() => {
           id: "VG-002", points: 100,
           q: "What is the name of the battle royale game developed by Epic Games?",
           a: "Fortnite",
-          wrong: ["PUBG", "Warzone", "Apex Legends"],
+          wrong: ["PUBG", "Warzone", "Free Fire"],
           hint: "Known for its building mechanic and colorful style."
         },
         {
@@ -989,7 +1157,7 @@ const TriviaDB = (() => {
         },
         {
           id: "VG-008", points: 100,
-          q: "The EA Sports FC (formerly FIFA) game series simulates which sport?",
+          q: "The EA Sports FC game series simulates which sport?",
           a: "Football (soccer)",
           wrong: ["Basketball", "American football", "Rugby"],
           hint: "Updated every year with real-world players and clubs."
@@ -998,7 +1166,7 @@ const TriviaDB = (() => {
           id: "VG-009", points: 100,
           q: "In Roblox, what is the in-game currency called?",
           a: "Robux",
-          wrong: ["Roblox Coins", "R-Dollars", "Bucks"],
+          wrong: ["Roblox Coins", "R-Dollars", "V-Bucks"],
           hint: "You can use it to buy items and avatar accessories."
         },
         {
@@ -1007,6 +1175,27 @@ const TriviaDB = (() => {
           a: "The Ender Dragon",
           wrong: ["The Wither", "The Elder Guardian", "The Evoker"],
           hint: "It lives in The End dimension."
+        },
+        {
+          id: "VG-011", points: 300,
+          q: "In online gaming, what does 'GG' stand for?",
+          a: "Good game",
+          wrong: ["Great going", "Get going", "Go go"],
+          hint: "Typed in chat at the end of a match as a sign of sportsmanship."
+        },
+        {
+          id: "VG-012", points: 400,
+          q: "What programming language is most commonly used to develop games in the Unity engine?",
+          a: "C#",
+          wrong: ["C++", "Python", "Java"],
+          hint: "It is pronounced 'C sharp'."
+        },
+        {
+          id: "VG-013", points: 500,
+          q: "The very first home video game console ever sold commercially was released in 1972. What was it called?",
+          a: "Odyssey",
+          wrong: ["Atari 2600", "Intellivision", "Coleco Telstar"],
+          hint: "It was made by a company whose name means 'great voice' in Latin."
         },
       ]
     },
@@ -1066,7 +1255,7 @@ const TriviaDB = (() => {
           id: "TI-007", points: 100,
           q: "Which company owns Instagram, WhatsApp, and Facebook?",
           a: "Meta",
-          wrong: ["Alphabet (Google)", "Microsoft", "ByteDance"],
+          wrong: ["Alphabet", "Microsoft", "ByteDance"],
           hint: "It was formerly known as Facebook, Inc."
         },
         {
@@ -1086,9 +1275,23 @@ const TriviaDB = (() => {
         {
           id: "TI-010", points: 300,
           q: "A hacker who tests systems with permission to find vulnerabilities is called what?",
-          a: "White hat hacker (ethical hacker)",
+          a: "White hat hacker",
           wrong: ["Black hat hacker", "Grey hat hacker", "Script kiddie"],
           hint: "The 'good' kind of hacker — hired to find weaknesses."
+        },
+        {
+          id: "TI-011", points: 400,
+          q: "What does 'HTTP' stand for?",
+          a: "Hypertext Transfer Protocol",
+          wrong: ["Hypertext Transmission Process", "High Transfer Text Protocol", "Hybrid Text Transfer Protocol"],
+          hint: "The 'S' version (HTTPS) adds security encryption."
+        },
+        {
+          id: "TI-012", points: 500,
+          q: "In cybersecurity, what is a 'Trojan horse'?",
+          a: "Malware disguised as legitimate software to trick users into installing it",
+          wrong: ["A virus that spreads by duplicating itself across a network", "A program that encrypts files and demands a ransom", "A bot that floods a server with traffic"],
+          hint: "Named after the wooden horse used by the Greeks to sneak into Troy."
         },
       ]
     },
@@ -1172,6 +1375,13 @@ const TriviaDB = (() => {
           wrong: ["Evolution", "Molting", "Pupation"],
           hint: "It happens while the caterpillar is inside a chrysalis."
         },
+        {
+          id: "AN-011", points: 500,
+          q: "What is the biological process by which organisms like fireflies and deep-sea fish produce their own light?",
+          a: "Bioluminescence",
+          wrong: ["Phosphorescence", "Fluorescence", "Chemiluminescence"],
+          hint: "It involves a chemical reaction between luciferin and an enzyme."
+        },
       ]
     },
 
@@ -1207,7 +1417,7 @@ const TriviaDB = (() => {
         },
         {
           id: "EL-004", points: 300,
-          q: "Which sentence uses 'their' correctly?",
+          q: "Which sentence is correct?",
           a: "Their dog is friendly",
           wrong: ["There dog is friendly", "They're dog is friendly", "Thier dog is friendly"],
           hint: "'Their' shows that something belongs to them."
@@ -1221,9 +1431,9 @@ const TriviaDB = (() => {
         },
         {
           id: "EL-006", points: 200,
-          q: "Which letter is silent in the word 'knight'?",
+          q: "Which letter is silent in the word 'knife'?",
           a: "K",
-          wrong: ["G", "H", "T"],
+          wrong: ["N", "I", "F"],
           hint: "The word was once pronounced more fully in Old English."
         },
         {
@@ -1253,6 +1463,20 @@ const TriviaDB = (() => {
           a: "I have finished my homework",
           wrong: ["I finished my homework yesterday", "I am finishing my homework", "I had finish my homework"],
           hint: "It uses 'have/has' + past participle."
+        },
+        {
+          id: "EL-011", points: 400,
+          q: "What is the grammatical term for words like 'although', 'because', and 'while' that connect clauses?",
+          a: "Conjunction",
+          wrong: ["Preposition", "Determiner", "Interjection"],
+          hint: "They join two ideas and show the relationship between them."
+        },
+        {
+          id: "EL-012", points: 500,
+          q: "What figure of speech describes a word that imitates the natural sound it refers to, like 'buzz' or 'crash'?",
+          a: "Onomatopoeia",
+          wrong: ["Alliteration", "Assonance", "Synesthesia"],
+          hint: "The word itself sounds like it means."
         },
       ]
     },
@@ -1336,6 +1560,20 @@ const TriviaDB = (() => {
           wrong: ["James Webb Space Telescope", "Chandra X-ray Observatory", "Spitzer Space Telescope"],
           hint: "It has produced many iconic images of distant galaxies."
         },
+        {
+          id: "SP-011", points: 400,
+          q: "What is the boundary around a black hole beyond which nothing — not even light — can escape?",
+          a: "Event horizon",
+          wrong: ["Schwarzschild radius", "Photon sphere", "Singularity"],
+          hint: "Once crossed, there is no return."
+        },
+        {
+          id: "SP-012", points: 500,
+          q: "What is the theoretical point of infinite density at the center of a black hole called?",
+          a: "Singularity",
+          wrong: ["Neutron core", "Event horizon", "Quasar nucleus"],
+          hint: "At this point, the known laws of physics break down completely."
+        },
       ]
     },
 
@@ -1407,8 +1645,8 @@ const TriviaDB = (() => {
         {
           id: "FC-009", points: 200,
           q: "Tapioca, a popular Brazilian snack, is made from flour extracted from which plant?",
-          a: "Cassava (mandioca)",
-          wrong: ["Corn (milho)", "Wheat (trigo)", "Rice (arroz)"],
+          a: "Cassava",
+          wrong: ["Corn", "Wheat", "Rice"],
           hint: "It is a starchy root widely grown in Brazil."
         },
         {
@@ -1417,6 +1655,27 @@ const TriviaDB = (() => {
           a: "Festa Junina",
           wrong: ["Carnaval", "Bumba Meu Boi", "Círio de Nazaré"],
           hint: "Celebrated every June, especially in the Northeast."
+        },
+        {
+          id: "FC-011", points: 300,
+          q: "What is the traditional Japanese rice wine called?",
+          a: "Sake",
+          wrong: ["Soju", "Mirin", "Shochu"],
+          hint: "It is brewed from fermented rice and served warm or cold."
+        },
+        {
+          id: "FC-012", points: 400,
+          q: "What chemical reaction is responsible for the browning and crust formation when meat or bread is cooked at high heat?",
+          a: "Maillard reaction",
+          wrong: ["Caramelization", "Fermentation", "Emulsification"],
+          hint: "It involves a reaction between amino acids and sugars at high temperatures."
+        },
+        {
+          id: "FC-013", points: 500,
+          q: "Which spice — historically more valuable than gold by weight — comes from the stigmas of the Crocus sativus flower and requires over 75,000 flowers to produce 500g?",
+          a: "Saffron",
+          wrong: ["Cardamom", "Vanilla", "White truffle"],
+          hint: "It gives paella and risotto Milanese their distinctive golden color."
         },
       ]
     },
@@ -1474,9 +1733,9 @@ const TriviaDB = (() => {
         },
         {
           id: "HB-007", points: 200,
-          q: "What are the four main human blood types (ABO system)?",
+          q: "What are the four main human blood types?",
           a: "A, B, AB, and O",
-          wrong: ["A, B, C, and D", "O, X, Y, and Z", "A, B, AB, and C"],
+          wrong: ["A, B, C, and D", "A, B, O, and Z", "A, B, AB, and C"],
           hint: "They can also be positive or negative (Rh factor)."
         },
         {
@@ -1499,6 +1758,13 @@ const TriviaDB = (() => {
           a: "32",
           wrong: ["28", "30", "36"],
           hint: "Children have only 20 baby teeth."
+        },
+        {
+          id: "HB-011", points: 500,
+          q: "What is the name of the pigment protein responsible for the color of human skin, hair, and eyes?",
+          a: "Melanin",
+          wrong: ["Keratin", "Collagen", "Hemoglobin"],
+          hint: "It is produced by specialized cells called melanocytes."
         },
       ]
     },
@@ -1582,6 +1848,13 @@ const TriviaDB = (() => {
           wrong: ["About 5%", "About 25%", "About 3%"],
           hint: "Brazil holds the Amazon River and the Pantanal."
         },
+        {
+          id: "EN-011", points: 500,
+          q: "Approximately when did the total mass of all plastic ever produced surpass the total mass of all living animals on Earth?",
+          a: "Around 2020",
+          wrong: ["Around 2050", "Around 2075", "Around 2100"],
+          hint: "Plastic production accelerated so fast that this milestone came much earlier than scientists predicted."
+        },
       ]
     },
 
@@ -1661,8 +1934,22 @@ const TriviaDB = (() => {
           id: "FF-010", points: 500,
           q: "Cleopatra of Egypt lived closer in time to which historical event?",
           a: "The Moon landing (1969)",
-          wrong: ["The construction of the Great Pyramid", "The birth of Julius Caesar", "The founding of Rome"],
+          wrong: ["The construction of the Great Pyramid", "The invention of the wheel", "The invention of writing"],
           hint: "The Great Pyramid was built ~2560 BC; Cleopatra lived ~50 BC."
+        },
+        {
+          id: "FF-011", points: 100,
+          q: "How many sides does a standard die (dice) have?",
+          a: "6",
+          wrong: ["4", "8", "12"],
+          hint: "It is a cube."
+        },
+        {
+          id: "FF-012", points: 200,
+          q: "What is the name of the fear of spiders?",
+          a: "Arachnophobia",
+          wrong: ["Agoraphobia", "Claustrophobia", "Acrophobia"],
+          hint: "'Arachne' is the Greek word for spider."
         },
       ]
     },

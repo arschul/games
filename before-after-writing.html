@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Before & After — EFL Writing Workshop</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0d;
+    --surface: #1a1816;
+    --card: #211f1c;
+    --border: #2e2b26;
+    --accent: #e8c547;
+    --text: #ede8df;
+    --muted: #8a847a;
+    --good: #5aad7e;
+    --bad: #d96b5a;
+    --a1: #7ec8e3;
+    --a2: #6db3d1;
+    --b1: #9d8fe0;
+    --b2: #c47fd4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-weight: 300;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  header h1 span { color: var(--accent); font-style: italic; }
+  header p { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* ── Level Nav ── */
+  .level-nav {
+    display: flex;
+    gap: 4px;
+    padding: 16px 40px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    background: var(--bg);
+  }
+  .level-btn {
+    padding: 7px 18px;
+    border-radius: 40px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .level-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .level-btn[data-level="A1"].active { background: var(--a1); border-color: var(--a1); color: #0f0e0d; }
+  .level-btn[data-level="A2"].active { background: var(--a2); border-color: var(--a2); color: #0f0e0d; }
+  .level-btn[data-level="B1"].active { background: var(--b1); border-color: var(--b1); color: #0f0e0d; }
+  .level-btn[data-level="B2"].active { background: var(--b2); border-color: var(--b2); color: #0f0e0d; }
+
+  /* ── Main ── */
+  main { max-width: 820px; margin: 0 auto; padding: 36px 24px 80px; }
+
+  /* ── Level sections ── */
+  .level-section { display: none; }
+  .level-section.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ── Level header ── */
+  .level-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .level-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+    color: #0f0e0d;
+  }
+  .level-badge.A1 { background: var(--a1); }
+  .level-badge.A2 { background: var(--a2); }
+  .level-badge.B1 { background: var(--b1); }
+  .level-badge.B2 { background: var(--b2); }
+  .level-desc { font-size: 0.8rem; color: var(--muted); }
+
+  /* ── Topic picker ── */
+  .topic-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 28px;
+  }
+  .topic-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+  }
+  .topic-item:hover { border-color: #3e3a34; background: #262320; }
+  .topic-item.active { border-color: var(--accent); background: #262218; }
+  .topic-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+    width: 28px;
+  }
+  .topic-title { font-size: 0.92rem; font-weight: 400; flex: 1; }
+  .topic-arrow { font-size: 0.75rem; color: var(--muted); transition: transform 0.2s, color 0.2s; }
+  .topic-item.active .topic-arrow { transform: rotate(90deg); color: var(--accent); }
+  .topic-item.active .topic-title { color: var(--accent); }
+
+  /* ── Card ── */
+  .para-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 32px;
+    animation: slideDown 0.28s ease;
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-header {
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .card-num { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); }
+  .card-topic-label { font-size: 0.9rem; font-weight: 500; font-family: 'Playfair Display', serif; }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.63rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: currentColor; opacity: 0.2; }
+  .before-label { color: var(--bad); }
+  .after-label { color: var(--good); }
+
+  .before-section { padding: 22px 24px 16px; }
+
+  .para-text { font-size: 0.97rem; line-height: 1.85; color: var(--text); }
+
+  /* Error spans — hidden by default, shown when .errors-visible is on parent */
+  .err { border-radius: 2px; padding: 0 2px; transition: background 0.15s; cursor: default; }
+  .errors-visible .err {
+    background: rgba(217, 107, 90, 0.18);
+    border-bottom: 2px solid var(--bad);
+    cursor: help;
+  }
+
+  /* ── Action bar ── */
+  .action-bar {
+    border-top: 1px solid var(--border);
+    padding: 12px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--surface);
+  }
+  .error-count { font-size: 0.78rem; color: var(--muted); margin-right: auto; }
+  .error-count strong { color: var(--bad); font-weight: 500; }
+
+  .action-btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+    background: transparent;
+  }
+  .btn-errors { border-color: var(--bad); color: var(--bad); }
+  .btn-errors:hover { background: rgba(217,107,90,0.12); }
+  .btn-errors.on { background: rgba(217,107,90,0.15); }
+
+  .btn-reveal { border-color: var(--accent); color: var(--accent); }
+  .btn-reveal:hover { background: rgba(232,197,71,0.12); }
+  .btn-reveal.revealed { border-color: var(--muted); color: var(--muted); }
+  .btn-reveal.revealed:hover { background: var(--border); color: var(--text); }
+
+  /* ── After section ── */
+  .after-section {
+    padding: 22px 24px;
+    border-top: 1px solid var(--border);
+    background: rgba(90, 173, 126, 0.04);
+    display: none;
+  }
+  .after-section.visible { display: block; animation: fadeIn 0.25s ease; }
+
+  /* ── Changes list ── */
+  .changes-list { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .changes-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.63rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .change-item {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 10px 12px;
+    margin-bottom: 10px;
+    align-items: start;
+    font-size: 0.84rem;
+  }
+  .change-icon {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(90, 173, 126, 0.12);
+    border: 1px solid var(--good);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.62rem; color: var(--good);
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .change-text { color: var(--text); line-height: 1.55; }
+  .change-text em { color: var(--bad); font-style: normal; font-family: 'DM Mono', monospace; font-size: 0.82em; }
+  .change-text strong { color: var(--good); font-weight: 500; font-family: 'DM Mono', monospace; font-size: 0.82em; }
+
+  /* ── Tooltip ── */
+  .tooltip-popup {
+    position: fixed;
+    background: #2e2b26;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 9px 13px;
+    font-size: 0.77rem;
+    color: var(--text);
+    max-width: 240px;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    line-height: 1.5;
+  }
+  .tooltip-popup.show { opacity: 1; }
+
+  @media (max-width: 600px) {
+    header { padding: 18px 20px; flex-direction: column; gap: 4px; }
+    .level-nav { padding: 12px 20px; }
+    main { padding: 24px 14px 60px; }
+    .action-bar { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .error-count { margin-right: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Before <span>&</span> After</h1>
+  <p>EFL Writing Workshop · CEFR A1–B2</p>
+</header>
+
+<nav class="level-nav">
+  <button class="level-btn active" data-level="A1" onclick="switchLevel('A1')">A1 Beginner</button>
+  <button class="level-btn" data-level="A2" onclick="switchLevel('A2')">A2 Elementary</button>
+  <button class="level-btn" data-level="B1" onclick="switchLevel('B1')">B1 Intermediate</button>
+  <button class="level-btn" data-level="B2" onclick="switchLevel('B2')">B2 Upper-Intermediate</button>
+</nav>
+
+<main>
+
+<section class="level-section active" id="level-A1">
+  <div class="level-header">
+    <span class="level-badge A1">A1</span>
+    <span class="level-desc">Errors: basic verb forms, articles, spelling, word order</span>
+  </div>
+  <div class="topic-picker" id="picker-A1">
+    <div class="topic-item" onclick="openTopic('A1',0,this)"><span class="topic-num">01</span><span class="topic-title">My Family</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',1,this)"><span class="topic-num">02</span><span class="topic-title">My Bedroom</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',2,this)"><span class="topic-num">03</span><span class="topic-title">A Typical Day</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',3,this)"><span class="topic-num">04</span><span class="topic-title">My Favourite Food</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',4,this)"><span class="topic-num">05</span><span class="topic-title">My Pet</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',5,this)"><span class="topic-num">06</span><span class="topic-title">My School</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',6,this)"><span class="topic-num">07</span><span class="topic-title">My Hobbies</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',7,this)"><span class="topic-num">08</span><span class="topic-title">The Weather</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',8,this)"><span class="topic-num">09</span><span class="topic-title">My Best Friend</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',9,this)"><span class="topic-num">10</span><span class="topic-title">My Town</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',10,this)"><span class="topic-num">11</span><span class="topic-title">My Clothes</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',11,this)"><span class="topic-num">12</span><span class="topic-title">My House</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',12,this)"><span class="topic-num">13</span><span class="topic-title">Shopping for Food</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',13,this)"><span class="topic-num">14</span><span class="topic-title">My Birthday</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',14,this)"><span class="topic-num">15</span><span class="topic-title">Animals I Like</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',15,this)"><span class="topic-num">16</span><span class="topic-title">At the Park</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',16,this)"><span class="topic-num">17</span><span class="topic-title">My Morning</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',17,this)"><span class="topic-num">18</span><span class="topic-title">My Favourite Colour</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',18,this)"><span class="topic-num">19</span><span class="topic-title">My Teacher</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A1',19,this)"><span class="topic-num">20</span><span class="topic-title">My Weekend</span><span class="topic-arrow">›</span></div>
+  </div>
+  <div id="card-A1"></div>
+</section>
+
+<section class="level-section" id="level-A2">
+  <div class="level-header">
+    <span class="level-badge A2">A2</span>
+    <span class="level-desc">Errors: past tenses, prepositions, comparatives, countable/uncountable</span>
+  </div>
+  <div class="topic-picker" id="picker-A2">
+    <div class="topic-item" onclick="openTopic('A2',0,this)"><span class="topic-num">01</span><span class="topic-title">Last Weekend</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',1,this)"><span class="topic-num">02</span><span class="topic-title">Comparing Cities</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',2,this)"><span class="topic-num">03</span><span class="topic-title">Future Plans</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',3,this)"><span class="topic-num">04</span><span class="topic-title">Shopping</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',4,this)"><span class="topic-num">05</span><span class="topic-title">Describing a Person</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',5,this)"><span class="topic-num">06</span><span class="topic-title">My Neighbourhood</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',6,this)"><span class="topic-num">07</span><span class="topic-title">A Special Meal</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',7,this)"><span class="topic-num">08</span><span class="topic-title">A Holiday Memory</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',8,this)"><span class="topic-num">09</span><span class="topic-title">My Daily Routine</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',9,this)"><span class="topic-num">10</span><span class="topic-title">Sports and Exercise</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',10,this)"><span class="topic-num">11</span><span class="topic-title">At the Restaurant</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',11,this)"><span class="topic-num">12</span><span class="topic-title">My Dream Job</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',12,this)"><span class="topic-num">13</span><span class="topic-title">A Famous Person</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',13,this)"><span class="topic-num">14</span><span class="topic-title">My Favourite Season</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',14,this)"><span class="topic-num">15</span><span class="topic-title">A Day Out</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',15,this)"><span class="topic-num">16</span><span class="topic-title">Moving to a New Place</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',16,this)"><span class="topic-num">17</span><span class="topic-title">A School Trip</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',17,this)"><span class="topic-num">18</span><span class="topic-title">My Childhood</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',18,this)"><span class="topic-num">19</span><span class="topic-title">Technology in My Life</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('A2',19,this)"><span class="topic-num">20</span><span class="topic-title">My Neighbourhood Then and Now</span><span class="topic-arrow">›</span></div>
+  </div>
+  <div id="card-A2"></div>
+</section>
+
+<section class="level-section" id="level-B1">
+  <div class="level-header">
+    <span class="level-badge B1">B1</span>
+    <span class="level-desc">Errors: conditionals, passive, relative clauses, collocation, connectors</span>
+  </div>
+  <div class="topic-picker" id="picker-B1">
+    <div class="topic-item" onclick="openTopic('B1',0,this)"><span class="topic-num">01</span><span class="topic-title">Social Media</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',1,this)"><span class="topic-num">02</span><span class="topic-title">The Environment</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',2,this)"><span class="topic-num">03</span><span class="topic-title">A Film Review</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',3,this)"><span class="topic-num">04</span><span class="topic-title">Health and Lifestyle</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',4,this)"><span class="topic-num">05</span><span class="topic-title">Travel</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',5,this)"><span class="topic-num">06</span><span class="topic-title">Technology at Home</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',6,this)"><span class="topic-num">07</span><span class="topic-title">Learning a Language</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',7,this)"><span class="topic-num">08</span><span class="topic-title">Work and Careers</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',8,this)"><span class="topic-num">09</span><span class="topic-title">City vs Countryside</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',9,this)"><span class="topic-num">10</span><span class="topic-title">A Memorable Event</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',10,this)"><span class="topic-num">11</span><span class="topic-title">Online Shopping</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',11,this)"><span class="topic-num">12</span><span class="topic-title">Music and Identity</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',12,this)"><span class="topic-num">13</span><span class="topic-title">Tourism</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',13,this)"><span class="topic-num">14</span><span class="topic-title">Food and Culture</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',14,this)"><span class="topic-num">15</span><span class="topic-title">Volunteering</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',15,this)"><span class="topic-num">16</span><span class="topic-title">Television and Streaming</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',16,this)"><span class="topic-num">17</span><span class="topic-title">Animals and Conservation</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',17,this)"><span class="topic-num">18</span><span class="topic-title">Fashion and Identity</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',18,this)"><span class="topic-num">19</span><span class="topic-title">Advertising</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B1',19,this)"><span class="topic-num">20</span><span class="topic-title">Sport and Society</span><span class="topic-arrow">›</span></div>
+  </div>
+  <div id="card-B1"></div>
+</section>
+
+<section class="level-section" id="level-B2">
+  <div class="level-header">
+    <span class="level-badge B2">B2</span>
+    <span class="level-desc">Errors: register, hedging, complex syntax, advanced collocation, cohesion</span>
+  </div>
+  <div class="topic-picker" id="picker-B2">
+    <div class="topic-item" onclick="openTopic('B2',0,this)"><span class="topic-num">01</span><span class="topic-title">Artificial Intelligence</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',1,this)"><span class="topic-num">02</span><span class="topic-title">Urban Living</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',2,this)"><span class="topic-num">03</span><span class="topic-title">Education Systems</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',3,this)"><span class="topic-num">04</span><span class="topic-title">Remote Work</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',4,this)"><span class="topic-num">05</span><span class="topic-title">Cultural Identity</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',5,this)"><span class="topic-num">06</span><span class="topic-title">Consumer Society</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',6,this)"><span class="topic-num">07</span><span class="topic-title">Mental Health Awareness</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',7,this)"><span class="topic-num">08</span><span class="topic-title">Media and Journalism</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',8,this)"><span class="topic-num">09</span><span class="topic-title">Economic Inequality</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',9,this)"><span class="topic-num">10</span><span class="topic-title">Science and Ethics</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',10,this)"><span class="topic-num">11</span><span class="topic-title">Immigration and Society</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',11,this)"><span class="topic-num">12</span><span class="topic-title">Populism and Democracy</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',12,this)"><span class="topic-num">13</span><span class="topic-title">Gender and the Workplace</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',13,this)"><span class="topic-num">14</span><span class="topic-title">Climate Policy</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',14,this)"><span class="topic-num">15</span><span class="topic-title">The Arts and Public Funding</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',15,this)"><span class="topic-num">16</span><span class="topic-title">Privacy and Surveillance</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',16,this)"><span class="topic-num">17</span><span class="topic-title">Globalisation and Trade</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',17,this)"><span class="topic-num">18</span><span class="topic-title">Sport and Politics</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',18,this)"><span class="topic-num">19</span><span class="topic-title">Animal Rights</span><span class="topic-arrow">›</span></div>
+    <div class="topic-item" onclick="openTopic('B2',19,this)"><span class="topic-num">20</span><span class="topic-title">Space Exploration</span><span class="topic-arrow">›</span></div>
+  </div>
+  <div id="card-B2"></div>
+</section>
+
+</main>
+
+<div class="tooltip-popup" id="tooltip"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────────────────
+const data = {
+  A1: [
+    {
+      num:'01', topic:'My Family', errorCount:6,
+      before:`I <err tip="Wrong verb form. Use 'have' not 'has' — the subject is 'I'.">has</err> a big family. My mother <err tip="Spelling error. 'nome' → 'name'.">nome</err> is Maria. She <err tip="Wrong verb. Use 'is' — describing what she is like.">has</err> very kind. My father <err tip="Missing -s on third-person singular verb: 'works'.">work</err> every day. I have <err tip="Wrong article. Use 'an' before vowel sounds: 'an older brother'.">a</err> older brother. <err tip="Wrong word order. In English: 'His name is João', not 'João is his name'.">João is his name.</err>`,
+      after:`I <g>have</g> a big family. My mother's <g>name</g> is Maria. She <g>is</g> very kind. My father <g>works</g> every day. I have <g>an</g> older brother. <g>His name is João.</g>`,
+      changes:[['has','have',`"I" uses "have", not "has".`],['nome','name',`Spelling error — "nome" is Portuguese.`],['has','is',`"She is kind" describes a quality. Use "to be".`],['work','works',`Third-person singular needs -s.`],['a older','an older',`Use "an" before vowel sounds.`],['João is his name','His name is João',`Standard English word order: subject + verb + complement.`]]
+    },
+    {
+      num:'02', topic:'My Bedroom', errorCount:6,
+      before:`My bedroom <err tip="Missing verb 'is'. English always needs a verb in a sentence.">___</err> small but comfortable. There <err tip="Wrong form. Use 'is' with singular nouns: 'There is a bed'.">are</err> a bed and <err tip="Article missing. Use 'a' before a singular noun: 'a desk'.">desk</err> in my room. The walls <err tip="Spelling error. 'bluo' → 'blue'.">bluo</err>. I have <err tip="Wrong plural. 'poster' → 'posters'. Don't add -es.">posteres</err> of my favourite <err tip="Spelling error. 'musics' → 'bands' or 'musicians'. Music is uncountable.">musics</err> on the wall.`,
+      after:`My bedroom <g>is</g> small but comfortable. There <g>is</g> a bed and <g>a</g> desk in my room. The walls are <g>blue</g>. I have <g>posters</g> of my favourite <g>bands</g> on the wall.`,
+      changes:[['Missing "is"','is',`English always needs a verb in a sentence. "My bedroom small" is incomplete.`],['There are a bed','There is a bed',`"a bed" is singular → use "is".`],['desk','a desk',`Singular countable nouns need an article.`],['bluo','blue',`Spelling error.`],['posteres','posters',`Regular plural = add -s, not -es.`],['musics','bands / musicians',`"Music" is uncountable. We say "musicians" or "bands".`]]
+    },
+    {
+      num:'03', topic:'A Typical Day', errorCount:5,
+      before:`I wake up <err tip="Preposition error. We say 'at seven o'clock', not 'in'.">in</err> seven o'clock every morning. <err tip="Missing subject 'I'. Don't drop the subject in English.">Eat</err> breakfast with my family. After, I go <err tip="Wrong preposition. 'go to school', not 'go at school'.">at</err> school by bus. My favourite <err tip="Spelling error. 'subjekt' → 'subject'.">subjekt</err> is English. In the afternoon, I <err tip="Wrong verb form. After 'I', use the base form: 'do', not 'does'.">does</err> my homework.`,
+      after:`I wake up <g>at</g> seven o'clock every morning. <g>I eat</g> breakfast with my family. After, I go <g>to</g> school by bus. My favourite <g>subject</g> is English. In the afternoon, I <g>do</g> my homework.`,
+      changes:[['in seven o\'clock','at seven o\'clock',`Use "at" with specific times.`],['Eat','I eat',`English sentences must have a subject.`],['go at school','go to school',`Fixed expression — always "go to school".`],['subjekt','subject',`Spelling error.`],['I does','I do',`"Does" is only for he/she/it. "I" uses "do".`]]
+    },
+    {
+      num:'04', topic:'My Favourite Food', errorCount:5,
+      before:`I <err tip="Wrong verb. 'gosto' is Portuguese — use 'like' or 'love'.">gosto</err> pizza very much. It <err tip="Wrong verb. 'is' describes what something is like: 'It is delicious.'">has</err> delicious. My mother <err tip="Third-person singular needs -s: 'makes'.">make</err> pizza on Saturdays. She <err tip="Third-person singular needs -s: 'puts'.">put</err> cheese and tomato on it. I <err tip="Wrong form. With 'don't', use the base form: 'don't like', not 'don't likes'.">don't likes</err> olives.`,
+      after:`I <g>love</g> pizza very much. It <g>is</g> delicious. My mother <g>makes</g> pizza on Saturdays. She <g>puts</g> cheese and tomato on it. I <g>don't like</g> olives.`,
+      changes:[['gosto','love / like',`Don't use Portuguese words in English sentences.`],['It has delicious','It is delicious',`Use "to be" to describe qualities.`],['mother make','mother makes',`He/she/it → add -s to the verb.`],['She put','She puts',`He/she/it → add -s.`],['don\'t likes','don\'t like',`After auxiliaries (do/don't), use the base form.`]]
+    },
+    {
+      num:'05', topic:'My Pet', errorCount:5,
+      before:`I have <err tip="Article error. Use 'a dog' — singular countable noun needs an article.">dog</err>. <err tip="Pronoun error. One dog = singular: 'He' or 'She', not 'They'.">They</err> is black and white. <err tip="Missing pronoun. Add 'His' — never omit the subject of a sentence.">___</err> name is Bob. Bob <err tip="Third-person singular uses 'doesn't like', not 'don't like'.">don't like</err> cats. Every day, I <err tip="Spelling error + wrong form. 'plaing' → 'play'. No -ing needed here.">plaing</err> with him in the garden.`,
+      after:`I have <g>a</g> dog. <g>He</g> is black and white. <g>His</g> name is Bob. Bob <g>doesn't like</g> cats. Every day, I <g>play</g> with him in the garden.`,
+      changes:[['have dog','have a dog',`Singular countable nouns need "a/an".`],['They is','He is',`One dog = singular pronoun (he/she/it).`],['Missing "His"','His',`Never omit the subject of a sentence.`],['Bob don\'t like','Bob doesn\'t like',`Third-person singular uses "doesn't".`],['plaing','play',`"I play" — no -ing. Spelling error too.`]]
+    },
+    {
+      num:'06', topic:'My School', errorCount:5,
+      before:`My school <err tip="Wrong article. 'is a big school' — singular countable noun needs 'a'.">is big school</err>. There <err tip="'There are' for plural nouns: 'There are many classrooms'.">is</err> many classrooms. My favourite teacher <err tip="Third-person singular: 'teaches', not 'teach'.">teach</err> English. The school <err tip="'starts' — third-person singular needs -s.">start</err> at eight o'clock. I <err tip="Wrong preposition. 'go to school by bus', not 'go to school with bus'.">go to school with</err> bus every morning.`,
+      after:`My school <g>is a big school</g>. There <g>are</g> many classrooms. My favourite teacher <g>teaches</g> English. The school <g>starts</g> at eight o'clock. I <g>go to school by</g> bus every morning.`,
+      changes:[['is big school','is a big school',`Singular countable nouns need "a/an".`],['There is many','There are many',`"Many classrooms" is plural → use "are".`],['teach','teaches',`Third-person singular: add -s. teach → teaches.`],['start','starts',`Third-person singular: add -s.`],['with bus','by bus',`Fixed expression: "by bus / by car / by train". Never "with bus".`]]
+    },
+    {
+      num:'07', topic:'My Hobbies', errorCount:5,
+      before:`I like <err tip="After 'like', use -ing: 'like playing football'.">play</err> football with my friends. I also <err tip="'enjoy' + -ing: 'enjoy reading'. Not 'enjoy to read'.">enjoy to read</err> books. My sister <err tip="Wrong verb. 'play the guitar' — we 'play' instruments.">does</err> the guitar. We <err tip="Wrong adverb placement. 'sometimes watch' — frequency adverbs go before the main verb.">watch sometimes</err> films on TV. I <err tip="Spelling error. 'dont' → 'don't'. Missing apostrophe.">dont</err> like cooking.`,
+      after:`I like <g>playing</g> football with my friends. I also <g>enjoy reading</g> books. My sister <g>plays</g> the guitar. We <g>sometimes watch</g> films on TV. I <g>don't</g> like cooking.`,
+      changes:[['like play','like playing',`After "like", use the gerund (-ing form).`],['enjoy to read','enjoy reading',`"Enjoy" is always followed by -ing.`],['does the guitar','plays the guitar',`With musical instruments, use "play": play the guitar.`],['watch sometimes','sometimes watch',`Frequency adverbs (always, sometimes, never) go before the main verb.`],['dont','don\'t',`Contraction needs an apostrophe: do not → don't.`]]
+    },
+    {
+      num:'08', topic:'The Weather', errorCount:5,
+      before:`Today <err tip="'the weather is' — don't drop the article 'the' before 'weather'.">weather is</err> very hot. It <err tip="Spelling error. 'iz' → 'is'.">iz</err> thirty degrees. I <err tip="Wrong verb. 'don't like' — use 'like' not 'love' — actually either works, but 'not liking' is wrong. Real error: 'not like' → 'don't like'.">not like</err> the heat. In <err tip="Wrong article. 'In winter', 'in summer' — no article with seasons.">the</err> winter, it is cold and rainy. My favourite <err tip="Wrong word. 'season' not 'station'. 'estação' in Portuguese = season.">station</err> is autumn.`,
+      after:`Today <g>the weather is</g> very hot. It <g>is</g> thirty degrees. I <g>don't like</g> the heat. In <g>winter</g>, it is cold and rainy. My favourite <g>season</g> is autumn.`,
+      changes:[['weather is','the weather is',`"Weather" is a common noun — use "the weather".`],['iz','is',`Spelling error.`],['not like','don\'t like',`To make a negative, use: "I don't like". "Not like" alone is not a complete negative.`],['In the winter','In winter',`No article with seasons: "in winter", "in summer".`],['station','season',`False cognate. Portuguese "estação" = English "season", not "station".`]]
+    },
+    {
+      num:'09', topic:'My Best Friend', errorCount:5,
+      before:`My best friend <err tip="Wrong verb. 'is called' or 'her name is'. 'calls' = phones someone.">calls</err> Lara. She <err tip="Wrong verb. 'has' is for possession. Use 'is' to describe: 'She is very funny'.">have</err> very funny. We <err tip="'met' is the past of 'meet'. 'meeted' is not a word.">meeted</err> at school three years ago. She <err tip="'lives' — third-person singular needs -s.">live</err> near my house. We <err tip="Wrong preposition. 'talk on the phone', not 'talk by the phone'.">talk by</err> the phone every day.`,
+      after:`My best friend <g>is called</g> Lara. She <g>is</g> very funny. We <g>met</g> at school three years ago. She <g>lives</g> near my house. We <g>talk on</g> the phone every day.`,
+      changes:[['calls','is called',`"Is called" = her name. "Calls" = she phones someone.`],['have very funny','is very funny',`Use "to be" for descriptions. "Have" is for possession.`],['meeted','met',`Irregular verb: meet → met.`],['live','lives',`Third-person singular: add -s.`],['talk by the phone','talk on the phone',`Fixed expression: "talk on the phone".`]]
+    },
+    {
+      num:'10', topic:'My Town', errorCount:5,
+      before:`I live <err tip="Wrong preposition. 'live in a town', not 'live at a town'.">at</err> a small town near the coast. There <err tip="'There is' with singular: 'There is a park'.">are</err> a park and a shopping centre. The people <err tip="'are' — 'people' is always plural.">is</err> very friendly. I <err tip="Wrong negative. 'There isn't a cinema' — use isn't/aren't.">have no</err> a cinema in my town. I <err tip="Wrong verb form. 'I like' — after subject pronoun, use base form.">likes</err> living here because it is peaceful.`,
+      after:`I live <g>in</g> a small town near the coast. There <g>is</g> a park and a shopping centre. The people <g>are</g> very friendly. There <g>isn't</g> a cinema in my town. I <g>like</g> living here because it is peaceful.`,
+      changes:[['live at a town','live in a town',`Use "in" with towns, cities, and countries.`],['There are a park','There is a park',`"A park" is singular → "There is".`],['people is','people are',`"People" is always plural — always use "are".`],['have no a cinema','isn\'t a cinema',`To say something doesn't exist: "There isn't a cinema".`],['I likes','I like',`After "I", use the base form: "like", never "likes".`]]
+    },
+    {
+      num:'11', topic:'My Clothes', errorCount:5,
+      before:`I <err tip="Wrong verb. We 'wear' clothes, not 'use' them.">use</err> jeans and a t-shirt every day. My favourite colour is <err tip="Spelling error. 'bleu' → 'blue'. 'Bleu' is French.">bleu</err>. My mother <err tip="Wrong verb. 'bought' — irregular past of 'buy'. Talking about yesterday.">buyed</err> me a new jacket yesterday. It is <err tip="Wrong comparative. 'warmer' — one-syllable adjective uses -er.">more warm</err> than my old one. I don't like <err tip="Wrong word. 'wear' a uniform, not 'dress' a uniform. 'dress' alone means to get dressed.">to dress</err> a uniform at school.`,
+      after:`I <g>wear</g> jeans and a t-shirt every day. My favourite colour is <g>blue</g>. My mother <g>bought</g> me a new jacket yesterday. It is <g>warmer</g> than my old one. I don't like <g>to wear</g> a uniform at school.`,
+      changes:[['use jeans','wear jeans',`We "wear" clothes. "Use" is for objects and tools.`],['bleu','blue',`Spelling error. "Bleu" is French — in English it's "blue".`],['buyed','bought',`Irregular verb: buy → bought.`],['more warm','warmer',`One-syllable adjective: use -er. warm → warmer.`],['to dress a uniform','to wear a uniform',`"Wear" = have something on your body. "Dress" = get dressed (no object needed).`]]
+    },
+    {
+      num:'12', topic:'My House', errorCount:5,
+      before:`I live <err tip="Wrong preposition. 'live in a house', not 'live on a house'.">on</err> a house with my family. Our house has <err tip="Wrong number word. 'three' not 'tree'. Spelling/pronunciation error.">tree</err> bedrooms. The kitchen <err tip="Wrong verb. 'is' describes a quality. 'The kitchen is big'.">has</err> very big. There is <err tip="'a garden' — singular countable noun needs an article.">garden</err> behind the house. I love my house <err tip="Wrong connector. 'because' introduces a reason. 'but' introduces a contrast. These sentences need 'because'.">but</err> it is very comfortable.`,
+      after:`I live <g>in</g> a house with my family. Our house has <g>three</g> bedrooms. The kitchen <g>is</g> very big. There is <g>a garden</g> behind the house. I love my house <g>because</g> it is very comfortable.`,
+      changes:[['live on a house','live in a house',`"Live in" a house, flat, or city. "On" is for streets.`],['tree bedrooms','three bedrooms',`Spelling error. "Tree" = a plant. "Three" = the number 3.`],['The kitchen has big','The kitchen is big',`Use "to be" to describe qualities, not "have/has".`],['There is garden','There is a garden',`Singular countable nouns need "a/an".`],['love my house but','love my house because',`"But" = contrast. "Because" = reason. The sentence gives a reason.`]]
+    },
+    {
+      num:'13', topic:'Shopping for Food', errorCount:5,
+      before:`Every Saturday, my mother <err tip="'goes' — third-person singular: go → goes.">go</err> to the supermarket. She <err tip="'buys' — third-person singular needs -s.">buy</err> fruit, vegetables and meat. I sometimes go <err tip="Wrong preposition. 'go with her', not 'go together her'.">together her</err>. I like <err tip="Wrong word. 'choosing' — we 'choose' things, not 'pick up' in this sense. Actually 'pick' is fine but 'pick up' changes the meaning. Real error: 'to choose' after 'like' needs -ing: 'like choosing'.">to choosing</err> the fruit. It is <err tip="Wrong adjective. 'cheaper' — comparative of 'cheap'. 'more cheap' is incorrect.">more cheap</err> to buy at the market than in a shop.`,
+      after:`Every Saturday, my mother <g>goes</g> to the supermarket. She <g>buys</g> fruit, vegetables and meat. I sometimes go <g>with her</g>. I like <g>choosing</g> the fruit. It is <g>cheaper</g> to buy at the market than in a shop.`,
+      changes:[['go','goes',`Third-person singular: go → goes.`],['buy','buys',`Third-person singular: add -s.`],['go together her','go with her',`"Go with someone" — use the preposition "with".`],['like to choosing','like choosing',`After "like", use the gerund: "like choosing". Not "to choosing".`],['more cheap','cheaper',`One-syllable adjective: cheap → cheaper. Don't use "more".`]]
+    },
+    {
+      num:'14', topic:'My Birthday', errorCount:5,
+      before:`My birthday <err tip="Wrong preposition. 'is in June', not 'is on June'. Use 'in' with months and 'on' with dates.">is on</err> June. Last year, my parents <err tip="'gave' — irregular past of 'give'. 'gived' is not a word.">gived</err> me a new phone. I was very <err tip="Spelling error. 'hapy' → 'happy'.">hapy</err>. We <err tip="'had' — past simple of 'have'. 'We had a party'.">have</err> a party with twenty friends. My grandmother <err tip="'made' — irregular past of 'make'. 'maked' is not a word.">maked</err> a chocolate cake.`,
+      after:`My birthday <g>is in</g> June. Last year, my parents <g>gave</g> me a new phone. I was very <g>happy</g>. We <g>had</g> a party with twenty friends. My grandmother <g>made</g> a chocolate cake.`,
+      changes:[['is on June','is in June',`Use "in" with months: "in June". Use "on" with specific dates: "on 5th June".`],['gived','gave',`Irregular verb: give → gave.`],['hapy','happy',`Spelling error. Double the 'p': happy.`],['We have a party','We had a party',`"Last year" signals past simple: "had".`],['maked','made',`Irregular verb: make → made.`]]
+    },
+    {
+      num:'15', topic:'Animals I Like', errorCount:5,
+      before:`My favourite animal <err tip="Wrong verb. 'is' not 'are' — 'animal' is singular.">are</err> the dolphin. Dolphins <err tip="'are' — 'dolphins' is plural. Use 'are', not 'is'.">is</err> very intelligent. They live <err tip="Wrong preposition. 'live in the sea', not 'live on the sea'.">on</err> the sea. I think they <err tip="'are' more beautiful than... Comparative: beautiful (4 syllables) → 'more beautiful'.">are most beautiful</err> than sharks. I <err tip="'would like' — expressing a wish. 'will like' is wrong here. Use 'would like to'.">will like to</err> swim with dolphins one day.`,
+      after:`My favourite animal <g>is</g> the dolphin. Dolphins <g>are</g> very intelligent. They live <g>in</g> the sea. I think they <g>are more beautiful</g> than sharks. I <g>would like to</g> swim with dolphins one day.`,
+      changes:[['animal are','animal is',`"Animal" is singular → use "is".`],['Dolphins is','Dolphins are',`"Dolphins" is plural → use "are".`],['live on the sea','live in the sea',`"In the sea" — we use "in" for bodies of water.`],['are most beautiful','are more beautiful',`Comparative (comparing two things): "more beautiful than". "Most" is for superlatives (comparing three or more).`],['will like to','would like to',`"Would like to" expresses a wish. "Will like" is not used for wishes.`]]
+    },
+    {
+      num:'16', topic:'At the Park', errorCount:5,
+      before:`Yesterday I <err tip="'went to' — past simple + correct preposition. 'go in' is wrong.">go in</err> the park with my brother. There <err tip="'were' — past of 'are'. Talking about yesterday.">are</err> many children playing. We <err tip="'rode' — irregular past of 'ride'. 'rided' is not a word.">rided</err> our bikes for two hours. After, we <err tip="'sat' — irregular past of 'sit'. 'sitted' is not a word.">sitted</err> on the grass and ate sandwiches. It <err tip="'was' — past of 'is'. Talking about yesterday.">is</err> a great afternoon.`,
+      after:`Yesterday I <g>went to</g> the park with my brother. There <g>were</g> many children playing. We <g>rode</g> our bikes for two hours. After, we <g>sat</g> on the grass and ate sandwiches. It <g>was</g> a great afternoon.`,
+      changes:[['go in the park','went to the park',`Past simple: go → went. Preposition: "go to the park", not "go in".`],['There are','There were',`"Yesterday" = past. Past of "are" is "were".`],['rided','rode',`Irregular verb: ride → rode.`],['sitted','sat',`Irregular verb: sit → sat.`],['It is','It was',`"Yesterday" = past. Use "was", not "is".`]]
+    },
+    {
+      num:'17', topic:'My Morning', errorCount:5,
+      before:`Every morning I <err tip="'wake up' — the complete phrasal verb. 'Wake' alone needs an object or sounds unnatural.">wake</err> at six thirty. First, I <err tip="'have a shower' or 'take a shower' — fixed collocations. 'do a shower' does not exist.">do</err> a shower. Then I <err tip="'get dressed' — fixed phrase. 'dress me' is a Portuguese false cognate — in English we don't use reflexive pronouns this way.">dress me</err>. My mother <err tip="'makes' — third-person singular: make → makes.">make</err> breakfast for us. I <err tip="Wrong preposition. 'leave for school' — 'leave to school' is not correct.">leave to</err> school at seven fifteen.`,
+      after:`Every morning I <g>wake up</g> at six thirty. First, I <g>have a shower</g>. Then I <g>get dressed</g>. My mother <g>makes</g> breakfast for us. I <g>leave for</g> school at seven fifteen.`,
+      changes:[['wake','wake up',`The complete phrasal verb is "wake up".`],['do a shower','have a shower',`Fixed collocation: "have a shower" or "take a shower". "Do a shower" doesn't exist.`],['dress me','get dressed',`"Get dressed" is the fixed English phrase. "Dress me" is a false cognate from Portuguese.`],['mother make','mother makes',`Third-person singular: add -s → makes.`],['leave to school','leave for school',`Fixed preposition: "leave for school / work / home". Not "leave to".`]]
+    },
+    {
+      num:'18', topic:'My Favourite Colour', errorCount:5,
+      before:`My favourite colour <err tip="'is' — third-person singular of 'to be'. 'are' is for plurals.">are</err> green. I like green <err tip="Wrong connector. 'because' introduces a reason. 'but' introduces a contrast.">but</err> it makes me feel calm. My bedroom walls <err tip="'are' — 'walls' is plural. 'is' is for singular.">is</err> green. I also <err tip="'have' — after 'I', use base form. 'has' is for he/she/it.">has</err> a green jacket. My friends <err tip="'say' — present simple. 'sayed' is not a word — 'say' is a regular verb but its past is 'said', not 'sayed'.">sayed</err> it is a strange colour to love, but I disagree.`,
+      after:`My favourite colour <g>is</g> green. I like green <g>because</g> it makes me feel calm. My bedroom walls <g>are</g> green. I also <g>have</g> a green jacket. My friends <g>say</g> it is a strange colour to love, but I disagree.`,
+      changes:[['colour are','colour is',`"Colour" is singular → use "is".`],['like green but it makes me calm','like green because it makes me calm',`"Because" = reason. "But" = contrast. The sentence gives a reason.`],['walls is','walls are',`"Walls" is plural → use "are".`],['I has','I have',`After "I", use "have". "Has" is for he/she/it.`],['sayed','say',`"Say" is irregular in the past (said), but in the present it's just "say". "Sayed" is not a word.`]]
+    },
+    {
+      num:'19', topic:'My Teacher', errorCount:5,
+      before:`My English teacher <err tip="'is called' — passive structure for names. 'calls' = phones someone.">calls</err> Mr Ferreira. He <err tip="'teaches' — third-person singular: teach → teaches.">teach</err> English and History. He is very <err tip="Spelling error. 'pashent' → 'patient'.">pashent</err> with students. He always <err tip="'explains' — third-person singular needs -s.">explain</err> things clearly. I think he is <err tip="'the best teacher' — superlative needs 'the'. 'most best' is wrong — 'best' is already the superlative of 'good'.">most best</err> teacher in the school.`,
+      after:`My English teacher <g>is called</g> Mr Ferreira. He <g>teaches</g> English and History. He is very <g>patient</g> with students. He always <g>explains</g> things clearly. I think he is <g>the best</g> teacher in the school.`,
+      changes:[['calls','is called',`"Is called" = his name. "Calls" = he phones someone.`],['teach','teaches',`Third-person singular: teach → teaches.`],['pashent','patient',`Spelling error.`],['explain','explains',`Third-person singular: explain → explains.`],['most best','the best',`"Best" is already the superlative of "good". Don't add "most". Always use "the" before a superlative.`]]
+    },
+    {
+      num:'20', topic:'My Weekend', errorCount:5,
+      before:`At the weekend, I usually <err tip="'stay at home' — fixed preposition. 'stay in home' is not standard English.">stay in home</err> on Saturday morning. I <err tip="'watch' — after frequency adverbs and 'I', use the base form. 'watchs' is not a word — third-person -s does not apply to 'I'.">watchs</err> TV or play video games. In the afternoon, I <err tip="'meet' — after 'I', use the base form. 'meets' is third-person singular.">meets</err> my friends. We sometimes <err tip="'go to' — 'go to the cinema'. 'go at' is the wrong preposition.">go at</err> the cinema or eat at a restaurant. On Sunday, my family and I <err tip="'have lunch together' — 'have lunch' is the fixed collocation. 'do lunch' is informal slang and not standard English for A1.">do</err> lunch together.`,
+      after:`At the weekend, I usually <g>stay at home</g> on Saturday morning. I <g>watch</g> TV or play video games. In the afternoon, I <g>meet</g> my friends. We sometimes <g>go to</g> the cinema or eat at a restaurant. On Sunday, my family and I <g>have</g> lunch together.`,
+      changes:[['stay in home','stay at home',`Fixed expression: "stay at home". "In home" is not used in English.`],['watchs','watch',`"I watch" — no -s after "I". "Watchs" is not a word either way.`],['meets','meet',`"I meet" — base form after "I". "Meets" is for he/she/it.`],['go at the cinema','go to the cinema',`Fixed preposition: "go to the cinema / go to school / go to the park".`],['do lunch','have lunch',`Fixed collocation: "have lunch / have breakfast / have dinner".`]]
+    },
+  ],
+
+  A2: [
+    {
+      num:'01', topic:'Last Weekend', errorCount:6,
+      before:`Last weekend I <err tip="Wrong tense. 'Last weekend' signals past simple. 'go' → 'went'.">go</err> to the beach with my friends. The weather <err tip="Wrong tense. Talking about last weekend — use past: 'was'.">is</err> beautiful. We <err tip="Irregular past: swim → swam. 'swimmed' is not a word.">swimmed</err> in the sea and ate <err tip="'Much' is for uncountable nouns. 'Sandwiches' is countable → 'many'.">much</err> sandwiches. In the evening, we <err tip="Fixed phrase: 'listen to music'. Never 'listen music' — don't drop the preposition.">listened music</err> and <err tip="Must be past simple to match the other verbs: 'danced'.">dance</err> on the sand.`,
+      after:`Last weekend I <g>went</g> to the beach with my friends. The weather <g>was</g> beautiful. We <g>swam</g> in the sea and ate <g>many</g> sandwiches. In the evening, we <g>listened to</g> music and <g>danced</g> on the sand.`,
+      changes:[['go','went',`Past simple of "go" is irregular: went.`],['is','was',`Talking about last weekend → past tense.`],['swimmed','swam',`Irregular verb: swim → swam → swum.`],['much sandwiches','many sandwiches',`"Many" = countable; "much" = uncountable.`],['listened music','listened to music',`Fixed phrase — "listen to", never "listen music".`],['dance','danced',`Must be past simple to match the other verbs.`]]
+    },
+    {
+      num:'02', topic:'Comparing Cities', errorCount:5,
+      before:`São Paulo is <err tip="Short adjectives use -er: 'bigger than', not 'more big'.">more big than</err> Curitiba. It has <err tip="'Traffic' is uncountable — no plural -s. 'traffics' → 'traffic'.">more traffics</err> and the streets are <err tip="Don't use 'more' AND -er together. Pick one: 'noisier'.">more noisier</err>. Curitiba is <err tip="'Clean' is one syllable → comparative is 'cleaner', not 'more clean'.">more clean</err>. I think São Paulo is <err tip="Superlatives always need 'the': 'the most exciting'.">most exciting</err> city in Brazil.`,
+      after:`São Paulo is <g>bigger than</g> Curitiba. It has <g>more traffic</g> and the streets are <g>noisier</g>. Curitiba is <g>cleaner</g>. I think São Paulo is <g>the most exciting</g> city in Brazil.`,
+      changes:[['more big','bigger',`Short adjectives (1 syllable) use -er: big → bigger.`],['traffics','traffic',`"Traffic" is uncountable — no plural -s.`],['more noisier','noisier',`Don't use "more" AND -er together. Pick one.`],['more clean','cleaner',`"Clean" is one syllable → comparative is "cleaner".`],['most exciting','the most exciting',`Superlatives always need "the".`]]
+    },
+    {
+      num:'03', topic:'Future Plans', errorCount:5,
+      before:`Next year, I <err tip="For future plans/intentions, use 'going to + infinitive'. 'am study' is wrong.">am study</err> English in Canada. I <err tip="Planned future needs 'am going to stay' or 'will stay'.">stay</err> with a host family. I hope <err tip="After 'hope', use 'to + infinitive': 'hope to improve'.">improve</err> my English quickly. I <err tip="The correct form is 'am going to', not 'am go to'.">am go to</err> visit Niagara Falls. It <err tip="Future prediction: 'will be'. Don't drop 'will'.">be</err> an amazing experience.`,
+      after:`Next year, I <g>am going to study</g> English in Canada. I <g>am going to stay</g> with a host family. I hope <g>to improve</g> my English quickly. I <g>am going to</g> visit Niagara Falls. It <g>will be</g> an amazing experience.`,
+      changes:[['am study','am going to study',`Future plans use "be going to + infinitive".`],['stay','am going to stay',`A planned future action needs the future form.`],['hope improve','hope to improve',`"Hope" is followed by "to + infinitive".`],['am go to','am going to',`The correct form is "going", not "go".`],['It be','It will be',`Future predictions use "will + base verb".`]]
+    },
+    {
+      num:'04', topic:'Shopping', errorCount:5,
+      before:`Yesterday I <err tip="Past simple of 'go' is 'went'. 'goed' is not a word.">goed</err> shopping with my sister. We <err tip="The phrasal verb is 'look for' = search. Don't drop the preposition 'for'.">looked</err> for a birthday present for our mum. The shops <err tip="Past of 'are' → 'were'. Talking about yesterday.">are</err> very crowded. We <err tip="Irregular verb: spend → spent. 'spended' is not correct.">spended</err> a lot of money. At the end, we <err tip="Wrong preposition: 'decide on something', not 'decide of'.">decided of</err> a beautiful scarf.`,
+      after:`Yesterday I <g>went</g> shopping with my sister. We <g>looked for</g> a birthday present for our mum. The shops <g>were</g> very crowded. We <g>spent</g> a lot of money. At the end, we <g>decided on</g> a beautiful scarf.`,
+      changes:[['goed','went',`Irregular verb. go → went (not goed).`],['looked','looked for',`The phrasal verb is "look for" = search. Don't drop the preposition.`],['are','were',`"Yesterday" → past. Past of "are" is "were".`],['spended','spent',`Irregular verb. spend → spent.`],['decided of','decided on',`Fixed collocation — "decide on something".`]]
+    },
+    {
+      num:'05', topic:'Describing a Person', errorCount:5,
+      before:`My best friend <err tip="'is called' or 'her name is'. 'calls' alone means she phones someone.">calls</err> Ana. She has <err tip="Adjective order: size before colour. 'long black hair', not 'black long hair'.">black long</err> hair and green eyes. She is <err tip="One-syllable adjectives use -er: 'taller than me', not 'more tall'.">more tall</err> than me. She <err tip="Fixed collocation: 'be good at'. Not 'good in'.">is good in</err> sport. We are friends <err tip="'For' = duration ('for five years'). 'Since' = starting point ('since 2019').">since</err> five years.`,
+      after:`My best friend <g>is called</g> Ana. She has <g>long black</g> hair and green eyes. She is <g>taller</g> than me. She <g>is good at</g> sport. We have been friends <g>for</g> five years.`,
+      changes:[['calls','is called',`"My friend is called Ana" = her name. "Calls" = phones someone.`],['black long hair','long black hair',`Adjective order: size before colour.`],['more tall','taller',`One-syllable adjectives use -er, not "more".`],['good in sport','good at sport',`Fixed collocation — "good at" something.`],['since five years','for five years',`"For" = duration. "Since" = starting point (since 2019).`]]
+    },
+    {
+      num:'06', topic:'My Neighbourhood', errorCount:5,
+      before:`My neighbourhood is <err tip="Wrong comparative. 'quieter' — one syllable adjective uses -er.">more quiet</err> than the city centre. There are <err tip="'a lot of' or 'many' — 'many' for countable. 'much' is for uncountable nouns.">much</err> cafés and small shops nearby. I <err tip="Wrong preposition. 'live on a street', not 'live in a street'.">live in</err> Rua das Flores. The neighbours <err tip="'moved' — past simple needed. 'move' is present.">move</err> here two years ago. I think it <err tip="Wrong conditional structure. 'would be' needs 'if'. Here use: 'is one of the best'.">would be</err> one of the best places to live in the city.`,
+      after:`My neighbourhood is <g>quieter</g> than the city centre. There are <g>many</g> cafés and small shops nearby. I <g>live on</g> Rua das Flores. The neighbours <g>moved</g> here two years ago. I think it <g>is</g> one of the best places to live in the city.`,
+      changes:[['more quiet','quieter',`"Quiet" is two syllables but follows the -er pattern: quieter.`],['much cafés','many cafés',`"Cafés" is countable → use "many". "Much" = uncountable.`],['live in a street','live on a street',`Fixed preposition: "live on" a street.`],['move here','moved here',`"Two years ago" signals past simple: "moved".`],['would be','is',`No conditional needed here. "I think it is" is the correct structure.`]]
+    },
+    {
+      num:'07', topic:'A Special Meal', errorCount:5,
+      before:`Last month, my grandmother <err tip="Past simple of 'cook' is 'cooked'. Don't use present.">cooks</err> a special meal for my birthday. She <err tip="'made' — irregular past of 'make'.">maked</err> a delicious cake with chocolate. The whole family <err tip="'came' — irregular past of 'come'.">comed</err> to our house. We <err tip="Wrong preposition. 'eat at the table', not 'eat on the table'.">ate on</err> the big table in the garden. It was the <err tip="Superlative: 'the best meal'. 'more good' is not correct.">more good</err> meal I have ever had.`,
+      after:`Last month, my grandmother <g>cooked</g> a special meal for my birthday. She <g>made</g> a delicious cake with chocolate. The whole family <g>came</g> to our house. We <g>ate at</g> the big table in the garden. It was the <g>best meal</g> I have ever had.`,
+      changes:[['cooks','cooked',`"Last month" signals past. "Cooks" is present. Use "cooked".`],['maked','made',`Irregular verb: make → made.`],['comed','came',`Irregular verb: come → came.`],['ate on the table','ate at the table',`Fixed preposition: "eat at the table".`],['more good','best',`Irregular superlative: good → better → best. Never "more good".`]]
+    },
+    {
+      num:'08', topic:'A Holiday Memory', errorCount:5,
+      before:`Two years ago, I <err tip="'went' — irregular past of 'go'.">go</err> to the beach with my family. We <err tip="'stayed' — past simple. 'stay' is present.">stay</err> in a small hotel near the sea. The weather <err tip="'was' — past of 'is'. Talking about the past.">is</err> perfect every day. I <err tip="'took' — irregular past of 'take'. 'taked' is not a word.">taked</err> lots of photos. I want to <err tip="'go back' — the phrasal verb is 'go back', not 'go return'.">go return</err> there next summer.`,
+      after:`Two years ago, I <g>went</g> to the beach with my family. We <g>stayed</g> in a small hotel near the sea. The weather <g>was</g> perfect every day. I <g>took</g> lots of photos. I want to <g>go back</g> there next summer.`,
+      changes:[['go','went',`"Two years ago" = past. Irregular verb: go → went.`],['stay','stayed',`Past simple needed: stay → stayed.`],['is','was',`Talking about the past → use "was".`],['taked','took',`Irregular verb: take → took.`],['go return','go back',`The correct phrasal verb is "go back". "Go return" doesn't exist.`]]
+    },
+    {
+      num:'09', topic:'My Daily Routine', errorCount:5,
+      before:`I usually <err tip="'wake up' — phrasal verb. 'wake' alone is not wrong but 'wake up' is needed without an object.">wake</err> at seven o'clock. After breakfast, I <err tip="Wrong preposition. 'brush my teeth', not 'brush the teeth'.">brush the</err> teeth and get dressed. I <err tip="'take' — 'take the bus', not 'catch' in this context is fine, but 'take a bus' needs an article: 'take a bus' or 'take the bus'.">take bus</err> to school. After school, I <err tip="'do my homework' — fixed collocation. 'make homework' is a false cognate from Portuguese.">make</err> my homework. I <err tip="Wrong time preposition. 'go to bed at ten', not 'in ten'.">go to bed in</err> ten o'clock.`,
+      after:`I usually <g>wake up</g> at seven o'clock. After breakfast, I <g>brush my</g> teeth and get dressed. I <g>take the bus</g> to school. After school, I <g>do</g> my homework. I <g>go to bed at</g> ten o'clock.`,
+      changes:[['wake','wake up',`The phrasal verb is "wake up". "Wake" alone is less natural in this context.`],['brush the teeth','brush my teeth',`Possessive pronoun needed: "my teeth", not "the teeth".`],['take bus','take the bus',`"Bus" is a singular countable noun — it needs an article: "the bus".`],['make homework','do homework',`Fixed collocation: "do homework". "Make homework" is a common Portuguese false cognate.`],['go to bed in ten','go to bed at ten',`Use "at" with specific times: "at ten o'clock".`]]
+    },
+    {
+      num:'10', topic:'Sports and Exercise', errorCount:5,
+      before:`I think sport is <err tip="Wrong comparative. 'more important than', not 'importanter'. Use 'more' for longer adjectives.">importanter</err> than people think. I play football <err tip="Wrong preposition. 'twice a week', not 'twice of week'.">twice of</err> week with my team. Last Saturday, we <err tip="'won' — irregular past of 'win'. 'winned' is not a word.">winned</err> the match 3-1. I was very <err tip="Spelling error. 'happey' → 'happy'.">happey</err>. I also <err tip="'go swimming' — the correct expression is 'go + -ing' for sports: 'go swimming'.">do swimming</err> on Tuesdays.`,
+      after:`I think sport is <g>more important than</g> people think. I play football <g>twice a</g> week with my team. Last Saturday, we <g>won</g> the match 3-1. I was very <g>happy</g>. I also <g>go swimming</g> on Tuesdays.`,
+      changes:[['importanter','more important',`Long adjectives (3+ syllables) use "more": more important.`],['twice of week','twice a week',`Fixed expression: "twice a week / once a week". Never "of".`],['winned','won',`Irregular verb: win → won.`],['happey','happy',`Spelling error.`],['do swimming','go swimming',`With leisure activities, use "go + -ing": go swimming, go running.`]]
+    },
+    {
+      num:'11', topic:'At the Restaurant', errorCount:5,
+      before:`Last Friday, my family and I <err tip="'went to' — past simple + correct preposition. 'go' is present, and 'at' is the wrong preposition.">go at</err> a new Italian restaurant. The waiter <err tip="'brought' — irregular past of 'bring'. 'bringed' is not a word.">bringed</err> us the menu. I <err tip="Wrong word order. 'ordered a pizza' — verb before object.">a pizza ordered</err>. The food was <err tip="Superlative: 'the most delicious'. 'The more delicious' is a comparative.">the more delicious</err> I have ever tasted. We <err tip="'paid' — irregular past of 'pay'. 'payed' is not standard.">payed</err> the bill and left very happy.`,
+      after:`Last Friday, my family and I <g>went to</g> a new Italian restaurant. The waiter <g>brought</g> us the menu. I <g>ordered a pizza</g>. The food was <g>the most delicious</g> I have ever tasted. We <g>paid</g> the bill and left very happy.`,
+      changes:[['go at','went to',`Past simple of "go" is "went". The preposition is "to": "went to a restaurant".`],['bringed','brought',`Irregular verb: bring → brought.`],['a pizza ordered','ordered a pizza',`Standard English word order: subject + verb + object. "I ordered a pizza."`],['the more delicious','the most delicious',`Superlative of long adjectives: "the most delicious". "More" is for comparatives.`],['payed','paid',`Irregular verb: pay → paid.`]]
+    },
+    {
+      num:'12', topic:'My Dream Job', errorCount:5,
+      before:`When I grow up, I want <err tip="'to become' — 'want + to + infinitive'. Never drop the 'to'.">become</err> a doctor. I think it is <err tip="'more important than' — long adjective needs 'more'. 'importanter' is not a word.">importanter</err> to help people than to earn money. Doctors <err tip="'work' — present simple for habits and general truths. 'are working' suggests it's happening right now.">are working</err> very hard every day. I am studying <err tip="'to become' — goal expressed with 'to + infinitive'. 'for be' is not grammatical.">for be</err> a doctor at university one day. If I <err tip="First conditional: real possibility → 'if + present simple, will + infinitive'. 'would achieve' belongs in the 2nd conditional.">study hard, I would achieve</err> my dream.`,
+      after:`When I grow up, I want <g>to become</g> a doctor. I think it is <g>more important</g> to help people than to earn money. Doctors <g>work</g> very hard every day. I am studying <g>to become</g> a doctor at university one day. If I <g>study hard, I will achieve</g> my dream.`,
+      changes:[['want become','want to become',`"Want + to + infinitive". Never drop the "to".`],['importanter','more important',`Long adjectives use "more + adjective". "Importanter" is not a word.`],['are working','work',`Use present simple for general truths and habits: "Doctors work hard."`],['studying for be','studying to become',`"Study to become" = study with the goal of becoming. "For be" is not grammatical.`],['study hard, I would achieve','study hard, I will achieve',`First conditional (real/possible future): "if + present simple → will + infinitive".`]]
+    },
+    {
+      num:'13', topic:'A Famous Person', errorCount:5,
+      before:`My favourite famous person <err tip="'is called' — passive construction for names. 'calls' means she phones someone.">calls</err> Serena Williams. She is <err tip="'one of the best' — superlative with 'the'. 'one of better' uses a comparative.">one of better</err> tennis players in history. She was born <err tip="'in the USA' — use 'in' with countries.">on</err> the USA in 1981. She <err tip="'has won' — present perfect for life achievements. 'win' is present simple.">win</err> more than 23 Grand Slam titles. I think she is an excellent <err tip="'example of' — fixed preposition. 'example for' is not standard.">example for</err> young athletes.`,
+      after:`My favourite famous person <g>is called</g> Serena Williams. She is <g>one of the best</g> tennis players in history. She was born <g>in</g> the USA in 1981. She <g>has won</g> more than 23 Grand Slam titles. I think she is an excellent <g>example for</g> young athletes.`,
+      changes:[['calls','is called',`"Is called Serena Williams." "Calls" = she phones someone.`],['one of better','one of the best',`Superlative with "the": "one of the best". "Better" is comparative.`],['born on the USA','born in the USA',`Use "in" with countries: "born in the USA / in Brazil".`],['win','has won',`"Has won" = present perfect for a life achievement up to now.`],['example for','example of',`The collocation is "an example of something", not "for".`]]
+    },
+    {
+      num:'14', topic:'My Favourite Season', errorCount:5,
+      before:`My favourite season is <err tip="'summer' — the season name alone. 'Summer time' is informal and refers to daylight saving.">summer time</err>. In summer, the weather is <err tip="'hotter' — short adjective uses -er. Double the final consonant: hot → hotter.">more hot</err> and sunny. I enjoy going to the beach <err tip="'and swimming' — use 'and' to add an activity. 'However' is a contrast connector between sentences.">however swimming</err> in the sea. <err tip="No article with seasons in general statements: 'Winter is cold.' Use 'the winter' only for a specific one.">The winter</err> is my least favourite season. I <err tip="Fixed expression: 'can't wait for something'. Don't drop the preposition.">can't wait the summer</err> to come back.`,
+      after:`My favourite season is <g>summer</g>. In summer, the weather is <g>hotter</g> and sunny. I enjoy going to the beach <g>and swimming</g> in the sea. <g>Winter</g> is my least favourite season. I <g>can't wait for summer</g> to come back.`,
+      changes:[['summer time','summer',`"Summer" = the season. "Summer time" is informal and usually refers to daylight saving time.`],['more hot','hotter',`Short adjective: hot → hotter. Double the consonant before adding -er.`],['however swimming','and swimming',`"However" is a contrast connector between clauses. Use "and" to add a parallel activity.`],['The winter','Winter',`No article with seasons in general statements.`],['can\'t wait the summer','can\'t wait for summer',`Fixed expression: "can't wait for something". Don't drop the preposition "for".`]]
+    },
+    {
+      num:'15', topic:'A Day Out', errorCount:5,
+      before:`Last Sunday, I <err tip="'went out' — the natural phrasal verb. 'Exited' is too formal and unusual in this context.">exited</err> with my family to the park. The weather <err tip="'was' — past of 'is'. Talking about last Sunday.">is</err> beautiful. We <err tip="'played' — past simple needed.">play</err> games and had a picnic. My little brother <err tip="'fell' — irregular past of 'fall'. 'Falled' is not a word.">falled</err> off his bike and cried. Despite this, it was <err tip="'one of the best days' — superlative. 'one of the better' uses a comparative.">one of the better days</err> of the summer.`,
+      after:`Last Sunday, I <g>went out</g> with my family to the park. The weather <g>was</g> beautiful. We <g>played</g> games and had a picnic. My little brother <g>fell</g> off his bike and cried. Despite this, it was <g>one of the best days</g> of the summer.`,
+      changes:[['exited','went out',`"Go out" is the natural phrasal verb here. "Exit" means to leave a building and sounds far too formal.`],['weather is','weather was',`"Last Sunday" = past. Use "was", not "is".`],['play games','played games',`Past simple needed: play → played.`],['falled','fell',`Irregular verb: fall → fell.`],['one of the better days','one of the best days',`"One of the best" = superlative. "Better" is comparative (comparing two things).`]]
+    },
+    {
+      num:'16', topic:'Moving to a New Place', errorCount:5,
+      before:`Two years ago, my family <err tip="'moved' — past simple. 'move' is present tense.">move</err> to a new city. At first, I <err tip="'didn't know' — past negative. 'don't knew' mixes present auxiliary with past verb.">don't knew</err> anyone. I <err tip="'felt' — irregular past of 'feel'. 'feeled' is not a word.">feeled</err> very lonely. <err tip="'However' — contrast connector. 'But however' uses two contrast words together; only one is needed.">But however</err>, I soon made new friends at school. Now I <err tip="'prefer' — present simple. 'am preferring' is wrong — 'prefer' is a stative verb and doesn't use continuous forms.">am preferring</err> my new city to the old one.`,
+      after:`Two years ago, my family <g>moved</g> to a new city. At first, I <g>didn't know</g> anyone. I <g>felt</g> very lonely. <g>However</g>, I soon made new friends at school. Now I <g>prefer</g> my new city to the old one.`,
+      changes:[['move','moved',`"Two years ago" signals past simple: move → moved.`],['don\'t knew','didn\'t know',`Past negative: "didn't + base verb". "Don't knew" mixes present auxiliary with a past verb.`],['feeled','felt',`Irregular verb: feel → felt.`],['But however','However',`"But" and "however" are both contrast connectors. Never use both together.`],['am preferring','prefer',`"Prefer" is a stative verb — it doesn't use continuous tenses. Use "prefer" (present simple).`]]
+    },
+    {
+      num:'17', topic:'A School Trip', errorCount:5,
+      before:`Last month, our class <err tip="'went on' — fixed collocation for trips. 'go to' a school trip is wrong; you 'go on' a trip.">go to</err> a school trip to a science museum. We <err tip="'travelled' — past simple. 'travel' is present.">travel</err> by coach for two hours. The museum <err tip="'was' — past of 'is'.">is</err> really interesting. I learned <err tip="'a lot' — two words. 'alot' is a common spelling error.">alot</err> about space and the planets. When we <err tip="'got back' — phrasal verb: 'get back' = return. Past: 'got back'. 'returned back' is redundant — 'return' already means to go back.">returned back</err> to school, we were very tired.`,
+      after:`Last month, our class <g>went on</g> a school trip to a science museum. We <g>travelled</g> by coach for two hours. The museum <g>was</g> really interesting. I learned <g>a lot</g> about space and the planets. When we <g>got back</g> to school, we were very tired.`,
+      changes:[['go to a school trip','went on a school trip',`Fixed collocation: "go on a trip / school trip". Past simple: go → went.`],['travel','travelled',`Past simple needed: travel → travelled.`],['museum is','museum was',`"Last month" = past. Use "was".`],['alot','a lot',`"A lot" is always two words. "Alot" is a spelling error.`],['returned back','got back',`"Return" already means to go back — "returned back" is redundant. "Got back" is the natural phrasal verb.`]]
+    },
+    {
+      num:'18', topic:'My Childhood', errorCount:5,
+      before:`When I was young, I <err tip="'used to play' — past habit. 'use to play' is missing the -d.">use to play</err> in the street every afternoon. My grandmother <err tip="'would make' or 'made' — past habit. 'was making' is past continuous, which implies it was interrupted; it doesn't work here.">was making</err> cakes for me every Sunday. I <err tip="'had' — past simple of 'have'. 'have' is present.">have</err> a bicycle that I loved. Things <err tip="'were' — past of 'are'. 'are' is present.">are</err> much simpler then. I <err tip="'wish I could go back' — 'wish + past simple/could'. 'wish I can go back' uses present ability modal, which doesn't work with 'wish'.">wish I can go back</err> to those days.`,
+      after:`When I was young, I <g>used to play</g> in the street every afternoon. My grandmother <g>would make</g> cakes for me every Sunday. I <g>had</g> a bicycle that I loved. Things <g>were</g> much simpler then. I <g>wish I could go back</g> to those days.`,
+      changes:[['use to play','used to play',`"Used to + infinitive" for past habits. The verb is "used" (with -d), not "use".`],['was making cakes every Sunday','would make cakes every Sunday',`For repeated past habits, "would + infinitive" or "used to" is more natural than past continuous.`],['have a bicycle','had a bicycle',`"When I was young" = past. Use "had", not "have".`],['things are','things were',`Talking about the past → use "were".`],['wish I can go back','wish I could go back',`"Wish + could" for an impossible or unlikely present wish. "Can" is not used after "wish".`]]
+    },
+    {
+      num:'19', topic:'Technology in My Life', errorCount:5,
+      before:`Technology has changed <err tip="'my life' — possessive pronoun. 'the life' uses the definite article incorrectly here.">the life</err> in many ways. I use my phone for <err tip="'everything' — one word. 'every thing' is a common spelling error.">every thing</err>. Ten years ago, people <err tip="'didn't use' — past negative. 'weren't using' is past continuous; fine for an interrupted action, but past simple is more natural for a general past habit.">weren't use</err> smartphones so much. <err tip="'Nowadays' — time adverb for the present. 'Actually' means 'in fact' and doesn't mean 'currently' in English (false cognate from Portuguese 'atualmente').">Actually</err>, it is hard to imagine life without the internet. I think technology <err tip="'will continue to improve' — future with 'will'. 'is going to continue improving' is also fine but 'will continues' adds a wrong -s after 'will'.">will continues</err> to improve our lives.`,
+      after:`Technology has changed <g>my life</g> in many ways. I use my phone for <g>everything</g>. Ten years ago, people <g>didn't use</g> smartphones so much. <g>Nowadays</g>, it is hard to imagine life without the internet. I think technology <g>will continue</g> to improve our lives.`,
+      changes:[['the life','my life',`Possessive pronoun needed: "my life". "The life" refers to a specific life already mentioned.`],['every thing','everything',`"Everything" is one word.`],['weren\'t use','didn\'t use',`Past simple negative: "didn't + base verb". "Weren't use" is not grammatical.`],['Actually','Nowadays',`False cognate. Portuguese "atualmente" = English "nowadays/currently", not "actually". "Actually" means "in fact".`],['will continues','will continue',`After "will", always use the base verb: "will continue". Never add -s.`]]
+    },
+    {
+      num:'20', topic:'My Neighbourhood Then and Now', errorCount:5,
+      before:`My neighbourhood has changed a lot <err tip="'in recent years' — fixed time expression. 'in the recent years' adds a wrong article.">in the recent years</err>. When I was a child, there <err tip="'were' — past of 'are'. 'was' is for singular.">was</err> many empty fields nearby. Now those fields have <err tip="'been replaced by' — past participle in passive. 'replaced' without 'been' is grammatically incomplete.">replaced by</err> new apartment buildings. The population <err tip="'has grown' — present perfect for a change up to now. 'is growing' is present continuous implying it's happening right now.">is growing</err> significantly over the last decade. <err tip="'Whether' — formal noun clause. 'If' is less formal, and more importantly 'If this is good or bad' should introduce a noun clause: 'whether this is good or bad remains unclear'.">If this is good or bad</err> is hard to say.`,
+      after:`My neighbourhood has changed a lot <g>in recent years</g>. When I was a child, there <g>were</g> many empty fields nearby. Now those fields have <g>been replaced by</g> new apartment buildings. The population <g>has grown</g> significantly over the last decade. <g>Whether this is good or bad</g> is hard to say.`,
+      changes:[['in the recent years','in recent years',`No article with "recent years": "in recent years" is the fixed expression.`],['there was many','there were many',`"Many empty fields" is plural → "there were".`],['have replaced by','have been replaced by',`Passive voice: "have been replaced by". The past participle "been" is missing.`],['is growing','has grown',`Present perfect: "has grown" for a change over a period up to now. "Is growing" = happening right now.`],['If this is good or bad','Whether this is good or bad',`"Whether" (not "if") is used in formal embedded questions and noun clauses.`]]
+    },
+  ],
+
+  B1: [
+    {
+      num:'01', topic:'Social Media', errorCount:5,
+      before:`Social media <err tip="Wrong collocation. The correct phrase is 'plays a major role', not 'does a major role'.">does a major role</err> in modern life. Many people <err tip="'Spend time + -ing' (gerund). 'Spend time to check' is not correct.">spend time to check</err> their phones constantly. <err tip="'Despite' is followed by a noun or -ing form. Use 'Although' for a full clause.">Despite</err> social media connects people, it can also cause anxiety. If I <err tip="Second conditional: 'if + past simple'. Don't use 'would' in the if-clause.">would have</err> no phone, I think I <err tip="Second conditional result clause: 'would + base verb'. Not 'will feel'.">will feel</err> lost.`,
+      after:`Social media <g>plays a major role</g> in modern life. Many people <g>spend time checking</g> their phones constantly. <g>Although</g> social media connects people, it can also cause anxiety. If I <g>had</g> no phone, I think I <g>would feel</g> lost.`,
+      changes:[['does a major role','plays a major role',`Fixed collocation — "play a role", never "do a role".`],['spend time to check','spend time checking',`"Spend time" + -ing (gerund), not infinitive.`],['Despite','Although',`"Despite" + noun/gerund. "Although" + full clause.`],['If I would have','If I had',`Second conditional: "if + past simple" (not "would" in the if-clause).`],['will feel','would feel',`Result clause of 2nd conditional uses "would + base verb".`]]
+    },
+    {
+      num:'02', topic:'The Environment', errorCount:5,
+      before:`Every year, millions of tons of plastic <err tip="Passive voice needed. The plastic is thrown by people: 'are thrown'.">throw</err> into the ocean. This <err tip="Wrong collocation. 'causes damage to', not 'makes damage to'.">makes damage to</err> marine ecosystems. <err tip="Don't repeat the subject with a pronoun in a relative clause. Remove 'they'.">Fish, which they cannot</err> avoid the pollution, often die or become sick. Governments <err tip="Modal verbs are followed directly by the base verb — no 'to'. Remove 'to'.">must to</err> take action. <err tip="'Consequently' signals a result. Here the idea is contrast — use 'However'.">Consequently</err>, progress is slow.`,
+      after:`Every year, millions of tons of plastic <g>are thrown</g> into the ocean. This <g>causes damage to</g> marine ecosystems. <g>Fish that cannot</g> avoid the pollution often die or become sick. Governments <g>must</g> take action. <g>However</g>, progress is slow.`,
+      changes:[['throw','are thrown',`Passive voice — the plastic is the receiver of the action, not the doer.`],['makes damage','causes damage',`Collocation — "cause damage", not "make damage".`],['which they cannot','that cannot',`Don't repeat the subject with a pronoun in a relative clause.`],['must to take','must take',`Modal verbs (must, can, will) take the base verb directly — no "to".`],['Consequently','However',`"Consequently" signals a result. "However" signals contrast — correct here.`]]
+    },
+    {
+      num:'03', topic:'A Film Review', errorCount:5,
+      before:`I recently watched a film <err tip="'that directed' implies the film directed someone. Use 'directed by' or 'which was directed by'.">that directed by</err> Christopher Nolan. The story, <err tip="'Where' is for places. 'Which' refers to things — use 'which takes place'.">where takes place</err> in a dream world, was fascinating. The main character is a man <err tip="'Whose' = possessive relative. 'Who's' = who is. The man's memories → whose.">who's</err> memories are stolen. <err tip="'Despite' + noun/gerund, not + clause. Use 'Despite being' or 'Although it was'.">Despite it was</err> long, I didn't feel bored. I <err tip="Adverbs go before the main verb: 'strongly recommend', not 'recommend strongly'.">recommend strongly</err> this film.`,
+      after:`I recently watched a film <g>directed by</g> Christopher Nolan. The story, <g>which takes place</g> in a dream world, was fascinating. The main character is a man <g>whose</g> memories are stolen. <g>Despite being</g> long, I didn't feel bored. I <g>strongly recommend</g> this film.`,
+      changes:[['that directed by','directed by',`Use a past participle phrase. "That directed" implies the film is doing the directing.`],['where takes place','which takes place',`"Where" replaces a place noun. "Which" replaces a thing (the story).`],['who\'s','whose',`"Who's" = who is. "Whose" = belonging to. The man's memories → whose.`],['Despite it was','Despite being',`"Despite" + noun/gerund, not + clause. Use "Although" if you want a full clause.`],['recommend strongly','strongly recommend',`Adverbs go before the main verb, not after.`]]
+    },
+    {
+      num:'04', topic:'Health and Lifestyle', errorCount:5,
+      before:`Many young people <err tip="'Struggle with' is the correct phrase. 'Making struggle' doesn't exist in English.">are making struggle with</err> their mental health. One reason is that they <err tip="Fixed collocation: 'be under pressure'. 'Have pressure' is not standard English.">have much pressure</err> at school. <err tip="Fixed phrase: 'On the other hand', not 'In the other hand'.">In the other hand</err>, many schools now offer counselling services. Experts say that exercise <err tip="After modal 'can', use base verb. 'Help' takes 'reduce', not 'to reducing'.">helps to reducing</err> stress. <err tip="English needs a proper subject. Don't drop 'It is'.">Important that teenagers</err> seek support early.`,
+      after:`Many young people <g>struggle with</g> their mental health. One reason is that they <g>are under a lot of pressure</g> at school. <g>On the other hand</g>, many schools now offer counselling services. Experts say that exercise <g>can help reduce</g> stress. <g>It is important that teenagers</g> seek support early.`,
+      changes:[['are making struggle','struggle with',`"Struggle with" is the correct verb phrase. "Make struggle" doesn't exist.`],['have much pressure','are under a lot of pressure',`Fixed collocation — "be under pressure". "Have pressure" is not standard.`],['In the other hand','On the other hand',`Fixed phrase — always "on the other hand".`],['helps to reducing','can help reduce',`After modal "can", use base verb. "Help" can take infinitive without "to": "help reduce".`],['Important that','It is important that',`English needs a proper subject. Don't drop "It is".`]]
+    },
+    {
+      num:'05', topic:'Travel', errorCount:5,
+      before:`Travelling alone is something <err tip="The verb is 'dream of/about something'. The preposition 'of' is essential.">I have always dreamed</err>. Last summer, I <err tip="'Set off' = begin a journey. 'Set up' = establish something. Wrong phrasal verb.">set up</err> for Portugal with just a backpack. Although the trip <err tip="Idiomatic phrase: 'was not without its challenges' — needs 'its' and the plural form.">wasn't without challenge</err>, I learned a great deal. I met people <err tip="'Whose' is the possessive relative pronoun. 'Who's' = who is.">who's stories</err> inspired me. If I <err tip="Third conditional (past unreal) requires 'if + past perfect'. The result clause confirms it.">didn't go</err>, I would never have discovered my independence.`,
+      after:`Travelling alone is something <g>I have always dreamed of</g>. Last summer, I <g>set off</g> for Portugal with just a backpack. Although the trip <g>was not without its challenges</g>, I learned a great deal. I met people <g>whose stories</g> inspired me. If I <g>hadn't gone</g>, I would never have discovered my independence.`,
+      changes:[['dreamed','dreamed of',`The verb is "dream of/about something". The preposition is essential.`],['set up','set off',`"Set off" = begin a journey. "Set up" = establish/arrange something.`],['wasn\'t without challenge','was not without its challenges',`Idiomatic phrase requires "its challenges" (plural, with possessive).`],['who\'s stories','whose stories',`"Whose" is the possessive relative. "Who's" = who is.`],['didn\'t go','hadn\'t gone',`Third conditional (past unreal) requires "if + past perfect". The result "would never have discovered" confirms it.`]]
+    },
+    {
+      num:'06', topic:'Technology at Home', errorCount:5,
+      before:`Smart devices <err tip="Passive voice: 'are being used'. 'are using' implies the devices are doing the using.">are using</err> more and more in everyday life. Many household tasks, <err tip="'which used to require' — past habit with 'used to'. 'that used requiring' is not correct.">that used requiring</err> hours of effort, can now be automated. <err tip="Wrong connector. 'Moreover' adds to a point. 'On the contrary' signals a direct contradiction of the previous idea.">On the contrary</err>, privacy concerns are growing alongside this convenience. Experts warn that consumers <err tip="'should be more careful about' — 'careful about' is the correct collocation. 'careful with' changes the meaning.">should be more careful with</err> the data they share. If these risks <err tip="Third conditional: 'had been addressed earlier, we would now have'. Or second conditional: 'were addressed, we would have'. Mixing tenses is the error.">would have been addressed</err> earlier, public trust might be higher today.`,
+      after:`Smart devices <g>are being used</g> more and more in everyday life. Many household tasks, <g>which used to require</g> hours of effort, can now be automated. <g>Moreover</g>, privacy concerns are growing alongside this convenience. Experts warn that consumers <g>should be more careful about</g> the data they share. If these risks <g>had been addressed</g> earlier, public trust might be higher today.`,
+      changes:[['are using','are being used',`Passive voice needed — the devices are the object of use, not the subject.`],['that used requiring','which used to require',`"Used to + infinitive" for past habits. "Used requiring" is not correct.`],['On the contrary','Moreover',`"On the contrary" directly contradicts. "Moreover" adds a further point — correct here.`],['careful with the data','careful about the data',`Collocation: "be careful about something" (a concern). "Careful with" refers to handling objects.`],['would have been addressed','had been addressed',`Third conditional if-clause: "if + past perfect". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'07', topic:'Learning a Language', errorCount:5,
+      before:`Learning a foreign language is one of the most <err tip="'rewarding' — adjective ending in -ing for the cause of the feeling. 'rewarded' = the person who receives a reward.">rewarded</err> things a person can do. It not only improves communication skills but also <err tip="'broadens' — third-person singular needs -s. Also, 'broad' is an adjective; the verb is 'broaden'.">broad</err> cultural understanding. Many people give up <err tip="'because' introduces a clause (subject + verb). 'because of' introduces a noun phrase. 'because of it is hard' mixes both.">because of it is</err> too hard. <err tip="'Nevertheless' — concessive connector. 'Despite this' is also fine. 'But however' is a double connector — use one or the other.">But however</err>, with consistent practice, fluency is achievable. The key is to <err tip="'expose yourself to' — the correct collocation. 'expose to' without a reflexive pronoun is grammatically incomplete here.">expose to</err> the language as much as possible.`,
+      after:`Learning a foreign language is one of the most <g>rewarding</g> things a person can do. It not only improves communication skills but also <g>broadens</g> cultural understanding. Many people give up <g>because it is</g> too hard. <g>Nevertheless</g>, with consistent practice, fluency is achievable. The key is to <g>expose yourself to</g> the language as much as possible.`,
+      changes:[['rewarded','rewarding',`"-ing" adjectives describe what causes a feeling. "-ed" adjectives describe how a person feels. Learning is rewarding (it causes the feeling).`],['broad','broadens',`"Broad" is an adjective. The verb is "broaden". Third-person singular: "broadens".`],['because of it is','because it is',`"Because" + clause (subject + verb). "Because of" + noun phrase. Don't mix them.`],['But however','Nevertheless',`"But" and "however" are both contrast connectors. Don't use them together. Choose one.`],['expose to','expose yourself to',`"Expose yourself to something" — the reflexive pronoun is essential here.`]]
+    },
+    {
+      num:'08', topic:'Work and Careers', errorCount:5,
+      before:`Choosing the right career is a decision <err tip="'that affects' — relative clause with 'that'. 'which affects' is also fine. The error is 'who affects' — 'who' is for people, not decisions.">who affects</err> the rest of your life. Many young people feel <err tip="'pressured into' — the correct collocation. 'pressured to choose' changes the meaning slightly. The error is 'pressure to', using the noun form.">pressure to</err> choose a high-paying job rather than a fulfilling one. <err tip="'It is worth considering' — 'worth' is followed by -ing. 'worth to consider' is not correct.">It is worth to consider</err> what you truly value before making a decision. Job satisfaction, <err tip="'which is often overlooked' — non-defining relative clause. 'that' cannot be used after a comma in a non-defining clause.">that is often overlooked</err>, plays a major role in long-term happiness. If I <err tip="Second conditional: 'could choose again, I would follow my passion'. 'would choose' in the if-clause is the error.">would choose</err> again, I would follow my passion.`,
+      after:`Choosing the right career is a decision <g>that affects</g> the rest of your life. Many young people feel <g>pressured into choosing</g> a high-paying job rather than a fulfilling one. <g>It is worth considering</g> what you truly value before making a decision. Job satisfaction, <g>which is often overlooked</g>, plays a major role in long-term happiness. If I <g>could choose</g> again, I would follow my passion.`,
+      changes:[['who affects','that affects',`"Who" refers to people. "That" or "which" refers to things. A decision → "that affects".`],['pressure to choose','pressured into choosing',`Collocation: "feel pressured into doing something". "Pressure" here needs to be an adjective: "pressured".`],['worth to consider','worth considering',`"Worth" is always followed by -ing: "worth considering / worth doing".`],['that is often overlooked','which is often overlooked',`In non-defining relative clauses (after a comma), use "which", not "that".`],['would choose','could choose',`"Would" never goes in the if-clause of a conditional. Use "could" (past of can) here.`]]
+    },
+    {
+      num:'09', topic:'City vs Countryside', errorCount:5,
+      before:`Many people dream of <err tip="'escaping' — after a preposition ('of'), use -ing. 'escape' is the base form.">escape</err> the city and moving to the countryside. Rural life is often seen as <err tip="'more peaceful' — 'peaceful' is a long adjective (3 syllables) → use 'more'. 'peacefuller' is not a word.">peacefuller</err> and healthier than urban living. <err tip="'However' — contrast connector. 'Nevertheless' also works. 'Despite' needs a noun or -ing, not a full clause.">Despite</err> the countryside can feel isolated, especially for young people. Public transport, <err tip="'which is often limited' — non-defining relative clause requires 'which' after a comma, not 'that'.">that is often limited</err> in rural areas, makes daily life more difficult. If more services <err tip="Third conditional: 'were provided in rural areas, more people would move there'. 'would be provided' in the if-clause is wrong.">would be provided</err> in rural areas, more people might consider the move.`,
+      after:`Many people dream of <g>escaping</g> the city and moving to the countryside. Rural life is often seen as <g>more peaceful</g> and healthier than urban living. <g>However</g>, the countryside can feel isolated, especially for young people. Public transport, <g>which is often limited</g> in rural areas, makes daily life more difficult. If more services <g>were provided</g> in rural areas, more people might consider the move.`,
+      changes:[['dream of escape','dream of escaping',`After a preposition ("of"), use the gerund (-ing form).`],['peacefuller','more peaceful',`Long adjectives use "more": more peaceful. "-er" is only for short adjectives.`],['Despite','However',`"Despite" + noun/gerund. "However" + full clause. A full clause follows here.`],['that is often limited','which is often limited',`Non-defining relative clauses (after commas) use "which", not "that".`],['would be provided','were provided',`Second conditional if-clause: "if + past simple". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'10', topic:'A Memorable Event', errorCount:5,
+      before:`The most memorable event of my life was <err tip="'when I was' — 'when' introduces a time clause. 'that I was' is used in noun clauses (e.g. 'I think that'). The error is using 'that' here.">that I was</err> eleven years old and won a school competition. I had been <err tip="'preparing for' — 'prepare for' something. 'preparing to' changes the meaning.">preparing to</err> the event for months. When they announced my name, I <err tip="'could not believe' — past ability/inability. 'couldn't believed' has wrong form after modal.">couldn't believed</err> it. My parents, <err tip="'who were watching from the audience' — non-defining relative clause: use 'who' for people.">that were watching</err> from the audience, were in tears. It was a moment I will never <err tip="'forget' — future with will uses the base form. 'will forgotten' is wrong.">will forgotten</err>.`,
+      after:`The most memorable event of my life was <g>when I was</g> eleven years old and won a school competition. I had been <g>preparing for</g> the event for months. When they announced my name, I <g>couldn't believe</g> it. My parents, <g>who were watching</g> from the audience, were in tears. It was a moment I will never <g>forget</g>.`,
+      changes:[['that I was eleven','when I was eleven',`"When" introduces a time clause. "That" is used in noun clauses ("I think that...").`],['preparing to the event','preparing for the event',`Collocation: "prepare for something". "Prepare to" means "get ready to do something".`],['couldn\'t believed','couldn\'t believe',`After modal verbs (couldn't, can't, would), use the base form: "believe", not "believed".`],['that were watching','who were watching',`Relative clauses referring to people use "who", not "that" in non-defining clauses.`],['will forgotten','forget',`"Will + base verb". "Forgotten" is the past participle — wrong after "will".`]]
+    },
+    {
+      num:'11', topic:'Online Shopping', errorCount:5,
+      before:`Online shopping has become <err tip="'increasingly popular' — adverb modifying adjective. 'increasing popular' uses the adjective form, which cannot modify another adjective.">increasing popular</err> over the past decade. One of the main advantages is that consumers can <err tip="'compare prices' — 'compare' is the correct verb. 'do a comparison of' is wordy and 'do comparison' misses the article.">do comparison of</err> products without leaving home. <err tip="'Moreover' or 'In addition' add a point. 'Despite this' signals concession — the wrong logic here.">Despite this</err>, delivery times have improved significantly. <err tip="'However' signals contrast — correct here. But 'Nonetheless however' uses two concessive connectors together. Pick one.">Nonetheless however</err>, concerns about data security remain widespread. If stricter regulations <err tip="Second conditional if-clause: 'if + past simple'. 'would be introduced' in the if-clause is wrong.">would be introduced</err>, consumer confidence might increase.`,
+      after:`Online shopping has become <g>increasingly popular</g> over the past decade. One of the main advantages is that consumers can <g>compare prices of</g> products without leaving home. <g>Moreover</g>, delivery times have improved significantly. <g>However</g>, concerns about data security remain widespread. If stricter regulations <g>were introduced</g>, consumer confidence might increase.`,
+      changes:[['increasing popular','increasingly popular',`An adverb ("increasingly") is needed to modify an adjective ("popular"). "Increasing" is an adjective/participle, not an adverb.`],['do comparison of','compare prices of',`"Compare" is the correct verb. "Do a comparison" is wordy; "do comparison" is also missing an article.`],['Despite this','Moreover',`"Despite this" signals concession. "Moreover" adds a further supporting point — correct here.`],['Nonetheless however','However',`"Nonetheless" and "however" are both contrast connectors. Never use two together. Choose one.`],['would be introduced','were introduced',`Second conditional if-clause: "if + past simple". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'12', topic:'Music and Identity', errorCount:5,
+      before:`Music <err tip="'plays a central role in' — fixed collocation. 'has a central role' omits the verb 'play', which is idiomatic with 'role'.">has a central role</err> shaping cultural identity. The genre someone listens to <err tip="'can reveal a great deal about' — this is the correct structure. 'can reveal much of' uses the wrong preposition.">can reveal much of</err> their values and social background. <err tip="'In addition' adds a point. 'On the contrary' directly contradicts the previous statement — wrong logic here.">On the contrary</err>, music has long served as a vehicle for political resistance. Artists <err tip="'who challenge social norms' — relative clause. 'which challenge' uses 'which' for people, which is wrong.">which challenge</err> social norms often face censorship or marginalisation. Whether streaming platforms <err tip="'have democratised' — present perfect for a change up to now. 'democratised' alone (past simple) suggests a finished action at a specific past time.">democratised</err> music or simply shifted commercial power is still debated.`,
+      after:`Music <g>plays a central role in</g> shaping cultural identity. The genre someone listens to <g>can reveal a great deal about</g> their values and social background. <g>In addition</g>, music has long served as a vehicle for political resistance. Artists <g>who challenge</g> social norms often face censorship or marginalisation. Whether streaming platforms <g>have democratised</g> music or simply shifted commercial power is still debated.`,
+      changes:[['has a central role','plays a central role in',`Collocation: "play a role in" + gerund. "Have a role" is not the standard expression.`],['can reveal much of','can reveal a great deal about',`"Reveal a great deal about" is the correct collocation. "Much of" implies a quantity, not depth.`],['On the contrary','In addition',`"On the contrary" directly contradicts. "In addition" adds a supporting point — correct here.`],['which challenge','who challenge',`"Who" refers to people (artists). "Which" refers to things.`],['democratised','have democratised',`Present perfect needed — the action started in the past and connects to the present. Past simple would imply a finished event at a known time.`]]
+    },
+    {
+      num:'13', topic:'Tourism', errorCount:5,
+      before:`Tourism is one of the <err tip="'world's largest industries' — possessive 's with 'world'. 'world largest' is missing the possessive.">world largest</err> industries and a vital source of income for many countries. <err tip="'Nevertheless' or 'However' — concessive connectors. 'Despite' needs a noun or -ing, not a full clause.">Despite</err> it brings economic benefits, mass tourism can cause serious environmental damage. Sites <err tip="'which attract millions of visitors' — non-defining relative clause after a comma requires 'which', not 'that'.">that attract millions of visitors</err> each year, such as Machu Picchu, are suffering from overcrowding. Governments <err tip="'are being urged to introduce' — passive progressive. 'are urged to introducing' mixes passive and gerund incorrectly.">are urged to introducing</err> visitor limits. If sustainable practices <err tip="Third conditional: 'had been adopted earlier, damage could have been avoided'. 'would have been adopted' in the if-clause is wrong.">would have been adopted</err> earlier, much of this damage could have been avoided.`,
+      after:`Tourism is one of the <g>world's largest</g> industries and a vital source of income for many countries. <g>Although</g> it brings economic benefits, mass tourism can cause serious environmental damage. Sites <g>which attract millions of visitors</g> each year, such as Machu Picchu, are suffering from overcrowding. Governments <g>are being urged to introduce</g> visitor limits. If sustainable practices <g>had been adopted</g> earlier, much of this damage could have been avoided.`,
+      changes:[['world largest','world\'s largest',`Possessive 's: "the world's largest industries". Missing the apostrophe and -s.`],['Despite','Although',`"Despite" + noun/gerund. "Although" + full clause. A full clause follows here.`],['that attract millions','which attract millions',`Non-defining relative clauses (after commas) use "which", not "that".`],['are urged to introducing','are being urged to introduce',`Passive progressive: "are being urged". After "urge to", use the infinitive "introduce", not the gerund.`],['would have been adopted','had been adopted',`Third conditional if-clause: "if + past perfect". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'14', topic:'Food and Culture', errorCount:5,
+      before:`Food is far more than mere sustenance — it is <err tip="'a reflection of' — fixed collocation. 'a reflect of' uses the noun form incorrectly; the noun is 'reflection'.">a reflect of</err> cultural history and social values. Traditional recipes, <err tip="'which have been passed down through generations' — non-defining relative clause. 'that' cannot follow a comma in a non-defining clause.">that have been passed down</err> through generations, carry deep symbolic significance. <err tip="'However' signals contrast. 'Furthermore' adds a point — wrong logic here since the next idea contrasts with tradition.">Furthermore</err>, globalisation has led to the homogenisation of diets worldwide. Many nutritionists <err tip="'argue that' — 'argue' is the correct formal verb. 'say that' is too informal; 'argue about that' adds a wrong preposition.">argue about that</err> the loss of traditional food cultures poses a public health risk. <err tip="'Preserving culinary heritage is therefore a matter of cultural as well as nutritional importance' — formal impersonal conclusion. 'So food traditions are important' is too informal.">So food traditions are important</err>.`,
+      after:`Food is far more than mere sustenance — it is <g>a reflection of</g> cultural history and social values. Traditional recipes, <g>which have been passed down</g> through generations, carry deep symbolic significance. <g>However</g>, globalisation has led to the homogenisation of diets worldwide. Many nutritionists <g>argue that</g> the loss of traditional food cultures poses a public health risk. <g>Preserving culinary heritage is therefore a matter of cultural as well as nutritional importance</g>.`,
+      changes:[['a reflect of','a reflection of',`The noun is "reflection", not "reflect". "A reflection of" is the correct collocation.`],['that have been passed down','which have been passed down',`Non-defining relative clauses (after commas) require "which", not "that".`],['Furthermore','However',`"Furthermore" adds a point. "However" signals contrast — correct here, since globalisation contrasts with tradition.`],['argue about that','argue that',`"Argue that" + clause. "Argue about" + noun/topic. No "about" before a that-clause.`],['So food traditions are important','Preserving culinary heritage is therefore a matter of cultural as well as nutritional importance',`Register. "So" is conversational. An impersonal, noun-phrase construction is appropriate for a formal conclusion.`]]
+    },
+    {
+      num:'15', topic:'Volunteering', errorCount:5,
+      before:`Volunteering is widely <err tip="'regarded as' — passive collocation. 'regarded like' uses the wrong preposition.">regarded like</err> one of the most rewarding experiences a person can have. Those <err tip="'who volunteer regularly' — relative clause for people. 'which volunteer' uses 'which' for people, which is wrong.">which volunteer</err> regularly report higher levels of life satisfaction. <err tip="'In addition' or 'Moreover' — adding a point. 'On the other hand' signals contrast, which is the wrong logic here.">On the other hand</err>, volunteering contributes to the development of transferable professional skills. Many organisations <err tip="'rely on volunteers to function' — 'rely on' is the correct collocation. 'rely in' uses the wrong preposition.">rely in</err> volunteers to function effectively. If more people <err tip="Second conditional: 'if + past simple'. 'If more people would dedicate' has 'would' in the if-clause, which is wrong.">would dedicate</err> time to volunteering, communities would be significantly stronger.`,
+      after:`Volunteering is widely <g>regarded as</g> one of the most rewarding experiences a person can have. Those <g>who volunteer</g> regularly report higher levels of life satisfaction. <g>Moreover</g>, volunteering contributes to the development of transferable professional skills. Many organisations <g>rely on</g> volunteers to function effectively. If more people <g>dedicated</g> time to volunteering, communities would be significantly stronger.`,
+      changes:[['regarded like','regarded as',`Collocation: "be regarded as". "Like" is used for informal comparisons, not passive constructions.`],['which volunteer','who volunteer',`"Who" refers to people. "Which" refers to things or animals.`],['On the other hand','Moreover',`"On the other hand" signals contrast. "Moreover" adds a further point — correct here.`],['rely in','rely on',`Fixed collocation: "rely on someone/something". "Rely in" does not exist in English.`],['would dedicate','dedicated',`Second conditional if-clause: "if + past simple". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'16', topic:'Television and Streaming', errorCount:5,
+      before:`Streaming services have <err tip="'transformed' — correct past participle. 'transformed' is fine but 'revolutionised' is too strong here. The actual error: 'have transform' — missing past participle ending.">transform</err> the way people consume television. Unlike traditional broadcasting, streaming platforms allow viewers <err tip="'to watch content' — infinitive after 'allow + object'. 'allow to watching' uses gerund incorrectly after this structure.">to watching content</err> at any time they choose. <err tip="'Moreover' adds a further point. 'Despite this' signals concession — wrong logic since the next clause continues the same argument.">Despite this</err>, original productions from platforms like Netflix have achieved global audiences. Critics, <err tip="'however' — contrast connector mid-sentence. 'although' introduces a clause; it can't be used this way as a sentence connector after a comma.">although</err>, warn that the sheer volume of content makes it difficult for audiences to find quality programming. If public broadcasters <err tip="Second conditional if-clause: 'if + past simple'. 'would adapt' in the if-clause is wrong.">would adapt</err> their models, they might remain competitive.`,
+      after:`Streaming services have <g>transformed</g> the way people consume television. Unlike traditional broadcasting, streaming platforms allow viewers <g>to watch content</g> at any time they choose. <g>Moreover</g>, original productions from platforms like Netflix have achieved global audiences. Critics, <g>however</g>, warn that the sheer volume of content makes it difficult for audiences to find quality programming. If public broadcasters <g>adapted</g> their models, they might remain competitive.`,
+      changes:[['have transform','have transformed',`Present perfect: "have + past participle". The past participle of "transform" is "transformed".`],['allow to watching','allow to watch',`"Allow + object + to + infinitive": "allow viewers to watch". The gerund (-ing) is wrong here.`],['Despite this','Moreover',`"Despite this" signals concession. "Moreover" adds a further point in the same direction — correct here.`],['Critics, although','Critics, however',`"Although" introduces a clause, not a connector between clauses. "However" is the correct sentence adverb here.`],['would adapt','adapted',`Second conditional if-clause: "if + past simple". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'17', topic:'Animals and Conservation', errorCount:5,
+      before:`Many species <err tip="'are facing' or 'face' — present continuous or simple for ongoing situations. 'are faced with' is passive. The error is 'are face' — missing either -ing or passive structure.">are face</err> extinction due to habitat destruction and climate change. Conservation efforts, <err tip="'which have increased significantly' — non-defining relative clause after comma uses 'which'. 'that' cannot be used after a comma in a non-defining clause.">that have increased significantly</err> in recent decades, have prevented the disappearance of several species. <err tip="'Nevertheless' or 'However' — concessive connector. 'Despite' needs a noun/-ing, not a full clause.">Despite</err> progress has been made, funding for conservation remains inadequate. Governments <err tip="'must commit to' — fixed collocation. 'must to commit' adds a wrong 'to' after a modal.">must to commit</err> to international agreements. If more resources <err tip="Third conditional if-clause: 'had been allocated'. 'would have been allocated' in the if-clause is wrong.">would have been allocated</err> earlier, we might have avoided the current biodiversity crisis.`,
+      after:`Many species <g>are facing</g> extinction due to habitat destruction and climate change. Conservation efforts, <g>which have increased significantly</g> in recent decades, have prevented the disappearance of several species. <g>Although</g> progress has been made, funding for conservation remains inadequate. Governments <g>must commit to</g> international agreements. If more resources <g>had been allocated</g> earlier, we might have avoided the current biodiversity crisis.`,
+      changes:[['are face extinction','are facing extinction',`Present continuous: "are facing". "Are face" is incomplete — missing -ing.`],['that have increased significantly','which have increased significantly',`Non-defining relative clauses (after commas) use "which", not "that".`],['Despite','Although',`"Despite" + noun/gerund. "Although" + full clause. A full clause follows here.`],['must to commit','must commit',`Modal verbs take the base verb directly — no "to": "must commit".`],['would have been allocated','had been allocated',`Third conditional if-clause: "if + past perfect". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'18', topic:'Fashion and Identity', errorCount:5,
+      before:`Fashion is often dismissed as superficial, yet it plays <err tip="'a significant role in' — fixed collocation. 'a significant role of' uses the wrong preposition.">a significant role of</err> constructing personal and cultural identity. The clothes people choose to wear <err tip="'can reveal a great deal about' — correct collocation. 'can reveal much of their values' uses 'much of' incorrectly — 'much of' precedes a noun group, not a description.">can reveal much of their social values</err>. <err tip="'Furthermore' adds a supporting point. 'On the contrary' directly contradicts — wrong logic here.">On the contrary</err>, fashion has long been used as a form of political expression. Those <err tip="'who challenge' — relative clause for people. 'which challenge' uses 'which' for people, which is wrong.">which challenge</err> mainstream aesthetics are often labelled eccentric or deviant. Whether fashion <err tip="'constitutes' — third-person singular needs -s. 'constitute' is base form.">constitute</err> a form of art or mere commerce remains a lively debate.`,
+      after:`Fashion is often dismissed as superficial, yet it plays <g>a significant role in</g> constructing personal and cultural identity. The clothes people choose to wear <g>can reveal a great deal about their social values</g>. <g>Furthermore</g>, fashion has long been used as a form of political expression. Those <g>who challenge</g> mainstream aesthetics are often labelled eccentric or deviant. Whether fashion <g>constitutes</g> a form of art or mere commerce remains a lively debate.`,
+      changes:[['a significant role of','a significant role in',`Collocation: "play a role in + gerund". The preposition is "in", not "of".`],['can reveal much of their social values','can reveal a great deal about their social values',`"Reveal a great deal about" is the correct collocation. "Much of" precedes a quantity noun, not a description.`],['On the contrary','Furthermore',`"On the contrary" directly contradicts. "Furthermore" adds a supporting point — correct here.`],['which challenge','who challenge',`"Who" refers to people. "Which" refers to things.`],['constitute','constitutes',`Third-person singular subject ("fashion") requires -s: "constitutes".`]]
+    },
+    {
+      num:'19', topic:'Advertising', errorCount:5,
+      before:`Advertising is <err tip="'one of the most powerful forces' — superlative. 'one of the more powerful forces' uses a comparative, not a superlative.">one of the more powerful forces</err> shaping consumer behaviour in the modern world. Advertisers <err tip="'are skilled at exploiting' — 'be skilled at + gerund'. 'are skilled in exploiting' uses the wrong preposition.">are skilled in exploiting</err> psychological triggers to manufacture desire. <err tip="'As a result' signals consequence. 'On the contrary' signals direct contradiction — wrong logic here since the sentence continues the same argument.">On the contrary</err>, many consumers report feeling manipulated by targeted online advertisements. Critics argue that stricter regulation <err tip="'is needed' — passive. 'is needed to protect' is correct. 'must to be introduced' adds a wrong 'to' after the modal.">must to be introduced</err> to protect vulnerable groups. If advertising standards <err tip="Second conditional if-clause: 'were tightened, companies would be forced'. 'would be tightened' in the if-clause is wrong.">would be tightened</err>, deceptive marketing practices would be significantly reduced.`,
+      after:`Advertising is <g>one of the most powerful forces</g> shaping consumer behaviour in the modern world. Advertisers <g>are skilled at exploiting</g> psychological triggers to manufacture desire. <g>As a result</g>, many consumers report feeling manipulated by targeted online advertisements. Critics argue that stricter regulation <g>must be introduced</g> to protect vulnerable groups. If advertising standards <g>were tightened</g>, deceptive marketing practices would be significantly reduced.`,
+      changes:[['one of the more powerful forces','one of the most powerful forces',`"One of the most" requires the superlative. "More powerful" is a comparative.`],['skilled in exploiting','skilled at exploiting',`Collocation: "be skilled at + gerund". The preposition is "at", not "in".`],['On the contrary','As a result',`"On the contrary" directly contradicts. "As a result" signals consequence — correct here.`],['must to be introduced','must be introduced',`Modal verbs take the base verb directly: "must be". Never "must to be".`],['would be tightened','were tightened',`Second conditional if-clause: "if + past simple passive". "Would" never goes in the if-clause.`]]
+    },
+    {
+      num:'20', topic:'Sport and Society', errorCount:5,
+      before:`Sport occupies a unique place in society, <err tip="'serving' — participle clause. 'serve' is a base form and cannot start a participle clause; 'serving' is needed.">serve</err> simultaneously as entertainment, cultural expression, and economic activity. Major sporting events <err tip="'have the capacity to unite' — 'have the capacity to + infinitive'. 'have capacity of uniting' uses wrong preposition and structure.">have capacity of uniting</err> communities across social and cultural divides. <err tip="'However' — contrast connector. 'Furthermore' adds a point; the next clause introduces a contrasting idea.">Furthermore</err>, the commercialisation of sport has led to growing concerns about integrity and fairness. Governing bodies <err tip="'are being urged to address' — passive progressive. 'are urged to addressing' mixes passive and gerund.">are urged to addressing</err> issues such as corruption and doping. If financial interests <err tip="Third conditional if-clause: 'had been better regulated'. 'would have been better regulated' in the if-clause is wrong.">would have been better regulated</err>, many of the sport's current problems might have been avoided.`,
+      after:`Sport occupies a unique place in society, <g>serving</g> simultaneously as entertainment, cultural expression, and economic activity. Major sporting events <g>have the capacity to unite</g> communities across social and cultural divides. <g>However</g>, the commercialisation of sport has led to growing concerns about integrity and fairness. Governing bodies <g>are being urged to address</g> issues such as corruption and doping. If financial interests <g>had been better regulated</g>, many of the sport's current problems might have been avoided.`,
+      changes:[['serve','serving',`Participle clauses require -ing: "serving simultaneously as...". "Serve" is the base form.`],['have capacity of uniting','have the capacity to unite',`"Have the capacity to + infinitive" is the correct structure. "Of + gerund" uses the wrong preposition.`],['Furthermore','However',`"Furthermore" adds a point. "However" signals contrast — correct here, since commercialisation introduces a problem.`],['are urged to addressing','are being urged to address',`Passive progressive: "are being urged". After "urge to", use the infinitive "address", not the gerund.`],['would have been better regulated','had been better regulated',`Third conditional if-clause: "if + past perfect". "Would" never goes in the if-clause.`]]
+    },
+  ],
+
+  B2: [
+    {
+      num:'01', topic:'Artificial Intelligence', errorCount:5,
+      before:`Artificial intelligence is <err tip="Too informal for academic writing. Better: 'transforming industries at an unprecedented rate'.">changing a lot of things fast</err>. Proponents argue that AI <err tip="Academic writing prefers hedged language: 'may enhance', 'has the potential to enhance'.">will enhance</err> productivity across all sectors. <err tip="'Nonetheless' concedes and continues. Here a contrasting view is introduced — use 'However'.">Nonetheless</err>, critics warn of widespread job displacement. The question of <err tip="Use 'whether' (not 'if') in formal noun clauses. 'Poses a threat' is the standard collocation.">if AI is really a threat to jobs</err> remains hotly debated. <err tip="Fixed discourse marker — always 'In conclusion', not 'As a conclusion'.">As a conclusion</err>, a balanced regulatory framework seems essential.`,
+      after:`Artificial intelligence is <g>transforming industries at an unprecedented rate</g>. Proponents argue that AI <g>may enhance</g> productivity across all sectors. <g>However</g>, critics warn of widespread job displacement. The question of <g>whether AI poses a genuine threat to employment</g> remains hotly debated. <g>In conclusion</g>, a balanced regulatory framework seems essential.`,
+      changes:[['changing a lot of things fast','transforming industries at an unprecedented rate',`Register. Academic writing requires precise, formal vocabulary.`],['will enhance','may enhance',`Hedging. Academic writing avoids absolute claims. Use "may", "might", "could".`],['Nonetheless','However',`"Nonetheless" concedes a point but continues. "However" introduces a contrasting view.`],['if AI is really a threat to jobs','whether AI poses a genuine threat to employment',`"Whether" (not "if") in formal noun clauses. "Poses a threat" is the standard collocation.`],['As a conclusion','In conclusion',`Fixed discourse marker — always "In conclusion".`]]
+    },
+    {
+      num:'02', topic:'Urban Living', errorCount:5,
+      before:`City living <err tip="Register. 'Has a lot of good things' is too informal. Use 'offers a number of advantages'.">has a lot of good things</err>, not least the proximity to cultural and professional opportunities. <err tip="'Having said that' is conversational. In written style, use 'That said' or 'Nevertheless'.">Having said that</err>, the psychological toll of urban density is well-documented. Studies <err tip="Precision of claim. Studies rarely 'confirm' — they 'suggest', 'indicate', or 'point to' a correlation.">confirm</err> a correlation between urban noise pollution and increased cortisol levels. <err tip="Cohesion. 'In spite of this' signals concession. Here the writer is adding consequences — use 'Consequently'.">In spite of this</err>, urban planners have begun prioritising green spaces. Whether this <err tip="Register. 'Proves to be enough' is weak and informal. 'Will prove sufficient' is more precise and formal.">proves to be enough</err> remains to be seen.`,
+      after:`City living <g>offers a number of advantages</g>, not least the proximity to cultural and professional opportunities. <g>That said</g>, the psychological toll of urban density is well-documented. Studies <g>suggest</g> a correlation between urban noise pollution and increased cortisol levels. <g>Consequently</g>, urban planners have begun prioritising green spaces. Whether this <g>will prove sufficient</g> remains to be seen.`,
+      changes:[['has a lot of good things','offers a number of advantages',`Register. Informal phrasing is inappropriate in academic writing.`],['Having said that','That said',`"Having said that" is conversational. "That said" or "Nevertheless" suits formal writing.`],['confirm','suggest',`Precision. Studies rarely "confirm" — they "suggest", "indicate", or "point to" a correlation.`],['In spite of this','Consequently',`Cohesion. "In spite of this" signals contrast; "Consequently" signals result — which fits here.`],['proves to be enough','will prove sufficient',`Register. "Enough" is too colloquial; "sufficient" is precise and formal.`]]
+    },
+    {
+      num:'03', topic:'Education Systems', errorCount:5,
+      before:`Standardised testing has long been <err tip="'Controversial' is an adjective — it needs a noun. 'A contentious issue' is a natural formal collocation.">a controversial</err> in educational policy. Critics argue that such assessments <err tip="'Fail to + infinitive' is the standard structure. 'Are failing in capturing' is awkward and unidiomatic.">are failing in capturing</err> the full range of students' abilities. Furthermore, <err tip="Unclear pronoun reference. 'They' could refer to critics or assessments. Repeat the noun to avoid ambiguity.">they</err> can demotivate students who do not perform well under pressure. Proponents, <err tip="'On the contrary' directly negates. 'On the other hand' balances two perspectives — correct here.">on the contrary</err>, maintain that standardised data allows for meaningful cross-institutional comparison. Ultimately, the debate <err tip="'Depend on', never 'depend of'. 'Hinges on' is more sophisticated — a better fit for B2.">depends of</err> how we define educational success.`,
+      after:`Standardised testing has long been <g>a contentious issue</g> in educational policy. Critics argue that such assessments <g>fail to capture</g> the full range of students' abilities. Furthermore, <g>such assessments</g> can demotivate students who do not perform well under pressure. Proponents, <g>on the other hand</g>, maintain that standardised data allows for meaningful cross-institutional comparison. Ultimately, the debate <g>hinges on</g> how we define educational success.`,
+      changes:[['a controversial','a contentious issue',`"Controversial" is an adjective — it needs a noun. "Contentious issue" is a natural formal collocation.`],['are failing in capturing','fail to capture',`"Fail to + infinitive" is the standard structure. The progressive form is awkward here.`],['they','such assessments',`Unclear pronoun reference. "They" could refer to critics or assessments. Repeating the noun avoids ambiguity.`],['on the contrary','on the other hand',`"On the contrary" directly negates; "on the other hand" balances two perspectives — correct here.`],['depends of','hinges on',`"Depend on", never "depend of". "Hinges on" is more precise and sophisticated.`]]
+    },
+    {
+      num:'04', topic:'Remote Work', errorCount:5,
+      before:`The rise of remote work has <err tip="Register. 'Changed a lot how people work' is informal and awkward. Use 'fundamentally altered working practices'.">changed a lot how people work</err>. <err tip="Register. 'Even though it's good that' is wordy and informal. Use 'While this flexibility is undoubtedly appealing'.">Even though it's good that</err> employees can manage their own schedules, the boundaries between professional and personal life have become increasingly blurred. <err tip="'Are showing' uses present continuous unnecessarily. Academic findings use present simple 'suggests'.">Many studies are showing</err> that social isolation is a significant risk for remote workers. Companies <err tip="Register. 'Should really think about' is conversational. 'Would be well-advised to invest' is the formal advisory construction.">should really think about investing in</err> virtual team-building strategies. <err tip="Register. 'We don't know yet' is too casual. Use an impersonal formal construction.">We don't know yet what will happen</err>.`,
+      after:`The rise of remote work has <g>fundamentally altered working practices</g>. <g>While this flexibility is undoubtedly appealing</g>, the boundaries between professional and personal life have become increasingly blurred. <g>A growing body of research suggests</g> that social isolation is a significant risk for remote workers. Companies <g>would be well-advised to invest in</g> virtual team-building strategies. <g>The long-term implications remain unclear</g>.`,
+      changes:[['changed a lot how people work','fundamentally altered working practices',`Word order and register. "Fundamentally altered" is precise and formal.`],['Even though it\'s good that','While this flexibility is undoubtedly appealing',`Register. "It's good that" is conversational. The revision is concise and formal.`],['Many studies are showing','A growing body of research suggests',`Hedging + register. Present simple "suggests" for academic findings.`],['should really think about investing','would be well-advised to invest',`Formal register. "Would be well-advised to" is the appropriate formal advisory structure.`],['We don\'t know yet what will happen','The long-term implications remain unclear',`Register. Personal "we" is avoided in formal writing. The impersonal revision is concise and precise.`]]
+    },
+    {
+      num:'05', topic:'Cultural Identity', errorCount:5,
+      before:`Globalisation has <err tip="Register. 'Changed cultural identity in the world a lot' is informal. Use 'had a profound impact on cultural identity worldwide'.">changed cultural identity in the world a lot</err>. While the spread of global media <err tip="Register. 'Facilitate' (= make easier) is the precise formal word. 'Helped... happen' is wordy and informal.">helped cross-cultural exchange happen</err>, it has simultaneously <err tip="Wrong preposition. The collocation is 'pose a threat to', not 'been a threat for'.">been a threat for</err> minority languages and traditions. It could <err tip="Grammar + register. 'It could be argued that' is an impersonal passive — the standard academic distancing device.">someone say that</err> cultural homogenisation represents a form of soft imperialism. <err tip="Register. Remove personal 'we'. Use precise academic language instead.">So we need to keep different languages alive</err>.`,
+      after:`Globalisation has <g>had a profound impact on cultural identity worldwide</g>. While the spread of global media <g>has undoubtedly facilitated cross-cultural exchange</g>, it has simultaneously <g>posed a threat to</g> minority languages and traditions. It could <g>be argued that</g> cultural homogenisation represents a form of soft imperialism. <g>Preserving linguistic diversity is therefore a matter of urgent concern</g>.`,
+      changes:[['changed cultural identity in the world a lot','had a profound impact on cultural identity worldwide',`Register and collocation. "Have a profound impact on" is the standard formal phrase.`],['helped cross-cultural exchange happen','facilitated cross-cultural exchange',`Precision. "Facilitate" (= make easier/possible) is the exact, formal word for this context.`],['been a threat for','posed a threat to',`Collocation + preposition. "Pose a threat to" is fixed. "Threat for" is incorrect.`],['someone say that','be argued that',`"It could be argued that" is an impersonal passive — the standard academic distancing device.`],['So we need to keep different languages alive','Preserving linguistic diversity is therefore a matter of urgent concern',`Register. Remove personal "we", replace vague wording with precise academic language.`]]
+    },
+    {
+      num:'06', topic:'Consumer Society', errorCount:5,
+      before:`Contemporary consumer culture is <err tip="Register. 'Driven by' is the correct formal passive collocation. 'Pushed forward by' is imprecise and informal.">pushed forward by</err> an insatiable desire for novelty. Advertisers <err tip="Register. 'Exploit' is a single precise formal verb. 'Take advantage of' is correct but too wordy and informal here.">take advantage of</err> psychological vulnerabilities to stimulate demand. <err tip="Cohesion. 'As a result' signals consequence. 'By contrast' signals difference — wrong logic here.">By contrast</err>, patterns of overconsumption have contributed significantly to environmental degradation. <err tip="Register. 'It could be contended that' is the formal academic distancing structure. 'Some people think that' is too informal.">Some people think that</err> ethical consumerism represents a viable countermovement. Whether this constitutes a genuine shift in values or <err tip="Register. 'Merely' is the formal equivalent of 'just'. 'Just another' is too colloquial.">just another</err> marketing trend remains debatable.`,
+      after:`Contemporary consumer culture is <g>driven by</g> an insatiable desire for novelty. Advertisers <g>exploit</g> psychological vulnerabilities to stimulate demand. <g>As a result</g>, patterns of overconsumption have contributed significantly to environmental degradation. <g>It could be contended that</g> ethical consumerism represents a viable countermovement. Whether this constitutes a genuine shift in values or <g>merely a</g> marketing trend remains debatable.`,
+      changes:[['pushed forward by','driven by',`Precision and register. "Driven by" is the standard formal collocation in academic writing.`],['take advantage of','exploit',`Register. "Exploit" is more concise and precise. "Take advantage of" is too long and conversational.`],['By contrast','As a result',`Cohesion. The sentence adds a consequence, not a contrast. "As a result" is correct.`],['Some people think that','It could be contended that',`Register. Formal academic writing uses impersonal structures to attribute views.`],['just another','merely a',`Register. "Just" is colloquial. "Merely" is the formal equivalent.`]]
+    },
+    {
+      num:'07', topic:'Mental Health Awareness', errorCount:5,
+      before:`Mental health <err tip="Register. 'Has increasingly come to be recognised as' is the formal passive. 'People are starting to recognise more' is informal and uses a vague personal subject.">people are starting to recognise more</err> as a public health priority. <err tip="Register and precision. 'Historically, mental illness was shrouded in stigma' is formal and specific. The original is vague and informal.">In the past, people didn't talk about it</err>, which discouraged many from seeking help. <err tip="Register. 'A growing body of evidence suggests' is the standard academic phrase. Present continuous is unnecessary and informal here.">Research is showing more and more</err> that early intervention significantly improves long-term outcomes. <err tip="Register. 'But still' is conversational. 'Nevertheless' is the formal concessive connector.">But still</err>, access to mental health services remains deeply unequal across socioeconomic groups. Addressing this disparity <err tip="Register. 'Is imperative' is the formal, strong alternative to 'is very important', which is too weak and vague.">is very important</err> if systemic change is to be achieved.`,
+      after:`Mental health <g>has increasingly come to be recognised</g> as a public health priority. <g>Historically, mental illness was shrouded in stigma</g>, which discouraged many from seeking help. <g>A growing body of evidence suggests</g> that early intervention significantly improves long-term outcomes. <g>Nevertheless</g>, access to mental health services remains deeply unequal across socioeconomic groups. Addressing this disparity <g>is imperative</g> if systemic change is to be achieved.`,
+      changes:[['people are starting to recognise more','has increasingly come to be recognised',`Register. Impersonal passive constructions are preferred in academic writing. Avoid "people" as a vague subject.`],['In the past, people didn\'t talk about it','Historically, mental illness was shrouded in stigma',`Register and precision. "Historically" is more formal. "Shrouded in stigma" is a precise, formal collocation.`],['Research is showing more and more','A growing body of evidence suggests',`Hedging + register. Present continuous is unnecessary. "A growing body of evidence" is the standard academic phrase.`],['But still','Nevertheless',`Register. "But still" is conversational. "Nevertheless" is the formal concessive connector.`],['is very important','is imperative',`Register. "Very important" is weak and informal. "Imperative" conveys the same force with appropriate formality.`]]
+    },
+    {
+      num:'08', topic:'Media and Journalism', errorCount:5,
+      before:`The proliferation of digital media has <err tip="Register. 'Fundamentally altered the media landscape' is the formal collocation. 'Completely changed how media works' is informal.">completely changed how media works</err>. Traditional journalism, <err tip="Register + grammar. Non-defining relative clauses after commas use 'which', not 'that'. The phrasing is also too informal.">that used to be where people got news</err>, now competes with algorithmically curated content. <err tip="Register. 'Because of this' is informal. 'Consequently' is the appropriate formal result connector.">Because of this</err>, the distinction between verified reporting and misinformation has become increasingly blurred. Critics <err tip="Register. 'Argue' is more precise than 'say'. 'Bear a responsibility to' is a formal collocation. 'Companies' → 'organisations' is more formal.">say that media companies need to</err> uphold rigorous editorial standards. <err tip="Register. 'We will have to wait and see' is casual. An impersonal formal construction is required.">We will have to wait and see</err>.`,
+      after:`The proliferation of digital media has <g>fundamentally altered the media landscape</g>. Traditional journalism, <g>which was once considered the primary source of public information</g>, now competes with algorithmically curated content. <g>Consequently</g>, the distinction between verified reporting and misinformation has become increasingly blurred. Critics <g>argue that media organisations bear a responsibility to</g> uphold rigorous editorial standards. <g>Whether this is achievable in the current commercial climate remains to be seen</g>.`,
+      changes:[['completely changed how media works','fundamentally altered the media landscape',`Register and collocation. "Fundamentally altered" and "media landscape" are the expected formal choices.`],['that used to be where people got news','which was once considered the primary source of public information',`Register + grammar. Non-defining relative clauses after commas use "which". The phrasing is also far more formal.`],['Because of this','Consequently',`Register. "Because of this" is informal. "Consequently" is the appropriate formal result connector.`],['say that media companies need to','argue that media organisations bear a responsibility to',`Register. "Argue" is more precise than "say". "Bear a responsibility to" is a formal collocation.`],['We will have to wait and see','Whether this is achievable in the current commercial climate remains to be seen',`Register. Personal "we" is avoided. The impersonal construction is precise and appropriately formal.`]]
+    },
+    {
+      num:'09', topic:'Economic Inequality', errorCount:5,
+      before:`Economic inequality <err tip="Register. 'Remains one of the most pressing challenges facing contemporary societies' is formal and precise. 'Is still a big problem today' is too informal.">is still a big problem today</err>. The gap between the wealthiest and poorest <err tip="Precision. 'Segments of the population' is the formal noun phrase. 'People' is too vague.">people</err> has widened considerably over the past four decades. <err tip="Register. Formal passive construction avoids the informal 'experts blame'. 'Cited as contributory' is precise.">Experts blame many things, for example</err> globalisation, technological disruption, and regressive tax policies. <err tip="Register. Impersonal hedging is required in academic writing. The revision is concise and formally cautious.">We can't just blame one thing</err>. <err tip="Register. 'So' is conversational. An impersonal passive construction is appropriate for a conclusion.">So the government really needs to do something</err>.`,
+      after:`Economic inequality <g>remains one of the most pressing challenges facing contemporary societies</g>. The gap between the wealthiest and poorest <g>segments of the population</g> has widened considerably over the past four decades. <g>A number of factors have been cited as contributory, including</g> globalisation, technological disruption, and regressive tax policies. <g>It would be overly simplistic to attribute this trend to any single cause</g>. <g>Structural reform is therefore essential if meaningful progress is to be made</g>.`,
+      changes:[['is still a big problem today','remains one of the most pressing challenges facing contemporary societies',`Register. "Remains" is more formal than "is still". "Pressing challenges" is a standard academic collocation.`],['people','segments of the population',`Precision and register. "People" is too vague. "Segments of the population" is the expected formal noun phrase.`],['Experts blame many things, for example','A number of factors have been cited as contributory, including',`Register. Passive construction avoids the informal "experts blame". "Cited as contributory" is precise and formal.`],['We can\'t just blame one thing','It would be overly simplistic to attribute this trend to any single cause',`Register. Impersonal hedging is required. The revision is concise, formal, and appropriately cautious.`],['So the government really needs to do something','Structural reform is therefore essential if meaningful progress is to be made',`Register. "So" is conversational. The impersonal passive construction is appropriate for a conclusion.`]]
+    },
+    {
+      num:'10', topic:'Science and Ethics', errorCount:5,
+      before:`Scientific progress has consistently <err tip="Register. 'Outpaced' is a single precise formal verb. 'Gone faster than' is informal and wordy.">gone faster than</err> society's capacity to regulate it ethically. Nowhere is this more apparent than in the field of genetic engineering, <err tip="Register. A formal relative clause integrates the idea smoothly. 'Lots of' is colloquial.">and there are lots of unanswered questions</err>. <err tip="Register. 'Proponents contend' is more formal than 'supporters say'. 'Outweigh the risks' is the standard collocation.">Supporters say the good things are more than the bad things</err>. Critics, <err tip="Connector precision. 'On the contrary' directly contradicts. 'On the other hand' presents an alternative view — correct here.">on the contrary</err>, warn of irreversible consequences for biodiversity and human identity. <err tip="Register. Personal 'we' is avoided in formal writing. The impersonal passive construction is appropriately formal.">So we need strong rules from all countries</err>.`,
+      after:`Scientific progress has consistently <g>outpaced</g> society's capacity to regulate it ethically. Nowhere is this more apparent than in the field of genetic engineering, <g>where questions of consent, equity, and access remain unresolved</g>. <g>Proponents contend that the potential benefits outweigh the risks</g>. Critics, <g>on the other hand</g>, warn of irreversible consequences for biodiversity and human identity. <g>A robust international regulatory framework is therefore urgently required</g>.`,
+      changes:[['gone faster than','outpaced',`Register and precision. "Outpaced" is a single, precise formal verb. "Gone faster than" is informal and wordy.`],['and there are lots of unanswered questions','where questions of consent, equity, and access remain unresolved',`Register. A formal relative clause ("where...") integrates the idea smoothly. "Lots of" is colloquial.`],['Supporters say the good things are more than the bad things','Proponents contend that the potential benefits outweigh the risks',`Register. "Proponents" (formal) vs "supporters". "Contend" vs "say". "Outweigh the risks" is the standard formal collocation.`],['on the contrary','on the other hand',`Connector precision. "On the contrary" directly contradicts. "On the other hand" presents an alternative perspective — correct here.`],['So we need strong rules from all countries','A robust international regulatory framework is therefore urgently required',`Register. Personal "we" is avoided. The impersonal passive construction is appropriately formal and precise.`]]
+    },
+    {
+      num:'11', topic:'Immigration and Society', errorCount:5,
+      before:`Immigration <err tip="Register. 'Has long been a subject of intense political debate' is formal and precise. 'Is a topic that people argue about a lot' is informal.">is a topic that people argue about a lot</err>. Proponents of open immigration policies <err tip="Register. 'Contend that diversity enriches the social fabric' is precise and formal. 'Say that more people from different places makes society better' is informal and vague.">say that more people from different places makes society better</err>. <err tip="Cohesion. 'Conversely' signals the opposite view. 'Furthermore' adds a point in the same direction — wrong logic here.">Furthermore</err>, critics express concerns about the strain placed on public services and housing. <err tip="Register and precision. 'It is worth noting that' is the standard academic hedging phrase. 'We should not forget that' is too informal and personal.">We should not forget that</err> immigration has historically driven economic growth in most developed nations. <err tip="Register. 'The issue therefore resists simplistic resolution' is formal and precise. 'So it is not easy to solve' is far too casual.">So it is not easy to solve</err>.`,
+      after:`Immigration <g>has long been a subject of intense political debate</g>. Proponents of open immigration policies <g>contend that diversity enriches the social fabric</g>. <g>Conversely</g>, critics express concerns about the strain placed on public services and housing. <g>It is worth noting that</g> immigration has historically driven economic growth in most developed nations. <g>The issue therefore resists simplistic resolution</g>.`,
+      changes:[['is a topic that people argue about a lot','has long been a subject of intense political debate',`Register. "Has long been" is more formal. "A subject of intense political debate" is a precise, expected academic phrase.`],['say that more people from different places makes society better','contend that diversity enriches the social fabric',`Register. "Contend" is more formal than "say". "Diversity enriches the social fabric" is the precise, formal formulation.`],['Furthermore','Conversely',`Cohesion. "Furthermore" adds a point. "Conversely" signals the opposite view — correct here.`],['We should not forget that','It is worth noting that',`Register. "We should not forget" is personal and informal. "It is worth noting that" is the standard academic hedging phrase.`],['So it is not easy to solve','The issue therefore resists simplistic resolution',`Register. "So" is conversational. The impersonal noun-phrase construction is precise and appropriately formal.`]]
+    },
+    {
+      num:'12', topic:'Populism and Democracy', errorCount:5,
+      before:`The rise of populist movements across the globe has <err tip="Register. 'Prompted renewed scrutiny of democratic institutions' is precise and formal. 'Made people think again about democracy' is informal.">made people think again about democracy</err>. Populist leaders typically <err tip="Register. 'Frame complex issues in binary terms' is the formal collocation. 'Explain problems in a simple way of good people vs bad elites' is informal and structurally weak.">explain problems in a simple way of good people vs bad elites</err>. <err tip="Cohesion. 'This rhetoric, while electorally potent' signals concession. 'But this can be dangerous' is informal and abrupt.">But this can be dangerous</err> when it undermines the legitimacy of democratic institutions. <err tip="Register and precision. 'A growing body of scholarship suggests' is hedged and formal. 'Many researchers are saying' uses unnecessary present continuous and is informal.">Many researchers are saying</err> that economic anxiety is a key driver of populist sentiment. <err tip="Register. 'Whether liberal democracies can adapt to meet these pressures remains an open question' is formal. 'Nobody knows if things will get better' is far too casual.">Nobody knows if things will get better</err>.`,
+      after:`The rise of populist movements across the globe has <g>prompted renewed scrutiny of democratic institutions</g>. Populist leaders typically <g>frame complex issues in binary terms — the virtuous people versus a corrupt elite</g>. <g>This rhetoric, while electorally potent</g>, can prove dangerous when it undermines the legitimacy of democratic institutions. <g>A growing body of scholarship suggests</g> that economic anxiety is a key driver of populist sentiment. <g>Whether liberal democracies can adapt to meet these pressures remains an open question</g>.`,
+      changes:[['made people think again about democracy','prompted renewed scrutiny of democratic institutions',`Register. "Prompted renewed scrutiny" is precise and formal. "Made people think again about" is informal and vague.`],['explain problems in a simple way of good people vs bad elites','frame complex issues in binary terms — the virtuous people versus a corrupt elite',`Register. "Frame issues in binary terms" is the standard academic formulation. The original is structurally awkward and informal.`],['But this can be dangerous','This rhetoric, while electorally potent',`Register. "But" is conversational. A concessive clause ("while electorally potent") integrates the contrast formally.`],['Many researchers are saying','A growing body of scholarship suggests',`Register + hedging. Present continuous is unnecessary. "A growing body of scholarship" is the standard academic phrase.`],['Nobody knows if things will get better','Whether liberal democracies can adapt to meet these pressures remains an open question',`Register. "Nobody knows" is too colloquial. The impersonal construction is appropriately formal.`]]
+    },
+    {
+      num:'13', topic:'Gender and the Workplace', errorCount:5,
+      before:`Despite significant legislative progress, gender inequality in professional environments <err tip="Register. 'Persists in a number of insidious forms' is precise and formal. 'Is still a problem in many ways' is vague and informal.">is still a problem in many ways</err>. The gender pay gap, <err tip="Register + grammar. Non-defining relative clauses after commas use 'which'. The original phrasing is also informal.">that is a big problem in most industries</err>, remains a focal point of policy debate. <err tip="Register. 'It has been argued that unconscious bias in recruitment processes' is formal and hedged. 'Some people think companies choose men more' is informal and imprecise.">Some people think companies choose men more</err>. <err tip="Cohesion. 'Nevertheless' signals concession. 'Also' simply adds — wrong logic here since the next clause concedes something.">Also</err>, the burden of unpaid domestic labour continues to fall disproportionately on women. <err tip="Register. 'Systemic reform' is precise. 'Fixing this properly' is too informal for academic writing.">Fixing this properly</err> will require structural changes at both institutional and cultural levels.`,
+      after:`Despite significant legislative progress, gender inequality in professional environments <g>persists in a number of insidious forms</g>. The gender pay gap, <g>which remains a significant concern across most industries</g>, is a focal point of policy debate. <g>It has been argued that unconscious bias in recruitment processes</g> disadvantages women at multiple career stages. <g>Nevertheless</g>, the burden of unpaid domestic labour continues to fall disproportionately on women. <g>Systemic reform</g> will require structural changes at both institutional and cultural levels.`,
+      changes:[['is still a problem in many ways','persists in a number of insidious forms',`Register. "Persists" is more formal than "is still a problem". "Insidious forms" is precise and appropriate.`],['that is a big problem in most industries','which remains a significant concern across most industries',`Register + grammar. Non-defining relative clauses use "which". "A big problem" is informal; "a significant concern" is precise.`],['Some people think companies choose men more','It has been argued that unconscious bias in recruitment processes',`Register + hedging. "Some people think" is informal. "It has been argued that" is the standard academic distancing device.`],['Also','Nevertheless',`Cohesion. "Also" adds a point. "Nevertheless" signals concession — correct here, as the clause acknowledges a continuing problem.`],['Fixing this properly','Systemic reform',`Register. "Fixing this properly" is too colloquial. "Systemic reform" is the precise, formal noun phrase.`]]
+    },
+    {
+      num:'14', topic:'Climate Policy', errorCount:5,
+      before:`Climate change <err tip="Register. 'Represents perhaps the most formidable challenge facing humanity' is formal and measured. 'Is the biggest problem in the world today' is informal and imprecise.">is the biggest problem in the world today</err>. Despite decades of scientific consensus, global emissions <err tip="Register. 'Have continued to rise' is the correct present perfect for a trend up to now. 'Keep going up' is informal.">keep going up</err>. <err tip="Cohesion. 'This can be attributed in part to' signals causation with hedging. 'This is because of' is grammatically acceptable but too informal for B2 academic writing.">This is because of</err> the political influence of fossil fuel industries and short-term electoral cycles. <err tip="Register. 'Proponents of carbon pricing contend that' is the formal structure. 'People who like carbon taxes say that' is informal.">People who like carbon taxes say that</err> market mechanisms offer the most efficient pathway to decarbonisation. <err tip="Register. 'The urgency of the situation cannot be overstated' is a formal, impersonal conclusion. 'We really need to do something now' is far too casual.">We really need to do something now</err>.`,
+      after:`Climate change <g>represents perhaps the most formidable challenge facing humanity</g>. Despite decades of scientific consensus, global emissions <g>have continued to rise</g>. <g>This can be attributed in part to</g> the political influence of fossil fuel industries and short-term electoral cycles. <g>Proponents of carbon pricing contend that</g> market mechanisms offer the most efficient pathway to decarbonisation. <g>The urgency of the situation cannot be overstated</g>.`,
+      changes:[['is the biggest problem in the world today','represents perhaps the most formidable challenge facing humanity',`Register. "Represents perhaps" hedges appropriately. "Formidable challenge facing humanity" is the expected formal phrase.`],['keep going up','have continued to rise',`Register + tense. "Have continued to rise" is present perfect — correct for an ongoing trend. "Keep going up" is informal.`],['This is because of','This can be attributed in part to',`Register + hedging. "Be attributed to" is the formal passive collocation. "In part" adds appropriate hedging.`],['People who like carbon taxes say that','Proponents of carbon pricing contend that',`Register. "Proponents" is formal. "Contend" is more precise than "say". "Carbon pricing" is the technical term.`],['We really need to do something now','The urgency of the situation cannot be overstated',`Register. "We really need to" is conversational. The impersonal passive construction is appropriately formal and emphatic.`]]
+    },
+    {
+      num:'15', topic:'The Arts and Public Funding', errorCount:5,
+      before:`The question of <err tip="Register. 'Whether the state has an obligation to fund the arts' is the formal noun clause structure. 'If the government should pay for art' is informal.">if the government should pay for art</err> has long divided policymakers and the public alike. Proponents <err tip="Register. 'Contend that cultural institutions serve a vital civic function' is precise and formal. 'Say that art is good for society' is vague and informal.">say that art is good for society</err>, fostering social cohesion and national identity. <err tip="Cohesion. 'On the other hand' introduces the contrasting view. 'But' is too abrupt and informal for academic writing.">But</err>, critics argue that in an era of fiscal austerity, arts funding is <err tip="Register. 'Difficult to justify' is formally understated. 'hard to defend' is slightly informal; 'very hard to argue for' is too casual.">very hard to argue for</err>. <err tip="Register. 'It could be argued that a thriving arts sector yields significant economic returns' is formal and hedged. 'However we know the arts make money too' is informal and too personal.">However we know the arts make money too</err>. <err tip="Register. 'Ultimately, the debate reflects deeper disagreements about the role of the state in cultural life' is formal. 'In the end this is a debate about what governments should do' is vague and informal.">In the end this is a debate about what governments should do</err>.`,
+      after:`The question of <g>whether the state has an obligation to fund the arts</g> has long divided policymakers and the public alike. Proponents <g>contend that cultural institutions serve a vital civic function</g>, fostering social cohesion and national identity. <g>On the other hand</g>, critics argue that in an era of fiscal austerity, arts funding is <g>difficult to justify</g>. <g>It could be argued that a thriving arts sector yields significant economic returns</g>. <g>Ultimately, the debate reflects deeper disagreements about the role of the state in cultural life</g>.`,
+      changes:[['if the government should pay for art','whether the state has an obligation to fund the arts',`Register. "Whether" (not "if") in formal noun clauses. "The state has an obligation to" is precise and formal.`],['say that art is good for society','contend that cultural institutions serve a vital civic function',`Register. "Contend" is more formal than "say". "Cultural institutions" and "civic function" are the expected academic terms.`],['But','On the other hand',`Register. "But" is conversational. "On the other hand" is the appropriate formal contrast connector.`],['very hard to argue for','difficult to justify',`Register. "Difficult to justify" is formally understated and precise. "Very hard to argue for" is informal.`],['However we know the arts make money too','It could be argued that a thriving arts sector yields significant economic returns',`Register. "We know" is personal. "It could be argued that" hedges appropriately. "Yields significant economic returns" is precise.`],['In the end this is a debate about what governments should do','Ultimately, the debate reflects deeper disagreements about the role of the state in cultural life',`Register. "Ultimately" is the formal discourse marker. The impersonal formulation is precise and appropriately abstract.`]]
+    },
+    {
+      num:'16', topic:'Privacy and Surveillance', errorCount:5,
+      before:`The proliferation of digital surveillance technologies has <err tip="Register. 'Engendered profound ethical questions' is precise and formal. 'Caused a lot of worrying questions' is informal and vague.">caused a lot of worrying questions</err> about the boundaries of state power. Governments <err tip="Register. 'Justify such measures on the grounds of national security' is the formal structure. 'Say they need to do this because of security' is informal.">say they need to do this because of security</err>. <err tip="Cohesion. 'Nevertheless' signals concession — correct here since the next clause introduces a contrasting concern. 'Furthermore' would add a point in the same direction.">Furthermore</err>, civil liberties organisations warn that mass surveillance creates a chilling effect on free expression. The tension between security and privacy <err tip="Register. 'Resists easy resolution' is formal and precise. 'Is not easy to solve' is informal.">is not easy to solve</err>. <err tip="Register. 'What is required is a transparent legal framework' is formal. 'We need clear laws' is too casual.">We need clear laws</err> governing the scope and oversight of surveillance programmes.`,
+      after:`The proliferation of digital surveillance technologies has <g>engendered profound ethical questions</g> about the boundaries of state power. Governments <g>justify such measures on the grounds of national security</g>. <g>Nevertheless</g>, civil liberties organisations warn that mass surveillance creates a chilling effect on free expression. The tension between security and privacy <g>resists easy resolution</g>. <g>What is required is a transparent legal framework</g> governing the scope and oversight of surveillance programmes.`,
+      changes:[['caused a lot of worrying questions','engendered profound ethical questions',`Register. "Engendered" is precise and formal. "Profound ethical questions" is the expected academic phrase.`],['say they need to do this because of security','justify such measures on the grounds of national security',`Register. "Justify on the grounds of" is the formal collocation. "Say they need to do this because of" is informal.`],['Furthermore','Nevertheless',`Cohesion. "Furthermore" adds a point. "Nevertheless" signals concession — correct here since the next clause contrasts with the previous argument.`],['is not easy to solve','resists easy resolution',`Register. "Resists easy resolution" is formally precise. "Is not easy to solve" is informal.`],['We need clear laws','What is required is a transparent legal framework',`Register. "What is required is" is a formal cleft sentence. "We need" is too personal and informal.`]]
+    },
+    {
+      num:'17', topic:'Globalisation and Trade', errorCount:5,
+      before:`Globalisation has <err tip="Register. 'Facilitated unprecedented levels of economic interdependence' is formal and precise. 'Made countries depend on each other a lot more' is informal.">made countries depend on each other a lot more</err>. Proponents argue that free trade <err tip="Register + hedging. 'Has the potential to reduce poverty' is appropriately hedged. 'Can make poor countries richer' is informal and oversimplified.">can make poor countries richer</err>. <err tip="Cohesion. 'However' signals contrast — correct since critics are being introduced. 'Moreover' would add a supporting point.">Moreover</err>, critics contend that globalisation has exacerbated inequality within nations. The question of <err tip="Register. 'Whether the benefits of free trade are equitably distributed' is a formal noun clause with 'whether'. 'If rich countries get more benefits' is informal.">if rich countries get more benefits</err> is intensely debated. <err tip="Register. 'A more nuanced multilateral approach may be required' is formal and hedged. 'So we need a better system' is far too casual.">So we need a better system</err>.`,
+      after:`Globalisation has <g>facilitated unprecedented levels of economic interdependence</g>. Proponents argue that free trade <g>has the potential to reduce poverty</g>. <g>However</g>, critics contend that globalisation has exacerbated inequality within nations. The question of <g>whether the benefits of free trade are equitably distributed</g> is intensely debated. <g>A more nuanced multilateral approach may be required</g>.`,
+      changes:[['made countries depend on each other a lot more','facilitated unprecedented levels of economic interdependence',`Register. "Facilitated" is precise and formal. "Unprecedented levels of economic interdependence" is the expected academic phrase.`],['can make poor countries richer','has the potential to reduce poverty',`Register + hedging. "Has the potential to" is appropriately cautious. "Can make poor countries richer" is informal and oversimplified.`],['Moreover','However',`Cohesion. "Moreover" adds a point. "However" signals contrast — correct here since critics are being introduced.`],['if rich countries get more benefits','whether the benefits of free trade are equitably distributed',`Register. "Whether" (not "if") in formal noun clauses. "Equitably distributed" is the precise formal phrasing.`],['So we need a better system','A more nuanced multilateral approach may be required',`Register. "So we need" is too informal and personal. The impersonal passive construction is appropriately formal and hedged.`]]
+    },
+    {
+      num:'18', topic:'Sport and Politics', errorCount:5,
+      before:`The intersection of sport and politics has long been <err tip="Register. 'A source of considerable controversy' is formal and precise. 'Something that causes a lot of arguments' is informal.">something that causes a lot of arguments</err>. Those who argue that sport and politics should remain separate <err tip="Register. 'Overlook the fact that sporting events have always been imbued with political meaning' is formal. 'Forget that sport was always political' is informal.">forget that sport was always political</err>. <err tip="Cohesion. 'Indeed' emphasises a point. 'In the other hand' is a common error for 'on the other hand' — even if intended as contrast, the phrase itself is wrong.">In the other hand</err>, others maintain that athletes have a moral responsibility to use their platform to advocate for change. The decision of <err tip="Register. 'Whether to engage in political activism' is a formal noun clause. 'If they should do political things' is informal.">if they should do political things</err> is deeply personal. <err tip="Register. 'What is clear is that the debate is unlikely to be resolved in the near future' is formal. 'So this will not stop any time soon' is too casual.">So this will not stop any time soon</err>.`,
+      after:`The intersection of sport and politics has long been <g>a source of considerable controversy</g>. Those who argue that sport and politics should remain separate <g>overlook the fact that sporting events have always been imbued with political meaning</g>. <g>Indeed</g>, others maintain that athletes have a moral responsibility to use their platform to advocate for change. The decision of <g>whether to engage in political activism</g> is deeply personal. <g>What is clear is that the debate is unlikely to be resolved in the near future</g>.`,
+      changes:[['something that causes a lot of arguments','a source of considerable controversy',`Register. "A source of considerable controversy" is the expected formal phrase.`],['forget that sport was always political','overlook the fact that sporting events have always been imbued with political meaning',`Register. "Overlook the fact that" is formal. "Imbued with political meaning" is precise academic language.`],['In the other hand','Indeed',`Error + cohesion. "In the other hand" is wrong — the phrase is "on the other hand". Here "Indeed" adds emphasis, which fits the logic better.`],['if they should do political things','whether to engage in political activism',`Register. "Whether to + infinitive" is the formal structure. "If they should do political things" is informal and vague.`],['So this will not stop any time soon','What is clear is that the debate is unlikely to be resolved in the near future',`Register. "So" is conversational. A formal cleft sentence with appropriate hedging is required.`]]
+    },
+    {
+      num:'19', topic:'Animal Rights', errorCount:5,
+      before:`The moral status of animals <err tip="Register. 'Has become an increasingly contested area of philosophical and legal inquiry' is formal. 'Is something more and more people argue about' is informal.">is something more and more people argue about</err>. Advocates for animal rights <err tip="Register. 'Contend that sentient beings are entitled to legal protection' is formal and precise. 'Say that animals should have rights too' is informal.">say that animals should have rights too</err>. <err tip="Cohesion. 'Conversely' signals the opposite view. 'But also' is informal and redundant.">But also</err>, many industries continue to rely on practices that would be considered unacceptable if applied to humans. The question of <err tip="Register. 'Where the moral boundaries of human responsibility lie' is a formal noun clause. 'How much we care about animals' is informal.">how much we care about animals</err> remains philosophically unresolved. <err tip="Register. 'A coherent legislative response is therefore urgently needed' is formal. 'So governments need to make better laws' is far too casual.">So governments need to make better laws</err>.`,
+      after:`The moral status of animals <g>has become an increasingly contested area of philosophical and legal inquiry</g>. Advocates for animal rights <g>contend that sentient beings are entitled to legal protection</g>. <g>Conversely</g>, many industries continue to rely on practices that would be considered unacceptable if applied to humans. The question of <g>where the moral boundaries of human responsibility lie</g> remains philosophically unresolved. <g>A coherent legislative response is therefore urgently needed</g>.`,
+      changes:[['is something more and more people argue about','has become an increasingly contested area of philosophical and legal inquiry',`Register. "Has become an increasingly contested area" is formal and precise. "Something more and more people argue about" is informal.`],['say that animals should have rights too','contend that sentient beings are entitled to legal protection',`Register. "Contend" is more formal than "say". "Sentient beings are entitled to" is precise legal and philosophical language.`],['But also','Conversely',`Register + cohesion. "But also" is informal and adds rather than contrasts. "Conversely" signals the opposing view — correct here.`],['how much we care about animals','where the moral boundaries of human responsibility lie',`Register. "Where the moral boundaries lie" is appropriately abstract and formal. "How much we care" is too personal and vague.`],['So governments need to make better laws','A coherent legislative response is therefore urgently needed',`Register. Personal "we/governments need to" is informal. The impersonal passive construction is appropriately formal.`]]
+    },
+    {
+      num:'20', topic:'Space Exploration', errorCount:5,
+      before:`Space exploration <err tip="Register. 'Has long captivated the human imagination' is formal and precise. 'Has always been very interesting to people' is informal.">has always been very interesting to people</err>. Proponents argue that investment in space science <err tip="Register + hedging. 'Generates significant technological spin-offs' is the formal collocation. 'Gives us a lot of useful new technology' is informal.">gives us a lot of useful new technology</err>. <err tip="Cohesion. 'However' signals contrast — correct since critics are being introduced. 'In addition' would add a supporting point.">In addition</err>, critics question whether the enormous cost of space programmes <err tip="Register. 'Can be justified given the scale of unresolved problems on Earth' is formal. 'Is worth it when there are so many problems here' is informal.">is worth it when there are so many problems here</err>. The question of <err tip="Register. 'Whether space exploration should be led by governments or private enterprises' is a formal noun clause. 'If space should be private or public' is informal.">if space should be private or public</err> has become particularly prominent in recent years. <err tip="Register. 'What is certain is that the next century will witness transformative developments in space technology' is formal. 'We will probably do amazing things in space soon' is far too casual.">We will probably do amazing things in space soon</err>.`,
+      after:`Space exploration <g>has long captivated the human imagination</g>. Proponents argue that investment in space science <g>generates significant technological spin-offs</g>. <g>However</g>, critics question whether the enormous cost of space programmes <g>can be justified given the scale of unresolved problems on Earth</g>. The question of <g>whether space exploration should be led by governments or private enterprises</g> has become particularly prominent in recent years. <g>What is certain is that the next century will witness transformative developments in space technology</g>.`,
+      changes:[['has always been very interesting to people','has long captivated the human imagination',`Register. "Has long captivated" is more precise and formal. "The human imagination" is the expected academic phrase.`],['gives us a lot of useful new technology','generates significant technological spin-offs',`Register. "Generates significant spin-offs" is precise and formal. "Gives us useful technology" is informal and vague.`],['In addition','However',`Cohesion. "In addition" adds a point. "However" signals contrast — correct here since critics are being introduced.`],['is worth it when there are so many problems here','can be justified given the scale of unresolved problems on Earth',`Register. "Can be justified" is the formal passive. "Given the scale of unresolved problems on Earth" is precise and formal.`],['if space should be private or public','whether space exploration should be led by governments or private enterprises',`Register. "Whether" (not "if") in formal noun clauses. The revision is specific and formal.`],['We will probably do amazing things in space soon','What is certain is that the next century will witness transformative developments in space technology',`Register. A formal cleft sentence replaces the informal personal "we will". "Witness transformative developments" is appropriately formal.`]]
+    },
+  ],
+};
+
+// ─────────────────────────────────────────────────────────
+// RENDERING
+// ─────────────────────────────────────────────────────────
+function parseBefore(str) {
+  return str.replace(/<err tip="([^"]*)">([\s\S]*?)<\/err>/g,
+    (_, tip, text) => `<span class="err" data-tip="${tip}">${text}</span>`);
+}
+
+function parseAfter(str) {
+  return str.replace(/<g>([\s\S]*?)<\/g>/g,
+    (_, t) => `<strong style="color:var(--good)">${t}</strong>`);
+}
+
+function buildCard(level, idx) {
+  const d = data[level][idx];
+  const changesHTML = d.changes.map(([from, to, why]) => `
+    <div class="change-item">
+      <div class="change-icon">✓</div>
+      <div class="change-text"><em>${from}</em> → <strong>${to}</strong>: ${why}</div>
+    </div>`).join('');
+
+  return `
+    <div class="para-card">
+      <div class="card-header">
+        <span class="card-num">${d.num} / ${data[level].length}</span>
+        <span class="card-topic-label">${d.topic}</span>
+      </div>
+      <div class="before-section">
+        <div class="section-label before-label">Before</div>
+        <p class="para-text">${parseBefore(d.before)}</p>
+      </div>
+      <div class="action-bar">
+        <span class="error-count"><strong>${d.errorCount}</strong> errors to find</span>
+        <button class="action-btn btn-errors" onclick="toggleErrors(this)">Show Errors</button>
+        <button class="action-btn btn-reveal" onclick="toggleAfter(this)">Show Polished Version ↓</button>
+      </div>
+      <div class="after-section">
+        <div class="section-label after-label">After</div>
+        <p class="para-text">${parseAfter(d.after)}</p>
+        <div class="changes-list">
+          <div class="changes-title">What changed &amp; why</div>
+          ${changesHTML}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// INTERACTIONS
+// ─────────────────────────────────────────────────────────
+function switchLevel(level) {
+  document.querySelectorAll('.level-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('level-' + level).classList.add('active');
+  document.querySelector(`[data-level="${level}"]`).classList.add('active');
+  document.getElementById('card-' + level).innerHTML = '';
+  document.querySelectorAll(`#picker-${level} .topic-item`).forEach(i => i.classList.remove('active'));
+}
+
+function openTopic(level, idx, el) {
+  const cardEl = document.getElementById('card-' + level);
+  const pickerItems = document.querySelectorAll(`#picker-${level} .topic-item`);
+
+  if (el.classList.contains('active')) {
+    el.classList.remove('active');
+    cardEl.innerHTML = '';
+    return;
+  }
+
+  pickerItems.forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  cardEl.innerHTML = buildCard(level, idx);
+  bindTooltips();
+
+  setTimeout(() => cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
+
+function toggleErrors(btn) {
+  const beforeSec = btn.closest('.para-card').querySelector('.before-section');
+  const isOn = beforeSec.classList.contains('errors-visible');
+  beforeSec.classList.toggle('errors-visible', !isOn);
+  btn.textContent = isOn ? 'Show Errors' : 'Hide Errors';
+  btn.classList.toggle('on', !isOn);
+  if (isOn) tooltip.classList.remove('show');
+}
+
+function toggleAfter(btn) {
+  const afterSec = btn.closest('.para-card').querySelector('.after-section');
+  const isVisible = afterSec.classList.contains('visible');
+  afterSec.classList.toggle('visible', !isVisible);
+  btn.textContent = isVisible ? 'Show Polished Version ↓' : 'Hide Polished Version ↑';
+  btn.classList.toggle('revealed', !isVisible);
+}
+
+// ─────────────────────────────────────────────────────────
+// TOOLTIP
+// ─────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+
+function bindTooltips() {
+  document.querySelectorAll('.err').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      if (!el.closest('.before-section').classList.contains('errors-visible')) return;
+      tooltip.textContent = el.dataset.tip;
+      tooltip.classList.add('show');
+      positionTooltip(e);
+    });
+    el.addEventListener('mousemove', e => {
+      if (!el.closest('.before-section').classList.contains('errors-visible')) return;
+      positionTooltip(e);
+    });
+    el.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+  });
+}
+
+function positionTooltip(e) {
+  const x = e.clientX + 14, y = e.clientY - 10;
+  const tw = tooltip.offsetWidth;
+  tooltip.style.left = (x + tw > window.innerWidth ? e.clientX - tw - 14 : x) + 'px';
+  tooltip.style.top = (y + window.scrollY) + 'px';
+}
+</script>
+</body>
+</html>

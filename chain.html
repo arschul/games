@@ -311,20 +311,7 @@
     box-shadow: var(--shadow);
     overflow: hidden;
   }
-  .word-prefix {
-    padding: 0 8px 0 16px;
-    font-family: var(--font-head);
-    font-size: 1.6rem;
-    color: var(--c-ink);
-    background: #f0f0f0;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    border-right: 2px solid #ddd;
-    user-select: none;
-    flex-shrink: 0;
-  }
-  .word-prefix.hidden { display: none; }
+
   #word-input {
     flex: 1;
     border: none;
@@ -656,7 +643,6 @@
 
     <div class="input-row">
       <div class="word-input-wrap">
-        <div class="word-prefix hidden" id="word-prefix"></div>
         <input type="text" id="word-input" placeholder="Type your word…" disabled autocomplete="off" autocorrect="off" spellcheck="false"/>
         <div class="letter-count" id="letter-count">0</div>
       </div>
@@ -808,8 +794,6 @@ function launchConfetti() {
 // ============================================================
 const TEAM_COLORS = ['t1','t2','t3','t4'];
 const TEAM_EMOJIS = ['🔴','🟢','🔵','🟡'];
-// Letters commonly used to start English words (Q, X, Z, J, K, V removed)
-const LETTER_POOL = 'ABCDEFGHILMNOPRSTUW'.split('');
 
 let state = {
   phase: 'setup', // setup | splash | playing | elim | winner
@@ -855,10 +839,6 @@ document.querySelectorAll('#mode-cards .mode-card').forEach(card => {
     document.querySelectorAll('#mode-cards .mode-card').forEach(c=>c.classList.remove('selected'));
     card.classList.add('selected');
     state.mode = card.dataset.mode;
-    const hintBar = document.getElementById('hint-bar');
-    if (hintBar) hintBar.textContent = '';
-    const msg = document.getElementById('message');
-    if (msg) { msg.textContent = ''; msg.className = ''; }
   });
 });
 document.getElementById('setup-start-btn').addEventListener('click', startGame);
@@ -891,9 +871,6 @@ function startGame() {
   showScreen('game-screen');
   buildTeamsRow();
   buildAlphabet();
-  document.getElementById('hint-bar').textContent = '';
-  document.getElementById('message').textContent = '';
-  document.getElementById('message').className = '';
   renderGameUI();
 
   // First turn splash
@@ -932,7 +909,7 @@ function buildTeamsRow() {
 function buildAlphabet() {
   const grid = document.getElementById('alphabet-grid');
   grid.innerHTML = '';
-  LETTER_POOL.forEach(l => {
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l => {
     const btn = document.createElement('div');
     btn.className = 'alpha-btn';
     btn.id = `alpha-${l}`;
@@ -1019,7 +996,7 @@ function renderModeBadges() {
 }
 
 function renderAlphabet() {
-  LETTER_POOL.forEach(l => {
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l => {
     const btn = document.getElementById(`alpha-${l}`);
     if (!btn) return;
     btn.className = 'alpha-btn';
@@ -1034,12 +1011,12 @@ function renderAlphabet() {
 // ============================================================
 function enableInput() {
   const input = document.getElementById('word-input');
-  const submitBtn = document.getElementById('submit-btn');
-  const pauseBtn = document.getElementById('pause-btn');
   input.disabled = false;
-  submitBtn.disabled = false;
-  pauseBtn.disabled = false;
-  setPrefix();
+  input.value = '';
+  input.placeholder = state.currentWord ? 'Type your word…' : 'Type 3-letter word…';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('pause-btn').disabled = false;
+  updateLetterCount();
   input.focus();
 }
 
@@ -1049,38 +1026,9 @@ function disableInput() {
   document.getElementById('pause-btn').disabled = true;
 }
 
-function setPrefix() {
-  const prefixEl = document.getElementById('word-prefix');
-  const input = document.getElementById('word-input');
-  let letter = getRequiredFirstLetter();
-  if (letter && state.currentWord) {
-    prefixEl.textContent = letter;
-    prefixEl.classList.remove('hidden');
-    input.placeholder = 'rest of word…';
-  } else {
-    prefixEl.classList.add('hidden');
-    input.placeholder = 'Type 3-letter word…';
-  }
-  input.value = '';
-  updateLetterCount();
-}
-
-function getRequiredFirstLetter() {
-  if (!state.currentWord) return '';
-  switch(state.mode) {
-    case 'HEADS': return state.currentWord[0]; // default; can also be new letter
-    case 'TAILS': return state.currentWord[state.currentWord.length-1];
-    case 'CHAOS': return state.chaosRequiredLetter;
-  }
-  return '';
-}
-
 function updateLetterCount() {
   const input = document.getElementById('word-input');
-  const prefix = document.getElementById('word-prefix');
-  const prefixLen = prefix.classList.contains('hidden') ? 0 : 1;
-  const total = prefixLen + input.value.length;
-  document.getElementById('letter-count').textContent = total;
+  document.getElementById('letter-count').textContent = input.value.length;
 }
 
 document.getElementById('word-input').addEventListener('input', () => {
@@ -1103,10 +1051,7 @@ document.getElementById('submit-btn').addEventListener('click', handleSubmit);
 function handleSubmit() {
   if (state.isPaused || state.phase !== 'playing') return;
   const input = document.getElementById('word-input');
-  const prefixEl = document.getElementById('word-prefix');
-  const prefixLetter = prefixEl.classList.contains('hidden') ? '' : prefixEl.textContent;
-  const typedPart = input.value.trim().toUpperCase().replace(/[^A-Z]/g,'');
-  const fullWord = prefixLetter + typedPart;
+  const fullWord = input.value.trim().toUpperCase().replace(/[^A-Z]/g,'');
 
   if (!fullWord) { showMsg('Type a word!', 'bad'); return; }
   if (!/^[A-Z]+$/.test(fullWord)) { showMsg('Letters only!', 'bad'); return; }
@@ -1191,7 +1136,6 @@ function nextTurn() {
   renderGameUI();
 
   showTurnSplash(next, () => {
-    setPrefix();
     enableInput();
     renderGameUI();
     startTimer();
@@ -1271,7 +1215,6 @@ function eliminateCurrentTeam() {
     state.activeTeamIdx = (next !== null) ? next : state.activeTeamIdx;
     renderGameUI();
     showTurnSplash(state.activeTeamIdx, () => {
-      setPrefix();
       enableInput();
       renderGameUI();
       startTimer();
@@ -1351,7 +1294,7 @@ document.getElementById('new-game-btn').addEventListener('click', () => {
 // MODE HELPERS
 // ============================================================
 function generateDisabledEndLetters() {
-  const letters = [...LETTER_POOL];
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   state.disabledEndLetters = [];
   for (let i=0; i<5; i++) {
     const idx = Math.floor(Math.random()*letters.length);
@@ -1360,7 +1303,8 @@ function generateDisabledEndLetters() {
 }
 
 function assignChaosLetter() {
-  const available = LETTER_POOL.filter(l=>!state.chaosUsedLetters.includes(l));
+  const CHAOS_LETTERS = 'ABCDEFGHIKLMNOPRSTUW'.split('');
+  const available = CHAOS_LETTERS.filter(l=>!state.chaosUsedLetters.includes(l));
   if (!available.length) {
     showMsg('All letters used — CHAOS complete!', 'info');
     return;

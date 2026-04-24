@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auction Stunt Show</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f0e17;
+            --surface: #1a1828;
+            --card: #221f35;
+            --accent: #ff6b35;
+            --accent2: #ffd166;
+            --teal: #06d6a0;
+            --pink: #ef476f;
+            --text: #fffffe;
+            --muted: #a7a9be;
+            --radius: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Nunito', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .screen { display: none; position: relative; z-index: 1; min-height: 100vh; flex-direction: column; }
+        .screen.active { display: flex; }
+
+        /* ===== SETUP ===== */
+        #setup-screen { align-items: center; justify-content: flex-start; padding: 32px 20px 60px; }
+        .logo { text-align: center; margin-bottom: 36px; }
+        .logo h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(48px, 10vw, 80px);
+            letter-spacing: 4px;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .setup-card {
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: var(--radius);
+            padding: 24px;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 20px;
+        }
+        .setup-card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 16px; font-weight: 700; }
+        
+        .input-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-row input {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px;
+            color: #fff;
+            outline: none;
+        }
+        .input-row button {
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            padding: 0 20px;
+            border-radius: 10px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .team-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pill {
+            background: rgba(255,255,255,0.05);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .pill button { background: none; border: none; color: var(--pink); cursor: pointer; }
+
+        .round-selector {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface);
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+        .round-controls { display: flex; align-items: center; gap: 15px; }
+        .round-btn {
+            width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent);
+            background: none; color: var(--accent); font-weight: 900; cursor: pointer;
+        }
+        .round-val { font-family: 'Bebas Neue', sans-serif; font-size: 24px; }
+
+        .start-btn {
+            width: 100%;
+            max-width: 500px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border: none;
+            border-radius: var(--radius);
+            color: #0f0e17;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 28px;
+            letter-spacing: 3px;
+            padding: 18px;
+            cursor: pointer;
+        }
+        .start-btn:disabled { opacity: 0.3; }
+
+        /* ===== GAME INTERFACE ===== */
+        .game-header {
+            background: var(--surface);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .category-tag { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--accent); }
+
+        .phase-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .card h2 { font-size: 32px; font-weight: 900; margin-bottom: 15px; }
+
+        /* Bidding */
+        .bid-display {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 84px;
+            color: var(--teal);
+            margin: 20px 0;
+        }
+        .bidder-name { font-weight: 900; color: var(--accent2); text-transform: uppercase; }
+
+        .bid-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .bid-btn {
+            background: var(--surface);
+            border: 2px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .bid-btn:hover { border-color: var(--accent); }
+
+        .action-row { display: flex; gap: 10px; width: 100%; max-width: 500px; margin-top: 20px; }
+        .btn {
+            flex: 1;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-main { background: var(--accent); color: #000; }
+        .btn-sub { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
+        .btn:disabled { opacity: 0.2; }
+
+        /* Timer Ring */
+        .timer-ring-wrap { position: relative; width: 180px; height: 180px; margin: 0 auto 30px; }
+        .timer-ring-wrap svg { transform: rotate(-90deg); width: 180px; height: 180px; }
+        .timer-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 8; }
+        .timer-arc { fill: none; stroke: var(--teal); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 540; stroke-dashoffset: 0; }
+        .timer-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 64px; }
+
+        /* Scoreboard */
+        .sb-list { width: 100%; max-width: 400px; margin: 20px 0; }
+        .sb-item { display: flex; justify-content: space-between; padding: 12px 18px; background: var(--card); margin-bottom: 8px; border-radius: 12px; font-weight: 800; }
+        .sb-score { color: var(--accent2); }
+
+        .final-actions { display: none; flex-direction: column; gap: 10px; width: 100%; max-width: 400px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- SCREEN 1: SETUP -->
+    <section id="setup-screen" class="screen active">
+        <div class="logo">
+            <p>Classroom</p>
+            <h1>AUCTION</h1>
+        </div>
+        
+        <div class="setup-card">
+            <h2>Add Teams</h2>
+            <div class="input-row">
+                <input type="text" id="teamInput" placeholder="Team Name..." autocomplete="off">
+                <button id="addTeamBtn">ADD</button>
+            </div>
+            <div id="teamPills" class="team-pills"></div>
+            
+            <h2 style="margin-top: 20px;">Game Duration</h2>
+            <div class="round-selector">
+                <span style="font-weight: 700; color: var(--muted);">TOTAL ROUNDS</span>
+                <div class="round-controls">
+                    <button class="round-btn" id="roundsMinus">−</button>
+                    <span class="round-val" id="roundsDisplay">1</span>
+                    <button class="round-btn" id="roundsPlus">+</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="startBtn" class="start-btn" disabled>START GAME</button>
+    </section>
+
+    <!-- SCREEN 2: AUCTION -->
+    <section id="auction-screen" class="screen">
+        <div class="game-header">
+            <span class="category-tag" id="catTag">TASK</span>
+            <span id="roundCounter" style="color:var(--muted); font-weight: 800;">ROUND 1</span>
+        </div>
+
+        <div class="phase-container">
+            <div class="card">
+                <h2 id="taskTitle">Task Title</h2>
+                <p id="taskDesc">Task description.</p>
+                <div class="bid-display" id="bidDisplay">0</div>
+                <div id="bidSubtitle" style="text-transform: uppercase; font-size: 14px; color: var(--muted); margin-top:-20px; margin-bottom: 20px;">SECONDS</div>
+                <div class="bidder-name" id="bidderName">WAITING FOR BID...</div>
+            </div>
+
+            <div class="bid-grid" id="bidGrid"></div>
+
+            <div class="action-row">
+                <button class="btn btn-sub" id="skipTaskBtn">SKIP TASK</button>
+                <button class="btn btn-main" id="soldBtn" disabled>SOLD!</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCREEN 3: EXECUTION -->
+    <section id="exec-screen" class="screen">
+        <div class="game-header">
+            <span class="category-tag" id="execWinnerName">TEAM</span>
+            <span id="execTaskTag" style="color:var(--muted); font-weight: 800;">TASK</span>
+        </div>
+
+        <div class="phase-container">
+            <div id="targetCountDisplay" style="font-family:'Bebas Neue'; font-size: 24px; color: var(--accent2); margin-bottom: 10px; display:none;">
+                GOAL: <span id="targetValueText">0</span>
+            </div>
+
+            <div class="timer-ring-wrap">
+                <svg><circle class="timer-bg" cx="90" cy="90" r="86"></circle><circle id="timerArc" class="timer-arc" cx="90" cy="90" r="86"></circle></svg>
+                <div class="timer-text" id="timerText">0.0</div>
+            </div>
+
+            <div id="timerControls">
+                <button class="btn btn-main" style="width: 160px;" id="timerActionBtn">START</button>
+                <button class="btn btn-sub" style="width: 100px; display: none;" id="stopTimerBtn">STOP</button>
+            </div>
+
+            <div class="action-row" id="resultBtns" style="display: none;">
+                <button class="btn btn-sub" id="failBtn" style="color: var(--pink);">FAILED</button>
+                <button class="btn btn-main" id="passBtn" style="background: var(--teal);">PASSED</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCREEN 4: SCOREBOARD -->
+    <section id="score-screen" class="screen">
+        <div class="phase-container">
+            <div class="logo">
+                <h1 id="scoreboardHeader">STANDINGS</h1>
+            </div>
+            <div class="sb-list" id="finalScoreList"></div>
+            
+            <!-- Default navigation during game -->
+            <div id="sbActionRow" style="margin-top: 20px;">
+                <button class="btn btn-main" id="nextRoundBtn" style="width: 240px; padding: 12px 24px;">NEXT TASK</button>
+            </div>
+
+            <!-- Game Over actions -->
+            <div id="finalActionRow" class="final-actions" style="margin-top: 20px;">
+                <button class="btn btn-main" id="replaySameTeamsBtn">PLAY AGAIN (SAME TEAMS)</button>
+                <button class="btn btn-sub" id="resetToStartBtn">BACK TO START</button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // --- AUDIO SYSTEM ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, duration, type = 'sine', volume = 0.1) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const sounds = {
+            bid: () => playTone(400 + (bidValue * 10), 0.1, 'triangle', 0.05),
+            sold: () => {
+                playTone(600, 0.1);
+                setTimeout(() => playTone(800, 0.2), 100);
+            },
+            tick: () => playTone(200, 0.05, 'square', 0.02),
+            success: () => {
+                [440, 554, 659].forEach((f, i) => setTimeout(() => playTone(f, 0.4), i * 100));
+            },
+            fail: () => {
+                [300, 250, 200].forEach((f, i) => setTimeout(() => playTone(f, 0.5, 'sawtooth'), i * 150));
+            }
+        };
+
+        const taskDB = [
+            // 60 NAMING (How many in 15s)
+            { title: "Eraser Catch", desc: "Toss an eraser to your partner and back. How many catches?", type: "name" },
+            { title: "Fruits", desc: "Name different types of fruits.", type: "name" },
+            { title: "Car Brands", desc: "Name different car brands.", type: "name" },
+            { title: "Colors", desc: "Name unique colors.", type: "name" },
+            { title: "Animals", desc: "Name different animals.", type: "name" },
+            { title: "School Subjects", desc: "Name different school subjects.", type: "name" },
+            { title: "Countries", desc: "Name different countries.", type: "name" },
+            { title: "Cities", desc: "Name different world cities.", type: "name" },
+            { title: "Video Games", desc: "Name different video games.", type: "name" },
+            { title: "Superheroes", desc: "Name Marvel/DC superheroes.", type: "name" },
+            { title: "Vegetables", desc: "Name different vegetables.", type: "name" },
+            { title: "Sports", desc: "Name different sports.", type: "name" },
+            { title: "Body Parts", desc: "Name different parts of the human body.", type: "name" },
+            { title: "Clothing Items", desc: "Name items of clothing.", type: "name" },
+            { title: "Furniture", desc: "Name items found in a house.", type: "name" },
+            { title: "Classroom Items", desc: "Name things found in this room.", type: "name" },
+            { title: "Ocean Animals", desc: "Name creatures that live in the sea.", type: "name" },
+            { title: "Planets/Space", desc: "Name things in outer space.", type: "name" },
+            { title: "Instruments", desc: "Name different musical instruments.", type: "name" },
+            { title: "Movies", desc: "Name movie titles.", type: "name" },
+            { title: "Famous People", desc: "Name celebrities or historical figures.", type: "name" },
+            { title: "Social Media", desc: "Name apps or social networks.", type: "name" },
+            { title: "Ice Cream", desc: "Name different flavors of ice cream.", type: "name" },
+            { title: "Pizza Toppings", desc: "Name things people put on pizza.", type: "name" },
+            { title: "Board Games", desc: "Name tabletop or board games.", type: "name" },
+            { title: "Languages", desc: "Name spoken languages.", type: "name" },
+            { title: "Soft Drinks", desc: "Name soda or juice brands.", type: "name" },
+            { title: "Shoes", desc: "Name brands or types of shoes.", type: "name" },
+            { title: "Fast Food", desc: "Name fast food restaurant chains.", type: "name" },
+            { title: "Desserts", desc: "Name sweet treats and desserts.", type: "name" },
+            { title: "Kitchenware", desc: "Name tools found in a kitchen.", type: "name" },
+            { title: "Weather", desc: "Name words related to weather types.", type: "name" },
+            { title: "Holidays", desc: "Name official holidays.", type: "name" },
+            { title: "Shapes", desc: "Name geometric shapes.", type: "name" },
+            { title: "Tools", desc: "Name hardware tools (hammer, etc).", type: "name" },
+            { title: "Birds", desc: "Name different species of birds.", type: "name" },
+            { title: "Dogs", desc: "Name different dog breeds.", type: "name" },
+            { title: "Insects", desc: "Name types of bugs and insects.", type: "name" },
+            { title: "Metals", desc: "Name different types of metal.", type: "name" },
+            { title: "Chemical Elements", desc: "Name items from the periodic table.", type: "name" },
+            { title: "Trees/Plants", desc: "Name different types of flora.", type: "name" },
+            { title: "Emotions", desc: "Name words that describe feelings.", type: "name" },
+            { title: "Adjectives", desc: "Name words used to describe things.", type: "name" },
+            { title: "Verbs", desc: "Name action words.", type: "name" },
+            { title: "Cartoons", desc: "Name cartoon shows or characters.", type: "name" },
+            { title: "Breakfast", desc: "Name breakfast foods.", type: "name" },
+            { title: "Candy", desc: "Name candy bar brands.", type: "name" },
+            { title: "Tech Brands", desc: "Name technology companies.", type: "name" },
+            { title: "Bridges", desc: "Name famous bridges or bridge types.", type: "name" },
+            { title: "Rivers", desc: "Name famous world rivers.", type: "name" },
+            { title: "Mountains", desc: "Name famous peaks or ranges.", type: "name" },
+            { title: "Mythology", desc: "Name gods or mythical creatures.", type: "name" },
+            { title: "Transportation", desc: "Name ways to travel.", type: "name" },
+            { title: "Professions", desc: "Name different types of jobs.", type: "name" },
+            { title: "Musical Genres", desc: "Name styles of music.", type: "name" },
+            { title: "TV Shows", desc: "Name television series titles.", type: "name" },
+            { title: "Authors", desc: "Name famous book writers.", type: "name" },
+            { title: "School Supplies", desc: "Name items in a backpack.", type: "name" },
+            { title: "Spices", desc: "Name cooking spices and herbs.", type: "name" },
+            { title: "Dairy Products", desc: "Name items made from milk.", type: "name" },
+
+            // 10 SPEED (Seconds to complete)
+            { title: "Alphabet Z-A", desc: "Recite the alphabet backwards.", type: "speed" },
+            { title: "Word Search", desc: "Find the word 'The' in a book (page 50).", type: "speed" },
+            { title: "Shoe Re-tie", desc: "Untie and re-tie both your shoes.", type: "speed" },
+            { title: "Backpack Pack", desc: "Take 3 items out and put them back in.", type: "speed" },
+            { title: "Page Finder", desc: "Open a book exactly to page 100.", type: "speed" },
+            { title: "Pencil Sharp", desc: "Draw 10 perfect circles on a paper.", type: "speed" },
+            { title: "Eraser Stack", desc: "Stack 3 erasers on top of each other.", type: "speed" },
+            { title: "Chair Spin", desc: "Spin the teacher's chair 3 times (if allowed).", type: "speed" },
+            { title: "Pencil Swap", desc: "Swap 5 pencils with 5 different classmates.", type: "speed" },
+            { title: "Book Balance", desc: "Walk to the door and back with a book on your head.", type: "speed" },
+
+            // 15 ENDURANCE (Seconds to hold)
+            { title: "Blinkless", desc: "Go as long as possible without blinking.", type: "endurance" },
+            { title: "Pencil Balance", desc: "Balance a pencil on your nose (pointing up).", type: "endurance" },
+            { title: "Wall Sit", desc: "Hold a seated position against the wall.", type: "endurance" },
+            { title: "One-Foot Stand", desc: "Stand on one foot with eyes closed.", type: "endurance" },
+            { title: "Arm Hold", desc: "Hold a heavy book at arm's length (sideways).", type: "endurance" },
+            { title: "Statue", desc: "Hold a completely frozen pose.", type: "endurance" },
+            { title: "Finger Balance", desc: "Balance a pencil on one fingertip.", type: "endurance" },
+            { title: "Breath Hold", desc: "Hold your breath (safety first!).", type: "endurance" },
+            { title: "Plank (Desk)", desc: "Hold a plank position using your desk.", type: "endurance" },
+            { title: "Tiptoe", desc: "Stand on your tiptoes.", type: "endurance" },
+            { title: "Book Bridge", desc: "Hold two books out at 90 degrees.", type: "endurance" },
+            { title: "Leg Lift", desc: "Sit and hold both legs straight out.", type: "endurance" },
+            { title: "Humming", desc: "Hold a single continuous hum note.", type: "endurance" },
+            { title: "Chin Balance", desc: "Balance a pencil on your chin.", type: "endurance" },
+            { title: "Squat", desc: "Hold a deep squat position.", type: "endurance" },
+
+            // 15 STUNT (Seconds to complete 10 reps)
+            { title: "Joint Touch", desc: "Touch toes then ceiling (10 times).", type: "stunt" },
+            { title: "Sit-Stands", desc: "Sit and stand from your chair (10 times).", type: "stunt" },
+            { title: "Book Flips", desc: "Flip a book over in your hand (10 times).", type: "stunt" },
+            { title: "Pencil Roll", desc: "Roll a pencil across the desk and back (10 times).", type: "stunt" },
+            { title: "Desk Hops", desc: "Jump in place next to your desk (10 times).", type: "stunt" },
+            { title: "Eraser Catch (Self)", desc: "Toss eraser up and catch it (10 times).", type: "stunt" },
+            { title: "Clap-Back", desc: "Clap behind your back (10 times).", type: "stunt" },
+            { title: "Book Open-Close", desc: "Open and close a book fully (10 times).", type: "stunt" },
+            { title: "Desk Taps", desc: "Tap left then right side of desk (10 times).", type: "stunt" },
+            { title: "Shoulder Rolls", desc: "Roll your shoulders back fully (10 times).", type: "stunt" },
+            { title: "Pencil Twirl", desc: "Spin a pencil between your fingers (10 times).", type: "stunt" },
+            { title: "Head Nod", desc: "Look fully up then fully down (10 times).", type: "stunt" },
+            { title: "Arm Circles", desc: "Make a full circle with your arms (10 times).", type: "stunt" },
+            { title: "Lunge", desc: "Perform a standing lunge (10 times).", type: "stunt" },
+            { title: "Air Write", desc: "Write your name in the air (10 times).", type: "stunt" }
+        ];
+
+        let teams = [];
+        let usedTasks = new Set();
+        let currentTask = null;
+        let bidValue = 0;
+        let bidder = null;
+        let targetRounds = 1;
+        let currentRound = 1;
+        let auctionsThisRound = 0;
+        let timer = null;
+        let timeLeft = 0;
+        let totalTime = 0;
+
+        const show = (id) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        };
+
+        // SETUP
+        const teamInput = document.getElementById('teamInput');
+        const addTeamBtn = document.getElementById('addTeamBtn');
+
+        const addTeamLogic = () => {
+            const name = teamInput.value.trim();
+            if (name && !teams.find(t => t.name === name)) {
+                teams.push({ name, score: 0 });
+                teamInput.value = '';
+                teamInput.focus();
+                renderTeams();
+            }
+        };
+
+        addTeamBtn.onclick = addTeamLogic;
+        
+        teamInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addTeamLogic();
+            }
+        });
+
+        document.getElementById('roundsPlus').onclick = () => { targetRounds++; updateRoundsUI(); };
+        document.getElementById('roundsMinus').onclick = () => { if(targetRounds > 1) targetRounds--; updateRoundsUI(); };
+        function updateRoundsUI() { document.getElementById('roundsDisplay').textContent = targetRounds; }
+
+        function renderTeams() {
+            const container = document.getElementById('teamPills');
+            container.innerHTML = '';
+            teams.forEach(t => {
+                const p = document.createElement('div');
+                p.className = 'pill';
+                p.innerHTML = `${t.name} <button onclick="removeTeam('${t.name}')">✕</button>`;
+                container.appendChild(p);
+            });
+            document.getElementById('startBtn').disabled = teams.length < 2;
+        }
+
+        window.removeTeam = (name) => {
+            teams = teams.filter(t => t.name !== name);
+            renderTeams();
+        };
+
+        document.getElementById('startBtn').onclick = () => { show('auction-screen'); loadTask(); };
+
+        // AUCTION
+        function loadTask() {
+            const pool = taskDB.filter(t => !usedTasks.has(t.title));
+            if (pool.length === 0) usedTasks.clear();
+            
+            currentTask = pool[Math.floor(Math.random() * pool.length)];
+            usedTasks.add(currentTask.title);
+            
+            bidder = null;
+            document.getElementById('taskTitle').textContent = currentTask.title;
+            document.getElementById('taskDesc').textContent = currentTask.desc;
+            document.getElementById('roundCounter').textContent = `ROUND ${currentRound} (AUCTION ${auctionsThisRound + 1}/${teams.length})`;
+            document.getElementById('bidderName').textContent = "WAITING FOR BID...";
+            document.getElementById('soldBtn').disabled = true;
+
+            const catTag = document.getElementById('catTag');
+            const sub = document.getElementById('bidSubtitle');
+
+            if (currentTask.type === 'stunt' || currentTask.type === 'speed') {
+                bidValue = 30; catTag.textContent = currentTask.type.toUpperCase() + " (BID DOWN)"; sub.textContent = "SECONDS";
+            } else if (currentTask.type === 'endurance') {
+                bidValue = 0; catTag.textContent = "ENDURANCE (BID UP)"; sub.textContent = "SECONDS";
+            } else if (currentTask.type === 'name') {
+                bidValue = 0; catTag.textContent = (currentTask.title === "Eraser Catch" ? "CATCHING" : "NAMING") + " (BID UP QTY)"; sub.textContent = "IN 15s";
+            }
+
+            document.getElementById('bidDisplay').textContent = bidValue;
+            renderBidGrid();
+        }
+
+        function renderBidGrid() {
+            const grid = document.getElementById('bidGrid');
+            grid.innerHTML = '';
+            teams.forEach(t => {
+                const b = document.createElement('button');
+                b.className = 'bid-btn';
+                b.textContent = t.name;
+                b.onclick = () => handleBid(t);
+                grid.appendChild(b);
+            });
+        }
+
+        function handleBid(t) {
+            if (currentTask.type === 'name' || currentTask.type === 'endurance') bidValue++;
+            else if (bidValue > 1) bidValue--;
+            
+            sounds.bid();
+            bidder = t;
+            document.getElementById('bidDisplay').textContent = bidValue;
+            document.getElementById('bidderName').textContent = bidder.name;
+            document.getElementById('soldBtn').disabled = false;
+        }
+
+        document.getElementById('skipTaskBtn').onclick = loadTask;
+        document.getElementById('soldBtn').onclick = () => { 
+            sounds.sold();
+            show('exec-screen'); 
+            prepExec(); 
+        };
+
+        // EXECUTION
+        function prepExec() {
+            document.getElementById('execWinnerName').textContent = bidder.name;
+            document.getElementById('execTaskTag').textContent = currentTask.title;
+            totalTime = currentTask.type === 'name' ? 15 : bidValue;
+            
+            const targetEl = document.getElementById('targetCountDisplay');
+            if (currentTask.type === 'name') {
+                targetEl.style.display = 'block';
+                document.getElementById('targetValueText').textContent = `${bidValue} ${currentTask.title === "Eraser Catch" ? 'CATCHES' : 'ITEMS'}`;
+            } else targetEl.style.display = 'none';
+
+            document.getElementById('timerText').textContent = totalTime.toFixed(1);
+            document.getElementById('timerActionBtn').style.display = 'block';
+            document.getElementById('stopTimerBtn').style.display = 'none';
+            document.getElementById('resultBtns').style.display = 'none';
+            timeLeft = totalTime;
+            updateRing(0);
+        }
+
+        function updateRing(pct) {
+            document.getElementById('timerArc').style.strokeDashoffset = 540 - (540 * pct);
+        }
+
+        document.getElementById('timerActionBtn').onclick = () => {
+            document.getElementById('timerActionBtn').style.display = 'none';
+            document.getElementById('stopTimerBtn').style.display = 'block';
+            const start = Date.now();
+            let lastSecond = Math.ceil(totalTime);
+
+            timer = setInterval(() => {
+                const diff = (Date.now() - start) / 1000;
+                timeLeft = Math.max(0, totalTime - diff);
+                document.getElementById('timerText').textContent = timeLeft.toFixed(1);
+                updateRing(diff / totalTime);
+
+                if (Math.ceil(timeLeft) < lastSecond) {
+                    sounds.tick();
+                    lastSecond = Math.ceil(timeLeft);
+                }
+
+                if (timeLeft <= 0) endTimer();
+            }, 50);
+        };
+
+        document.getElementById('stopTimerBtn').onclick = endTimer;
+        function endTimer() { 
+            clearInterval(timer); 
+            document.getElementById('stopTimerBtn').style.display = 'none'; 
+            document.getElementById('resultBtns').style.display = 'flex'; 
+        }
+
+        document.getElementById('passBtn').onclick = () => { sounds.success(); finishAuction(true); };
+        document.getElementById('failBtn').onclick = () => { sounds.fail(); finishAuction(false); };
+
+        function finishAuction(passed) {
+            if (passed) bidder.score++;
+            else teams.forEach(t => { if(t !== bidder) t.score++; });
+            
+            auctionsThisRound++;
+            showScore();
+        }
+
+        function showScore() {
+            show('score-screen');
+            const list = document.getElementById('finalScoreList');
+            const navRow = document.getElementById('sbActionRow');
+            const finalRow = document.getElementById('finalActionRow');
+            list.innerHTML = '';
+            
+            const sorted = [...teams].sort((a,b) => b.score - a.score);
+            sorted.forEach(t => {
+                const row = document.createElement('div');
+                row.className = 'sb-item';
+                row.innerHTML = `<span>${t.name}</span><span class="sb-score">${t.score} PTS</span>`;
+                list.appendChild(row);
+            });
+
+            const header = document.getElementById('scoreboardHeader');
+            const isGameOver = currentRound >= targetRounds && auctionsThisRound >= teams.length;
+
+            if (isGameOver) {
+                header.textContent = "🏆 FINAL RESULTS 🏆";
+                navRow.style.display = 'none';
+                finalRow.style.display = 'flex';
+            } else {
+                navRow.style.display = 'block';
+                finalRow.style.display = 'none';
+                
+                const btn = document.getElementById('nextRoundBtn');
+                if (auctionsThisRound >= teams.length) {
+                    currentRound++;
+                    auctionsThisRound = 0;
+                    header.textContent = `ROUND ${currentRound-1} COMPLETE`;
+                    btn.textContent = `START ROUND ${currentRound}`;
+                } else {
+                    header.textContent = "STANDINGS";
+                    btn.textContent = "NEXT AUCTION";
+                }
+                btn.onclick = () => { show('auction-screen'); loadTask(); };
+            }
+        }
+
+        // NAVIGATION BUTTONS
+        document.getElementById('replaySameTeamsBtn').onclick = () => {
+            currentRound = 1;
+            auctionsThisRound = 0;
+            teams.forEach(t => t.score = 0);
+            usedTasks.clear();
+            show('auction-screen');
+            loadTask();
+        };
+
+        document.getElementById('resetToStartBtn').onclick = () => {
+            currentRound = 1;
+            auctionsThisRound = 0;
+            teams = [];
+            usedTasks.clear();
+            renderTeams();
+            show('setup-screen');
+        };
+
+    </script>
+</body>
+</html>

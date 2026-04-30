@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA TRACKER 💀</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #111;
+    --card: #141414;
+    --border: #222;
+    --accent: #a855f7;
+    --gain: #22c55e;
+    --lose: #ef4444;
+    --text: #f5f5f5;
+    --muted: #555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+    pointer-events: none; z-index: 9998;
+  }
+  canvas#particle-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .header-eyebrow { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.8rem, 8vw, 5rem);
+    letter-spacing: 0.06em; line-height: 1; color: #fff;
+    text-shadow: 0 0 40px rgba(168,85,247,0.5), 0 0 80px rgba(168,85,247,0.18);
+  }
+  header h1 span { color: var(--accent); }
+  .header-sub { margin-top: 0.4rem; font-size: 0.75rem; color: var(--muted); letter-spacing: 0.05em; }
+
+  /* TABS */
+  #class-tabs {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.75rem 1rem; overflow-x: auto; scrollbar-width: none;
+    border-bottom: 1px solid var(--border); background: #0d0d0d;
+  }
+  #class-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0; padding: 0.35rem 1rem; border-radius: 4px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-family: 'Inter', sans-serif; font-size: 0.8rem;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 16px rgba(168,85,247,0.4); }
+  .tab-btn .del-class { margin-left: 0.5rem; opacity: 0.5; font-size: 0.65rem; }
+  .tab-btn:hover .del-class { opacity: 1; }
+  #add-class-btn {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 4px;
+    border: 1px dashed var(--border); background: transparent; color: var(--muted);
+    font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  #add-class-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* MAIN */
+  #main { max-width: 980px; margin: 0 auto; padding: 1.25rem; }
+  #toolbar { display: flex; gap: 0.6rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+  #toolbar input {
+    flex: 1; min-width: 150px; padding: 0.55rem 0.9rem;
+    background: var(--card); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+    font-weight: 600; outline: none; transition: border-color 0.15s;
+  }
+  #toolbar input:focus { border-color: var(--accent); }
+  #toolbar input::placeholder { color: var(--muted); font-weight: 400; }
+  .btn {
+    padding: 0.55rem 1.1rem; border-radius: 4px; border: none;
+    font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.8rem;
+    text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 0 16px rgba(168,85,247,0.3); }
+  .btn-primary:hover { box-shadow: 0 0 24px rgba(168,85,247,0.55); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: #555; color: var(--text); }
+
+  #sort-bar { display: flex; gap: 0.4rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+  #sort-bar label { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; }
+  .sort-opt {
+    padding: 0.25rem 0.65rem; border-radius: 3px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 0.7rem;
+    font-family: 'Inter', sans-serif; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; cursor: pointer; transition: all 0.12s;
+  }
+  .sort-opt.active { border-color: var(--accent); color: var(--accent); background: rgba(168,85,247,0.08); }
+
+  /* GRID */
+  #student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 0.85rem; }
+
+  /* CARD */
+  .student-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem; position: relative; overflow: hidden;
+    transition: transform 0.18s, border-color 0.3s, box-shadow 0.3s;
+    animation: cardIn 0.25s ease both;
+  }
+  @keyframes cardIn { from{opacity:0;transform:scale(0.95) translateY(6px)} to{opacity:1;transform:scale(1) translateY(0)} }
+  .student-card:hover { transform: translateY(-2px); }
+
+  .tier-npc    { border-color: #2a2a2a; }
+  .tier-lowkey { border-color: #3a3a3a; }
+  .tier-based  { border-color: #854d0e; box-shadow: 0 0 10px rgba(133,77,14,0.25); }
+  .tier-sigma  { border-color: #475569; box-shadow: 0 0 12px rgba(71,85,105,0.3); }
+  .tier-goat   { border-color: #ca8a04; box-shadow: 0 0 18px rgba(202,138,4,0.35); }
+  .tier-rizz   { border-color: #a855f7; box-shadow: 0 0 22px rgba(168,85,247,0.45); }
+  .tier-chad   { border-color: #ec4899; box-shadow: 0 0 22px rgba(236,72,153,0.4); }
+  .tier-legend { border-color: #f97316; box-shadow: 0 0 24px rgba(249,115,22,0.45); }
+  .tier-mythic { border-color: #06b6d4; box-shadow: 0 0 26px rgba(6,182,212,0.5); }
+  .tier-divine { border-color: #f59e0b; box-shadow: 0 0 28px rgba(245,158,11,0.55), 0 0 50px rgba(245,158,11,0.2); }
+  .tier-goated { border-color: #a855f7; animation: goatedPulse 1.8s ease-in-out infinite; }
+  @keyframes goatedPulse {
+    0%,100% { box-shadow: 0 0 30px rgba(168,85,247,0.7), 0 0 60px rgba(168,85,247,0.2); }
+    50%      { box-shadow: 0 0 50px rgba(168,85,247,0.9), 0 0 90px rgba(168,85,247,0.35); }
+  }
+
+  .rank-badge {
+    position: absolute; top: 0.5rem; right: 0.6rem;
+    display: flex; align-items: center; gap: 0.25rem;
+    font-size: 0.6rem; font-weight: 900; letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .rank-badge .rb-emoji { font-size: 1.4rem; line-height: 1; }
+  .rank-badge .rb-label { font-family: 'Bebas Neue', sans-serif; font-size: 0.75rem; letter-spacing: 0.1em; }
+  .rank-1 .rank-badge .rb-label { color: #facc15; text-shadow: 0 0 8px rgba(250,204,21,0.5); }
+  .rank-2 .rank-badge .rb-label { color: #cbd5e1; text-shadow: 0 0 8px rgba(203,213,225,0.4); }
+  .rank-3 .rank-badge .rb-label { color: #cd7c2f; text-shadow: 0 0 8px rgba(205,124,47,0.4); }
+
+  .avatar-wrap { display: flex; justify-content: center; margin: 0.2rem 0 0.6rem; }
+  .avatar {
+    width: 52px; height: 52px; border-radius: 50%; background: #1a1a1a;
+    border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; color: var(--accent);
+  }
+
+  .student-name {
+    text-align: center; font-weight: 900; font-size: 0.85rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.1rem;
+  }
+  .tier-label { text-align: center; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 0.6rem; }
+  .aura-value {
+    text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 2rem;
+    letter-spacing: 0.03em; line-height: 1; margin-bottom: 0.15rem;
+  }
+  .aura-unit { text-align: center; font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 0.8rem; }
+  .aura-value.flash-gain { animation: flashG 0.45s ease; }
+  .aura-value.flash-lose { animation: flashL 0.45s ease; }
+  @keyframes flashG { 0%,100%{color:var(--text)} 40%{color:var(--gain);filter:drop-shadow(0 0 10px #22c55e)} }
+  @keyframes flashL { 0%,100%{color:var(--text)} 40%{color:var(--lose);filter:drop-shadow(0 0 10px #ef4444)} }
+
+  .card-controls { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.35rem; align-items: center; margin-bottom: 0.5rem; }
+  .aura-btn { padding: 0.45rem 0; border-radius: 4px; border: none; font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; cursor: pointer; transition: all 0.12s; width: 100%; }
+  .aura-btn.gain { background: rgba(34,197,94,0.1); color: var(--gain); border: 1px solid rgba(34,197,94,0.2); }
+  .aura-btn.gain:hover { background: rgba(34,197,94,0.2); transform: scale(1.04); }
+  .aura-btn.lose { background: rgba(239,68,68,0.1); color: var(--lose); border: 1px solid rgba(239,68,68,0.2); }
+  .aura-btn.lose:hover { background: rgba(239,68,68,0.2); transform: scale(1.04); }
+  .aura-amount-input {
+    width: 42px; text-align: center; background: #0d0d0d; border: 1px solid var(--border);
+    border-radius: 3px; color: var(--text); font-size: 0.8rem; font-weight: 700;
+    padding: 0.38rem 0.15rem; outline: none; font-family: 'Inter', sans-serif;
+  }
+  .aura-amount-input:focus { border-color: var(--accent); }
+  .aura-amount-input::-webkit-inner-spin-button { opacity: 0.4; }
+
+  .meme-caption {
+    text-align: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 0.7rem;
+    min-height: 1.2rem;
+    transition: color 0.3s, opacity 1.5s ease;
+    opacity: 1;
+  }
+  .meme-caption.fading { opacity: 0; }
+
+  .del-student {
+    display: block; width: 100%; background: none; border: none;
+    color: #2a2a2a; font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; text-align: center; transition: color 0.15s;
+  }
+  .del-student:hover { color: var(--lose); }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #181818; border: 1px solid #333; border-radius: 6px;
+    padding: 0.7rem 1.4rem; font-size: 0.85rem; font-weight: 700; z-index: 10000;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+    opacity: 0; white-space: nowrap; max-width: 90vw; text-align: center;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* FLOAT NUM */
+  .float-num {
+    position: fixed; font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem;
+    pointer-events: none; z-index: 10000; animation: floatUp 1s ease-out forwards;
+    text-shadow: 0 2px 12px currentColor;
+  }
+  @keyframes floatUp { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-80px) scale(0.7)} }
+
+  /* EMPTY */
+  #no-class-state, .empty-wrap { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+  .es-big { font-family: 'Bebas Neue', sans-serif; font-size: 4rem; color: #1c1c1c; margin-bottom: 0.5rem; }
+  .es-txt { font-size: 0.85rem; line-height: 1.7; }
+  .es-txt strong { color: var(--accent); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5000; backdrop-filter: blur(6px);
+  }
+  .modal {
+    background: var(--panel); border: 1px solid #2a2a2a; border-radius: 8px;
+    padding: 2rem; min-width: 300px; max-width: 90vw;
+    box-shadow: 0 0 60px rgba(168,85,247,0.12); animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn { from{opacity:0;transform:scale(0.94) translateY(-8px)} to{opacity:1;transform:scale(1) translateY(0)} }
+  .modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.06em; margin-bottom: 1.2rem; color: var(--accent); }
+  .modal input {
+    width: 100%; padding: 0.65rem 1rem; background: var(--card); border: 1px solid #333;
+    border-radius: 4px; color: var(--text); font-family: 'Inter', sans-serif;
+    font-size: 0.95rem; font-weight: 600; outline: none; margin-bottom: 1rem;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+</style>
+</head>
+<body>
+<canvas id="particle-canvas"></canvas>
+
+<div id="app">
+  <header>
+    <div class="header-eyebrow">💀 classroom edition 💀</div>
+    <h1>AURA <span>TRACKER</span></h1>
+    <div class="header-sub">no cap · fully transparent · based on vibes</div>
+  </header>
+
+  <div id="class-tabs">
+    <button id="add-class-btn" title="Add class">+</button>
+  </div>
+
+  <div id="main">
+    <div id="no-class-state">
+      <div class="es-big">💀</div>
+      <p class="es-txt">no classes yet bro<br>hit <strong>+</strong> to create one fr fr</p>
+    </div>
+    <div id="class-view" style="display:none">
+      <div id="toolbar">
+        <input type="text" id="student-input" placeholder="add a student…" maxlength="30">
+        <button class="btn btn-primary" id="add-student-btn">+ add</button>
+      </div>
+
+      <div id="student-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-overlay" id="modal-class" style="display:none">
+  <div class="modal">
+    <h2>New Class</h2>
+    <input type="text" id="class-name-input" placeholder="e.g. Morning Adults B2…" maxlength="30">
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="modal-cancel">nah</button>
+      <button class="btn btn-primary" id="modal-confirm">let's go</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== MEME STRINGS ===== */
+const GAIN_MSG = [
+  "W move fr fr 🔥","absolute cinema","understood the assignment","main character energy",
+  "goated with the sauce","rizz unlocked","not even close","no cap that's hard",
+  "ate and left no crumbs","it's giving protagonist","the people's champ","based behavior",
+  "sigma moment","real ones know","living rent free","slay tbh","passed the vibe check",
+  "on god","IYKYK","secured the bag"
+];
+const LOSE_MSG = [
+  "bro what was that 💀","fell off ngl","L + ratio","aura check failed",
+  "he cooked himself","this ain't it chief","caught in 4k","not very cash money",
+  "skill issue","main character who?","bro deleted himself","the audacity 😭",
+  "npc moment","yikes on a bike","the cringe jumped out","lost the plot",
+  "massive L","certified flop","did not pass the vibe check","down bad"
+];
+const TIER_UP_MSG   = ["TIER UP 🔥 it's giving ascension","LEVELED UP no cap","they're evolving omg","ARC COMPLETE bestie","up is where they're going","GOATED behavior unlocked"];
+const TIER_DOWN_MSG = ["THE FALL 💀","bro fell off a cliff","negative character development","era: DEAD","this is so sad","who did this to you 😭"];
+
+const TIERS = [
+  { name:'NPC',    min:-Infinity, max:0,    cls:'tier-npc',    emoji:'👤' },
+  { name:'LOWKEY', min:0,         max:100,  cls:'tier-lowkey', emoji:'😐' },
+  { name:'BASED',  min:100,       max:200,  cls:'tier-based',  emoji:'😤' },
+  { name:'SIGMA',  min:200,       max:300,  cls:'tier-sigma',  emoji:'🧠' },
+  { name:'GOAT',   min:300,       max:400,  cls:'tier-goat',   emoji:'🐐' },
+  { name:'RIZZ',   min:400,       max:500,  cls:'tier-rizz',   emoji:'👑' },
+  { name:'CHAD',   min:500,       max:600,  cls:'tier-chad',   emoji:'💪' },
+  { name:'LEGEND', min:600,       max:700,  cls:'tier-legend', emoji:'⚡' },
+  { name:'MYTHIC', min:700,       max:800,  cls:'tier-mythic', emoji:'🔮' },
+  { name:'DIVINE', min:800,       max:900,  cls:'tier-divine', emoji:'✨' },
+  { name:'GOATED', min:900,       max:1001, cls:'tier-goated', emoji:'🌟' },
+];
+function getTier(a) { return TIERS.find(t=>a>=t.min&&a<t.max)||TIERS[1]; }
+function rnd(arr)   { return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* ===== STATE ===== */
+let state = { classes:{}, activeClass:null, sort:'aura' };
+function save() { localStorage.setItem('aura_meme_v1', JSON.stringify(state)); }
+function load() { const r=localStorage.getItem('aura_meme_v1'); if(r) state=JSON.parse(r); }
+
+/* ===== AUDIO ===== */
+const AC = new (window.AudioContext||window.webkitAudioContext)();
+function tone(freq,type,dur,vol,endVol){
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.connect(g);g.connect(AC.destination);
+  o.type=type;o.frequency.setValueAtTime(freq,AC.currentTime);
+  g.gain.setValueAtTime(vol,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(endVol,AC.currentTime+dur);
+  o.start();o.stop(AC.currentTime+dur);
+}
+function sndGain()     { tone(420,'sine',0.07,0.2,0.01);setTimeout(()=>tone(630,'sine',0.15,0.18,0.01),60);setTimeout(()=>tone(840,'sine',0.22,0.15,0.001),130); }
+function sndLose()     { tone(280,'sawtooth',0.1,0.18,0.01);setTimeout(()=>tone(180,'sawtooth',0.2,0.14,0.001),90); }
+function sndTierUp()   { [261,330,392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.18,0.22,0.01),i*60)); }
+function sndTierDown() { [440,370,311,261,220].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',0.14,0.16,0.01),i*75)); }
+
+/* ===== PARTICLES ===== */
+const canvas=document.getElementById('particle-canvas');
+const ctx=canvas.getContext('2d');
+let particles=[];
+function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
+resize(); window.addEventListener('resize',resize);
+
+function burst(x,y,isGain,n=22){
+  const col=isGain?'#22c55e':'#ef4444';
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=1.5+Math.random()*4.5;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,life:1,decay:0.018+Math.random()*0.02,size:2+Math.random()*4.5,col});
+  }
+}
+function burstTierUp(x,y){
+  const cols=['#a855f7','#c084fc','#facc15','#f9a8d4','#67e8f9'];
+  for(let i=0;i<50;i++){
+    const a=Math.random()*Math.PI*2,s=2+Math.random()*7;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2.5,life:1,decay:0.01+Math.random()*0.015,size:3+Math.random()*6,col:cols[Math.floor(Math.random()*cols.length)]});
+  }
+}
+(function loop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles=particles.filter(p=>p.life>0);
+  for(const p of particles){
+    ctx.globalAlpha=p.life*p.life;ctx.fillStyle=p.col;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);ctx.fill();
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.life-=p.decay;
+  }
+  ctx.globalAlpha=1;requestAnimationFrame(loop);
+})();
+
+/* ===== VFX ===== */
+function floatNum(x,y,delta){
+  const el=document.createElement('div');
+  el.className='float-num';
+  el.style.left=(x-24)+'px';el.style.top=(y-24)+'px';
+  el.style.color=delta>0?'#22c55e':'#ef4444';
+  el.textContent=(delta>0?'+':'')+delta;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1100);
+}
+let toastTimer;
+function toast(msg,color='#a855f7'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.borderColor=color+'55';el.style.color=color;
+  el.classList.add('show');clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
+}
+function cardCenter(card){ const r=card.getBoundingClientRect(); return{x:r.left+r.width/2,y:r.top+r.height/2}; }
+
+/* ===== UTIL ===== */
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function getSorted(cls){
+  // Always alphabetical; rank badges assigned separately by aura
+  return [...cls.students].sort((a,b)=>a.name.localeCompare(b.name));
+}
+function getAuraRank(cls, sid){
+  const byAura=[...cls.students].sort((a,b)=>b.aura-a.aura);
+  return byAura.findIndex(s=>s.id===sid)+1;
+}
+function rankTxt(rank){
+  if(rank===1) return `<span class="rb-emoji">🥇</span><span class="rb-label">GOLD</span>`;
+  if(rank===2) return `<span class="rb-emoji">🥈</span><span class="rb-label">SILVER</span>`;
+  if(rank===3) return `<span class="rb-emoji">🥉</span><span class="rb-label">BRONZE</span>`;
+  return `<span class="rb-label" style="color:var(--muted)">#${rank}</span>`;
+}
+
+/* ===== RENDER ===== */
+function renderTabs(){
+  const tabs=document.getElementById('class-tabs');
+  [...tabs.children].forEach(c=>{ if(c.id!=='add-class-btn') c.remove(); });
+  Object.values(state.classes).forEach(cls=>{
+    const btn=document.createElement('button');
+    btn.className='tab-btn'+(state.activeClass===cls.id?' active':'');
+    btn.dataset.id=cls.id;
+    btn.innerHTML=cls.name.toUpperCase()+`<span class="del-class" data-del="${cls.id}">✕</span>`;
+    tabs.insertBefore(btn,document.getElementById('add-class-btn'));
+  });
+}
+
+function renderGrid(){
+  const noClass=document.getElementById('no-class-state');
+  const classView=document.getElementById('class-view');
+  const grid=document.getElementById('student-grid');
+  const has=Object.keys(state.classes).length>0;
+  noClass.style.display=has?'none':'block';
+  classView.style.display=has?'block':'none';
+  if(!has) return;
+  const cls=state.classes[state.activeClass];
+  if(!cls) return;
+  const sorted=getSorted(cls);
+  if(sorted.length===0){
+    grid.innerHTML=`<div class="empty-wrap" style="grid-column:1/-1"><div class="es-big">🤷</div><p class="es-txt">no students yet<br>add one above bestie</p></div>`;
+    return;
+  }
+  grid.innerHTML='';
+  sorted.forEach((s)=>{
+    const tier=getTier(s.aura);
+    const rank=getAuraRank(cls,s.id);
+    const card=document.createElement('div');
+    card.className=`student-card ${tier.cls}${rank<=3?` rank-${rank}`:''}`;
+    card.dataset.sid=s.id;
+    card.innerHTML=`
+      <div class="rank-badge">${rankTxt(rank)}</div>
+      <div class="avatar-wrap"><div class="avatar">${s.name[0].toUpperCase()}</div></div>
+      <div class="student-name">${s.name}</div>
+      <div class="tier-label">${tier.emoji} ${tier.name}</div>
+      <div class="aura-value" data-sid="${s.id}">${s.aura.toLocaleString()}</div>
+      <div class="aura-unit">aura points</div>
+      <div class="meme-caption" data-sid="${s.id}">no recent moves</div>
+      <div class="card-controls">
+        <button class="aura-btn lose" data-sid="${s.id}" data-action="lose">－</button>
+        <input class="aura-amount-input" type="number" value="10" min="1" max="9999" data-sid="${s.id}">
+        <button class="aura-btn gain" data-sid="${s.id}" data-action="gain">＋</button>
+      </div>
+      <button class="del-student" data-sid="${s.id}">remove</button>`;
+    grid.appendChild(card);
+  });
+}
+
+function render(){ renderTabs(); renderGrid(); }
+
+/* ===== EVENTS ===== */
+document.getElementById('class-tabs').addEventListener('click',e=>{
+  if(AC.state==='suspended') AC.resume();
+  const del=e.target.closest('[data-del]');
+  if(del){
+    const id=del.dataset.del;
+    if(!confirm(`Delete "${state.classes[id]?.name}"?`)) return;
+    delete state.classes[id];
+    if(state.activeClass===id) state.activeClass=Object.keys(state.classes)[0]||null;
+    save();render();return;
+  }
+  const tab=e.target.closest('.tab-btn');
+  if(tab){ state.activeClass=tab.dataset.id; save();render(); }
+});
+
+document.getElementById('add-class-btn').addEventListener('click',()=>{
+  document.getElementById('modal-class').style.display='flex';
+  document.getElementById('class-name-input').value='';
+  setTimeout(()=>document.getElementById('class-name-input').focus(),50);
+});
+document.getElementById('modal-cancel').addEventListener('click',()=>document.getElementById('modal-class').style.display='none');
+document.getElementById('modal-class').addEventListener('click',e=>{ if(e.target===e.currentTarget) e.currentTarget.style.display='none'; });
+
+function createClass(){
+  const name=document.getElementById('class-name-input').value.trim();
+  if(!name) return;
+  const id=uid();
+  state.classes[id]={id,name,students:[]};
+  state.activeClass=id;
+  document.getElementById('modal-class').style.display='none';
+  save();render();
+}
+document.getElementById('modal-confirm').addEventListener('click',createClass);
+document.getElementById('class-name-input').addEventListener('keydown',e=>{ if(e.key==='Enter') createClass(); });
+
+function addStudent(){
+  if(AC.state==='suspended') AC.resume();
+  const inp=document.getElementById('student-input');
+  const name=inp.value.trim();
+  if(!name||!state.activeClass) return;
+  state.classes[state.activeClass].students.push({id:uid(),name,aura:0,added:Date.now()});
+  inp.value='';save();render();
+}
+document.getElementById('add-student-btn').addEventListener('click',addStudent);
+document.getElementById('student-input').addEventListener('keydown',e=>{ if(e.key==='Enter') addStudent(); });
+
+document.getElementById('student-grid').addEventListener('click',e=>{
+  if(AC.state==='suspended') AC.resume();
+
+  const del=e.target.closest('.del-student');
+  if(del){
+    const sid=del.dataset.sid;
+    state.classes[state.activeClass].students=state.classes[state.activeClass].students.filter(s=>s.id!==sid);
+    save();renderGrid();return;
+  }
+
+  const auraBtn=e.target.closest('.aura-btn');
+  if(!auraBtn) return;
+
+  const sid=auraBtn.dataset.sid;
+  const action=auraBtn.dataset.action;
+  const card=auraBtn.closest('.student-card');
+  const amt=Math.max(1,parseInt(card.querySelector('.aura-amount-input').value)||10);
+
+  const cls=state.classes[state.activeClass];
+  const student=cls.students.find(s=>s.id===sid);
+  if(!student) return;
+
+  const oldTier=getTier(student.aura).name;
+  const isGain=action==='gain';
+  const delta=isGain?amt:-amt;
+  student.aura=Math.min(1000,student.aura+delta);
+  const newTier=getTier(student.aura).name;
+  const tierChanged=oldTier!==newTier;
+
+  // Inline update (no full re-render during animation)
+  const valEl=card.querySelector(`.aura-value[data-sid="${sid}"]`);
+  const caption=card.querySelector(`.meme-caption[data-sid="${sid}"]`);
+  if(valEl){
+    valEl.textContent=student.aura.toLocaleString();
+    valEl.classList.remove('flash-gain','flash-lose');
+    void valEl.offsetWidth;
+    valEl.classList.add(isGain?'flash-gain':'flash-lose');
+  }
+  // Update caption with fade-in then delayed fade-out
+  if(caption){
+    const msg=tierChanged?(isGain?rnd(TIER_UP_MSG):rnd(TIER_DOWN_MSG)):(isGain?rnd(GAIN_MSG):rnd(LOSE_MSG));
+    caption.classList.remove('fading');
+    caption.style.transition='color 0.3s, opacity 0s';
+    caption.style.opacity='1';
+    caption.textContent=msg;
+    caption.style.color=isGain?'#22c55e':'#ef4444';
+    clearTimeout(caption._fadeTimer);
+    caption._fadeTimer=setTimeout(()=>{
+      caption.style.transition='color 0.3s, opacity 1.5s ease';
+      caption.classList.add('fading');
+    }, 3000);
+  }
+
+  // In-place tier update (no re-render = no flicker)
+  if(tierChanged){
+    const newTierObj=getTier(student.aura);
+    // swap tier class
+    TIERS.forEach(t=>card.classList.remove(t.cls));
+    card.classList.add(newTierObj.cls);
+    // update tier label
+    const tierLbl=card.querySelector('.tier-label');
+    if(tierLbl) tierLbl.textContent=`${newTierObj.emoji} ${newTierObj.name}`;
+  }
+
+  // Update rank badges for all cards by aura without reordering DOM
+  const cls2=state.classes[state.activeClass];
+  document.querySelectorAll('#student-grid .student-card').forEach(c=>{
+    const rb=c.querySelector('.rank-badge');
+    if(!rb) return;
+    const r=getAuraRank(cls2,c.dataset.sid);
+    rb.innerHTML=rankTxt(r);
+    c.classList.remove('rank-1','rank-2','rank-3');
+    if(r<=3) c.classList.add(`rank-${r}`);
+  });
+
+  const c=cardCenter(card);
+  floatNum(c.x,c.y,delta);
+
+  if(tierChanged){
+    if(isGain){ sndTierUp(); burstTierUp(c.x,c.y); toast(`${student.name} → ${newTier} ${rnd(TIER_UP_MSG)}`,'#a855f7'); }
+    else      { sndTierDown(); burst(c.x,c.y,false,30); toast(`${student.name} → ${newTier} ${rnd(TIER_DOWN_MSG)}`,'#ef4444'); }
+  } else {
+    if(isGain){ sndGain(); burst(c.x,c.y,true,20); }
+    else      { sndLose(); burst(c.x,c.y,false,14); }
+  }
+
+  save();
+});
+
+/* ===== INIT ===== */
+load();
+if(!state.activeClass&&Object.keys(state.classes).length>0)
+  state.activeClass=Object.keys(state.classes)[0];
+render();
+</script>
+</body>
+</html>

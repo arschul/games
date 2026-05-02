@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Writing Scaffold</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f13;
+    --surface: #16181f;
+    --surface2: #1e2029;
+    --border: #2a2d3a;
+    --accent: #e8c547;
+    --accent2: #5b8af5;
+    --accent3: #e05c7a;
+    --text: #e8e9f0;
+    --muted: #7a7d8e;
+    --chip-bg: #1e2029;
+    --chip-border: #2f3245;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #controls {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .app-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+
+  .ctrl-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  label {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  select {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .btn {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: #0e0f13; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .sep { width: 1px; height: 28px; background: var(--border); }
+
+  #timer-wrap { display: flex; align-items: center; gap: 8px; }
+  #timer-display {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--accent);
+    min-width: 52px;
+    text-align: center;
+    display: none;
+  }
+  #timer-display.active { display: block; }
+  #timer-display.urgent { color: var(--accent3); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  #stage {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 24px 60px;
+  }
+
+  #card {
+    width: 100%;
+    max-width: 900px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    animation: fadeUp 0.35s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(18px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  #card-header {
+    padding: 28px 36px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .type-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 8px;
+  }
+
+  #card-title {
+    font-family: 'Lora', serif;
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
+    max-width: 640px;
+  }
+
+  .cefr-badge {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 5px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .cefr-A2 { background: #1a3a2a; color: #5dbb85; border: 1px solid #2a5a3a; }
+  .cefr-B1 { background: #1a2a3a; color: #5b8af5; border: 1px solid #2a3a5a; }
+  .cefr-B2 { background: #2a1a2e; color: #c07af5; border: 1px solid #4a2a5a; }
+
+  #card-body {
+    padding: 28px 36px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+
+  .section-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  #starters { grid-column: 1 / -1; }
+
+  .starter-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .starter-item {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .starter-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    color: var(--accent);
+    min-width: 18px;
+  }
+
+  .starter-text {
+    font-family: 'Lora', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  /* ── WORD CHIPS ── */
+  .chip-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .word-entry { display: flex; flex-direction: column; gap: 0; }
+
+  .chip {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    color: var(--text);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, border-radius 0.15s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.open {
+    background: #1a1c28;
+    border-color: var(--accent);
+    color: var(--accent);
+    border-radius: 8px 8px 0 0;
+    border-bottom-color: transparent;
+  }
+
+  .word-detail {
+    display: none;
+    background: #1a1c28;
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 10px 14px;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    max-width: 280px;
+  }
+  .word-detail.visible { display: block; }
+
+  .def-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .def-text { color: var(--text); margin-bottom: 8px; }
+  .ex-text { color: var(--muted); font-style: italic; }
+  .ex-text em { color: var(--accent2); font-style: normal; }
+
+  .chip.connector {
+    border-color: #2a3a5a;
+    color: var(--accent2);
+    background: #13182a;
+    cursor: default;
+  }
+  .chip.connector:hover { border-color: #3a4a6a; color: var(--accent2); }
+
+  #empty {
+    width: 100%;
+    max-width: 860px;
+    text-align: center;
+    padding: 80px 24px;
+    color: var(--muted);
+  }
+  #empty h2 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  #empty p { font-size: 0.85rem; line-height: 1.6; }
+
+  @media (max-width: 600px) {
+    #card-body { grid-template-columns: 1fr; }
+    #card-header { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <span class="app-title">Writing Scaffold</span>
+
+  <div class="ctrl-group">
+    <label>Level</label>
+    <select id="sel-level">
+      <option value="">All</option>
+      <option value="A2">A2</option>
+      <option value="B1">B1</option>
+      <option value="B2">B2</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <label>Type</label>
+    <select id="sel-type">
+      <option value="">All</option>
+      <option value="Opinion">Opinion</option>
+      <option value="Narrative">Narrative</option>
+      <option value="Descriptive">Descriptive</option>
+      <option value="Email">Formal Email</option>
+      <option value="For & Against">For &amp; Against</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <label>Prompt</label>
+    <select id="sel-prompt"><option value="">— pick —</option></select>
+  </div>
+
+  <button class="btn btn-accent" onclick="loadPrompt()">Display</button>
+  <button class="btn btn-outline" onclick="randomPrompt()">Random</button>
+
+  <div class="sep"></div>
+
+  <div id="timer-wrap">
+    <label>Timer</label>
+    <select id="sel-timer">
+      <option value="0">Off</option>
+      <option value="5">5 min</option>
+      <option value="10">10 min</option>
+      <option value="15">15 min</option>
+      <option value="20">20 min</option>
+    </select>
+    <button class="btn btn-outline" onclick="startTimer()">Start</button>
+    <button class="btn btn-outline" onclick="stopTimer()">Reset</button>
+    <span id="timer-display">--:--</span>
+  </div>
+</div>
+
+<div id="stage">
+  <div id="empty">
+    <h2>Guided Writing Scaffold</h2>
+    <p>Select a level and type, choose a prompt — or hit <strong>Random</strong>.<br>Click any word in the word bank to see its definition and example.</p>
+  </div>
+  <div id="card" style="display:none">
+    <div id="card-header">
+      <div>
+        <div class="type-tag" id="h-type"></div>
+        <div id="card-title"></div>
+      </div>
+      <span class="cefr-badge" id="h-cefr"></span>
+    </div>
+    <div id="card-body">
+      <div id="starters">
+        <div class="section-label">Sentence Starters</div>
+        <div class="starter-list" id="starter-list"></div>
+      </div>
+      <div id="words-wrap">
+        <div class="section-label">Word Bank — click a word for definition</div>
+        <div class="chip-cloud" id="word-chips"></div>
+      </div>
+      <div id="conn-wrap">
+        <div class="section-label">Connectors</div>
+        <div class="chip-cloud" id="conn-chips"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Each word entry: [word, definition, example]
+// Definition and example written at the CEFR level of the prompt.
+
+const PROMPTS = [
+
+// ── OPINION A2 ───────────────────────────────────────────────────
+{type:"Opinion",level:"A2",title:"Should students use phones in class?",
+ starters:["I think that phones in class are…","One reason I believe this is…","For example, I have seen…","On the other hand, some people say…","In my opinion, the best solution is…","To sum up, I believe…"],
+ words:[
+  ["distraction","something that stops you paying attention","The noise outside was a <em>distraction</em> during the test."],
+  ["useful","helpful; good to use","A dictionary is very <em>useful</em> when you write."],
+  ["concentrate","to think hard about one thing","It is hard to <em>concentrate</em> when there is a lot of noise."],
+  ["lesson","a time when a teacher teaches the class","We have an English <em>lesson</em> every day."],
+  ["allowed","permitted; you can do it","Phones are not <em>allowed</em> in the exam room."],
+  ["banned","not permitted; you cannot do it","Smoking is <em>banned</em> inside the school building."],
+  ["rule","something you must or must not do","There is a <em>rule</em> that says we must be quiet in class."],
+  ["responsible","doing the right thing and making good decisions","A <em>responsible</em> student puts their phone away during class."],
+  ["message","a short text you send to someone","She sent a <em>message</em> to her friend during lunch."],
+  ["learn","to get new knowledge or a new skill","We go to school to <em>learn</em> new things every day."],
+ ],
+ connectors:["I think","because","but","also","for example","in my opinion"]},
+
+{type:"Opinion",level:"A2",title:"Is it better to live in a big city or a small town?",
+ starters:["I think it is better to live in…","One good thing about this is…","For example, people who live there can…","However, some people prefer…","Another reason is…","In conclusion, I think…"],
+ words:[
+  ["transport","buses, trains, cars — ways to travel","The <em>transport</em> in the city is very good."],
+  ["quiet","not loud; peaceful","I like small towns because they are <em>quiet</em>."],
+  ["crowded","full of many people","The city centre is very <em>crowded</em> on weekends."],
+  ["opportunity","a chance to do something good","The city gives people more <em>opportunity</em> to find work."],
+  ["nature","trees, rivers, animals — the natural world","I love walking in <em>nature</em> near my small town."],
+  ["expensive","costing a lot of money","Flats in the city are very <em>expensive</em>."],
+  ["neighbour","a person who lives near you","My <em>neighbour</em> always says hello in the morning."],
+  ["safe","not dangerous","I feel <em>safe</em> in my small town because everyone knows each other."],
+  ["traffic","many cars and vehicles on the road","There is a lot of <em>traffic</em> in the city every morning."],
+  ["community","a group of people who live and work together","Our small town has a strong <em>community</em>."],
+ ],
+ connectors:["I think","because","but","also","for example","in conclusion"]},
+
+{type:"Opinion",level:"A2",title:"Should children have homework every night?",
+ starters:["I think homework is…","One reason for my opinion is…","For example, when I have homework…","However, some teachers say…","I also believe that…","To finish, I think…"],
+ words:[
+  ["study","to read and learn from your books","I need to <em>study</em> for my English test tomorrow."],
+  ["tired","needing sleep or rest","Children feel <em>tired</em> after a long day at school."],
+  ["practice","doing something many times to get better","Homework gives us <em>practice</em> with new grammar."],
+  ["free time","time when you do not work or study","Children need <em>free time</em> to play and relax."],
+  ["revision","looking at your notes again to remember things","<em>Revision</em> before a test helps you remember more."],
+  ["stress","a worried, unhappy feeling because of too much work","Too much homework can cause <em>stress</em> for students."],
+  ["useful","helpful; good to do","Homework is <em>useful</em> when it helps you practise."],
+  ["relax","to rest and feel calm","After school, I like to <em>relax</em> and watch TV."],
+  ["parent","a mother or father","My <em>parent</em> helps me when my homework is difficult."],
+  ["school","the place where children go to learn","We spend six hours at <em>school</em> every day."],
+ ],
+ connectors:["I think","because","but","for example","also","to finish"]},
+
+{type:"Opinion",level:"A2",title:"Is fast food good or bad for us?",
+ starters:["I think fast food is…","One reason I say this is…","For example, many people eat…","But not everyone agrees because…","I also think…","In my opinion…"],
+ words:[
+  ["healthy","good for your body","Fruit and vegetables are <em>healthy</em> foods."],
+  ["unhealthy","bad for your body","Eating too much fast food is <em>unhealthy</em>."],
+  ["cheap","not costing a lot of money","Fast food is often <em>cheap</em> and quick to buy."],
+  ["quick","fast; not taking much time","A burger is a <em>quick</em> meal when you are busy."],
+  ["calories","the energy in food","Fast food often has too many <em>calories</em>."],
+  ["fresh","not cooked a long time ago; not from a tin","I prefer <em>fresh</em> food to fast food."],
+  ["delicious","tasting very good","The pizza from that restaurant is really <em>delicious</em>."],
+  ["diet","the food you eat every day","A good <em>diet</em> has many fruits and vegetables."],
+  ["habit","something you do regularly","Eating fast food every day is a bad <em>habit</em>."],
+  ["restaurant","a place where you go to eat a meal","We went to a <em>restaurant</em> for my birthday."],
+ ],
+ connectors:["I think","because","but","for example","also","in my opinion"]},
+
+{type:"Opinion",level:"A2",title:"Should everyone learn to cook?",
+ starters:["I believe that cooking is…","One reason is…","For example, people who can cook…","However, some people think…","Another point is…","In conclusion…"],
+ words:[
+  ["meal","the food you eat at one time, like breakfast or dinner","I cook a <em>meal</em> for my family every evening."],
+  ["skill","something you can do well after learning it","Cooking is a very important <em>skill</em> for life."],
+  ["healthy","good for your body","When you cook at home, you can eat more <em>healthy</em> food."],
+  ["expensive","costing a lot of money","Eating in restaurants every day is very <em>expensive</em>."],
+  ["ingredient","one food item in a recipe","The most important <em>ingredient</em> in this dish is garlic."],
+  ["time","the minutes or hours needed to do something","Cooking takes more <em>time</em> than buying fast food."],
+  ["recipe","a list of ingredients and steps to make food","I followed a <em>recipe</em> to make chocolate cake."],
+  ["useful","helpful; good to know","Cooking is a very <em>useful</em> skill when you live alone."],
+  ["independent","able to do things by yourself","People who can cook are more <em>independent</em>."],
+  ["money","what you use to pay for things","You can save <em>money</em> by cooking at home."],
+ ],
+ connectors:["I believe","because","however","for example","another point","in conclusion"]},
+
+{type:"Opinion",level:"A2",title:"Are video games good for young people?",
+ starters:["I think video games are…","One reason I say this is…","For example, many games…","On the other hand, parents often say…","I also think…","In my opinion…"],
+ words:[
+  ["fun","enjoyable; making you happy","Video games are <em>fun</em> to play with friends."],
+  ["strategy","a plan to win or solve a problem","Some games need a good <em>strategy</em> to win."],
+  ["social","spending time with other people","Online games can be <em>social</em> — you play with friends."],
+  ["addiction","when you cannot stop doing something bad for you","Too many hours of gaming can become an <em>addiction</em>."],
+  ["screen","the display on a phone, computer, or TV","Too much <em>screen</em> time is bad for your eyes."],
+  ["creative","able to make new and interesting things","Some games let you be <em>creative</em> and build worlds."],
+  ["teamwork","working together with other people","Online games can teach <em>teamwork</em> and cooperation."],
+  ["violent","with a lot of fighting or danger","Some parents do not like <em>violent</em> games for children."],
+  ["skill","something you learn to do well","Games can help you develop problem-solving <em>skills</em>."],
+  ["balance","the right amount of different things","It is important to have a <em>balance</em> between games and study."],
+ ],
+ connectors:["I think","because","on the other hand","for example","also","in my opinion"]},
+
+// ── OPINION B1 ───────────────────────────────────────────────────
+{type:"Opinion",level:"B1",title:"Should social media have a minimum age limit?",
+ starters:["I strongly believe that…","One of the main reasons is…","Evidence shows that…","Critics of this idea argue that…","However, I think this point is weak because…","Taking everything into account…"],
+ words:[
+  ["privacy","the right to keep your personal information secret","Children need to learn about <em>privacy</em> before using social media."],
+  ["vulnerable","easily hurt or affected by something bad","Young children are <em>vulnerable</em> to online dangers."],
+  ["cyberbullying","using the internet to be cruel to someone","<em>Cyberbullying</em> is a serious problem on social media platforms."],
+  ["regulation","an official rule that controls something","Many countries are introducing <em>regulation</em> for social media companies."],
+  ["maturity","being ready, emotionally and mentally, to deal with things","A minimum age limit would ensure users have enough <em>maturity</em>."],
+  ["platform","a website or app where people share content","Instagram is a popular social media <em>platform</em>."],
+  ["influence","the power to change how people think or behave","Social media has a strong <em>influence</em> on young people's opinions."],
+  ["mental health","how you feel emotionally and psychologically","Research suggests social media can affect teenagers' <em>mental health</em>."],
+  ["addiction","being unable to stop using something","Smartphone <em>addiction</em> is becoming a problem among young people."],
+  ["supervision","watching and checking what someone does","Children need adult <em>supervision</em> when using the internet."],
+ ],
+ connectors:["I believe","furthermore","however","in addition","on the other hand","taking everything into account"]},
+
+{type:"Opinion",level:"B1",title:"Is it important to learn a foreign language at school?",
+ starters:["In my view, learning a foreign language…","To begin with…","Research suggests that…","Some people argue that…","Despite this, I believe…","On balance…"],
+ words:[
+  ["communication","the exchange of information or ideas with others","Learning a language improves your <em>communication</em> skills."],
+  ["culture","the traditions, values, and way of life of a group of people","Language helps you understand another country's <em>culture</em>."],
+  ["career","the job or profession you do for most of your working life","Speaking two languages can improve your <em>career</em> opportunities."],
+  ["bilingual","able to speak two languages fluently","<em>Bilingual</em> children often find it easier to learn a third language."],
+  ["cognitive","related to mental processes such as thinking and memory","Research shows that language learning has <em>cognitive</em> benefits."],
+  ["fluency","the ability to speak a language naturally and smoothly","After three years of study, she achieved <em>fluency</em> in French."],
+  ["native speaker","a person who has spoken a language since birth","Practising with a <em>native speaker</em> is the best way to improve."],
+  ["curriculum","the set of subjects taught in a school","Foreign languages should be a required part of the school <em>curriculum</em>."],
+  ["opportunity","a chance to do or achieve something","Learning English opened up many <em>opportunities</em> for her."],
+  ["global","relating to the whole world","English is the most widely used <em>global</em> language for business."],
+ ],
+ connectors:["in my view","to begin with","however","despite this","in addition","on balance"]},
+
+{type:"Opinion",level:"B1",title:"Should universities be free for all students?",
+ starters:["I believe that university education…","One strong argument in favour is…","Those who disagree claim that…","However, I would argue…","Furthermore…","In conclusion, I feel that…"],
+ words:[
+  ["tuition","the fees paid for teaching at a university","High <em>tuition</em> fees prevent many students from studying."],
+  ["debt","money that you owe to someone else","Many graduates start their careers with large student <em>debts</em>."],
+  ["access","the ability to get or use something","Free education would improve <em>access</em> for poorer students."],
+  ["equality","the state of having the same rights and opportunities","Free universities would create more <em>equality</em> in society."],
+  ["taxpayer","a person who pays taxes to the government","Some argue that <em>taxpayers</em> should not pay for others' degrees."],
+  ["graduate","a person who has completed a university degree","<em>Graduates</em> typically earn more money during their careers."],
+  ["economy","the system of money, business, and work in a country","A better-educated workforce helps the <em>economy</em> grow."],
+  ["talent","natural ability in a skill or area","A free system would ensure no <em>talent</em> is wasted because of money."],
+  ["funding","money given to support something","Government <em>funding</em> for universities has decreased recently."],
+  ["scholarship","money given to help a student pay for education","She received a <em>scholarship</em> to study medicine abroad."],
+ ],
+ connectors:["I believe","however","furthermore","in addition","on the other hand","in conclusion"]},
+
+{type:"Opinion",level:"B1",title:"Is tourism more harmful than beneficial?",
+ starters:["The question of whether tourism is beneficial is…","Supporters of tourism argue that…","However, the negative effects are…","A clear example of this is…","In addition to this…","My view is that…"],
+ words:[
+  ["economy","the system of money and business in a country","Tourism is very important for the local <em>economy</em>."],
+  ["environment","the natural world around us","Mass tourism can damage the natural <em>environment</em>."],
+  ["culture","the traditions and way of life of a group of people","Tourism can threaten local <em>culture</em> if not managed well."],
+  ["overcrowding","too many people in one place","<em>Overcrowding</em> in popular cities is a growing problem."],
+  ["revenue","money earned by a business or government","Tourism brings important <em>revenue</em> to developing countries."],
+  ["authentic","real and genuine, not fake or changed","Tourists often want an <em>authentic</em> experience of local life."],
+  ["infrastructure","the roads, buildings, and systems a place needs to work","Tourism can fund improvements to local <em>infrastructure</em>."],
+  ["conservation","protecting nature and historical places","Some tourist sites use income for <em>conservation</em> projects."],
+  ["local","belonging to or connected with a particular place","<em>Local</em> people sometimes lose their homes because of tourism."],
+  ["sustainable","able to continue without damaging the environment","<em>Sustainable</em> tourism tries to protect nature and culture."],
+ ],
+ connectors:["however","in addition","furthermore","as a result","on balance","my view is that"]},
+
+{type:"Opinion",level:"B1",title:"Should zoos exist in the modern world?",
+ starters:["The debate around zoos is…","Proponents argue that zoos…","On the other hand, critics point out…","A compelling example is…","Furthermore…","Weighing both sides…"],
+ words:[
+  ["conservation","protecting animals and their natural habitats","Modern zoos focus on animal <em>conservation</em> programmes."],
+  ["habitat","the natural environment where an animal lives","Many animals lose their <em>habitat</em> because of deforestation."],
+  ["captivity","the state of being kept in a place and not free","Critics argue that animals suffer in <em>captivity</em>."],
+  ["endangered","at risk of disappearing from the world completely","Zoos help breed <em>endangered</em> species to save them from extinction."],
+  ["welfare","the health and happiness of a living creature","Animal <em>welfare</em> is the most important issue for modern zoos."],
+  ["breeding","producing young animals as part of a programme","The zoo has a successful <em>breeding</em> programme for giant pandas."],
+  ["education","teaching and learning about important topics","Zoos provide important <em>education</em> about wildlife to the public."],
+  ["wildlife","animals living in the natural environment","Protecting <em>wildlife</em> is one of the biggest challenges today."],
+  ["ethical","morally right or acceptable","It is not always <em>ethical</em> to keep large animals in small spaces."],
+  ["biodiversity","the variety of different plants and animals in an area","Zoos can help protect <em>biodiversity</em> through breeding programmes."],
+ ],
+ connectors:["on the other hand","furthermore","however","in addition","as a result","weighing both sides"]},
+
+{type:"Opinion",level:"B1",title:"Do celebrities have a responsibility to be role models?",
+ starters:["Whether celebrities should act as role models is…","Those who say yes argue that…","However, others believe…","It can be argued that…","Furthermore…","On balance, my view is…"],
+ words:[
+  ["influence","the power to affect what people think or do","Celebrities have a strong <em>influence</em> on young fans."],
+  ["platform","a large audience or way to reach many people","Famous people have a <em>platform</em> to spread positive messages."],
+  ["responsibility","a duty to do something or behave in a certain way","With fame comes a <em>responsibility</em> to set a good example."],
+  ["audience","the people who watch, listen to, or follow someone","A celebrity's <em>audience</em> can include millions of teenagers."],
+  ["behaviour","the way a person acts","Bad <em>behaviour</em> from celebrities can be copied by young fans."],
+  ["media","television, newspapers, social media, and the internet","The <em>media</em> reports every detail of a celebrity's life."],
+  ["image","the way someone appears to the public","Some celebrities carefully control their public <em>image</em>."],
+  ["young people","teenagers and children","<em>Young people</em> often admire and copy their favourite stars."],
+  ["public","people in general; everyone","Celebrities live their lives in the <em>public</em> eye."],
+  ["expectations","what people hope or believe someone will do","Society has high <em>expectations</em> of famous people's behaviour."],
+ ],
+ connectors:["however","furthermore","on the other hand","in addition","it can be argued","on balance"]},
+
+// ── OPINION B2 ───────────────────────────────────────────────────
+{type:"Opinion",level:"B2",title:"To what extent has technology made our lives more isolated?",
+ starters:["The notion that technology isolates us is…","Advocates of this view contend that…","A counterargument, however, is…","The empirical evidence suggests…","One might also consider…","Having examined both sides, I would argue…"],
+ words:[
+  ["digital interaction","communication that takes place through screens and devices","<em>Digital interaction</em> has replaced face-to-face contact for many people."],
+  ["superficial","lacking depth; not genuine","Critics argue that online friendships are <em>superficial</em>."],
+  ["paradox","a situation that seems contradictory but may be true","It is a <em>paradox</em> that we are more connected yet feel more alone."],
+  ["connectivity","the ability to link with others through technology","Greater <em>connectivity</em> does not always mean deeper relationships."],
+  ["alienation","the feeling of being separated from others or society","Urban life and technology together can cause social <em>alienation</em>."],
+  ["virtual","existing only online, not in the physical world","<em>Virtual</em> communities can provide real support for isolated people."],
+  ["substitute","something that replaces something else","Online chat is not a perfect <em>substitute</em> for meeting in person."],
+  ["nuanced","having many small and important differences","The relationship between technology and isolation is highly <em>nuanced</em>."],
+  ["correlation","a connection between two things that often occur together","There is a <em>correlation</em> between heavy social media use and loneliness."],
+  ["mediated","communicated through a third thing rather than directly","All online relationships are <em>mediated</em> through technology."],
+ ],
+ connectors:["nevertheless","moreover","conversely","it could be argued","by extension","having examined"]},
+
+{type:"Opinion",level:"B2",title:"Should governments control what people eat?",
+ starters:["The proposition that governments should regulate diet raises…","Those in favour contend that…","A libertarian critique would hold that…","The evidence, however, suggests…","Furthermore, one must consider…","Ultimately, the balance between…"],
+ words:[
+  ["paternalism","the practice of limiting freedom for someone's own good","Critics call food regulation a form of state <em>paternalism</em>."],
+  ["autonomy","the right to make your own decisions","People should have <em>autonomy</em> over what they eat."],
+  ["public health","the health of the population as a whole","Obesity is a significant <em>public health</em> crisis in many countries."],
+  ["obesity","the condition of being dangerously overweight","<em>Obesity</em> costs national health services billions each year."],
+  ["taxation","charging extra money on products the government wants to discourage","<em>Taxation</em> on sugary drinks has reduced consumption in some countries."],
+  ["legislation","laws made by a government","New <em>legislation</em> requires food companies to display calorie counts."],
+  ["individual freedom","the right to make choices about your own life","Restricting diets infringes on <em>individual freedom</em>."],
+  ["intervention","an action taken to change or influence a situation","Government <em>intervention</em> in diet has had mixed results."],
+  ["sugar tax","a tax on drinks and foods with high sugar content","The <em>sugar tax</em> in the UK reduced sales of fizzy drinks."],
+  ["informed choice","a decision made with full knowledge of the facts","Education enables people to make an <em>informed choice</em> about food."],
+ ],
+ connectors:["nevertheless","moreover","conversely","furthermore","by contrast","ultimately"]},
+
+{type:"Opinion",level:"B2",title:"Is globalisation a threat to cultural identity?",
+ starters:["The impact of globalisation on cultural identity is…","Those who fear cultural homogenisation argue…","A more optimistic perspective holds…","The evidence from anthropological studies suggests…","One must also consider…","On balance, I would argue…"],
+ words:[
+  ["homogenisation","the process of making everything the same","Critics fear the <em>homogenisation</em> of world cultures."],
+  ["heritage","the traditions and history passed down through generations","Language is a vital part of a country's cultural <em>heritage</em>."],
+  ["hybridity","a mix of two or more cultural influences","Modern cities often show a rich cultural <em>hybridity</em>."],
+  ["diaspora","a group of people spread across the world from their homeland","The Irish <em>diaspora</em> has kept its cultural identity for generations."],
+  ["commodification","turning something cultural into a product to be bought and sold","Tourism can lead to the <em>commodification</em> of local traditions."],
+  ["indigenous","originating from and naturally occurring in a particular place","<em>Indigenous</em> languages are under threat from globalisation."],
+  ["assimilation","the process of becoming part of a different culture","Forced <em>assimilation</em> has erased many minority languages."],
+  ["resilience","the ability to recover and survive difficult changes","Some cultures show remarkable <em>resilience</em> in the face of globalisation."],
+  ["cultural exchange","the sharing of ideas, art, and traditions between cultures","The internet has accelerated <em>cultural exchange</em> across the world."],
+  ["authenticity","being genuine and not changed or copied","Tourists often seek <em>authenticity</em> in the cultures they visit."],
+ ],
+ connectors:["however","nevertheless","moreover","by contrast","it could be argued","on balance"]},
+
+{type:"Opinion",level:"B2",title:"Should artificial intelligence be regulated by law?",
+ starters:["The rapid advancement of AI raises the question of…","Proponents of regulation contend that…","Critics, however, warn that…","An examination of recent developments suggests…","Furthermore, the ethical implications…","Having weighed the arguments, I believe…"],
+ words:[
+  ["accountability","the fact of being responsible for your decisions","There is currently no clear <em>accountability</em> when AI makes errors."],
+  ["bias","an unfair preference for or against something","AI systems trained on flawed data can reproduce human <em>bias</em>."],
+  ["transparency","being open and clear about how something works","Citizens have a right to <em>transparency</em> in how AI decisions are made."],
+  ["autonomous","able to act independently without human control","<em>Autonomous</em> weapons raise serious ethical concerns."],
+  ["liability","legal responsibility for harm caused","It is unclear who carries <em>liability</em> when an AI system causes harm."],
+  ["innovation","the development of new ideas and technologies","Excessive regulation could slow down technological <em>innovation</em>."],
+  ["oversight","careful supervision to ensure rules are followed","Effective <em>oversight</em> bodies are essential for responsible AI use."],
+  ["ethical framework","a set of principles that guide moral decisions","The EU is developing an <em>ethical framework</em> for artificial intelligence."],
+  ["deployment","the process of putting a system into active use","The <em>deployment</em> of AI in healthcare must be rigorously tested."],
+  ["safeguards","measures taken to protect against harm","Strong <em>safeguards</em> are needed before AI is used in criminal justice."],
+ ],
+ connectors:["furthermore","nevertheless","on the other hand","moreover","by extension","having weighed"]},
+
+{type:"Opinion",level:"B2",title:"Is the death penalty ever justifiable?",
+ starters:["The morality of capital punishment is…","Those who defend it argue that…","However, the empirical and ethical objections are…","A key consideration is…","Moreover, from a human rights perspective…","In conclusion, I would argue…"],
+ words:[
+  ["deterrence","the effect of making people afraid to do something","Studies show little evidence that the death penalty acts as a <em>deterrence</em>."],
+  ["irreversible","impossible to undo or change","Execution is <em>irreversible</em> — a wrongful conviction cannot be corrected."],
+  ["retribution","punishment that is considered morally deserved","Some argue that the worst crimes deserve <em>retribution</em>."],
+  ["wrongful conviction","being found guilty of a crime you did not commit","<em>Wrongful convictions</em> make capital punishment impossible to justify."],
+  ["human rights","basic rights that every person is entitled to","The death penalty is seen as a violation of <em>human rights</em>."],
+  ["justice","fair treatment and punishment under the law","The purpose of the legal system should be <em>justice</em>, not revenge."],
+  ["abolition","the act of officially ending something","Many countries have moved toward the <em>abolition</em> of capital punishment."],
+  ["recidivism","reoffending after being punished for a crime","The death penalty is one way to guarantee zero <em>recidivism</em>."],
+  ["proportionality","being appropriate in size or degree to something else","Punishment should be proportional — but <em>proportionality</em> has limits."],
+  ["sanctity","the quality of being too important to change or harm","Many religious traditions emphasise the <em>sanctity</em> of human life."],
+ ],
+ connectors:["however","moreover","furthermore","by contrast","it is clear that","in conclusion"]},
+
+{type:"Opinion",level:"B2",title:"Does social media do more harm than good to democracy?",
+ starters:["Social media's relationship with democratic processes is…","Those who see it as harmful argue that…","Proponents, however, point to…","The evidence from recent elections suggests…","A further concern is…","Taking all factors into account…"],
+ words:[
+  ["disinformation","false information spread deliberately to deceive people","<em>Disinformation</em> campaigns have influenced several recent elections."],
+  ["algorithm","a set of rules a computer uses to make decisions","Social media <em>algorithms</em> prioritise content that provokes strong emotions."],
+  ["echo chamber","an environment where you only encounter views like your own","Social media can create <em>echo chambers</em> that deepen political division."],
+  ["polarisation","the process of dividing into two opposite groups","Political <em>polarisation</em> has increased alongside social media use."],
+  ["civic engagement","participation in activities that improve your community or democracy","Social media can increase <em>civic engagement</em> among young people."],
+  ["manipulation","controlling someone in a dishonest or unfair way","Foreign actors have used social media for political <em>manipulation</em>."],
+  ["transparency","being open and honest about actions and decisions","Social media companies lack <em>transparency</em> about how content spreads."],
+  ["accountability","the responsibility to explain and justify your actions","There is little <em>accountability</em> for politicians who spread false claims online."],
+  ["propaganda","information used to promote a political cause dishonestly","Social media has become a powerful tool for spreading <em>propaganda</em>."],
+  ["plurality","a variety of different voices and viewpoints","A healthy democracy requires <em>plurality</em> of opinion in the media."],
+ ],
+ connectors:["however","furthermore","on the other hand","moreover","it can be argued","taking all factors into account"]},
+
+// ── NARRATIVE A2 ─────────────────────────────────────────────────
+{type:"Narrative",level:"A2",title:"Write about a day when something unexpected happened.",
+ starters:["It was a normal morning when…","Suddenly…","I couldn't believe my eyes because…","After that, I…","At the end of the day, I felt…","Now when I think about it…"],
+ words:[
+  ["surprised","feeling shock because something you did not expect happened","I was very <em>surprised</em> when I saw my old friend at the shop."],
+  ["nervous","worried and not relaxed about something","I felt <em>nervous</em> when the teacher called my name."],
+  ["exciting","making you feel happy and interested","The trip to the city was very <em>exciting</em>."],
+  ["strange","unusual or different from normal","Something <em>strange</em> happened on my way to school today."],
+  ["quickly","in a fast way","The dog ran <em>quickly</em> across the garden."],
+  ["forgot","did not remember something","I <em>forgot</em> my lunch at home this morning."],
+  ["arrived","got to a place","When we <em>arrived</em> at the beach, it started to rain."],
+  ["happened","took place; occurred","I could not believe what <em>happened</em> next."],
+  ["confused","not able to understand something clearly","I was very <em>confused</em> because I did not know what to do."],
+  ["happy","feeling pleased and good","At the end, I felt <em>happy</em> because everything was fine."],
+ ],
+ connectors:["suddenly","then","after that","finally","because","when"]},
+
+{type:"Narrative",level:"A2",title:"Tell the story of a time you helped someone.",
+ starters:["One day I saw…","I decided to…","The person was…","After I helped, they said…","I felt…","This experience taught me…"],
+ words:[
+  ["kind","friendly and helpful to other people","It is important to be <em>kind</em> to strangers."],
+  ["scared","feeling fear; frightened","The little boy was <em>scared</em> because he was lost."],
+  ["problem","a difficult situation that needs a solution","She had a <em>problem</em> because she missed the bus."],
+  ["thank you","words you say to show you are grateful","She said '<em>thank you</em>' and smiled at me."],
+  ["smile","a happy expression on your face","He gave me a big <em>smile</em> when I helped him."],
+  ["stranger","a person you do not know","I helped a <em>stranger</em> who dropped her bags."],
+  ["carry","to hold something and take it somewhere","I offered to <em>carry</em> her heavy shopping bags."],
+  ["lost","not knowing where you are","The tourist was <em>lost</em> and could not find the station."],
+  ["together","with each other; not alone","We solved the problem <em>together</em>."],
+  ["friend","a person you like and enjoy spending time with","After that day, we became good <em>friends</em>."],
+ ],
+ connectors:["then","after that","suddenly","because","so","at the end"]},
+
+{type:"Narrative",level:"A2",title:"Write about your best holiday or trip.",
+ starters:["Last year I went to…","When we arrived, I…","One day we…","The best part was…","I also remember…","I will never forget…"],
+ words:[
+  ["beautiful","very pleasing to look at","The mountains were <em>beautiful</em> in the morning light."],
+  ["excited","feeling very happy and interested about something","I was so <em>excited</em> on the first day of the holiday."],
+  ["beach","an area of sand next to the sea","We spent the day at the <em>beach</em>."],
+  ["hotel","a building where people pay to sleep and eat","Our <em>hotel</em> had a swimming pool."],
+  ["visited","went to see a place or person","We <em>visited</em> a very old castle on the second day."],
+  ["tried","attempted to do something for the first time","I <em>tried</em> local food and it was delicious."],
+  ["delicious","tasting very good","The seafood was absolutely <em>delicious</em>."],
+  ["souvenir","a small object you buy to remember a place","I bought a <em>souvenir</em> for my mother."],
+  ["family","a group of people related to each other","I went on this trip with my whole <em>family</em>."],
+  ["adventure","an exciting and unusual experience","Every day of the trip was a new <em>adventure</em>."],
+ ],
+ connectors:["first","then","after that","also","finally","I will never forget"]},
+
+{type:"Narrative",level:"A2",title:"Describe a time when you were scared.",
+ starters:["I remember one night when…","Suddenly I heard…","My heart was beating fast because…","I decided to…","In the end…","After that day, I…"],
+ words:[
+  ["dark","with little or no light","The room was completely <em>dark</em> and I could not see anything."],
+  ["alone","without other people","I was <em>alone</em> in the house for the first time."],
+  ["noise","a sound, often loud or unexpected","I heard a strange <em>noise</em> coming from outside."],
+  ["shake","to move quickly up and down or side to side","My hands started to <em>shake</em> because I was so scared."],
+  ["brave","not afraid; showing courage","I tried to be <em>brave</em> and opened the door."],
+  ["door","the entrance to a room or building","I heard a knock on the <em>door</em> late at night."],
+  ["shadow","a dark shape made when something blocks light","I saw a <em>shadow</em> move across the wall."],
+  ["called","used your voice to contact someone","I <em>called</em> my mum and she answered immediately."],
+  ["safe","not in danger","When my mum arrived, I finally felt <em>safe</em>."],
+  ["relieved","happy because something scary is over","I was very <em>relieved</em> when I found out it was just the cat."],
+ ],
+ connectors:["suddenly","then","because","after that","in the end","I remember"]},
+
+{type:"Narrative",level:"A2",title:"Tell the story of learning something new.",
+ starters:["I always wanted to learn…","At first, it was…","I practised every day by…","One day I finally…","I felt so…","Now I can…"],
+ words:[
+  ["difficult","not easy; needing a lot of effort","At first, riding a bike was very <em>difficult</em>."],
+  ["practice","doing something many times to improve","<em>Practice</em> is the only way to get better at a skill."],
+  ["mistake","something you do that is wrong","I made many <em>mistakes</em> before I got it right."],
+  ["improve","to get better at something","I could see that I was starting to <em>improve</em>."],
+  ["patient","able to wait calmly without getting angry","My teacher was very <em>patient</em> when I made mistakes."],
+  ["try again","to make another attempt after failing","I fell off the bike but decided to <em>try again</em>."],
+  ["proud","feeling happy about something you achieved","I was very <em>proud</em> when I finally did it."],
+  ["lesson","a time when you are taught something","My guitar <em>lesson</em> is every Saturday morning."],
+  ["teacher","a person who helps you learn","My <em>teacher</em> showed me the correct way to hold the racket."],
+  ["skill","the ability to do something well","Swimming is a very important <em>skill</em> for safety."],
+ ],
+ connectors:["at first","then","after","because","finally","now"]},
+
+{type:"Narrative",level:"A2",title:"Write about a time you made a new friend.",
+ starters:["I met my new friend when…","At first I was…","We started talking about…","After a while…","Now we…","That day I learned…"],
+ words:[
+  ["shy","nervous about talking to people you do not know","At first I was very <em>shy</em> and did not say anything."],
+  ["laugh","to make a sound because something is funny","We started to <em>laugh</em> at the same joke."],
+  ["same","not different; equal","We liked the <em>same</em> music and the same films."],
+  ["school","the place where children go to learn","I met her on my first day at a new <em>school</em>."],
+  ["sport","a physical activity done for exercise or competition","We became friends because we both love the same <em>sport</em>."],
+  ["invite","to ask someone to come to a place or event","She <em>invited</em> me to her birthday party."],
+  ["together","with each other","We walked home <em>together</em> after school."],
+  ["kind","friendly and caring","She was very <em>kind</em> to me when I was new."],
+  ["comfortable","relaxed; not nervous","After a while I felt <em>comfortable</em> talking to her."],
+  ["remember","to think of something from the past","I will always <em>remember</em> the day we met."],
+ ],
+ connectors:["at first","then","after a while","because","now","and"]},
+
+// ── NARRATIVE B1 ─────────────────────────────────────────────────
+{type:"Narrative",level:"B1",title:"Write about a journey that changed your perspective.",
+ starters:["The journey began when I…","I had not expected to…","As we travelled further, I noticed…","One moment that stayed with me was…","By the time I returned…","Looking back now, I realise…"],
+ words:[
+  ["unfamiliar","not known to you; strange and new","Everything around me was <em>unfamiliar</em> — the language, the food, the people."],
+  ["culture shock","the feeling of confusion when you experience a very different culture","I experienced <em>culture shock</em> in my first week abroad."],
+  ["perspective","a particular way of thinking about something","Travelling changed my <em>perspective</em> on what is truly important."],
+  ["reflection","careful thought about your experiences or feelings","The long train journey gave me time for <em>reflection</em>."],
+  ["encounter","an unexpected meeting with someone or something","An <em>encounter</em> with a local family changed the way I saw things."],
+  ["impression","a feeling or opinion formed from an experience","My first <em>impression</em> of the country was completely wrong."],
+  ["local","a person who lives in a particular place","A <em>local</em> showed us hidden parts of the city that tourists never see."],
+  ["assumption","something you believe is true without checking","I had to abandon my <em>assumption</em> that all cities are the same."],
+  ["broaden","to make wider or more varied","Travel can <em>broaden</em> your mind and your outlook on life."],
+  ["realise","to understand something clearly for the first time","I began to <em>realise</em> how different my life was from others'."],
+ ],
+ connectors:["as soon as","however","gradually","by the time","looking back","moreover"]},
+
+{type:"Narrative",level:"B1",title:"Tell the story of a time you overcame a fear.",
+ starters:["For as long as I could remember, I had been afraid of…","The moment I decided to face my fear was…","At first, I felt…","As time went on…","To my surprise…","That experience taught me…"],
+ words:[
+  ["courage","the ability to do something frightening","It took real <em>courage</em> to get on the plane for the first time."],
+  ["anxiety","a feeling of strong worry or nervousness","My <em>anxiety</em> before the performance was almost overwhelming."],
+  ["overcome","to succeed in dealing with something difficult","She finally managed to <em>overcome</em> her fear of water."],
+  ["breathe","to take air in and out — often used to calm down","I remembered to <em>breathe</em> slowly and stay calm."],
+  ["hesitate","to pause before doing something because you are unsure","I <em>hesitated</em> at the top of the diving board for a long time."],
+  ["attempt","a try at doing something difficult","On my first <em>attempt</em>, I only managed a few seconds."],
+  ["confidence","belief in your own ability","Facing my fear gave me a lot more <em>confidence</em>."],
+  ["milestone","an important achievement or moment","Completing the challenge felt like a major <em>milestone</em>."],
+  ["tremble","to shake slightly because of fear or cold","My legs were <em>trembling</em> as I walked out onto the stage."],
+  ["relief","the happy feeling when something scary or difficult ends","The <em>relief</em> I felt afterwards was incredible."],
+ ],
+ connectors:["at first","however","gradually","eventually","to my surprise","as a result"]},
+
+{type:"Narrative",level:"B1",title:"Write about a time you had to make a difficult decision.",
+ starters:["The hardest decision I ever faced was…","On one hand, I knew that…","On the other hand…","After thinking carefully, I decided to…","The consequences of my choice were…","Looking back…"],
+ words:[
+  ["dilemma","a situation where you have to choose between two difficult options","I faced a real <em>dilemma</em> — stay or leave."],
+  ["weigh up","to consider the advantages and disadvantages carefully","I spent a week trying to <em>weigh up</em> my options."],
+  ["consequences","the results or effects of a decision","I had to think carefully about the <em>consequences</em> of my choice."],
+  ["regret","a sad feeling about something you did or did not do","I was worried I would <em>regret</em> the decision later."],
+  ["outcome","the final result of a decision or situation","The <em>outcome</em> was better than I had expected."],
+  ["advice","suggestions from someone about what you should do","I asked a trusted friend for <em>advice</em>."],
+  ["risk","the possibility that something bad might happen","Taking the new job was a <em>risk</em>, but I felt ready."],
+  ["sacrifice","giving up something important to get something else","I had to make a <em>sacrifice</em> to follow my dream."],
+  ["pressure","a feeling that you must do something","I felt a lot of <em>pressure</em> from my family to choose carefully."],
+  ["commitment","a promise or decision to do something","I made a full <em>commitment</em> to my new path."],
+ ],
+ connectors:["on one hand","on the other hand","however","in the end","as a result","looking back"]},
+
+{type:"Narrative",level:"B1",title:"Describe a time when you experienced failure and what you learnt.",
+ starters:["I thought I was prepared, but…","When the results came, I…","My first reaction was…","However, after some time I…","I decided to…","That failure ultimately helped me…"],
+ words:[
+  ["disappointment","the unhappy feeling when things do not go as you hoped","The <em>disappointment</em> I felt after failing was very hard."],
+  ["resilience","the ability to recover from difficulty","That experience helped me develop real <em>resilience</em>."],
+  ["setback","a problem that delays or prevents progress","A <em>setback</em> is not the end — it is a chance to grow."],
+  ["reflect","to think carefully about something from the past","I needed time to <em>reflect</em> on where I had gone wrong."],
+  ["determination","a strong decision to do something no matter how hard it is","I came back with even greater <em>determination</em> to succeed."],
+  ["lesson","something important you learn from an experience","The most valuable <em>lesson</em> was to prepare more carefully."],
+  ["effort","the hard work you put into doing something","I had not put in enough <em>effort</em> in the weeks before."],
+  ["improve","to get better at something","I worked hard to <em>improve</em> before my next attempt."],
+  ["move on","to stop thinking about the past and continue with life","The hardest part was learning to <em>move on</em> from the failure."],
+  ["perspective","a way of thinking about a situation","In time, I gained a new <em>perspective</em> on what had happened."],
+ ],
+ connectors:["however","despite this","as a result","eventually","in hindsight","ultimately"]},
+
+{type:"Narrative",level:"B1",title:"Write about an important person in your life and a memory you share.",
+ starters:["The person who has influenced me most is…","One memory I will always treasure is…","On that day, we…","What made this moment special was…","Since then…","This person taught me…"],
+ words:[
+  ["admire","to respect and look up to someone","I deeply <em>admire</em> my grandfather for his hard work."],
+  ["grateful","feeling thankful for something someone has done","I am <em>grateful</em> for everything she taught me."],
+  ["memory","something from the past that you remember clearly","That afternoon is one of my happiest <em>memories</em>."],
+  ["impact","a strong effect or influence on something","She had a huge <em>impact</em> on the person I am today."],
+  ["inspire","to make someone want to do or achieve something","He <em>inspires</em> me to work harder every day."],
+  ["trust","a strong belief that someone is honest and will not hurt you","She is the person I <em>trust</em> most in the world."],
+  ["mentor","a person who gives advice and support to help you grow","My first teacher was a true <em>mentor</em> to me."],
+  ["relationship","a connection between two or more people","Our <em>relationship</em> has grown stronger over the years."],
+  ["cherish","to love and value something very much","I <em>cherish</em> every moment I spend with my grandmother."],
+  ["bond","a strong emotional connection between people","The <em>bond</em> between us grew stronger after that day."],
+ ],
+ connectors:["on that day","since then","because of this","furthermore","looking back","as a result"]},
+
+{type:"Narrative",level:"B1",title:"Tell the story of an unexpected act of kindness you witnessed or experienced.",
+ starters:["It happened on an ordinary day when…","Without any warning…","The person who helped was…","What surprised me most was…","As a result of this experience…","It made me think about…"],
+ words:[
+  ["generosity","the quality of giving more than is expected","The <em>generosity</em> of a complete stranger moved me to tears."],
+  ["stranger","a person you have never met before","A <em>stranger</em> paid for my coffee when I had no money."],
+  ["genuine","real and sincere; not pretending","Her smile was completely <em>genuine</em> — she truly wanted to help."],
+  ["touched","feeling emotional because of something kind","I was deeply <em>touched</em> by what she did."],
+  ["gratitude","the feeling of being thankful","I wanted to express my <em>gratitude</em> but she had already left."],
+  ["compassion","the feeling of caring about someone who is suffering","He showed real <em>compassion</em> to the elderly man on the bus."],
+  ["selfless","caring about others more than yourself","The act was completely <em>selfless</em> — she wanted nothing in return."],
+  ["impact","a strong effect or influence","That small act had a huge <em>impact</em> on the rest of my day."],
+  ["community","a group of people who live or work together","Moments like this remind me of the power of <em>community</em>."],
+  ["restore faith","to make you believe again that people are good","That experience <em>restored my faith</em> in human kindness."],
+ ],
+ connectors:["suddenly","however","as a result","furthermore","looking back","it made me realise"]},
+
+// ── NARRATIVE B2 ─────────────────────────────────────────────────
+{type:"Narrative",level:"B2",title:"Narrate the events that led to a significant turning point in your life.",
+ starters:["The path that led to this turning point began…","Had I known what was ahead, I might have…","The pivotal moment arrived when…","What followed was…","In retrospect, the chain of events…","The person I became afterwards…"],
+ words:[
+  ["catalyst","something that causes an important change to happen","The redundancy notice was the <em>catalyst</em> for a complete career change."],
+  ["pivotal","of central importance; decisive","That conversation was a <em>pivotal</em> moment in my life."],
+  ["trajectory","the path or direction something follows over time","My career <em>trajectory</em> changed completely after that year."],
+  ["unravel","to come apart gradually; to fall to pieces","Everything I had built seemed to <em>unravel</em> at once."],
+  ["precipitate","to cause something to happen suddenly","A single event can <em>precipitate</em> enormous change."],
+  ["consequence","something that happens as a result of an action","I had not considered the long-term <em>consequences</em> of that decision."],
+  ["transformation","a complete change in character or appearance","The experience led to a profound personal <em>transformation</em>."],
+  ["retrospect","looking back on past events with new understanding","In <em>retrospect</em>, I can see exactly where things began to shift."],
+  ["rupture","a sudden break in a relationship or situation","The <em>rupture</em> with my old life was painful but necessary."],
+  ["reshape","to change the form or structure of something significantly","That period <em>reshaped</em> my understanding of what I valued."],
+ ],
+ connectors:["meanwhile","in retrospect","as a consequence","paradoxically","not until","what followed"]},
+
+{type:"Narrative",level:"B2",title:"Write a personal essay about a place that shaped you.",
+ starters:["There is a place I return to in memory more than any other…","Its geography was…","The people who inhabited it…","Over time, this place became…","What I only understood later was…","To return there now would be…"],
+ words:[
+  ["evoke","to bring a feeling or memory back into your mind","The smell of pine trees <em>evokes</em> my childhood summers."],
+  ["imbued","filled with a particular quality or feeling","The old library was <em>imbued</em> with a sense of possibility."],
+  ["threshold","a point of entry or beginning; a significant boundary","The doorway of that house was the <em>threshold</em> between two worlds."],
+  ["refuge","a place that gives safety or shelter","That room became my <em>refuge</em> during a difficult adolescence."],
+  ["formative","having a strong influence on the development of a person","Those years were the most <em>formative</em> of my life."],
+  ["peripheral","on the edge; not central","Details I had dismissed as <em>peripheral</em> turned out to be crucial."],
+  ["atmosphere","the mood or feeling in a particular place","The <em>atmosphere</em> of the village was one of quiet intensity."],
+  ["transient","lasting only a short time; passing","I understood that my time there was <em>transient</em>."],
+  ["linger","to remain in a place or in your memory longer than expected","The feeling of peace <em>lingered</em> long after I left."],
+  ["indelible","impossible to forget or remove","It left an <em>indelible</em> mark on my sense of self."],
+ ],
+ connectors:["meanwhile","nevertheless","in contrast","as a result","what I only understood later","over time"]},
+
+{type:"Narrative",level:"B2",title:"Tell the story of a moral conflict you faced.",
+ starters:["The situation placed me in an impossible position…","My immediate instinct was to…","However, the consequences of that choice…","What held me back was…","Ultimately, I decided to…","The experience forced me to confront…"],
+ words:[
+  ["integrity","the quality of being honest and having strong moral principles","I wanted to act with <em>integrity</em> even when it was costly."],
+  ["complicity","involvement in a wrongdoing, even if passive","My silence made me feel a sense of <em>complicity</em>."],
+  ["rationalise","to invent logical reasons for something you know is wrong","I tried to <em>rationalise</em> my inaction, but it didn't work."],
+  ["compromise","to accept something less than ideal to reach agreement","I was not willing to <em>compromise</em> my values for convenience."],
+  ["culpability","responsibility for a fault or wrong","The question of <em>culpability</em> weighed on me for weeks."],
+  ["dilemma","a situation requiring a choice between two unpleasant options","I faced a genuine moral <em>dilemma</em> with no easy answer."],
+  ["allegiance","loyalty to a person, group, or idea","My <em>allegiance</em> was torn between my friend and the truth."],
+  ["conscience","the inner sense of what is right or wrong","My <em>conscience</em> would not let me stay silent."],
+  ["ambiguity","the quality of having more than one possible meaning or interpretation","The moral <em>ambiguity</em> of the situation made it harder to decide."],
+  ["resolve","firm determination to do something","I found the <em>resolve</em> to speak up, despite the risk."],
+ ],
+ connectors:["nevertheless","however","as a consequence","paradoxically","ultimately","in retrospect"]},
+
+{type:"Narrative",level:"B2",title:"Write about a time you realised your assumptions were wrong.",
+ starters:["My understanding of the situation was, I believed, complete…","What I had not anticipated was…","The moment I realised my error…","What followed was a process of…","The experience dismantled my assumption that…","Looking back, I see that my certainty was…"],
+ words:[
+  ["preconception","an opinion formed before you have enough information","I had to abandon my <em>preconceptions</em> about the country."],
+  ["dismantle","to take apart; to destroy a belief or structure","The encounter <em>dismantled</em> everything I thought I knew."],
+  ["humility","the quality of not thinking you are better or smarter than others","The experience taught me genuine <em>humility</em>."],
+  ["reassess","to think again about something and form a new opinion","I was forced to <em>reassess</em> my entire understanding."],
+  ["entrenched","firmly held and difficult to change","My views had become too <em>entrenched</em> for me to see clearly."],
+  ["revelation","a surprising discovery that changes your understanding","Meeting her was a <em>revelation</em> — everything I believed was wrong."],
+  ["complexity","the quality of having many different, connected parts","I had underestimated the <em>complexity</em> of the situation."],
+  ["naive","too simple; lacking experience of how the world works","Looking back, my view was embarrassingly <em>naive</em>."],
+  ["reframe","to think about something in a new and different way","The experience helped me <em>reframe</em> the entire situation."],
+  ["nuance","a subtle difference in meaning or understanding","I had missed all the important <em>nuance</em> in what she said."],
+ ],
+ connectors:["however","as a consequence","paradoxically","in retrospect","what I had not anticipated","over time"]},
+
+{type:"Narrative",level:"B2",title:"Narrate a time when you were caught between two loyalties.",
+ starters:["The conflict between my two obligations began…","On one side was…","On the other…","The tension reached its peak when…","I ultimately chose to…","The price of that decision was…"],
+ words:[
+  ["allegiance","loyalty to a person, group, or cause","My <em>allegiance</em> to my friend conflicted with my duty to tell the truth."],
+  ["betrayal","the act of breaking someone's trust","Whatever I chose, it would feel like a <em>betrayal</em> to someone."],
+  ["obligation","a duty or responsibility you feel you must fulfil","I had a moral <em>obligation</em> that I could not ignore."],
+  ["torn","unable to choose between two things you both feel strongly about","I was completely <em>torn</em> between the two people I cared about."],
+  ["reconcile","to find a way to make two opposing things work together","I could not <em>reconcile</em> my two loyalties no matter how hard I tried."],
+  ["duty","a moral or legal obligation to do something","My sense of <em>duty</em> to the institution was strong."],
+  ["trust","a firm belief in the honesty and reliability of someone","I was afraid of losing someone's <em>trust</em> permanently."],
+  ["fracture","a crack or break in a relationship","The conflict created a <em>fracture</em> that took years to heal."],
+  ["prioritise","to decide which thing is most important","In the end, I had to <em>prioritise</em> the truth over comfort."],
+  ["aftermath","the period after a difficult event","The <em>aftermath</em> of the decision was painful for everyone involved."],
+ ],
+ connectors:["meanwhile","on one hand","on the other","ultimately","as a consequence","in retrospect"]},
+
+{type:"Narrative",level:"B2",title:"Write about a childhood memory that only makes sense to you now as an adult.",
+ starters:["As a child, I could not have understood why…","The scene I remember is…","At the time, I interpreted it as…","What I know now is…","The gap between my childhood perception and adult understanding…","This memory has become…"],
+ words:[
+  ["innocence","lack of experience or knowledge; purity of mind","I see now the beauty and the limits of childhood <em>innocence</em>."],
+  ["reinterpret","to understand something in a new way","As an adult, I <em>reinterpret</em> that scene entirely differently."],
+  ["context","the circumstances that help explain something","Without <em>context</em>, I misunderstood what was happening completely."],
+  ["ambiguous","open to more than one interpretation","The look on her face was deeply <em>ambiguous</em> to my child's mind."],
+  ["layered","having many levels of meaning or complexity","The memory is more <em>layered</em> than I realised as a child."],
+  ["reconstruct","to build up again from fragments or memory","I try to <em>reconstruct</em> that afternoon from scattered details."],
+  ["nostalgia","a sentimental longing for the past","The memory brings a complicated mixture of <em>nostalgia</em> and sadness."],
+  ["clarity","the quality of being clear and easy to understand","Adult <em>clarity</em> has both enriched and darkened the memory."],
+  ["retrospective","looking back on past events","My <em>retrospective</em> reading of that day is quite different."],
+  ["significance","the importance or meaning of something","The <em>significance</em> of what I witnessed only became clear years later."],
+ ],
+ connectors:["at the time","in retrospect","however","what I now understand","paradoxically","over the years"]},
+
+// ── DESCRIPTIVE A2 ───────────────────────────────────────────────
+{type:"Descriptive",level:"A2",title:"Describe your favourite place.",
+ starters:["My favourite place is…","When I am there, I can see…","It smells like…","The sounds I hear are…","I feel…when I am there because…","I love this place because…"],
+ words:[
+  ["peaceful","calm and quiet; without stress","The park is very <em>peaceful</em> in the morning."],
+  ["colourful","having many bright colours","The market is very <em>colourful</em> with flowers and fruit."],
+  ["beautiful","very pleasing to see","The view from the hill is <em>beautiful</em>."],
+  ["smell","what your nose detects; an odour","I love the <em>smell</em> of fresh bread from the bakery."],
+  ["sound","what your ears hear; a noise","The <em>sound</em> of the river makes me feel calm."],
+  ["comfortable","making you feel relaxed and at ease","The old sofa is very <em>comfortable</em>."],
+  ["visit","to go to a place for a period of time","I love to <em>visit</em> this place every weekend."],
+  ["relax","to rest and feel calm","I go there to <em>relax</em> after a long week."],
+  ["always","at every time; without exception","There is <em>always</em> music playing in that café."],
+  ["special","different from ordinary; important to you","This place is very <em>special</em> to me and my family."],
+ ],
+ connectors:["and","also","because","when","there is","I love"]},
+
+{type:"Descriptive",level:"A2",title:"Describe a person you admire.",
+ starters:["The person I admire most is…","They look…","Their personality is…","One thing they always do is…","I admire them because…","They have taught me…"],
+ words:[
+  ["kind","friendly and generous to other people","She is the most <em>kind</em> person I have ever met."],
+  ["hardworking","putting a lot of effort into what you do","My father is very <em>hardworking</em> — he never stops."],
+  ["tall","higher than average in height","He is very <em>tall</em> and always easy to find in a crowd."],
+  ["smile","a happy expression showing the teeth","Her <em>smile</em> makes everyone feel welcome."],
+  ["funny","making people laugh","My grandmother is very <em>funny</em> and always tells good stories."],
+  ["brave","not afraid to do difficult or dangerous things","My uncle is very <em>brave</em> — he is a firefighter."],
+  ["honest","always telling the truth","I admire her because she is completely <em>honest</em>."],
+  ["patient","able to wait calmly or to teach without getting angry","A good teacher is always <em>patient</em> with students."],
+  ["clever","able to understand and learn things quickly","My older sister is very <em>clever</em> and always helps me."],
+  ["generous","happy to give more than is expected","He is <em>generous</em> with his time and always helps others."],
+ ],
+ connectors:["and","also","because","for example","they always","I admire"]},
+
+{type:"Descriptive",level:"A2",title:"Describe your bedroom or a room in your house.",
+ starters:["My room is…","When you walk in, you can see…","On the walls there are…","My favourite thing in the room is…","In my room I like to…","It is special to me because…"],
+ words:[
+  ["comfortable","making you feel relaxed and at ease","My bed is very <em>comfortable</em> and I sleep well."],
+  ["tidy","clean and well organised","I try to keep my room <em>tidy</em>."],
+  ["messy","not organised; things in the wrong place","My brother's room is always <em>messy</em>."],
+  ["poster","a large picture on a wall","I have a <em>poster</em> of my favourite band on my wall."],
+  ["window","an opening in a wall with glass to let light in","My <em>window</em> looks out over the garden."],
+  ["colour","the appearance of something — red, blue, green, etc.","My room is painted a light blue <em>colour</em>."],
+  ["shelf","a flat board on a wall to put things on","I have a <em>shelf</em> full of books next to my bed."],
+  ["lamp","a light you can move or place on a desk","There is a small <em>lamp</em> on my desk for studying."],
+  ["corner","the place where two walls or sides meet","I have a reading chair in the <em>corner</em> of my room."],
+  ["warm","having a pleasant, comfortable temperature","My room is always <em>warm</em> in winter."],
+ ],
+ connectors:["and","also","there is","there are","I have","because"]},
+
+{type:"Descriptive",level:"A2",title:"Describe your school.",
+ starters:["My school is…","When you arrive, you see…","The classrooms are…","My favourite part of the school is…","At break time…","I think my school is…"],
+ words:[
+  ["playground","an outdoor area at school where children play","The <em>playground</em> is large with a football court."],
+  ["corridor","a long passage inside a building","The <em>corridors</em> are always busy between lessons."],
+  ["library","a room with many books to read or borrow","Our school <em>library</em> has thousands of books."],
+  ["large","big in size","Our school is very <em>large</em> with over a thousand students."],
+  ["busy","with a lot of people or activity","The school is very <em>busy</em> at the start of the day."],
+  ["teacher","a person who teaches students","All the <em>teachers</em> at my school are very helpful."],
+  ["quiet","not loud; peaceful","The library is always very <em>quiet</em>."],
+  ["noisy","making a lot of sound","The canteen is very <em>noisy</em> at lunchtime."],
+  ["friendly","kind and pleasant to other people","The students in my school are very <em>friendly</em>."],
+  ["canteen","a place in a school where food is sold or served","The <em>canteen</em> serves hot food every day."],
+ ],
+ connectors:["and","also","there is","because","at break time","I think"]},
+
+{type:"Descriptive",level:"A2",title:"Describe a market or shop you like.",
+ starters:["One of my favourite places to visit is…","When I walk in, I can see…","It smells like…","The people there are…","You can buy…","I always feel…when I am there."],
+ words:[
+  ["colourful","having many bright and attractive colours","The market is very <em>colourful</em> with fresh fruit and flowers."],
+  ["fresh","recently made or picked; not old","The bread here is always <em>fresh</em> in the morning."],
+  ["crowded","full of many people","The market is very <em>crowded</em> on Saturday mornings."],
+  ["stall","a small counter or table where things are sold","Each <em>stall</em> sells something different."],
+  ["delicious","tasting very good","The pastries from this shop are absolutely <em>delicious</em>."],
+  ["vendor","a person who sells things","The <em>vendor</em> gave us a free sample to try."],
+  ["basket","a container made of woven material","She carried her shopping in a large wicker <em>basket</em>."],
+  ["display","an arrangement of things for people to look at","The fruit <em>display</em> is always beautiful."],
+  ["choose","to pick one thing from several options","I love to <em>choose</em> my own vegetables at the market."],
+  ["busy","full of activity and people","The shop is always <em>busy</em> on weekday mornings."],
+ ],
+ connectors:["and","also","there are","because","you can","I always"]},
+
+{type:"Descriptive",level:"A2",title:"Describe your favourite animal.",
+ starters:["My favourite animal is…","It looks like…","It lives in…","It eats…","One interesting thing about it is…","I love this animal because…"],
+ words:[
+  ["fur","the thick hair that covers some animals","The bear has thick, brown <em>fur</em> to keep it warm."],
+  ["wings","the parts of a bird or insect used for flying","Eagles have enormous <em>wings</em> and can fly very high."],
+  ["fast","able to move quickly","Cheetahs are the <em>fastest</em> animals on land."],
+  ["wild","living in nature, not kept by people","Lions are <em>wild</em> animals that live in Africa."],
+  ["friendly","kind and safe to be near","Dolphins are known for being very <em>friendly</em> to humans."],
+  ["dangerous","able to cause harm","Sharks are <em>dangerous</em> but they rarely attack people."],
+  ["colourful","having many bright colours","Parrots are very <em>colourful</em> birds."],
+  ["large","big in size","Elephants are the <em>largest</em> land animals in the world."],
+  ["small","little in size","Hummingbirds are very <em>small</em> but very beautiful."],
+  ["special","different from others; important or unusual","The axolotl is a <em>special</em> animal because it can regrow its limbs."],
+ ],
+ connectors:["and","also","because","it can","I think","I love"]},
+
+// ── DESCRIPTIVE B1 ───────────────────────────────────────────────
+{type:"Descriptive",level:"B1",title:"Describe a city or town that made a strong impression on you.",
+ starters:["The first thing that strikes you about this place is…","The streets are…","What makes it unique is…","The people who live there…","As evening falls…","What I will remember most is…"],
+ words:[
+  ["vibrant","full of life, colour, and energy","The market was <em>vibrant</em> with music and colour."],
+  ["architecture","the design and style of buildings","The <em>architecture</em> of the old city was breathtaking."],
+  ["atmosphere","the mood or feeling in a particular place","There was a warm, welcoming <em>atmosphere</em> in the streets."],
+  ["contrast","a clear difference between two things","The <em>contrast</em> between the old town and the new district was striking."],
+  ["bustling","full of activity and energy","The harbour was <em>bustling</em> with fishermen in the morning."],
+  ["landmark","a famous or easily recognised building or place","The cathedral is the city's most famous <em>landmark</em>."],
+  ["narrow","not wide; small from side to side","The <em>narrow</em> streets of the old quarter were full of charm."],
+  ["cobblestone","a small, round stone used to make old road surfaces","The <em>cobblestone</em> streets made walking feel like stepping back in time."],
+  ["lively","full of energy and excitement","The main square was always <em>lively</em> in the evenings."],
+  ["character","the special qualities that make a place or person unique","The city has a unique <em>character</em> that is hard to describe."],
+ ],
+ connectors:["furthermore","in contrast","what strikes me most","as well as","not only…but also","what I remember most"]},
+
+{type:"Descriptive",level:"B1",title:"Describe someone who has had a positive influence on your life.",
+ starters:["The person who has influenced me most is…","What first comes to mind when I think of them is…","Their most distinctive quality is…","I vividly remember the time when…","Thanks to them…","They have shaped the way I…"],
+ words:[
+  ["determination","a strong decision to do something no matter how hard it is","Her <em>determination</em> in the face of difficulty inspired everyone."],
+  ["empathy","the ability to understand and share another person's feelings","What I admire most about him is his deep <em>empathy</em>."],
+  ["inspiring","making you feel motivated to do great things","Her story is truly <em>inspiring</em> to anyone who hears it."],
+  ["dedicate","to give a lot of time and effort to something","She <em>dedicates</em> all her spare time to helping others."],
+  ["mentor","someone who gives you advice and guidance to help you grow","He was more than a teacher — he was a true <em>mentor</em>."],
+  ["genuine","real and sincere; not pretending","Her interest in my progress felt completely <em>genuine</em>."],
+  ["patient","able to wait and help without getting frustrated","He was always <em>patient</em>, even when I struggled."],
+  ["perceptive","able to notice and understand things quickly","She is incredibly <em>perceptive</em> and always knows when something is wrong."],
+  ["motivate","to give someone a reason to work hard","She has a gift for <em>motivating</em> people to do their best."],
+  ["shape","to influence and form someone's character","My first coach <em>shaped</em> my attitude towards hard work."],
+ ],
+ connectors:["furthermore","as a result","in particular","not only","what strikes me most","thanks to"]},
+
+{type:"Descriptive",level:"B1",title:"Describe a festival or celebration in your culture.",
+ starters:["One of the most important celebrations in my culture is…","The preparations begin…","The atmosphere on the day is…","Traditional foods include…","What I love most about it is…","For me, this celebration represents…"],
+ words:[
+  ["tradition","a custom or belief passed down through generations","Lighting candles is an important <em>tradition</em> during this festival."],
+  ["ritual","a series of actions performed as part of a ceremony","The opening <em>ritual</em> marks the beginning of the celebration."],
+  ["vibrant","full of energy, colour, and life","The streets become <em>vibrant</em> with music and dancing."],
+  ["gather","to come together in one place","Families <em>gather</em> from all over the country for this celebration."],
+  ["heritage","the traditions and values passed down from previous generations","The festival is a celebration of our cultural <em>heritage</em>."],
+  ["costume","special clothes worn for an event or performance","Children dress up in traditional <em>costumes</em> for the parade."],
+  ["ceremony","a formal event to mark an important occasion","The closing <em>ceremony</em> includes a spectacular fireworks display."],
+  ["symbolic","representing something important or meaningful","The burning of the lanterns is deeply <em>symbolic</em>."],
+  ["community","a group of people who share something in common","The festival brings the whole <em>community</em> together."],
+  ["cherish","to love and value something deeply","I <em>cherish</em> the memories I have of this celebration as a child."],
+ ],
+ connectors:["furthermore","in addition","as a result","not only","what I love most","for me"]},
+
+{type:"Descriptive",level:"B1",title:"Describe a piece of music, art, or film that moves you.",
+ starters:["The work that has always moved me is…","At first glance / listen…","What makes it extraordinary is…","The way it makes me feel is…","I particularly notice…","Every time I experience it…"],
+ words:[
+  ["evoke","to bring a feeling or memory into your mind","The music <em>evokes</em> a powerful sense of loss and beauty."],
+  ["emotional","producing strong feelings","The final scene of the film is deeply <em>emotional</em>."],
+  ["layered","having many levels of meaning","The painting is <em>layered</em> — the more you look, the more you see."],
+  ["powerful","having a strong effect or impact","The song has a <em>powerful</em> message about human connection."],
+  ["subtle","not obvious; requiring careful attention to notice","The director uses <em>subtle</em> symbolism throughout the film."],
+  ["interpret","to explain or understand the meaning of something","Everyone <em>interprets</em> this painting differently."],
+  ["mood","the general feeling or atmosphere of a piece","The <em>mood</em> of the symphony shifts from sadness to triumph."],
+  ["resonate","to have a deep and lasting effect on you","The lyrics <em>resonate</em> with anyone who has felt loss."],
+  ["perspective","a way of seeing or understanding something","The film gives you a completely new <em>perspective</em> on war."],
+  ["impact","the strong effect something has on people","The <em>impact</em> of that painting stayed with me for days."],
+ ],
+ connectors:["furthermore","in particular","as a result","not only","what strikes me","every time"]},
+
+{type:"Descriptive",level:"B1",title:"Describe a natural landscape that impressed you.",
+ starters:["The landscape that has stayed with me is…","As far as the eye can see…","The colours shift from…","The sounds that fill the air are…","Standing there, I felt…","What makes this place remarkable is…"],
+ words:[
+  ["vast","extremely large in area or extent","The <em>vast</em> desert stretched out in every direction."],
+  ["horizon","the line where the sky meets the land or sea","The sun disappeared slowly below the <em>horizon</em>."],
+  ["dramatic","having a powerful and exciting quality","The <em>dramatic</em> cliffs dropped straight into the sea."],
+  ["rugged","with a rough, uneven surface; wild and natural","The <em>rugged</em> mountain terrain was beautiful but difficult to cross."],
+  ["serene","calm and peaceful","The lake was completely <em>serene</em> at dawn."],
+  ["breathtaking","so beautiful it makes you stop and stare","The view from the summit was absolutely <em>breathtaking</em>."],
+  ["contrast","a clear difference between two things","The <em>contrast</em> between the red rocks and the blue sky was stunning."],
+  ["texture","the feel or appearance of a surface","The <em>texture</em> of the ancient rock felt rough beneath my fingers."],
+  ["raw","natural and untouched by humans","There was something deeply <em>raw</em> about the landscape."],
+  ["illuminate","to light up something with a bright light","The setting sun <em>illuminated</em> the snow-covered peaks."],
+ ],
+ connectors:["furthermore","in contrast","as a result","not only","what strikes me","standing there"]},
+
+{type:"Descriptive",level:"B1",title:"Describe your ideal home.",
+ starters:["If I could design my perfect home, it would be…","The exterior would…","As you walk in…","The space I value most would be…","The atmosphere would feel…","Above all, it would be a place where…"],
+ words:[
+  ["spacious","having plenty of room; not cramped","The living room would be <em>spacious</em> with high ceilings."],
+  ["minimalist","having only what is necessary; clean and simple","I prefer a <em>minimalist</em> style with few objects and clear surfaces."],
+  ["natural light","sunlight that comes in through windows","The house would be full of <em>natural light</em> throughout the day."],
+  ["surrounding","the area or environment around a place","The <em>surroundings</em> would be green and peaceful."],
+  ["cosy","warm, comfortable, and pleasant","I want the reading corner to feel <em>cosy</em> and intimate."],
+  ["functional","practical and working effectively","Every piece of furniture would be <em>functional</em> as well as beautiful."],
+  ["private","away from other people; offering solitude","The garden would be completely <em>private</em> with tall hedges."],
+  ["garden","an area of land with plants, often outside a house","I would want a large <em>garden</em> with fruit trees."],
+  ["architecture","the design and structure of a building","The <em>architecture</em> would combine modern lines with natural materials."],
+  ["sanctuary","a safe, peaceful place where you feel protected","Above all, home should feel like a <em>sanctuary</em>."],
+ ],
+ connectors:["furthermore","in addition","not only","as a result","above all","it would be"]},
+
+// ── DESCRIPTIVE B2 ───────────────────────────────────────────────
+{type:"Descriptive",level:"B2",title:"Describe a place at a specific time of day, focusing on atmosphere.",
+ starters:["At this hour, the city / landscape takes on…","The light, at this particular moment…","What the senses register first is…","Beneath the surface of this stillness / activity…","There is something in the air that…","To be here at this time is to feel…"],
+ words:[
+  ["liminal","relating to a transitional or in-between state","Dawn is a <em>liminal</em> moment — neither night nor day."],
+  ["suffuse","to spread gradually through something","A pale pink light <em>suffused</em> the entire sky."],
+  ["oblique","not direct; at an angle","The <em>oblique</em> afternoon light cast long shadows across the courtyard."],
+  ["crepuscular","relating to dusk or dawn","The city has a <em>crepuscular</em> beauty that daylight destroys."],
+  ["rendered","given a particular appearance or quality","The fog <em>rendered</em> the familiar street unrecognisable."],
+  ["dissolve","to gradually disappear or blend into something else","The shapes of the buildings seemed to <em>dissolve</em> into the mist."],
+  ["peripheral","at the edge of your field of vision or attention","A figure moved at the <em>peripheral</em> edge of my sight."],
+  ["ambient","the background sound or light of an environment","The <em>ambient</em> hum of the city never fully disappears."],
+  ["texture","the quality of a surface as perceived by the senses","The <em>texture</em> of the light at this hour is unlike any other."],
+  ["charged","full of tension, emotion, or energy","The air felt <em>charged</em> with an anticipation I could not name."],
+ ],
+ connectors:["meanwhile","beneath this","as though","what is striking","paradoxically","to be here"]},
+
+{type:"Descriptive",level:"B2",title:"Describe a person through their habits and surroundings rather than appearance.",
+ starters:["You can learn everything about a person from…","The objects arranged around them…","The way they move through a space…","Their speech has a quality of…","What they choose not to say is…","In their company, time seems to…"],
+ words:[
+  ["betray","to reveal something unintentionally","The clutter on his desk <em>betrays</em> an anxious mind."],
+  ["curated","carefully chosen and arranged","Her bookshelves looked <em>curated</em> — each object placed with intention."],
+  ["meticulous","very careful and precise about details","His filing system was <em>meticulous</em> to the point of obsession."],
+  ["reveal","to show something that was hidden","Small gestures often <em>reveal</em> more than words do."],
+  ["peripheral","not central; on the edges","He deflects from anything too personal with a <em>peripheral</em> comment."],
+  ["inhabit","to live in or occupy a space fully","She <em>inhabits</em> her kitchen the way an artist inhabits a studio."],
+  ["idiosyncratic","having unusual habits that are unique to one person","His writing rituals were deeply <em>idiosyncratic</em>."],
+  ["deflect","to turn something away; to avoid a topic","She <em>deflects</em> any personal question with a well-timed joke."],
+  ["latent","present but not yet visible or active","A <em>latent</em> restlessness showed in the way he tapped his fingers."],
+  ["atmosphere","the mood created by a person or environment","Her apartment had an <em>atmosphere</em> of controlled calm."],
+ ],
+ connectors:["meanwhile","what is striking","by contrast","paradoxically","it is as though","beneath this"]},
+
+{type:"Descriptive",level:"B2",title:"Describe a moment of transition — dawn, dusk, a season changing.",
+ starters:["There is no clear boundary at which one thing ends and another begins…","The light at this hour does something unexpected to…","What the eye registers is not so much a scene as…","The temperature carries a memory of…","In this ambiguous interval…","To witness this transition is to understand…"],
+ words:[
+  ["threshold","a moment of transition between two states","Autumn is a <em>threshold</em> between abundance and deprivation."],
+  ["dissolve","to gradually fade into something else","The blue of the sky <em>dissolves</em> into orange near the horizon."],
+  ["imperceptible","too slight to be noticed","The change from summer to autumn is almost <em>imperceptible</em> at first."],
+  ["transmute","to change from one form or nature to another","The garden seems to <em>transmute</em> overnight in early October."],
+  ["suffuse","to spread a quality gradually through something","Warmth <em>suffuses</em> the air in the last weeks of summer."],
+  ["suspended","held in place between two states","Time feels <em>suspended</em> in that brief interval before sunrise."],
+  ["residue","what remains after most of something has gone","A <em>residue</em> of warmth lingers in the stone walls after sunset."],
+  ["anticipation","the feeling of looking forward to something","There is always a charge of <em>anticipation</em> before the first snow."],
+  ["liminal","relating to a transitional or between state","The hour before dawn is the most <em>liminal</em> of the day."],
+  ["charged","full of suppressed emotion or energy","The November air felt <em>charged</em> with something impending."],
+ ],
+ connectors:["meanwhile","as though","what strikes one is","paradoxically","in this interval","to witness"]},
+
+{type:"Descriptive",level:"B2",title:"Describe a memory using all five senses.",
+ starters:["The memory returns not as image first, but as…","What the hands remember is…","The smell alone is enough to reconstruct…","A particular quality of light…","The voice I hear is…","When all these sensory fragments converge…"],
+ words:[
+  ["olfactory","related to the sense of smell","The <em>olfactory</em> trigger was the smell of a particular soap."],
+  ["tactile","related to the sense of touch","The <em>tactile</em> memory of cold stone is the clearest I have."],
+  ["visceral","felt deeply and powerfully in the body","The memory provoked a <em>visceral</em> wave of grief."],
+  ["reconstruct","to rebuild something from partial information","Memory does not record; it <em>reconstructs</em>."],
+  ["involuntary","happening without conscious intention","It was an <em>involuntary</em> memory — triggered without warning."],
+  ["texture","the feel of a surface or material","I remember the <em>texture</em> of the tablecloth more clearly than any face."],
+  ["resonance","a quality that makes something feel meaningful or familiar","That melody has a strange <em>resonance</em> I cannot explain."],
+  ["evoke","to bring a memory or feeling back","The scent of woodsmoke <em>evokes</em> winter evenings without fail."],
+  ["fragment","a small, incomplete piece of something","The memory survives only as a <em>fragment</em> — a detail, a feeling."],
+  ["embodied","existing in or involving the physical body","Memory is often <em>embodied</em> rather than purely mental."],
+ ],
+ connectors:["meanwhile","in contrast","paradoxically","what returns first","alongside this","when these converge"]},
+
+{type:"Descriptive",level:"B2",title:"Describe a crowd or public space and what it reveals about society.",
+ starters:["To stand in this space and observe is to read…","The crowd is not homogeneous…","Each person carries with them…","What the space itself communicates is…","Beneath the noise and movement…","This place, at this moment, is a portrait of…"],
+ words:[
+  ["microcosm","a small version of something larger","The city square is a <em>microcosm</em> of the wider society."],
+  ["anonymous","not known or identified; without individuality","In the crowd, each person is both present and <em>anonymous</em>."],
+  ["transient","passing quickly; not permanent","The crowd is entirely <em>transient</em> — it will not exist again."],
+  ["stratified","divided into different social layers or groups","The waiting room was quietly <em>stratified</em> by wealth."],
+  ["unconscious","happening without awareness","The <em>unconscious</em> spatial divisions in the room were revealing."],
+  ["negotiate","to manage or navigate a situation carefully","People <em>negotiate</em> space in a crowd without speaking."],
+  ["proximity","nearness to another person or thing","<em>Proximity</em> to strangers in public requires constant, unspoken rules."],
+  ["signal","a gesture or sign that communicates something","Every choice of dress and posture is a social <em>signal</em>."],
+  ["inhabit","to occupy and live in a space","Different groups <em>inhabit</em> different parts of the city."],
+  ["reflect","to be a sign or indication of something","The design of public spaces <em>reflects</em> the values of a society."],
+ ],
+ connectors:["meanwhile","by contrast","what is striking","paradoxically","beneath this","taken together"]},
+
+{type:"Descriptive",level:"B2",title:"Describe an object that carries personal or cultural significance.",
+ starters:["The object itself is unremarkable to most…","Its physical dimensions are…","But to understand it, you must know…","It has passed through…","What it holds is not monetary but…","To hold it is to feel…"],
+ words:[
+  ["heirloom","an object passed down through generations of a family","The watch was a family <em>heirloom</em> — over a century old."],
+  ["patina","a surface appearance changed by age and handling","The <em>patina</em> on the wooden box speaks of decades of use."],
+  ["imbued","deeply filled with a particular quality","The object is <em>imbued</em> with the weight of family history."],
+  ["artefact","an object made and used by humans, often from the past","The clay pot is an <em>artefact</em> from a civilisation long gone."],
+  ["symbolic","representing something larger than itself","The broken mirror is <em>symbolic</em> of the rupture between them."],
+  ["residue","what remains after most of something has passed","The object retains a <em>residue</em> of the hands that made it."],
+  ["tactile","related to the sense of touch","There is a deeply <em>tactile</em> pleasure in handling old objects."],
+  ["transmit","to pass something from one person or generation to another","Objects <em>transmit</em> history in a way that words cannot."],
+  ["weight","the heaviness of an object; also, the importance of something","The <em>weight</em> of the medal reminded me of what it had cost."],
+  ["irreplaceable","impossible to replace if lost or destroyed","The notebook is <em>irreplaceable</em> — there is only one."],
+ ],
+ connectors:["however","nevertheless","what is significant","by extension","in this sense","to hold it"]},
+
+// ── EMAIL A2 ─────────────────────────────────────────────────────
+{type:"Email",level:"A2",title:"Write an email to your teacher asking for help with homework.",
+ starters:["Dear…","I am writing because…","I have a problem with…","Could you please…","I would be very happy if…","Thank you for…"],
+ words:[
+  ["homework","work your teacher gives you to do at home","I don't understand the <em>homework</em> from today's class."],
+  ["understand","to know what something means","I find it difficult to <em>understand</em> the grammar exercises."],
+  ["exercise","a piece of work you do to practise something","I am stuck on <em>exercise</em> 3 on page 24."],
+  ["explain","to make something clear so someone understands","Could you <em>explain</em> the rule for reported speech again?"],
+  ["confused","not able to understand something","I am a bit <em>confused</em> about when to use the past perfect."],
+  ["grateful","feeling thankful for something someone has done","I would be very <em>grateful</em> for your help."],
+  ["question","something you ask to get information","I have a <em>question</em> about the homework task."],
+  ["help","to make things easier for someone","Could you <em>help</em> me understand this exercise?"],
+  ["please","a polite word to use when asking for something","Could you <em>please</em> check my answers?"],
+  ["teacher","a person who teaches you at school","Dear <em>Teacher</em>, I am writing about today's lesson."],
+ ],
+ connectors:["because","also","please","I would like","thank you","I hope"]},
+
+{type:"Email",level:"A2",title:"Write an email to a hotel to book a room.",
+ starters:["Dear Sir or Madam,","I would like to book…","We need a room for…","Could you please tell me…","We will arrive on…","I look forward to…"],
+ words:[
+  ["reservation","an arrangement to keep something for you in the future","I would like to make a <em>reservation</em> for two nights."],
+  ["available","free to be used; not already booked","Is a double room <em>available</em> on the 14th of July?"],
+  ["double room","a hotel room with one large bed for two people","We would like to book a <em>double room</em>."],
+  ["nights","the time from evening to morning","We plan to stay for three <em>nights</em>."],
+  ["price","the amount of money you must pay for something","Could you tell me the <em>price</em> of the room per night?"],
+  ["facilities","things provided for your comfort, such as a pool or gym","What <em>facilities</em> does the hotel have?"],
+  ["confirm","to say that something is definitely true or arranged","Could you please <em>confirm</em> my booking by email?"],
+  ["arrival","the time when you get to a place","Our <em>arrival</em> date is the 14th of July."],
+  ["departure","the time when you leave a place","Our <em>departure</em> date is the 17th of July."],
+  ["breakfast","the first meal of the day","Is <em>breakfast</em> included in the price?"],
+ ],
+ connectors:["I would like","could you please","also","in addition","I look forward to","thank you"]},
+
+{type:"Email",level:"A2",title:"Write an email to a friend inviting them to your birthday party.",
+ starters:["Hi…","I am writing to invite you to…","The party will be on…","It will start at…","Please let me know if…","I hope you can come because…"],
+ words:[
+  ["celebrate","to do something special for a happy occasion","I want to <em>celebrate</em> my birthday with all my friends."],
+  ["birthday","the day of the year when you were born","My <em>birthday</em> is on the 20th of March."],
+  ["address","the details of where a place is located","My <em>address</em> is 14 Rua das Flores."],
+  ["bring","to carry something with you to a place","Please <em>bring</em> your swimming costume — we have a pool!"],
+  ["costume","special clothes worn for a themed event","It will be a fancy dress party — please wear a <em>costume</em>!"],
+  ["surprise","something unexpected and usually pleasant","It is a <em>surprise</em> party, so please don't tell Ana!"],
+  ["excited","feeling very happy and interested about something","I am so <em>excited</em> about the party!"],
+  ["friend","a person you like and enjoy spending time with","I would love to celebrate with my best <em>friends</em>."],
+  ["RSVP","please reply to confirm if you can come","<em>RSVP</em> by the 15th so I can prepare enough food."],
+  ["fun","enjoyable and entertaining","I promise it will be a lot of <em>fun</em>!"],
+ ],
+ connectors:["and","also","please","because","I hope","let me know"]},
+
+{type:"Email",level:"A2",title:"Write an email to a shop complaining about a product.",
+ starters:["Dear…","I am writing about…","I bought…on…","The problem is…","I would like…","I hope you can help me because…"],
+ words:[
+  ["broken","not working; damaged","The toy was <em>broken</em> when I opened the box."],
+  ["refund","money given back to you when you return something","I would like a full <em>refund</em> for the damaged product."],
+  ["receipt","a piece of paper showing that you have paid for something","I have the <em>receipt</em> from the day I bought it."],
+  ["replace","to give a new item in place of a damaged one","I would like you to <em>replace</em> the broken item."],
+  ["disappointed","unhappy because something was not as good as expected","I was very <em>disappointed</em> with the quality of the product."],
+  ["order number","a reference number for your purchase","My <em>order number</em> is 45892."],
+  ["customer service","the department that helps customers with problems","Please contact your <em>customer service</em> team."],
+  ["return","to send a product back to a shop","I would like to <em>return</em> the item as it is faulty."],
+  ["quality","how good or bad something is","The <em>quality</em> of the product was much lower than expected."],
+  ["resolve","to find a solution to a problem","I hope you can <em>resolve</em> this problem quickly."],
+ ],
+ connectors:["because","also","I would like","I hope","please","thank you"]},
+
+{type:"Email",level:"A2",title:"Write an email to your school asking for information about a course.",
+ starters:["Dear…","I am interested in…","Could you please send me…","I would like to know…","I have a question about…","Thank you for…"],
+ words:[
+  ["enrol","to officially join a course or school","I would like to <em>enrol</em> in the English course."],
+  ["timetable","a schedule showing when classes happen","Could you send me the <em>timetable</em> for the course?"],
+  ["fee","the amount of money you pay for a course","What is the <em>fee</em> for the intensive course?"],
+  ["requirement","something you must have or do to join a course","What are the entry <em>requirements</em> for this programme?"],
+  ["available","free and ready to be used or joined","Is the evening course still <em>available</em>?"],
+  ["certificate","an official document showing you completed a course","Does the course give a <em>certificate</em> at the end?"],
+  ["duration","the length of time something lasts","What is the <em>duration</em> of the course?"],
+  ["contact","to communicate with a person or organisation","Who should I <em>contact</em> to enrol?"],
+  ["information","facts or details about something","Could you please send me more <em>information</em> about the course?"],
+  ["apply","to formally ask to join something","How do I <em>apply</em> for the summer programme?"],
+ ],
+ connectors:["I would like","could you please","also","in addition","thank you","I look forward to"]},
+
+{type:"Email",level:"A2",title:"Write an email to apply for a part-time job.",
+ starters:["Dear…","I am writing to apply for…","I am… years old and I…","I have experience in…","I am available…","I hope to hear from you soon."],
+ words:[
+  ["application","a formal request to be considered for a job","I am sending my <em>application</em> for the part-time position."],
+  ["position","a job at a company","I saw the <em>position</em> advertised on your website."],
+  ["experience","the knowledge you get from doing something","I have six months of <em>experience</em> working in a café."],
+  ["available","free to work at particular times","I am <em>available</em> on weekends and Wednesday evenings."],
+  ["responsible","able to be trusted to do the right thing","I am <em>responsible</em> and always arrive on time."],
+  ["reliable","able to be trusted to do what you promise","My previous employer described me as very <em>reliable</em>."],
+  ["CV","a document listing your education and work experience","I have attached my <em>CV</em> to this email."],
+  ["interview","a formal meeting to test if someone is right for a job","I would welcome the opportunity for an <em>interview</em>."],
+  ["flexible","able to change easily; able to work different hours","I am <em>flexible</em> and can work different shifts."],
+  ["enthusiastic","showing strong interest and excitement","I am very <em>enthusiastic</em> about the opportunity to join your team."],
+ ],
+ connectors:["I am","I have","also","in addition","I hope","thank you"]},
+
+// ── EMAIL B1 ─────────────────────────────────────────────────────
+{type:"Email",level:"B1",title:"Write a formal email applying for a work experience placement.",
+ starters:["Dear…","I am writing to express my interest in…","I am currently studying…and I believe that…","During my studies I have developed…","I would be particularly keen to…","I have attached my CV and I look forward to…"],
+ words:[
+  ["placement","a period of work experience as part of your studies","I am applying for a work experience <em>placement</em> in your company."],
+  ["motivated","having a strong desire to do something well","I am a highly <em>motivated</em> student with a passion for marketing."],
+  ["relevant","directly connected to the subject","I have gained <em>relevant</em> skills through my course and volunteering."],
+  ["demonstrate","to show clearly that you have a skill or quality","I am eager to <em>demonstrate</em> my abilities in a professional environment."],
+  ["exposure","the experience of being in a particular situation","I am looking for <em>exposure</em> to real-world business practices."],
+  ["industry","the sector of business or work you want to work in","I hope to develop my career in the creative <em>industry</em>."],
+  ["contribution","something you add or give to help a group or project","I believe I can make a positive <em>contribution</em> to your team."],
+  ["proactive","doing things before being asked; taking initiative","I am a <em>proactive</em> person who enjoys taking on new challenges."],
+  ["initiative","the ability to do things without being told","I often take the <em>initiative</em> on group projects at university."],
+  ["deadline","the last date or time to complete something","I can confirm my availability well within your <em>deadline</em>."],
+ ],
+ connectors:["furthermore","in addition","as a result","I am particularly","I believe","I look forward to"]},
+
+{type:"Email",level:"B1",title:"Write a formal email to a company complaining about poor service.",
+ starters:["Dear…","I am writing to express my dissatisfaction with…","On…I…","Despite…the situation was not resolved because…","I would therefore request…","I trust that you will…"],
+ words:[
+  ["unacceptable","not good enough; below the expected standard","The standard of service I received was completely <em>unacceptable</em>."],
+  ["resolution","a solution to a problem","I am writing to request a satisfactory <em>resolution</em>."],
+  ["compensation","money or something given to make up for a problem","I would like to discuss appropriate <em>compensation</em>."],
+  ["inconvenience","difficulty or trouble caused by something","I apologise for any <em>inconvenience</em> — wait, I'm writing this, not them!"],
+  ["breach","a failure to follow a rule or agreement","This is a clear <em>breach</em> of your stated customer service policy."],
+  ["promptly","without delay; quickly","I would appreciate a response <em>promptly</em>."],
+  ["dissatisfied","not pleased with something","I am very <em>dissatisfied</em> with the outcome of my complaint."],
+  ["formal complaint","an official written objection","I am submitting a <em>formal complaint</em> regarding my recent experience."],
+  ["resolve","to find a solution to a problem","I hope we can <em>resolve</em> this matter without further delay."],
+  ["escalate","to make a problem more serious by involving higher authority","If this is not resolved, I will be forced to <em>escalate</em> the matter."],
+ ],
+ connectors:["despite this","furthermore","as a result","I would therefore","I trust that","in addition"]},
+
+{type:"Email",level:"B1",title:"Write a formal email requesting information about a conference.",
+ starters:["Dear…","I am writing to enquire about…","I would be grateful if you could provide…","In particular, I am interested in…","Could you also confirm…","I look forward to receiving…"],
+ words:[
+  ["registration","the process of officially signing up for something","I would like information about the <em>registration</em> process."],
+  ["delegate","a person attending a conference or meeting","How many <em>delegates</em> are expected at this year's event?"],
+  ["agenda","a list of topics to be discussed at a meeting","Could you send me the conference <em>agenda</em>?"],
+  ["keynote","the main talk given by a featured speaker at a conference","I am particularly interested in the <em>keynote</em> speakers."],
+  ["accommodation","a place to stay, such as a hotel","Could you recommend nearby <em>accommodation</em> for delegates?"],
+  ["deadline","the last day you can submit something","What is the <em>deadline</em> for early-bird registration?"],
+  ["sponsorship","money given by a company to support an event","I would like information about <em>sponsorship</em> opportunities."],
+  ["proceedings","the official record or publication of a conference","Will the <em>proceedings</em> be published after the event?"],
+  ["venue","the place where an event is held","Could you confirm the exact <em>venue</em> for the conference?"],
+  ["programme","a plan showing the order of events","Please could you send me the full conference <em>programme</em>?"],
+ ],
+ connectors:["furthermore","in addition","I would also like to","could you please","I look forward to","I am particularly"]},
+
+{type:"Email",level:"B1",title:"Write a formal email to a university requesting a deferral.",
+ starters:["Dear Admissions Office,","I am writing regarding my offer to study…","Due to…I wish to request…","I have attached documentation which…","I assure you that…","I would be grateful if you would…"],
+ words:[
+  ["deferral","a request to delay your entry to a course by one year","I am writing to request a one-year <em>deferral</em>."],
+  ["extenuating","providing a reason to excuse or reduce blame","I have <em>extenuating</em> circumstances that prevent me from starting."],
+  ["circumstance","a fact or situation that affects something","The <em>circumstances</em> I describe are beyond my control."],
+  ["reconsider","to think again about a decision","I hope the admissions team will <em>reconsider</em> my case."],
+  ["documentation","official papers that provide proof of something","I have attached supporting <em>documentation</em> to this email."],
+  ["committed","strongly determined to do something","I remain fully <em>committed</em> to studying at your institution."],
+  ["postpone","to delay something to a later date","I am requesting to <em>postpone</em> my entry to the following year."],
+  ["intake","the group of students accepted into a programme in one year","I hope to join the next <em>intake</em> in September."],
+  ["decision","a choice made after thinking about something","I await your <em>decision</em> with gratitude."],
+  ["sincerely","a formal way to end a letter or email","Yours <em>sincerely</em>, …"],
+ ],
+ connectors:["due to","therefore","furthermore","I assure you","in addition","I would be grateful"]},
+
+{type:"Email",level:"B1",title:"Write a formal email recommending a change of policy at your school.",
+ starters:["Dear…","I am writing on behalf of…","We would like to draw your attention to…","We believe that…","Evidence suggests that…","We therefore respectfully request…"],
+ words:[
+  ["proposal","a formal suggestion for a change","We would like to present our <em>proposal</em> for your consideration."],
+  ["implement","to put a plan or change into action","We believe this change could be <em>implemented</em> relatively quickly."],
+  ["reconsider","to think again about a current rule or policy","We kindly ask you to <em>reconsider</em> the current lunch break policy."],
+  ["benefit","an advantage or positive outcome","This change would <em>benefit</em> students' wellbeing significantly."],
+  ["stakeholder","a person with an interest in the outcome of something","We have consulted all relevant <em>stakeholders</em> before writing."],
+  ["feedback","opinions and reactions from people affected by something","We gathered <em>feedback</em> from over 200 students."],
+  ["productive","achieving good results efficiently","A longer break would make students more <em>productive</em> in the afternoon."],
+  ["concern","a worry or issue about something","A major <em>concern</em> is the current quality of canteen food."],
+  ["improvement","a change that makes something better","We propose one specific <em>improvement</em> to the current system."],
+  ["revise","to change something in order to make it better","We suggest that the school <em>revises</em> its current policy."],
+ ],
+ connectors:["furthermore","in addition","we believe","as a result","we therefore","I look forward to"]},
+
+{type:"Email",level:"B1",title:"Write a formal email asking for a reference letter.",
+ starters:["Dear…","I hope this email finds you well.","I am writing to ask whether you would be willing to…","The position / programme I am applying for…","I believe your reference would be valuable because…","I would of course provide any further information…"],
+ words:[
+  ["reference","a letter from someone who knows you well, recommending you","Would you be willing to provide a <em>reference</em> for me?"],
+  ["application","a formal request to be considered for a position","I am currently preparing my <em>application</em> for a master's programme."],
+  ["deadline","the last date something must be done by","The <em>deadline</em> for the reference is the 30th of November."],
+  ["enclose","to include something with a letter or email","I will <em>enclose</em> a summary of my CV to help you."],
+  ["suitability","the quality of being right for a particular purpose","I believe you can speak to my <em>suitability</em> for this role."],
+  ["grateful","feeling thankful for something someone has done","I would be enormously <em>grateful</em> for your support."],
+  ["outline","a short summary of the main points","I will <em>outline</em> the details of the programme in a separate document."],
+  ["background","your education, experience, and personal history","You know my academic <em>background</em> well from our work together."],
+  ["recommendation","a statement that someone or something is good and suitable","A strong <em>recommendation</em> from you would make a real difference."],
+  ["enclosed","included with the email or letter","Please find my CV <em>enclosed</em> for your reference."],
+ ],
+ connectors:["I believe","furthermore","I would therefore","in addition","I would be grateful","I look forward to"]},
+
+// ── EMAIL B2 ─────────────────────────────────────────────────────
+{type:"Email",level:"B2",title:"Write a formal letter to a newspaper responding to an opinion piece.",
+ starters:["Dear Editor,","I write in response to the article published on…","While I appreciate the author's perspective…","The central claim, however, warrants scrutiny…","A more nuanced reading of the evidence suggests…","I urge your readers to consider…"],
+ words:[
+  ["assertion","a confident statement presented as a fact","The author's central <em>assertion</em> is not supported by the evidence."],
+  ["misrepresent","to describe something in a way that is not accurate","The article <em>misrepresents</em> the position of most scientists."],
+  ["overlook","to fail to notice or consider something important","The author has <em>overlooked</em> several key studies on this topic."],
+  ["substantiate","to provide evidence to support a claim","The argument would be stronger if the author could <em>substantiate</em> it."],
+  ["rhetoric","persuasive language, sometimes used to hide weak arguments","The article relies on <em>rhetoric</em> rather than evidence."],
+  ["counterpoint","an argument that contradicts another argument","I would like to offer a <em>counterpoint</em> to the author's position."],
+  ["empirical","based on observation and evidence rather than theory","The <em>empirical</em> data does not support this conclusion."],
+  ["editorial","an article expressing the opinions of a newspaper","The <em>editorial</em> line of this newspaper has always been balanced."],
+  ["nuance","a subtle difference in meaning or interpretation","The author's argument lacks <em>nuance</em> and oversimplifies the issue."],
+  ["undermine","to weaken or damage something gradually","This approach <em>undermines</em> public trust in journalism."],
+ ],
+ connectors:["however","furthermore","by contrast","it should be noted","nevertheless","I would urge"]},
+
+{type:"Email",level:"B2",title:"Write a formal proposal email to a potential sponsor.",
+ starters:["Dear…","I am writing on behalf of…to propose a partnership that…","Our organisation is committed to…","The benefits of this collaboration would include…","In terms of visibility…","I would welcome the opportunity to discuss…"],
+ words:[
+  ["proposition","a formal proposal or offer","I would like to present a commercial <em>proposition</em> for your consideration."],
+  ["alignment","the quality of matching or fitting well together","There is a strong <em>alignment</em> between our values and your brand."],
+  ["mutual benefit","an advantage for both parties involved","This partnership would generate <em>mutual benefit</em> for both organisations."],
+  ["leverage","to use something effectively to gain an advantage","We offer you the chance to <em>leverage</em> our platform's audience."],
+  ["demographic","a particular group of people in a population","Our audience is predominantly the 18–35 <em>demographic</em>."],
+  ["portfolio","a range of products, projects, or work someone has done","Sponsoring this event would strengthen your CSR <em>portfolio</em>."],
+  ["deliverable","a specific result or product that must be produced","We can agree on clear <em>deliverables</em> and timelines from the outset."],
+  ["ROI","return on investment; the benefit gained from money spent","We can demonstrate strong projected <em>ROI</em> for your investment."],
+  ["brand visibility","how well-known and recognisable a brand is","This event offers excellent <em>brand visibility</em> across digital channels."],
+  ["stakeholder","a person or group with an interest in an organisation","We have consulted our key <em>stakeholders</em> before approaching you."],
+ ],
+ connectors:["furthermore","in addition","as a result","we believe","I would also like to","I look forward to"]},
+
+{type:"Email",level:"B2",title:"Write a formal complaint letter to a regulatory body.",
+ starters:["Dear…","I am writing to formally bring to your attention…","Despite repeated attempts to resolve this matter…","I attach evidence in support of…","I request that your office…","Should this matter remain unresolved…"],
+ words:[
+  ["regulatory","relating to rules and laws that control an industry","I am writing to your <em>regulatory</em> body as a last resort."],
+  ["jurisdiction","the official power to make legal decisions over something","This matter falls within your <em>jurisdiction</em>."],
+  ["breach","a failure to obey a rule, law, or agreement","This constitutes a serious <em>breach</em> of consumer protection law."],
+  ["compliance","following the rules and laws that apply to you","The company is not in <em>compliance</em> with its stated policy."],
+  ["statutory","required or permitted by law","I am entitled to a refund under my <em>statutory</em> rights."],
+  ["obligation","a duty that must be fulfilled under law or agreement","The company has failed to meet its legal <em>obligation</em>."],
+  ["escalate","to refer a matter to a higher authority","I am now forced to <em>escalate</em> this matter formally."],
+  ["redress","compensation or remedy for a wrong suffered","I am seeking formal <em>redress</em> for the harm caused."],
+  ["investigate","to officially examine a problem or situation","I request that your office <em>investigate</em> this matter promptly."],
+  ["documentation","official papers that provide proof","I enclose all relevant <em>documentation</em> in support of my complaint."],
+ ],
+ connectors:["despite","furthermore","in addition","I therefore","should this","I request that"]},
+
+{type:"Email",level:"B2",title:"Write a formal email declining a job offer professionally.",
+ starters:["Dear…","I am writing to thank you sincerely for offering me the position of…","After careful consideration…","While I was impressed by…","I have decided to…","I hope that we may have the opportunity to…"],
+ words:[
+  ["reconsider","to think again about a decision","After further thought, I will not be able to <em>reconsider</em>."],
+  ["pursuit","the act of following or seeking something","I am choosing to focus on the <em>pursuit</em> of a different opportunity."],
+  ["alternative","another choice or option","I have accepted an <em>alternative</em> offer that better suits my goals."],
+  ["grateful","feeling deep thanks for something received","I am sincerely <em>grateful</em> for the time you invested in me."],
+  ["privilege","a special honour or advantage","It was a genuine <em>privilege</em> to interview with your team."],
+  ["regret","a feeling of sadness about something you cannot change","I <em>regret</em> that I am unable to accept this offer at this time."],
+  ["maintain","to continue to have a relationship or connection","I hope we can <em>maintain</em> a professional connection in the future."],
+  ["professional","relating to work and carried out with skill and care","I wish to end this process on entirely <em>professional</em> terms."],
+  ["circumstance","a fact or situation that affects a decision","Personal <em>circumstances</em> have led me to a different decision."],
+  ["direction","the path or goal you choose to follow in life","I am pursuing a different professional <em>direction</em> at this time."],
+ ],
+ connectors:["however","nevertheless","while","I hope that","I remain","I look forward to"]},
+
+{type:"Email",level:"B2",title:"Write a formal email to a government official about a local issue.",
+ starters:["Dear…","I am writing as a resident of…to raise a concern regarding…","This issue has a direct impact on…","The relevant data indicate…","I respectfully urge your office to…","I would welcome a response outlining…"],
+ words:[
+  ["constituent","a person who lives in a politician's area and can vote for them","As a <em>constituent</em>, I am writing to raise a serious concern."],
+  ["petition","a formal document signed by many people requesting action","Over 400 residents have signed a <em>petition</em> on this issue."],
+  ["infrastructure","the basic systems a community needs to function","The <em>infrastructure</em> of our district requires urgent investment."],
+  ["accountability","the responsibility to explain and justify your actions","We expect full <em>accountability</em> from elected officials."],
+  ["mandate","the authority given to a government to act","I believe this falls within your <em>mandate</em> as our representative."],
+  ["consult","to ask someone for their opinion or advice","We ask that you <em>consult</em> residents before making any decision."],
+  ["transparency","being open and honest about decisions and processes","We expect full <em>transparency</em> about the decision-making process."],
+  ["resolution","a solution to a problem","We are writing to request a formal <em>resolution</em> to this issue."],
+  ["representation","the action of speaking or acting on behalf of someone","We feel that adequate <em>representation</em> has not been provided."],
+  ["civic","relating to a city and the duties and rights of its citizens","This is a matter of basic <em>civic</em> responsibility."],
+ ],
+ connectors:["furthermore","in addition","I therefore","it is clear that","I respectfully","I would welcome"]},
+
+{type:"Email",level:"B2",title:"Write a formal email negotiating a contract term.",
+ starters:["Dear…","Following our recent conversation, I am writing to address…","Having reviewed the proposed terms…","I would like to suggest a revision to clause…","This adjustment would…","I trust that we can reach a mutually beneficial agreement…"],
+ words:[
+  ["clause","a specific section or condition in a legal document","I would like to discuss <em>clause</em> 4.2 of the proposed contract."],
+  ["liability","legal responsibility for harm or damage","The current <em>liability</em> clause places an unfair burden on our company."],
+  ["jurisdiction","the official legal authority over a matter","I would prefer the contract to fall under UK <em>jurisdiction</em>."],
+  ["revise","to change something to improve it","I would like to propose that we <em>revise</em> the payment terms."],
+  ["amendment","an official change made to a document","I am proposing a minor <em>amendment</em> to clause 3."],
+  ["consideration","the act of thinking carefully about something","After careful <em>consideration</em>, I must raise a concern."],
+  ["enforceable","able to be carried out by legal force","We need to ensure the penalty clause is <em>enforceable</em>."],
+  ["reciprocal","shared equally by both parties","I would suggest a more <em>reciprocal</em> arrangement on data rights."],
+  ["scope","the range of things covered by an agreement","The <em>scope</em> of the exclusivity clause is broader than agreed."],
+  ["binding","legally enforceable; must be followed","Please confirm when the agreement will become legally <em>binding</em>."],
+ ],
+ connectors:["however","in addition","as proposed","I would suggest","I trust that","I look forward to"]},
+
+// ── FOR & AGAINST A2 ─────────────────────────────────────────────
+{type:"For & Against",level:"A2",title:"Should school uniforms be compulsory?",
+ starters:["Some people think that school uniforms are good because…","For example…","However, other people disagree. They say…","Another problem with uniforms is…","On the other hand, uniforms can…","In my opinion…"],
+ words:[
+  ["equal","the same for everyone; no differences","Uniforms make all students look <em>equal</em>."],
+  ["expensive","costing a lot of money","Some families say uniforms are too <em>expensive</em>."],
+  ["identity","the things that make you who you are","Uniforms can stop students showing their <em>identity</em>."],
+  ["tidy","clean and well organised in appearance","Uniforms make students look <em>tidy</em> and professional."],
+  ["bully","a person who hurts or threatens others","Uniforms can stop bullies making fun of people's clothes."],
+  ["choice","the act of picking one thing from several options","Without uniforms, students have more <em>choice</em> about what to wear."],
+  ["smart","dressed in a clean and tidy way","Students look <em>smart</em> when they wear a uniform."],
+  ["comfortable","feeling good to wear; not too tight or hot","Some students say their uniform is not very <em>comfortable</em>."],
+  ["cheap","not costing a lot of money","A uniform can be <em>cheap</em> because you only need one set."],
+  ["rule","something you must or must not do","Wearing a uniform is a school <em>rule</em> in many countries."],
+ ],
+ connectors:["because","however","on the other hand","for example","but","in my opinion"]},
+
+{type:"For & Against",level:"A2",title:"Should children be allowed to choose their own bedtime?",
+ starters:["Some people think children should choose their own bedtime because…","For example…","However, others disagree. They say…","Another reason against this is…","On the other hand…","To conclude, I think…"],
+ words:[
+  ["tired","needing sleep or rest","Children who stay up too late are very <em>tired</em> the next day."],
+  ["sleep","the natural state of rest when your body and mind are not active","Children need at least 9 hours of <em>sleep</em> each night."],
+  ["responsible","doing the right thing and making good decisions","Older children can be <em>responsible</em> about their own bedtime."],
+  ["parent","a mother or father","Most <em>parents</em> choose their child's bedtime."],
+  ["healthy","good for your body and mind","A regular bedtime is good for a child's <em>healthy</em> development."],
+  ["late","after the usual or expected time","Children who stay up too <em>late</em> cannot concentrate at school."],
+  ["school","the place where children go to learn","Poor sleep makes it hard to do well at <em>school</em>."],
+  ["rule","something you must or must not do","A bedtime <em>rule</em> helps children get enough sleep."],
+  ["freedom","the right to do what you want","Children need some <em>freedom</em> to make their own choices."],
+  ["young","not very old","Very <em>young</em> children cannot always know when they are tired."],
+ ],
+ connectors:["because","however","on the other hand","for example","but","to conclude"]},
+
+{type:"For & Against",level:"A2",title:"Should animals be kept as pets?",
+ starters:["Many people believe that keeping pets is good because…","For example…","However, some people say…","Another argument against pets is…","On the other hand, pets can…","In conclusion…"],
+ words:[
+  ["company","being with someone so they are not alone","Pets give old people <em>company</em> when they live alone."],
+  ["wild","living in nature and not with humans","Some animals are <em>wild</em> and are not happy as pets."],
+  ["care","the time and effort needed to look after someone","Pets need a lot of <em>care</em> and attention every day."],
+  ["expensive","costing a lot of money","Keeping a pet can be very <em>expensive</em> — vet bills are high."],
+  ["responsibility","a duty to do something or look after someone","Having a pet teaches children <em>responsibility</em>."],
+  ["lonely","feeling sad because you are alone","Pets help people who feel <em>lonely</em>."],
+  ["happy","feeling pleased and good","A pet that is loved and cared for is a <em>happy</em> animal."],
+  ["cruel","causing pain or unhappiness to animals","Keeping wild animals as pets can be <em>cruel</em>."],
+  ["home","the place where you live","Not every <em>home</em> is suitable for a large animal."],
+  ["love","a very strong feeling of caring for someone","Children develop a deep <em>love</em> for their pets."],
+ ],
+ connectors:["because","however","on the other hand","for example","but","in conclusion"]},
+
+{type:"For & Against",level:"A2",title:"Is watching TV bad for children?",
+ starters:["Some people say that too much TV is bad because…","For example…","However, others think TV can be good. They say…","Another benefit of TV is…","On the other hand…","In my opinion…"],
+ words:[
+  ["educational","helping you to learn new things","Some TV programmes are very <em>educational</em>."],
+  ["violent","showing fighting or dangerous situations","Some programmes are too <em>violent</em> for young children."],
+  ["lazy","not wanting to make an effort; not active","Too much TV can make children <em>lazy</em>."],
+  ["programme","a show on television","My favourite TV <em>programme</em> is a nature documentary."],
+  ["learn","to get new knowledge or skills","Children can <em>learn</em> new words from watching TV."],
+  ["limit","a maximum amount you are allowed","Parents should set a <em>limit</em> on screen time."],
+  ["screen","the display on a TV or device","Too much <em>screen</em> time can damage young children's eyes."],
+  ["outside","not inside a building; in the open air","Children should spend more time <em>outside</em> instead of watching TV."],
+  ["family","a group of people related to each other","Watching TV together can be a good <em>family</em> activity."],
+  ["creative","able to make new things or have original ideas","Too much TV can reduce a child's <em>creative</em> thinking."],
+ ],
+ connectors:["because","however","on the other hand","for example","but","in my opinion"]},
+
+{type:"For & Against",level:"A2",title:"Should children get pocket money?",
+ starters:["Some people think pocket money is a good idea because…","For example, children can learn…","However, others disagree. They say…","Another problem is…","On the other hand…","To conclude…"],
+ words:[
+  ["save","to keep money instead of spending it","Pocket money teaches children to <em>save</em> for things they want."],
+  ["spend","to use money to buy things","Some children <em>spend</em> all their pocket money on sweets."],
+  ["value","the importance or worth of something","Children learn the <em>value</em> of money by managing their own."],
+  ["responsibility","a duty to do something correctly","Pocket money teaches children financial <em>responsibility</em>."],
+  ["spoil","to give someone too much so they become selfish","Some parents think pocket money can <em>spoil</em> children."],
+  ["earn","to receive money for work you do","Some parents say children should <em>earn</em> their pocket money."],
+  ["budget","a plan for how to use your money","Learning to <em>budget</em> is an important life skill."],
+  ["reward","something given for doing something well","Pocket money can be a <em>reward</em> for helping at home."],
+  ["chore","a regular job you do at home","Children can do <em>chores</em> to earn their pocket money."],
+  ["money","what you use to buy things","Managing <em>money</em> is a skill children need to learn."],
+ ],
+ connectors:["because","however","on the other hand","for example","but","to conclude"]},
+
+{type:"For & Against",level:"A2",title:"Should there be more sport in schools?",
+ starters:["Some people believe more sport is good for students because…","For example…","However, others disagree. They say…","Another reason against more sport is…","On the other hand…","In my opinion…"],
+ words:[
+  ["healthy","good for your body","Sport keeps students <em>healthy</em> and fit."],
+  ["teamwork","working together with other people","Sport teaches <em>teamwork</em> and cooperation."],
+  ["time","the hours needed to do something","More sport means less <em>time</em> for academic study."],
+  ["academic","relating to study and learning at school","Some students prefer <em>academic</em> subjects to sport."],
+  ["exercise","physical activity that keeps you fit","Regular <em>exercise</em> is very important for young people."],
+  ["concentrate","to focus your attention on something","Sport can help students <em>concentrate</em> better in class."],
+  ["competitive","wanting to win; involving competition","Some students find sport too <em>competitive</em> and stressful."],
+  ["fun","enjoyable and entertaining","Sport should be <em>fun</em>, not just about winning."],
+  ["tired","needing rest after physical activity","Too much sport can make students too <em>tired</em> to study."],
+  ["lesson","a time in school for learning a subject","Some students would prefer more art or music <em>lessons</em>."],
+ ],
+ connectors:["because","however","on the other hand","for example","but","in my opinion"]},
+
+// ── FOR & AGAINST B1 ─────────────────────────────────────────────
+{type:"For & Against",level:"B1",title:"Should public transport be free?",
+ starters:["There are strong arguments both for and against…","Those in favour argue that…","For instance…","However, opponents point out that…","A further concern is…","On balance…"],
+ words:[
+  ["congestion","too many vehicles on the road causing delays","Free transport would reduce traffic <em>congestion</em> in cities."],
+  ["subsidy","money given by a government to support a service","Free transport requires a large government <em>subsidy</em>."],
+  ["taxpayer","a person who pays taxes to the government","<em>Taxpayers</em> would have to fund the cost of free public transport."],
+  ["accessibility","the quality of being easy to reach or use for everyone","Free transport would improve <em>accessibility</em> for low-income people."],
+  ["carbon footprint","the amount of carbon dioxide released by a person or activity","Free transport can reduce people's <em>carbon footprint</em>."],
+  ["infrastructure","the systems and structures needed for transport to work","Investment in <em>infrastructure</em> is needed before fares can be removed."],
+  ["revenue","money earned by a business or government","Removing fares would eliminate an important source of <em>revenue</em>."],
+  ["equality","the state of being equal in rights and opportunities","Free transport promotes social <em>equality</em>."],
+  ["sustainable","able to continue without harming the environment","Public transport is a more <em>sustainable</em> way to travel."],
+  ["commuter","a person who travels regularly to and from work","Free services would benefit millions of daily <em>commuters</em>."],
+ ],
+ connectors:["on the one hand","on the other hand","however","furthermore","in addition","on balance"]},
+
+{type:"For & Against",level:"B1",title:"Should the voting age be lowered to 16?",
+ starters:["The debate over the voting age centres on…","Supporters argue that…","Evidence from countries where…","However, critics maintain that…","A further point is that…","Considering both sides…"],
+ words:[
+  ["civic responsibility","the duty to participate in community and democratic life","Voting teaches <em>civic responsibility</em> from an early age."],
+  ["maturity","emotional and intellectual readiness","Critics question whether 16-year-olds have sufficient <em>maturity</em>."],
+  ["participation","taking part in an activity or process","Lowering the age would increase democratic <em>participation</em>."],
+  ["democracy","a system of government where people vote for their leaders","A true <em>democracy</em> should represent all people affected by decisions."],
+  ["informed","having enough knowledge to make a good decision","Young voters may not always be fully <em>informed</em> about political issues."],
+  ["political awareness","understanding of political issues and events","Research shows strong <em>political awareness</em> among many 16-year-olds."],
+  ["engage","to become involved in something actively","Schools could do more to <em>engage</em> young people with politics."],
+  ["representation","having your views and interests included in decisions","Young people deserve more <em>representation</em> in political decisions."],
+  ["reform","a change made to improve a system","Electoral <em>reform</em> should include those most affected by the future."],
+  ["stakeholder","a person who has an interest in the outcome of something","Young people are key <em>stakeholders</em> in decisions about climate policy."],
+ ],
+ connectors:["on the one hand","however","furthermore","in addition","by contrast","considering both sides"]},
+
+{type:"For & Against",level:"B1",title:"Should violent video games be banned?",
+ starters:["The question of whether violent games should be banned raises…","Those who support a ban argue that…","Research on this topic…","Critics of the ban, however, argue…","A further consideration is…","Taking both sides into account…"],
+ words:[
+  ["aggression","hostile or violent behaviour","Some studies suggest a link between violent games and <em>aggression</em>."],
+  ["desensitise","to make someone less sensitive to something shocking","Critics argue that violent games <em>desensitise</em> players to real violence."],
+  ["censorship","the act of officially removing content seen as harmful","Banning games is a form of <em>censorship</em> that restricts freedom."],
+  ["correlation","a connection between two things that tend to occur together","There is a <em>correlation</em> between gaming habits and stress relief."],
+  ["cathartic","providing emotional relief through an intense experience","Some argue that violent games are <em>cathartic</em> and reduce real anger."],
+  ["rating system","a system that classifies media by age suitability","A stronger <em>rating system</em> could be more effective than a ban."],
+  ["regulate","to control something by official rules","It may be better to <em>regulate</em> access than to ban games entirely."],
+  ["influence","the power to affect how people think or behave","Parents have a greater <em>influence</em> on children than video games."],
+  ["vulnerable","easily hurt or affected by something harmful","Younger and more <em>vulnerable</em> players should be better protected."],
+  ["evidence","facts that show whether something is true","The <em>evidence</em> linking games to real violence is inconclusive."],
+ ],
+ connectors:["on the one hand","however","furthermore","it should be noted","by contrast","taking both sides"]},
+
+{type:"For & Against",level:"B1",title:"Should plastic bags be banned?",
+ starters:["The issue of plastic bags has two clear sides.","Environmentalists argue that…","Statistics show that…","However, business owners claim that…","A further argument against the ban is…","When all factors are considered…"],
+ words:[
+  ["biodegradable","able to break down naturally without harming the environment","Paper bags are <em>biodegradable</em>, unlike plastic ones."],
+  ["landfill","a place where waste is buried in the ground","Millions of plastic bags end up in <em>landfill</em> each year."],
+  ["marine life","animals and plants that live in the sea","Plastic bags are a major threat to <em>marine life</em>."],
+  ["alternative","another option or choice","Reusable bags are a practical <em>alternative</em> to plastic."],
+  ["convenience","the quality of being easy to use","Plastic bags are popular because of their <em>convenience</em>."],
+  ["legislation","laws made by a government","<em>Legislation</em> banning plastic bags has been passed in many countries."],
+  ["cost","the amount of money needed to buy or produce something","Some argue the <em>cost</em> of reusable bags is a barrier for poor families."],
+  ["pollution","harmful substances in the environment","Plastic bag <em>pollution</em> is a serious global problem."],
+  ["reusable","able to be used many times without being thrown away","A <em>reusable</em> bag used 20 times has a much lower environmental impact."],
+  ["ecosystem","a system of living things and their environment","Plastic pollution is destroying fragile ocean <em>ecosystems</em>."],
+ ],
+ connectors:["on the one hand","however","furthermore","as a result","by contrast","when all factors are considered"]},
+
+{type:"For & Against",level:"B1",title:"Should gap years be encouraged?",
+ starters:["A gap year between school and university has clear advantages…","Proponents argue that…","Research suggests that students who take a gap year…","Critics, however, warn that…","A further risk is…","On balance…"],
+ words:[
+  ["perspective","a way of seeing or thinking about something","Travelling during a gap year can give you a broader <em>perspective</em>."],
+  ["motivation","the desire and willingness to do something","Students often return from a gap year with stronger <em>motivation</em>."],
+  ["employability","how attractive you are to employers","A productive gap year can improve your <em>employability</em>."],
+  ["drift","to move without a clear purpose or direction","Some students <em>drift</em> during their gap year and lose momentum."],
+  ["productive","achieving useful and valuable results","A <em>productive</em> gap year should include clear goals."],
+  ["CV","a document listing your education and work experience","Volunteering abroad can strengthen your <em>CV</em> significantly."],
+  ["maturity","emotional and intellectual readiness","A gap year can help students develop greater personal <em>maturity</em>."],
+  ["financial","relating to money and financial management","A gap year can be a <em>financial</em> burden for many families."],
+  ["structured","organised with a clear plan and purpose","A <em>structured</em> gap year is more beneficial than an unplanned one."],
+  ["opportunity","a chance to do or achieve something valuable","A gap year is a unique <em>opportunity</em> to develop life skills."],
+ ],
+ connectors:["on the one hand","however","furthermore","in addition","on the other hand","on balance"]},
+
+{type:"For & Against",level:"B1",title:"Is space exploration worth the cost?",
+ starters:["The debate over space exploration funding divides opinion.","Those in favour argue that…","The scientific benefits include…","Opponents, however, contend that…","A powerful counterargument is…","Weighing both sides…"],
+ words:[
+  ["investment","money spent with the expectation of future benefit","Space exploration is a long-term <em>investment</em> in human knowledge."],
+  ["innovation","the development of new ideas, products, or methods","Space programmes drive <em>innovation</em> in science and technology."],
+  ["resources","money, materials, and time available to be used","Some argue these <em>resources</em> should be used to fight poverty."],
+  ["inequality","the unfair difference in wealth and opportunity between people","Critics say space budgets worsen global <em>inequality</em>."],
+  ["discovery","finding something new that was not known before","Every space mission has the potential for a major <em>discovery</em>."],
+  ["spin-off technology","technology originally developed for space but used in daily life","GPS and memory foam are examples of space <em>spin-off technology</em>."],
+  ["poverty","the state of being very poor","Billions of people live in <em>poverty</em> while nations spend on space."],
+  ["exploration","the act of searching and discovering new places","Human <em>exploration</em> of Mars may happen within this century."],
+  ["priority","the thing that is most important and dealt with first","Is space the right <em>priority</em> when so many problems exist on Earth?"],
+  ["humanity","all human beings considered as a whole","Space exploration can unite <em>humanity</em> around a common goal."],
+ ],
+ connectors:["on the one hand","however","furthermore","in addition","on the other hand","weighing both sides"]},
+
+// ── FOR & AGAINST B2 ─────────────────────────────────────────────
+{type:"For & Against",level:"B2",title:"Should wealthy nations have open borders?",
+ starters:["The proposition of open borders challenges fundamental assumptions about…","Economists who support open borders contend that…","The empirical evidence suggests…","Critics, however, raise significant concerns about…","A libertarian analysis would hold that…","Having examined the evidence from multiple perspectives…"],
+ words:[
+  ["sovereignty","the right of a state to control its own affairs","Open borders are seen by some as an attack on national <em>sovereignty</em>."],
+  ["labour market","the system in which workers find jobs and employers hire people","Open borders could dramatically expand the <em>labour market</em>."],
+  ["assimilation","the process of adapting to a new culture","Rapid immigration can create challenges of cultural <em>assimilation</em>."],
+  ["fiscal impact","the effect on government revenues and spending","The <em>fiscal impact</em> of open immigration is heavily debated."],
+  ["humanitarian","focused on improving the welfare of people","The <em>humanitarian</em> case for open borders is compelling."],
+  ["protectionism","a policy of restricting access to protect domestic workers","Critics argue that open borders undermine domestic <em>protectionism</em>."],
+  ["mobility","the ability to move freely between places","Greater labour <em>mobility</em> benefits both workers and economies."],
+  ["integration","the process of combining with and being accepted by a society","Successful <em>integration</em> requires investment in public services."],
+  ["polarisation","the process of dividing into opposing groups","Immigration has become a source of severe political <em>polarisation</em>."],
+  ["demographic","relating to the characteristics of a population","Immigration can offset negative <em>demographic</em> trends in ageing nations."],
+ ],
+ connectors:["nevertheless","by contrast","furthermore","it can be argued","on balance","a compelling counterargument"]},
+
+{type:"For & Against",level:"B2",title:"Should euthanasia be legalised?",
+ starters:["The ethics of euthanasia sit at the intersection of…","Advocates of legalisation argue that…","The principle of autonomy suggests…","Opponents, however, raise the spectre of…","A particularly difficult consideration is…","Having weighed the arguments…"],
+ words:[
+  ["autonomy","the right to make decisions about your own life","Supporters argue that <em>autonomy</em> includes the right to die."],
+  ["palliative","relating to care that relieves suffering without curing illness","Good <em>palliative</em> care may make euthanasia unnecessary in many cases."],
+  ["safeguard","a measure that protects against abuse or harm","Strict <em>safeguards</em> must be in place to prevent abuse."],
+  ["coercion","forcing someone to do something against their will","Critics fear that vulnerable people could be subject to <em>coercion</em>."],
+  ["sanctity","the quality of being too important and precious to harm","Many oppose euthanasia on the grounds of the <em>sanctity</em> of life."],
+  ["dignified","having or giving a sense of calm self-respect","Advocates argue everyone deserves a <em>dignified</em> death."],
+  ["terminal","relating to an illness that will cause death","Euthanasia is most commonly discussed for <em>terminal</em> illness."],
+  ["consent","permission given freely and with full understanding","Voluntary and informed <em>consent</em> is the absolute minimum requirement."],
+  ["slippery slope","a risk that one change will lead to worse changes","Critics invoke the <em>slippery slope</em> argument — where does it end?"],
+  ["compassion","the feeling of deep sympathy for those who suffer","The case for legalisation is often made on grounds of <em>compassion</em>."],
+ ],
+ connectors:["however","furthermore","on the other hand","nevertheless","it could be argued","having weighed"]},
+
+{type:"For & Against",level:"B2",title:"Is economic growth compatible with environmental sustainability?",
+ starters:["The compatibility of growth and sustainability is contested…","Neoclassical economists argue that…","Evidence from the Environmental Kuznets Curve suggests…","Ecological economists, however, maintain…","The concept of decoupling…","Taken together, the evidence suggests…"],
+ words:[
+  ["decoupling","separating economic growth from environmental harm","True <em>decoupling</em> of growth and emissions has rarely been achieved."],
+  ["externality","a cost or benefit not reflected in market prices","Carbon emissions are a classic negative <em>externality</em>."],
+  ["throughput","the flow of materials and energy through an economy","Ecological economists focus on reducing material <em>throughput</em>."],
+  ["degrowth","deliberately reducing economic activity to protect the environment","The <em>degrowth</em> movement argues that endless growth is impossible."],
+  ["carbon intensity","the amount of carbon emissions per unit of economic output","Reducing <em>carbon intensity</em> alone is insufficient to meet climate targets."],
+  ["renewable","coming from a source that is naturally replenished","Transitioning to <em>renewable</em> energy is essential for sustainability."],
+  ["ecosystem services","the benefits humans receive from natural ecosystems","<em>Ecosystem services</em> are rarely factored into GDP calculations."],
+  ["GDP","the total value of all goods and services produced in a country","<em>GDP</em> is an imperfect measure of genuine societal wellbeing."],
+  ["finite","having limits; not endless","The planet's resources are <em>finite</em> and cannot sustain infinite growth."],
+  ["transition","a change from one system or state to another","The green energy <em>transition</em> is the defining challenge of our era."],
+ ],
+ connectors:["however","furthermore","by contrast","it can be argued","on the other hand","taken together"]},
+
+{type:"For & Against",level:"B2",title:"Should gene editing in humans be permitted?",
+ starters:["The prospect of editing the human genome raises profound questions…","Proponents of therapeutic gene editing argue…","The distinction between therapeutic and enhancement purposes…","Critics warn of…","A persuasive argument for strict regulation is…","Balancing scientific freedom with ethical constraint…"],
+ words:[
+  ["germline","relating to genes that can be inherited by future generations","<em>Germline</em> editing raises concerns that go beyond the individual."],
+  ["enhancement","improving a human characteristic beyond the normal range","Many draw the line between therapy and <em>enhancement</em>."],
+  ["therapeutic","intended to treat or cure a medical condition","<em>Therapeutic</em> gene editing to prevent disease commands broader support."],
+  ["eugenics","the idea of improving the human race by controlling reproduction","Critics warn that enhancement could lead to a new form of <em>eugenics</em>."],
+  ["consent","agreement given freely with full understanding","Future generations cannot give <em>consent</em> to germline modifications."],
+  ["heritable","able to be passed on from parent to child","Changes to <em>heritable</em> genes affect all future generations."],
+  ["designer","chosen or engineered for specific desired qualities","The idea of <em>designer</em> babies troubles many ethicists."],
+  ["oversight","official supervision to ensure responsible conduct","International <em>oversight</em> of gene editing research is essential."],
+  ["equity","fairness in the distribution of opportunities and resources","Without regulation, gene editing could worsen societal <em>equity</em>."],
+  ["unintended consequence","a result that was not planned or expected","The risk of <em>unintended consequences</em> from gene editing is real."],
+ ],
+ connectors:["however","furthermore","on the other hand","it can be argued","by contrast","balancing"]},
+
+{type:"For & Against",level:"B2",title:"Is prison an effective response to crime?",
+ starters:["The effectiveness of incarceration as a response to crime is…","Retributivists argue that…","Rehabilitation advocates contend that…","Recidivism statistics, however, complicate this picture…","A fundamental problem with current prison systems is…","A truly effective response to crime would need to…"],
+ words:[
+  ["recidivism","reoffending after being released from prison","High <em>recidivism</em> rates suggest that prison often fails."],
+  ["deterrence","the effect of preventing crime through threat of punishment","The evidence for prison as a <em>deterrence</em> is surprisingly weak."],
+  ["rehabilitation","helping someone return to a healthy and productive life","Successful <em>rehabilitation</em> programmes significantly reduce reoffending."],
+  ["incapacitation","removing someone from society to prevent them causing harm","Prison's role as <em>incapacitation</em> is its most unambiguous function."],
+  ["systemic","relating to a whole system rather than individual parts","Crime is often a <em>systemic</em> problem requiring systemic solutions."],
+  ["restorative justice","an approach that focuses on repairing harm rather than punishing","<em>Restorative justice</em> programmes show promising results in some contexts."],
+  ["overcrowding","having too many people in a space","Prison <em>overcrowding</em> makes rehabilitation virtually impossible."],
+  ["reoffend","to commit another crime after being convicted","Those who receive education in prison are less likely to <em>reoffend</em>."],
+  ["punitive","intended to punish rather than reform","A purely <em>punitive</em> approach to crime has failed in most countries."],
+  ["equity","fairness in how the justice system treats people","The justice system does not deliver <em>equity</em> across social groups."],
+ ],
+ connectors:["however","furthermore","by contrast","it could be argued","nevertheless","a truly effective"]},
+
+{type:"For & Against",level:"B2",title:"Should the Internet be treated as a public utility?",
+ starters:["The case for treating the Internet as a public utility rests on…","Proponents argue that…","The market-led model, its defenders claim…","Critics of privatisation counter that…","Net neutrality debates illustrate…","On balance, the evidence suggests…"],
+ words:[
+  ["net neutrality","the principle that all internet traffic should be treated equally","<em>Net neutrality</em> is undermined when ISPs prioritise certain content."],
+  ["access","the ability to obtain or use something","Universal <em>access</em> to the internet should be a basic right."],
+  ["monopoly","a situation where one company controls an entire market","Internet provision is a natural <em>monopoly</em> in many areas."],
+  ["infrastructure","the physical systems needed for something to work","Broadband <em>infrastructure</em> requires massive public or private investment."],
+  ["regulation","official control of an industry to protect the public","Greater <em>regulation</em> of internet companies is overdue."],
+  ["bandwidth","the capacity of an internet connection to carry data","ISPs have been accused of throttling <em>bandwidth</em> for competitors."],
+  ["digital divide","the gap between those with and without internet access","Treating internet as a utility could close the <em>digital divide</em>."],
+  ["universal service","the requirement to provide a service to everyone equally","Phone companies provide <em>universal service</em> — internet should too."],
+  ["ISP","a company that provides internet access to customers","Your <em>ISP</em> controls the speed and cost of your internet connection."],
+  ["commodify","to treat something as a product to be bought and sold","Critics argue that ISPs have <em>commodified</em> access to information."],
+ ],
+ connectors:["however","furthermore","by contrast","it can be argued","on the other hand","on balance"]},
+
+]; // end PROMPTS
+
+// ═══════════════════════════════════════
+// POPULATE SELECTORS
+// ═══════════════════════════════════════
+const selLevel  = document.getElementById('sel-level');
+const selType   = document.getElementById('sel-type');
+const selPrompt = document.getElementById('sel-prompt');
+
+function buildPromptList() {
+  const lv = selLevel.value;
+  const ty = selType.value;
+  selPrompt.innerHTML = '<option value="">— pick —</option>';
+  PROMPTS.forEach((p, idx) => {
+    if ((!lv || p.level === lv) && (!ty || p.type === ty)) {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = `[${p.level}] ${p.title}`;
+      selPrompt.appendChild(opt);
+    }
+  });
+}
+
+selLevel.addEventListener('change', buildPromptList);
+selType.addEventListener('change',  buildPromptList);
+buildPromptList();
+
+// ═══════════════════════════════════════
+// RENDER CARD
+// ═══════════════════════════════════════
+function loadPrompt() {
+  const idx = selPrompt.value;
+  if (idx === '') return;
+  renderCard(PROMPTS[parseInt(idx)]);
+}
+
+function randomPrompt() {
+  const lv = selLevel.value;
+  const ty = selType.value;
+  const pool = PROMPTS.filter(p =>
+    (!lv || p.level === lv) && (!ty || p.type === ty)
+  );
+  if (!pool.length) return;
+  renderCard(pool[Math.floor(Math.random() * pool.length)]);
+}
+
+function renderCard(p) {
+  document.getElementById('empty').style.display = 'none';
+  const card = document.getElementById('card');
+  card.style.display = 'block';
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = '';
+
+  document.getElementById('h-type').textContent = p.type;
+  document.getElementById('card-title').textContent = p.title;
+  const cefrEl = document.getElementById('h-cefr');
+  cefrEl.textContent = p.level;
+  cefrEl.className = 'cefr-badge cefr-' + p.level;
+
+  // starters
+  document.getElementById('starter-list').innerHTML = p.starters.map((s,i) =>
+    `<div class="starter-item"><span class="starter-num">${i+1}.</span><span class="starter-text">${s}</span></div>`
+  ).join('');
+
+  // word bank — each word is [word, def, example]
+  document.getElementById('word-chips').innerHTML = p.words.map((w, i) => {
+    const id = `wd-${i}`;
+    return `<div class="word-entry">
+      <span class="chip" onclick="toggleWord('${id}', this)" id="chip-${id}">${w[0]}</span>
+      <div class="word-detail" id="${id}">
+        <div class="def-label">definition</div>
+        <div class="def-text">${w[1]}</div>
+        <div class="def-label">example</div>
+        <div class="ex-text">${w[2]}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // connectors
+  document.getElementById('conn-chips').innerHTML = p.connectors.map(c =>
+    `<span class="chip connector">${c}</span>`
+  ).join('');
+}
+
+function toggleWord(id, chipEl) {
+  const detail = document.getElementById(id);
+  const isOpen = detail.classList.contains('visible');
+  // close all
+  document.querySelectorAll('.word-detail.visible').forEach(d => d.classList.remove('visible'));
+  document.querySelectorAll('.chip.open').forEach(c => c.classList.remove('open'));
+  if (!isOpen) {
+    detail.classList.add('visible');
+    chipEl.classList.add('open');
+  }
+}
+
+// ═══════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════
+let timerInterval = null;
+let timerSeconds  = 0;
+
+function startTimer() {
+  const mins = parseInt(document.getElementById('sel-timer').value);
+  if (!mins) return;
+  stopTimer();
+  timerSeconds = mins * 60;
+  const display = document.getElementById('timer-display');
+  display.classList.add('active');
+  display.classList.remove('urgent');
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    updateTimerDisplay();
+    if (timerSeconds <= 60) display.classList.add('urgent');
+    if (timerSeconds <= 0) { clearInterval(timerInterval); display.textContent = 'DONE'; }
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  const display = document.getElementById('timer-display');
+  display.classList.remove('active','urgent');
+  display.textContent = '--:--';
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds / 60).toString().padStart(2,'0');
+  const s = (timerSeconds % 60).toString().padStart(2,'0');
+  document.getElementById('timer-display').textContent = `${m}:${s}`;
+}
+</script>
+</body>
+</html>

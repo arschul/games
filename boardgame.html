@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEFR Quest — Board Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f1117;--surface:#171c2a;--surface2:#1e2538;--border:#2a3250;
+  --gold:#f5c842;--gold-dim:#a07c10;--text:#e8eaf0;--text-muted:#7a85a0;
+  --green:#34d98b;--red:#f25c6e;--blue:#4ea8f5;--purple:#a78bfa;--orange:#fb923c;--teal:#2dd4bf;
+  --a1:#34d98b;--a2:#4ea8f5;--b1:#a78bfa;--b2:#fb923c;
+  --sq-gk:#1e2538;--sq-efl:#25233a;--sq-fast:#153526;--sq-back:#3a1c22;
+  --sq-det:#2d1b36;--sq-ec:#332d1c;--sq-pet:#163136;--sq-don:#221d36;--sq-duel:#3b1e15;--sq-shop:#162e2a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden;}
+.screen{display:none;width:100vw;height:100vh;}.screen.active{display:flex;}
+
+/* SETUP */
+#setup-screen{flex-direction:column;align-items:center;justify-content:flex-start;padding:24px;overflow-y:auto;background:radial-gradient(ellipse at 30% 20%,#1a2040 0%,#0f1117 60%);}
+.setup-title{font-family:'Instrument Serif',serif;font-size:clamp(30px,4vw,52px);font-weight:400;color:var(--gold);text-align:center;letter-spacing:-0.5px;margin-bottom:4px;text-shadow:0 0 40px rgba(245,200,66,0.3);font-style:italic;}
+.setup-sub{color:var(--text-muted);text-align:center;font-size:14px;margin-bottom:28px;}
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:900px;}
+@media(max-width:700px){.setup-grid{grid-template-columns:1fr;}}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
+.setup-card h3{font-family:'Instrument Serif',serif;font-size:17px;font-style:italic;color:var(--gold);margin-bottom:14px;letter-spacing:.3px;}
+.team-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.team-row input[type=text]{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;font-family:'Sora',sans-serif;outline:none;}
+.team-row input[type=text]:focus{border-color:var(--gold);}
+.color-dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);flex-shrink:0;}
+.team-active-toggle{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:11px;padding:4px 8px;cursor:pointer;transition:all .2s;}
+.team-active-toggle.on{border-color:var(--green);color:var(--green);}
+.cefr-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cefr-check{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;border:2px solid var(--border);cursor:pointer;transition:all .2s;font-size:14px;font-weight:600;}
+.cefr-check:hover{border-color:var(--text-muted);}
+.cefr-check.checked{border-color:var(--gold);background:rgba(245,200,66,0.08);}
+.cefr-check input{display:none;}
+.cefr-badge{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.btn-primary{background:var(--gold);color:#0f1117;border:none;border-radius:8px;font-family:'Sora',sans-serif;font-weight:700;font-size:15px;padding:12px 28px;cursor:pointer;transition:all .2s;letter-spacing:.3px;}
+.btn-primary:hover{background:#ffd454;transform:translateY(-1px);}
+.btn-ghost{background:none;color:var(--text-muted);border:1px solid var(--border);border-radius:8px;font-family:'Sora',sans-serif;font-weight:600;font-size:13px;padding:8px 16px;cursor:pointer;transition:all .2s;}
+.btn-ghost:hover{border-color:var(--text);color:var(--text);}
+.legend{display:flex;flex-wrap:wrap;gap:5px;padding:6px 0;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text-muted);}
+.legend-dot{width:10px;height:10px;border-radius:2px;}
+.round-select { width: 100%; padding: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-weight: 600; outline: none; margin-top: 4px; }
+
+/* GAME SCREEN LAYOUT */
+#game-screen{flex-direction:row;height:100vh;overflow:hidden;}
+#board-area{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;background:#0b0d12;}
+#board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);gap:5px;}
+.board-cell{width:100%;height:100%;border-radius:8px;border:1px solid var(--border);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px;cursor:default;overflow:hidden;font-size:10px;transition: all 0.3s ease;}
+.cell-num{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);align-self:flex-start;line-height:1;margin-bottom:1px;}
+.cell-icon{font-size:20px;line-height:1.2;}
+.cell-label{font-size:8.5px;font-weight:600;text-align:center;color:var(--text-muted);line-height:1.2;margin-top:1px;}
+.cell-tokens{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center;margin-top:auto;padding-bottom:4px;width:100%;min-height:34px;}
+.cell-mine-indicator { position: absolute; top: 2px; right: 4px; font-size: 9px; color: var(--red); font-weight: 900; background: rgba(0,0,0,0.4); padding: 1px 3px; border-radius: 3px; }
+
+/* BIGGER & GLOWING MEEPLES WITH TIMED GLOW ATTACHMENT FOR MAP TILES */
+.token-pawn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.4), inset 0 0 8px rgba(0,0,0,0.3);
+  animation: meeplePulse 2s infinite ease-in-out;
+}
+@keyframes meeplePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(255,255,255,0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 20px rgba(255,255,255,0.8); }
+}
+
+@keyframes boardSquareGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(245,200,66,0.2), inset 0 0 6px rgba(245,200,66,0.1); border-color: var(--gold); }
+  50% { box-shadow: 0 0 22px rgba(245,200,66,0.8), inset 0 0 12px rgba(245,200,66,0.4); border-color: #ffffff; }
+}
+.sq-glowing-pulse {
+  animation: boardSquareGlow 1.8s infinite ease-in-out !important;
+  z-index: 4;
+}
+
+.sq-corner{border:2px solid var(--gold);box-shadow:0 0 16px rgba(245,200,66,0.15);}
+.sq-a1{background:rgba(52,217,139,0.18);border-color:var(--a1);}
+.sq-a2{background:rgba(78,168,245,0.18);border-color:var(--a2);}
+.sq-b1{background:rgba(167,139,250,0.18);border-color:var(--b1);}
+.sq-b2{background:rgba(251,146,60,0.18);border-color:var(--b2);}
+.sq-gk{background:var(--sq-gk);border-color: rgba(78,168,245,0.4);}
+.sq-efl{background:var(--sq-efl);border-color: rgba(167,139,250,0.4);}
+.sq-fast{background:var(--sq-fast);border-color: var(--green);}
+.sq-back{background:var(--sq-back);border-color: var(--red);}
+.sq-det{background:var(--sq-det);border-color: #b91c1c;}
+.sq-ec{background:var(--sq-ec);border-color: var(--gold);}
+.sq-pet{background:var(--sq-pet);border-color: var(--teal);}
+.sq-don{background:var(--sq-don);border-color: var(--purple);}
+.sq-duel{background:var(--sq-duel);border-color: var(--orange);}
+.sq-shop{background:var(--sq-shop);border-color: var(--teal); border-width: 2px;}
+.sq-active{box-shadow:0 0 0 3px white,0 0 20px rgba(255,255,255,0.4)!important;z-index:5;}
+
+/* BOARD CENTER HUB - DYNAMIC CTA CONSOLE (INCREASED SIZE & REAL ESTATE USAGE) */
+.board-center {
+  grid-column: 2 / 8;
+  grid-row: 2 / 8;
+  background: var(--surface);
+  border-radius: 16px;
+  border: 3px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 24px;
+  gap: 12px;
+  box-shadow: inset 0 4px 50px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.5);
+  position: relative;
+}
+.cta-header-deck {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 16px;
+}
+.center-deck-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+}
+
+/* RIGHT SIDEBAR PANEL - HIDDEN, LEADERBOARD MOVED TO CENTER */
+#right-panel { display: none; }
+
+/* INTERACTIVE CARDS INSIDE CENTER CTA */
+.turn-header{display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);}
+.turn-team-dot{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);flex-shrink:0;}
+.turn-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;}
+.turn-name{font-family:'Instrument Serif',serif;font-size:26px;font-weight:400;font-style:italic;color:var(--text);letter-spacing:0.3px;}
+.dice-area{display:flex;align-items:center;justify-content:center;gap:36px;padding:24px;background:var(--surface2);border-radius:14px;border:1px solid var(--border);width:100%;}
+#dice-display{width:110px;height:110px;background:var(--bg);border:3px solid var(--border);border-radius:20px;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:56px;font-weight:900;color:var(--gold);cursor:pointer;transition:all .2s;user-select:none;box-shadow:0 6px 26px rgba(0,0,0,0.5);}
+#dice-display:hover:not(.disabled){border-color:var(--gold);box-shadow:0 0 32px rgba(245,200,66,0.45);transform:scale(1.06);}
+#dice-display.rolling{animation:diceRoll .5s ease;}
+#dice-display.disabled{opacity:.4;cursor:not-allowed;}
+@keyframes diceRoll{0%{transform:rotate(0) scale(1);}25%{transform:rotate(-15deg) scale(1.1);}50%{transform:rotate(10deg) scale(.95);}75%{transform:rotate(-5deg) scale(1.05);}100%{transform:rotate(0) scale(1);}}
+.dice-controls{display:flex;flex-direction:column;gap:10px;}
+.dice-label{font-size:16px;color:var(--text-muted);font-weight:600;}
+#use-reroll-btn{background:rgba(245,200,66,0.15);border:1px solid var(--gold);color:var(--gold);font-size:14px;font-family:'Sora',sans-serif;font-weight:700;padding:10px 20px;border-radius:8px;cursor:pointer;transition:all .2s;}
+#use-reroll-btn:hover{background:rgba(245,200,66,0.3);}
+#use-reroll-btn.hidden{display:none;}
+.cheat-select { background: var(--surface); color: var(--text); padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
+
+/* REROLL INTERCEPTION PANEL PROMPT */
+.reroll-choice-layout { display: flex; gap: 12px; margin-top: 14px; width: 100%; }
+.btn-reroll-choice-accept { flex: 1; background: var(--green); color: #0f1117; font-family: 'Sora', sans-serif; font-weight: 700; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.btn-reroll-choice-accept:hover { background: #56ecaa; transform: translateY(-1px); }
+.btn-reroll-choice-burn { flex: 1; background: rgba(245,200,66,0.15); border: 2px solid var(--gold); color: var(--gold); font-family: 'Sora', sans-serif; font-weight: 700; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.btn-reroll-choice-burn:hover { background: rgba(245,200,66,0.3); transform: translateY(-1px); }
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.cta-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:24px;display:none;flex-direction:column;gap:16px;animation:fadeIn 0.25s ease;width:100%;}
+.cta-card.visible{display:flex;}
+
+.q-type-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:1px;align-self:flex-start;}
+.q-text{font-size:18px;font-weight:500;line-height:1.6;color:var(--text);}
+.q-answer{background:rgba(0,0,0,0.4);border-radius:6px;padding:14px;font-size:16px;color:var(--green);font-weight:600;display:none;line-height:1.4;border-left:4px solid var(--green);}
+.q-answer.revealed{display:block;}
+.q-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-reveal{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Sora',sans-serif;font-size:13px;font-weight:600;padding:10px 18px;border-radius:6px;cursor:pointer;transition:all .2s;}
+.btn-reveal:hover{border-color:var(--text-muted);}
+.btn-correct{background:rgba(52,217,139,0.15);border:1px solid var(--green);color:var(--green);font-family:'Sora',sans-serif;font-size:13px;font-weight:700;padding:10px 18px;border-radius:6px;cursor:pointer;transition:all .2s;}
+.btn-correct:hover{background:rgba(52,217,139,0.3);}
+.btn-wrong{background:rgba(242,92,110,0.15);border:1px solid var(--red);color:var(--red);font-family:'Sora',sans-serif;font-size:13px;font-weight:700;padding:10px 18px;border-radius:6px;cursor:pointer;transition:all .2s;}
+.btn-wrong:hover{background:rgba(242,92,110,0.3);}
+
+#hub-buy-card{border:2px solid var(--gold);box-shadow:0 0 20px rgba(245,200,66,0.15);}
+.hub-buy-title{font-family:'Instrument Serif',serif;font-size:18px;font-weight:700;color:var(--gold);}
+.hub-buy-cost{font-size:26px;font-weight:800;color:var(--gold);font-family:'JetBrains Mono',monospace;margin:6px 0;}
+.hub-buy-desc{font-size:14px;color:var(--text-muted);line-height:1.5;}
+.hub-buy-btns{display:flex;gap:8px;}
+.hub-buy-yes{flex:1;background:rgba(245,200,66,0.15);border:2px solid var(--gold);color:var(--gold);font-family:'Sora',sans-serif;font-weight:700;font-size:14px;padding:12px;border-radius:6px;cursor:pointer;}
+.hub-buy-yes:hover{background:rgba(245,200,66,0.3);}
+.hub-buy-no{flex:1;background:none;border:1px solid var(--border);color:var(--text-muted);font-family:'Sora',sans-serif;font-weight:600;font-size:14px;padding:12px;border-radius:6px;cursor:pointer;}
+
+#event-card{border-left:5px solid var(--gold);}
+.event-icon{font-size:38px;margin-bottom:2px;}
+.event-title{font-family:'Instrument Serif',serif;font-size:20px;font-weight:700;color:var(--gold);}
+.event-desc{font-size:14px;color:var(--text-muted);line-height:1.5;}
+.event-done-btn{background:var(--gold);color:#0f1117;border:none;border-radius:6px;font-family:'Sora',sans-serif;font-weight:700;font-size:14px;padding:12px 20px;cursor:pointer;}
+
+#duel-card{border:2px solid var(--orange);box-shadow:0 0 20px rgba(251,146,60,0.15);}
+.duel-title{font-family:'Instrument Serif',serif;font-size:20px;font-weight:900;color:var(--orange);}
+.duel-desc{font-size:14px;color:var(--text-muted);}
+.duel-target-select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;}
+.duel-target-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;font-weight:600;padding:10px 14px;cursor:pointer;text-align:left;}
+.duel-target-btn:hover{border-color:var(--orange);color:var(--orange);}
+.duel-buzz-row{display:flex;gap:10px;}
+.buzz-btn{flex:1;background:none;border:2px solid var(--border);border-radius:8px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;font-weight:700;padding:14px;cursor:pointer;}
+
+#don-card{border:2px solid var(--purple);box-shadow:0 0 20px rgba(167,139,250,0.15);}
+.don-title{font-family:'Instrument Serif',serif;font-size:20px;font-weight:900;color:var(--purple);}
+.don-desc{font-size:14px;color:var(--text-muted);}
+.don-buttons{display:flex;gap:8px;}
+.don-accept{flex:1;background:rgba(167,139,250,0.15);border:2px solid var(--purple);color:var(--purple);font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:10px;border-radius:6px;cursor:pointer;}
+.don-decline{flex:1;background:none;border:1px solid var(--border);color:var(--text-muted);font-family:'Sora',sans-serif;font-weight:600;font-size:13px;padding:10px;border-radius:6px;cursor:pointer;}
+
+.pet-title{font-family:'Instrument Serif',serif;font-size:19px;font-weight:700;color:var(--teal);}
+.pet-team-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;font-weight:600;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;}
+.pet-team-btn:hover{border-color:var(--teal);color:var(--teal);}
+
+/* SHOP STYLES */
+#shop-card { border: 2px solid var(--teal); box-shadow: 0 0 20px rgba(45,212,191,0.2); }
+.shop-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 8px; }
+.shop-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+.shop-item-info h4 { color: var(--gold); font-size: 14px; margin-bottom: 2px; }
+.shop-item-info p { font-size: 11px; color: var(--text-muted); }
+.btn-buy { background: var(--teal); color: #0f1117; border: none; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.btn-buy:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+
+/* SCOREBOARD - COMPACT INLINE LEADERBOARD */
+.panel-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);padding-bottom:4px;border-bottom:1px solid var(--border);}
+.scorecard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;}
+.scorecard{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;transition:border-color .3s;}
+.scorecard.active-turn{border-color:var(--gold);box-shadow:0 0 10px rgba(245,200,66,0.1);}
+.scorecard.winner{border-color:var(--green);box-shadow:0 0 20px rgba(52,217,139,0.4);animation:winPulse 1s infinite;}
+@keyframes winPulse{0%,100%{box-shadow:0 0 12px rgba(52,217,139,0.3);}50%{box-shadow:0 0 24px rgba(52,217,139,0.6);}}
+.sc-top-row{display:flex;align-items:center;gap:6px;}
+.sc-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.3);}
+.sc-name{font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);}
+.sc-pts{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gold);}
+.sc-tokens{display:flex;gap:3px;flex-wrap:wrap;}
+.sc-token{width:18px;height:18px;border-radius:3px;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:800;opacity:.2;color:#0f1117;transition:all .3s;}
+.sc-token.earned{opacity:1;transform:scale(1.1);box-shadow:0 2px 6px rgba(0,0,0,0.3);}
+.sc-skip{font-size:9px;color:var(--red);font-weight:700;}
+.sc-actions{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;}
+.sc-action-btn{font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;cursor:pointer;border:none;font-family:'Sora',sans-serif;transition:all .2s;line-height:1.2;}
+.sc-reroll-btn{background:rgba(245,200,66,0.15);border:1px solid var(--gold)!important;color:var(--gold);}
+.sc-reroll-btn:hover{background:rgba(245,200,66,0.3);}
+.sc-cheat-btn{background:rgba(45,212,191,0.15);border:1px solid var(--teal)!important;color:var(--teal);}
+.sc-cheat-btn:hover{background:rgba(45,212,191,0.3);}
+.sc-action-btn:disabled{opacity:.3;cursor:not-allowed;}
+#status-msg{font-size:15px;color:var(--text-muted);text-align:center;min-height:18px;margin:4px 0;font-weight:600;}
+
+#win-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:20px;}
+#win-overlay.active{display:flex;animation:fadeIn .5s ease;}
+.win-title{font-family:'Instrument Serif',serif;font-size:clamp(36px,6vw,72px);font-weight:900;color:var(--gold);text-shadow:0 0 60px rgba(245,200,66,0.6);text-align:center;}
+.win-sub{font-size:18px;color:var(--text-muted);text-align:center;}
+.win-trophy{font-size:80px;}
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:99;display:none;}
+#confetti-canvas.active{display:block;}
+
+.center-logo{font-family:'Instrument Serif',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--gold);text-align:center;letter-spacing:-.5px;}
+.center-sub{font-size:12px;color:var(--text-muted);text-align:center;font-family:'Sora',sans-serif;}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="screen active">
+  <div class="setup-title">⚔️ CEFR Quest</div>
+  <div class="setup-sub">Grammar Board Game · Phil Young's English School</div>
+  <div class="setup-grid">
+    <div class="setup-card">
+      <h3>🏆 Teams (2–6)</h3>
+      <div id="team-rows"></div>
+      <div style="margin-top:10px;"><button class="btn-ghost" onclick="addTeam()">+ Add Team</button></div>
+      <div style="margin-top:16px;">
+        <h3>⏱️ Game Limit (Rounds)</h3>
+        <select id="round-limit-select" class="round-select">
+          <option value="5">5 Rounds</option>
+          <option value="7">7 Rounds</option>
+          <option value="10" selected>10 Rounds</option>
+          <option value="15">15 Rounds</option>
+          <option value="20">20 Rounds</option>
+        </select>
+      </div>
+    </div>
+    <div class="setup-card">
+      <h3>📚 CEFR Levels in Play</h3>
+      <div class="cefr-row">
+        <label class="cefr-check checked" id="cefr-a1"><input type="checkbox" value="A1" checked onchange="toggleCefr(this)"><span class="cefr-badge" style="background:rgba(52,217,139,0.2);color:var(--a1)">A1</span>Beginner</label>
+        <label class="cefr-check checked" id="cefr-a2"><input type="checkbox" value="A2" checked onchange="toggleCefr(this)"><span class="cefr-badge" style="background:rgba(78,168,245,0.2);color:var(--a2)">A2</span>Elementary</label>
+        <label class="cefr-check checked" id="cefr-b1"><input type="checkbox" value="B1" checked onchange="toggleCefr(this)"><span class="cefr-badge" style="background:rgba(167,139,250,0.2);color:var(--b1)">B1</span>Intermediate</label>
+        <label class="cefr-check checked" id="cefr-b2"><input type="checkbox" value="B2" checked onchange="toggleCefr(this)"><span class="cefr-badge" style="background:rgba(251,146,60,0.2);color:var(--b2)">B2</span>Upper-Int.</label>
+      </div>
+      <div style="margin-top:16px;"><h3>ℹ️ Win Condition</h3>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px;">Land on a Hub corner. If you have <strong style="color:var(--gold)">25 pts</strong>, face a question to buy that level's token. Collect all tokens or lead after maximum rounds to win!</p>
+      </div>
+      <div style="margin-top:16px;"><h3>🎯 Square Legend</h3>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#34d98b"></div>A1 Hub</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4ea8f5"></div>A2 Hub</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>B1 Hub</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>B2 Hub</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1e2538;border:1px solid #2a3250"></div>General K.</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1a2535;border:1px solid #2a3250"></div>EFL Practice</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1a2e1e"></div>⚡ Fast Track</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2e1a1e"></div>↩️ Setback</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2a1e30"></div>✋ Detention</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2a2a1a"></div>⭐ Extra Credit</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1a2a2e"></div>🍎 Teacher's Pet</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1e1e2e"></div>🎲 Dbl/Nothing</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2e1a10"></div>⚔️ Duel</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#162e2a"></div>🛒 Shop (26)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:20px;display:flex;gap:12px;align-items:center;">
+    <button class="btn-primary" onclick="startGame()">Start Game ▶</button>
+    <span id="setup-error" style="color:var(--red);font-size:13px;"></span>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" class="screen">
+  <div id="board-area">
+    <div id="board">
+      
+      <!-- INJECTED CENTER CALL TO ACTION PANEL -->
+      <div class="board-center" id="board-center-console">
+        <div class="cta-header-deck">
+          <div>
+            <div class="turn-label" id="round-ui-label">Round 1 / 10 · Active Turn</div>
+            <div class="turn-name" id="turn-name">—</div>
+          </div>
+          <div class="turn-team-dot" id="turn-dot" style="width:24px; height:24px;"></div>
+        </div>
+        
+        <!-- INLINE LEADERBOARD (replaces right panel) -->
+        <div id="inline-leaderboard" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="scorecard-grid" id="scorecard-grid"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+            <div style="font-size:10px;color:var(--text-muted);">Required tokens: <span id="required-tokens-list-ui" style="color:var(--gold);font-weight:bold;"></span></div>
+            <button class="btn-ghost" onclick="if(confirm('Restart the match?'))location.reload();" style="font-size:10px;padding:4px 10px;">↩ Reset</button>
+          </div>
+        </div>
+
+        <div id="status-msg"></div>
+        
+        <div class="center-deck-container">
+          <!-- Default Dice Rolling Deck Box -->
+          <div id="dice-deck-card" style="display: block;">
+            <div class="dice-area">
+              <div id="dice-display" onclick="rollDice()">🎲</div>
+              <div class="dice-controls">
+                <div class="dice-label" id="dice-label">Click die to roll</div>
+                <div id="cheat-dice-container" style="display:none; align-items:center; gap:6px;">
+                  <span style="font-size:12px; color:var(--gold); font-weight:bold;">🔮 Cheat Roll:</span>
+                  <select id="cheat-value-selector" class="cheat-select">
+                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                    <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                  </select>
+                </div>
+                <button id="use-reroll-btn" class="hidden" onclick="useReroll()">🌟 Use Reroll Token</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reroll Immediate Landing Choice Interceptor Prompt Card -->
+          <div id="reroll-intercept-card" class="cta-card">
+            <span class="q-type-badge" style="background:var(--gold); color:#0f1117;">Reroll Token Active</span>
+            <div class="q-text">You have landed on a square! Choose how you would like to handle this turn:</div>
+            <div class="reroll-choice-layout">
+              <button class="btn-reroll-choice-accept" onclick="confirmKeepSquare()">Keep & Activate Space</button>
+              <button class="btn-reroll-choice-burn" onclick="confirmTriggerReroll()">Use Reroll 🔄</button>
+            </div>
+          </div>
+
+          <!-- Question Prompt Deck Box -->
+          <div id="question-card" class="cta-card">
+            <span class="q-type-badge" id="q-badge"></span>
+            <div class="q-text" id="q-text"></div>
+            <div class="q-answer" id="q-answer"></div>
+            <div class="q-actions" id="q-actions">
+              <button class="btn-reveal" onclick="revealAnswer()">👁 Show Answer</button>
+              <button class="btn-correct" onclick="judgeAnswer(true)">✅ Correct</button>
+              <button class="btn-wrong" onclick="judgeAnswer(false)">❌ Wrong</button>
+            </div>
+          </div>
+
+          <!-- Hub Token Buying Prompt -->
+          <div id="hub-buy-card" class="cta-card">
+            <div class="hub-buy-title" id="hub-buy-title">🎓 Claim Level Token</div>
+            <div class="hub-buy-cost">Cost: 25 pts</div>
+            <div class="hub-buy-desc" id="hub-buy-desc"></div>
+            <div class="hub-buy-btns" style="margin-top:6px;">
+              <button class="hub-buy-yes" id="hub-buy-yes-btn" onclick="confirmBuyToken()">✅ Spend 25 pts & Claim</button>
+              <button class="hub-buy-no" onclick="declineBuyToken()">Skip (save pts)</button>
+            </div>
+          </div>
+
+          <!-- Double or Nothing Gambles -->
+          <div id="don-card" class="cta-card">
+            <div class="don-title">🎲 Double or Nothing!</div>
+            <div class="don-desc" id="don-desc">Wager your points on the next question!</div>
+            <div style="text-align:center; margin: 8px 0;">
+              <span id="don-pts-avail" style="font-size:12px; color:var(--text-muted);"></span>
+              <input type="range" id="don-slider" min="1" value="0" style="width:100%; margin-top:6px;" oninput="updateDonValue(this.value)">
+              <div style="font-size:14px; font-weight:bold; color:var(--gold); margin-top:4px;">Wager: <span id="don-value">0</span> pts</div>
+            </div>
+            <div class="don-buttons">
+              <button class="don-accept" onclick="acceptDon()">🔥 Accept Wager</button>
+              <button class="don-decline" onclick="declineDon()">Pass</button>
+            </div>
+          </div>
+
+          <!-- Duels Mode Console -->
+          <div id="duel-card" class="cta-card">
+            <div class="duel-title">⚔️ 1v1 Duel Arena</div>
+            <div class="duel-desc" id="duel-desc">Select an opponent team to challenge. Winner steals 25% points from the loser!</div>
+            <div id="duel-target-area" class="duel-target-select" style="margin-top:6px;"></div>
+            
+            <div id="duel-buzz-area" style="display:none; margin-top:6px;">
+              <div style="font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:6px;">First to call out answers or buzz in!</div>
+              <div class="duel-buzz-row" id="duel-buzz-row"></div>
+            </div>
+            
+            <div id="duel-q-area" style="display:none;flex-direction:column;gap:8px;margin-top:6px;">
+              <div class="q-text" id="duel-q-text"></div>
+              <div class="q-answer" id="duel-q-answer"></div>
+              <div class="q-actions">
+                <button class="btn-reveal" onclick="revealDuelAnswer()">👁 Show Answer</button>
+                <button class="btn-correct" onclick="judgeDuel(true)">✅ Correct</button>
+                <button class="btn-wrong" onclick="judgeDuel(false)">❌ Wrong</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Teacher's Pet Swap Controls -->
+          <div id="pet-card" class="cta-card">
+            <div class="pet-title">🍎 Teacher's Pet!</div>
+            <div class="pet-desc" style="margin-bottom:6px;">Choose an opponent to instantly trade places with on the map board, or opt to stay put:</div>
+            <div id="pet-team-list" style="display:flex;flex-direction:column;gap:6px; margin-bottom:8px;"></div>
+            <button class="btn-ghost" onclick="nextTurn()">Pass (Do Nothing)</button>
+          </div>
+
+          <!-- Permanent Square 26 Shop Console Card -->
+          <div id="shop-card" class="cta-card">
+            <div class="hub-buy-title" style="color:var(--teal)">🛒 Black Market Advantage Shop</div>
+            <div style="font-size:12px; color:var(--text-muted);">Spend points on custom high-tier modifiers. You can buy multiple things if you have enough points!</div>
+            <div class="shop-grid">
+              <div class="shop-item">
+                <div class="shop-item-info"><h4>🌟 Reroll Token</h4><p>Allows safe mid-turn rewinds.</p></div>
+                <button class="btn-buy" id="shop-b-reroll" onclick="buyShopItem('reroll', 10)">10 Pts</button>
+              </div>
+              <div class="shop-item">
+                <div class="shop-item-info"><h4>🔮 Cheat Dice</h4><p>Pick exact results on your next turn.</p></div>
+                <button class="btn-buy" id="shop-b-cheat" onclick="buyShopItem('cheat', 15)">15 Pts</button>
+              </div>
+              <div class="shop-item">
+                <div class="shop-item-info"><h4>💥 Point Stealing Mines</h4><p>Place 2 trap landmines on the board maps.</p></div>
+                <button class="btn-buy" id="shop-b-mine" onclick="buyShopItem('mine', 15)">15 Pts</button>
+              </div>
+              <div class="shop-item">
+                <div class="shop-item-info"><h4>🎓 Core Hub Level Token</h4><p>Purchase an elusive CEFR completion token directly.</p></div>
+                <button class="btn-buy" id="shop-b-token" onclick="buyShopItem('token', 50)">50 Pts</button>
+              </div>
+            </div>
+            <button class="btn-primary" onclick="nextTurn()" style="background:var(--teal); margin-top:8px;">Exit Shop & Pass Turn</button>
+          </div>
+
+          <!-- Global Event Confirmation Card -->
+          <div id="event-card" class="cta-card">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="event-icon" id="event-icon"></div>
+              <div>
+                <div class="event-title" id="event-title"></div>
+                <div class="event-desc" id="event-desc"></div>
+              </div>
+            </div>
+            <button class="event-done-btn" onclick="closeEvent()" style="margin-top:6px; align-self:flex-end;">Continue →</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT SIDE PANEL (hidden - leaderboard moved to center console) -->
+  <div id="right-panel"></div>
+</div>
+
+<!-- WIN CELEBRATION OVERLAY -->
+<div id="win-overlay">
+  <div class="win-trophy">🏆</div>
+  <div class="win-title" id="win-title">Team Wins!</div>
+  <div class="win-sub" id="win-sub">All required tokens collected!</div>
+  <button class="btn-primary" onclick="location.reload()">Start New Game</button>
+</div>
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+// ==========================================
+// AUDIO SYNTH ENGINE (No external URLs needed)
+// ==========================================
+const Sound = {
+  ctx: null,
+  init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+  play(type) {
+    this.init(); if (!this.ctx) return;
+    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+    osc.connect(gain); gain.connect(this.ctx.destination);
+    const now = this.ctx.currentTime;
+    if (type === 'roll') {
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+      gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
+    } else if (type === 'correct') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(523.25, now); // C5
+      osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+      osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+      gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
+      osc.start(now); osc.stop(now + 0.4);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now);
+      osc.frequency.linearRampToValueAtTime(90, now + 0.3);
+      gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+      osc.start(now); osc.stop(now + 0.3);
+    } else if (type === 'shop') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880, now + 0.08); // A5
+      gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
+      osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'win') {
+      osc.type = 'square'; osc.frequency.setValueAtTime(261.63, now);
+      osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.8);
+      gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.8);
+      osc.start(now); osc.stop(now + 0.8);
+    }
+  }
+};
+
+// ==========================================
+// 1. CONFIGURATION & GAME CONSTANTS
+// ==========================================
+const TEAM_COLORS = ['#f25c6e', '#4ea8f5', '#34d98b', '#f5c842', '#a78bfa', '#fb923c'];
+const TOKEN_COST = 25; 
+const TOTAL_SQUARES = 28; 
+const CORNER_INDICES = [0, 7, 14, 21]; 
+
+const SQUARE_TYPES_POOL = [
+  'gk', 'gk', 'gk', 'gk',
+  'efl', 'efl', 'efl', 'efl',
+  'fast', 'fast', 'back', 'back', 'det',
+  'ec', 'ec', 'pet', 'don', 'duel', 'duel'
+  // Cell 26 will be forced to 'shop' downstream
+];
+
+const SQUARE_INFO = {
+  gk:   { label: 'General K.', icon: '🧠', cls: 'sq-gk' },
+  efl:  { label: 'EFL Practice', icon: '📖', cls: 'sq-efl' },
+  fast: { label: 'Fast Track', icon: '⚡', cls: 'sq-fast' },
+  back: { label: 'Setback', icon: '↩️', cls: 'sq-back' },
+  det:  { label: 'Detention!', icon: '✋', cls: 'sq-det' },
+  ec:   { label: 'Extra Credit', icon: '⭐', cls: 'sq-ec' },
+  pet:  { label: "Teacher's Pet", icon: '🍎', cls: 'sq-pet' },
+  don:  { label: 'Dbl or Nothing', icon: '🎲', cls: 'sq-don' },
+  duel: { label: '1v1 Duel', icon: '⚔️', cls: 'sq-duel' },
+  shop: { label: 'Advantage Shop', icon: '🛒', cls: 'sq-shop' }
+};
+
+const HUB_COLORS = { A1: 'var(--a1)', A2: 'var(--a2)', B1: 'var(--b1)', B2: 'var(--b2)' };
+const HUB_ICONS  = { A1: '🌱', A2: '📘', B1: '🔮', B2: '🔥' };
+const HUB_CLS    = { A1: 'sq-corner sq-a1', A2: 'sq-corner sq-a2', B1: 'sq-corner sq-b1', B2: 'sq-corner sq-b2' };
+const Q_PTS      = { A1: 10, A2: 15, B1: 20, B2: 25, GK: 10 };
+
+// ==========================================
+// 2. QUESTION DATABASE
+// ==========================================
+const QUESTIONS = {
+  A1: [
+    { q: "What is the verb 'to be' in the third person singular present? (He ___ happy)", a: "is" },
+    { q: "Make this sentence negative: 'She likes dogs.'", a: "She doesn't like dogs." },
+    { q: "What is the plural of 'child'?", a: "children" },
+    { q: "Complete: 'I ___ a student.' (verb to be)", a: "am" },
+    { q: "What is the opposite of 'hot'?", a: "cold" },
+    { q: "Put in order: [school / go / I / to]", a: "I go to school." },
+    { q: "Complete with have/has: 'She ___ two cats.'", a: "has" },
+    { q: "What is the past simple of 'go'?", a: "went" },
+    { q: "Make a question: 'You are tired.' → ___?", a: "Are you tired?" },
+    { q: "Complete with 'a' or 'an': '___ apple and ___ banana.'", a: "an apple and a banana" },
+    { q: "What is the plural of 'tooth'?", a: "teeth" },
+    { q: "Make this sentence positive: 'They don't play football.'", a: "They play football." },
+    { q: "What is the past simple of 'eat'?", a: "ate" },
+    { q: "Complete: 'There ___ three chairs in the room.' (there is/are)", a: "are" },
+    { q: "What time is it? The clock shows 3:00. Say it in English.", a: "It's three o'clock." },
+    { q: "Complete: 'He ___ (not like) vegetables.' (present simple)", a: "doesn't like" },
+    { q: "What is the possessive form? 'The bag belongs to Maria.' → It's ___.", a: "Maria's bag" },
+    { q: "Put in order: [now / are / they / playing / football]", a: "They are playing football now." }
+  ],
+  A2: [
+    { q: "Complete with the correct past continuous form: 'They ___ (watch) TV when it started to rain.'", a: "were watching" },
+    { q: "Choose the correct option: 'I am taller than / that my brother.'", a: "than" },
+    { q: "What is the superlative form of 'good'?", a: "the best" },
+    { q: "Complete with since or for: 'I have lived here ___ 3 years.'", a: "for" },
+    { q: "Make a question in the present perfect: 'You / ever / see / a whale' → ___?", a: "Have you ever seen a whale?" },
+    { q: "What is the opposite adjective of 'expensive'?", a: "cheap" },
+    { q: "Complete with something, anything, or nothing: 'I'm bored. There is ___ to do here.'", a: "nothing" },
+    { q: "Complete with the relative pronoun: 'This is the town ___ I was born.'", a: "where" },
+    { q: "Put the verb in the correct form: 'If it rains tomorrow, I ___ (stay) at home.'", a: "will stay" },
+    { q: "Make a comparison: 'A car is ___ (fast) than a bicycle.'", a: "faster" },
+    { q: "Complete with 'much' or 'many': 'How ___ money do you have?'", a: "much" },
+    { q: "What tense is this? 'I was reading when she called.' Name both tenses.", a: "Past continuous + past simple" },
+    { q: "Complete: 'She ___ (already / finish) her homework.' (present perfect)", a: "has already finished" },
+    { q: "What is the passive form of: 'Someone stole the car.'?", a: "The car was stolen." },
+    { q: "Use a modal to give advice: 'You look tired. You ___ go to bed.'", a: "should" },
+    { q: "Complete with 'too' or 'enough': 'This coffee is ___ hot to drink.'", a: "too" }
+  ],
+  B1: [
+    { q: "What is the difference between MAKE and DO? Give one collocation for each.", a: "MAKE = create/produce (make a cake); DO = perform/activity (do homework)." },
+    { q: "Complete with the correct modal: 'You ___ be exhausted after that race!' (deduction)", a: "must" },
+    { q: "What is the third conditional? Give an example.", a: "If + past perfect, would have + past participle. E.g. If I had studied, I would have passed." },
+    { q: "What is the pattern for WISH + past perfect? Give an example.", a: "I wish + subject + had + past participle. E.g. I wish I had studied more." },
+    { q: "Explain the difference between WILL and GOING TO for future.", a: "WILL = spontaneous decisions/predictions. GOING TO = plans already made/evidence-based." },
+    { q: "Complete: 'The sooner you start, ___ you'll finish.' (comparative)", a: "the sooner" },
+    { q: "What does a GERUND do in a sentence? Give an example.", a: "It acts as a noun. E.g. Swimming is my favourite sport." },
+    { q: "Correct the error: 'I am knowing the answer.'", a: "I know the answer. (stative verbs don't use continuous)" },
+    { q: "What is an ADVERB OF DEGREE? Give two examples.", a: "Words that modify adjectives/verbs in intensity. E.g. very, extremely, quite, rather." },
+    { q: "What is REPORTED SPEECH? Rewrite: 'I'm tired,' she said.", a: "Reporting what someone said. → She said (that) she was tired." },
+    { q: "Complete with the correct form: 'He suggested ___ (go) to the cinema.'", a: "going" },
+    { q: "What is the difference between USED TO and WOULD for past habits?", a: "USED TO = past states & habits. WOULD = repeated past actions only, not states." },
+    { q: "Rewrite in passive: 'The teacher explains the grammar.'", a: "The grammar is explained by the teacher." },
+    { q: "Complete: 'Despite ___ (be) tired, she finished the race.'", a: "being" },
+    { q: "What does 'It's high time you ___ (study).' mean and what form follows?", a: "It's overdue. Followed by past simple: It's high time you studied." },
+    { q: "Give the noun form of the adjective 'happy'.", a: "happiness" },
+    { q: "Complete with the correct preposition: 'She is good ___ maths.'", a: "at" },
+    { q: "What is the difference between SAY and TELL? Give an example of each.", a: "SAY has no object (she said hello). TELL needs an object (she told me hello)." }
+  ],
+  B2: [
+    { q: "Explain the difference between INFER and IMPLY with examples.", a: "IMPLY = speaker suggests something indirectly. INFER = listener draws a conclusion." },
+    { q: "What is a MIXED CONDITIONAL? Give an example.", a: "Mixes 2nd and 3rd conditionals. E.g. 'If I had studied medicine, I would be a doctor now.'" },
+    { q: "Rewrite using a CLEFT SENTENCE: 'Maria told me the news.'", a: "It was Maria who told me the news." },
+    { q: "What is INVERSION? Give a formal example.", a: "Changing word order for emphasis, usually after negatives. E.g. 'Seldom have I seen such beauty.'" },
+    { q: "Explain the difference between Gradable and Non-gradable adjectives with modifier rules.", a: "Gradable = can use 'very/extremely' (cold, angry). Non-gradable = use 'absolutely/utterly' (boiling, furious)." },
+    { q: "What does ELLIPSIS mean in grammar? Give an example.", a: "Omitting words understood from context. E.g. 'Can you drive?' 'Yes, I can [drive].'" },
+    { q: "Complete with the correct particle: 'The project has been put ___ until next month.'", a: "off" },
+    { q: "Explain the BARE INFINITIVE with two verbs that require it.", a: "Infinitive without 'to'. Used after modals (can, must) and perception verbs (see, hear, let)." },
+    { q: "Rewrite using WISH/IF ONLY for a present regret: 'I don't speak French.'", a: "I wish I spoke French. / If only I spoke French." },
+    { q: "What is FRONTING in English? Give an example.", a: "Moving a phrase to the front for emphasis. E.g. 'This I cannot accept.'" },
+    { q: "What is the difference between SINCE and BECAUSE in formal writing?", a: "SINCE (formal) = because/given that. BECAUSE = more explicit causation. E.g. 'Since she was tired, she left early.'" },
+    { q: "What is a PARTICIPLE CLAUSE? Give an example with a present participle.", a: "A reduced clause using a participle instead of a full verb. E.g. 'Walking to school, she saw an accident.'" },
+    { q: "Explain HEDGING language. Give two examples used in academic writing.", a: "Softening claims to show uncertainty. E.g. 'It tends to…', 'This may suggest…', 'It appears that…'" },
+    { q: "What is the difference between WILL HAVE DONE and WOULD HAVE DONE?", a: "WILL HAVE DONE = future perfect (prediction before a future point). WOULD HAVE DONE = 3rd conditional (unreal past)." },
+    { q: "Rewrite with HARDLY/BARELY/SCARCELY + inversion: 'I sat down and the phone rang immediately.'", a: "Hardly had I sat down when the phone rang." },
+    { q: "What is an ABSOLUTE PHRASE? Give an example.", a: "A noun + participle phrase modifying a whole clause. E.g. 'The sun having set, we went inside.'" },
+    { q: "Explain the difference between WHICH and THAT in relative clauses.", a: "THAT = defining (restrictive) clauses. WHICH = non-defining (adds extra info, needs commas)." },
+    { q: "What is NOMINALISATION? Rewrite: 'They decided to invest' using a nominalised form.", a: "Turning verbs/adjectives into nouns. → 'Their decision to invest…'" },
+    { q: "Correct and explain: 'The data shows that there is less errors now.'", a: "Two errors: 'data' is plural → 'show'; 'less' for countable → 'fewer errors'." },
+    { q: "What is the SUBJUNCTIVE mood? Give a formal example.", a: "Used for hypothetical/formal situations. E.g. 'It is essential that he be present.' / 'If I were you…'" },
+    { q: "Explain the pragmatic difference: 'Can you open the window?' vs 'Open the window.'", a: "'Can you…?' is an indirect request — more polite. The imperative is direct and can sound abrupt." },
+    { q: "What is a DANGLING MODIFIER? Give an example and correct it.", a: "A modifier not logically attached to the right noun. E.g. 'Running to school, the bag fell.' → 'Running to school, I dropped my bag.'" }
+  ],
+  GK: [
+    { q: "What is the capital of Australia?", a: "Canberra" },
+    { q: "How many sides does a hexagon have?", a: "6" },
+    { q: "What planet is known as the Red Planet?", a: "Mars" },
+    { q: "Who wrote Romeo and Juliet?", a: "William Shakespeare" },
+    { q: "What is the largest ocean on Earth?", a: "The Pacific Ocean" },
+    { q: "What gas do plants absorb from the air?", a: "Carbon dioxide (CO₂)" },
+    { q: "How many bones are in the adult human body?", a: "206" },
+    { q: "What animal is the symbol of the WWF?", a: "The giant panda" },
+    { q: "What is the capital of Brazil?", a: "Brasília" },
+    { q: "How many continents are there?", a: "7" },
+    { q: "What language do people speak in Brazil?", a: "Portuguese" },
+    { q: "What is 15% of 200?", a: "30" },
+    { q: "Which instrument has 88 keys?", a: "The piano" },
+    { q: "What is the largest organ in the human body?", a: "The skin" },
+    { q: "Who painted the Mona Lisa?", a: "Leonardo da Vinci" },
+    { q: "How many months have 31 days?", a: "7 months (Jan, Mar, May, Jul, Aug, Oct, Dec)" },
+    { q: "What is the longest river in the world?", a: "The Nile (or Amazon)" },
+    { q: "What force keeps us on the ground?", a: "Gravity" },
+    { q: "What is the chemical symbol for gold?", a: "Au" },
+    { q: "How many players are on a football (soccer) team?", a: "11" },
+    { q: "What is the smallest country in the world?", a: "Vatican City" },
+    { q: "In which country were the 2016 Summer Olympics held?", a: "Brazil (Rio de Janeiro)" },
+    { q: "What is the square root of 144?", a: "12" },
+    { q: "What is the currency of Japan?", a: "The yen" },
+    { q: "How many strings does a standard guitar have?", a: "6" },
+    { q: "What is the tallest mountain in the world?", a: "Mount Everest" },
+    { q: "Which planet is closest to the Sun?", a: "Mercury" },
+    { q: "How many hours are in a week?", a: "168" },
+    { q: "What is the capital of Japan?", a: "Tokyo" },
+    { q: "Who was the first person to walk on the Moon?", a: "Neil Armstrong" },
+    { q: "What is the hardest natural substance on Earth?", a: "Diamond" },
+    { q: "How many sides does an octagon have?", a: "8" },
+    { q: "What is the capital of Canada?", a: "Ottawa" },
+    { q: "What does DNA stand for?", a: "Deoxyribonucleic acid" },
+    { q: "How many zeros are in one million?", a: "6" },
+    { q: "What is the main language spoken in Argentina?", a: "Spanish" }
+  ]
+};
+
+// ==========================================
+// 3. ENGINE STATE VARIABLES
+// ==========================================
+let state = {
+  teams: [],
+  cefrActive: [],
+  hubAssignments: [],
+  requiredTokens: [],
+  boardSquares: [],
+  currentTeam: 0,
+  phase: 'roll',
+  rolled: 0,
+  donActive: false,
+  donPoints: 0,
+  duelChallenger: null,
+  duelTarget: null,
+  duelBuzzWinner: null,
+  preRollPosition: 0,
+  usedQs: { A1: [], A2: [], B1: [], B2: [], GK: [] },
+  
+  // Custom Extensions
+  roundLimit: 10,
+  totalTurnsCount: 0,
+  mines: {}, // Structure: { squareIndex: ownerTeamIndex }
+  _landmineResume: false,
+  _fastTrackResume: false,
+  _setbackResume: false
+};
+
+let currentQuestion = null;
+let pendingHubLevel = null;
+
+// ==========================================
+// 4. SETUP SCREEN ACTIONS
+// ==========================================
+const DEFAULT_TEAMS = [
+  { name: 'Team Red', active: true },
+  { name: 'Team Blue', active: true },
+  { name: 'Team Green', active: false },
+  { name: 'Team Yellow', active: false },
+  { name: 'Team Purple', active: false },
+  { name: 'Team Orange', active: false }
+];
+
+let setupTeams = DEFAULT_TEAMS.map((t, i) => ({ ...t, color: TEAM_COLORS[i] }));
+
+function renderSetupTeams() {
+  const container = document.getElementById('team-rows');
+  container.innerHTML = '';
+  
+  setupTeams.forEach((team, i) => {
+    const row = document.createElement('div');
+    row.className = 'team-row';
+    row.innerHTML = `
+      <div class="color-dot" style="background: ${team.color}"></div>
+      <input type="text" value="${team.name}" oninput="setupTeams[${i}].name = this.value">
+      <button class="team-active-toggle ${team.active ? 'on' : ''}" onclick="toggleTeam(${i})">
+        ${team.active ? '✅ Active' : '❌ Inactive'}
+      </button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function toggleTeam(i) {
+  setupTeams[i].active = !setupTeams[i].active;
+  renderSetupTeams();
+}
+
+function addTeam() {
+  if (setupTeams.length >= TEAM_COLORS.length) return;
+  const newIdx = setupTeams.length;
+  setupTeams.push({ name: `Team ${newIdx + 1}`, active: true, color: TEAM_COLORS[newIdx] });
+  renderSetupTeams();
+}
+
+function toggleCefr(input) {
+  const lbl = document.getElementById(`cefr-${input.value.toLowerCase()}`);
+  if (input.checked) {
+    lbl.classList.add('checked');
+  } else {
+    lbl.classList.remove('checked');
+  }
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function buildHubAssignments(cefrActive) {
+  const n = cefrActive.length;
+  let assignments;
+  if (n === 0) {
+    assignments = [cefrActive[0] || 'A1', 'A1', 'A1', 'A1'];
+  } else if (n === 1) {
+    assignments = [cefrActive[0], cefrActive[0], cefrActive[0], cefrActive[0]];
+  } else if (n === 2) {
+    assignments = [cefrActive[0], cefrActive[1], cefrActive[0], cefrActive[1]];
+  } else if (n === 3) {
+    assignments = [cefrActive[0], cefrActive[1], cefrActive[2], cefrActive[0]];
+  } else {
+    assignments = [cefrActive[0], cefrActive[1], cefrActive[2], cefrActive[3]];
+  }
+  return { assignments, required: [...new Set(assignments)] };
+}
+
+function startGame() {
+  // Init audio context on first meaningful user interaction
+  Sound.init();
+
+  const active = setupTeams.filter(t => t.active && t.name.trim());
+  if (active.length < 2) {
+    document.getElementById('setup-error').textContent = 'Need at least 2 active teams!';
+    return;
+  }
+  const cefrActive = ['A1', 'A2', 'B1', 'B2'].filter(c => document.querySelector(`#cefr-${c.toLowerCase()} input`)?.checked );
+  if (!cefrActive.length) {
+    document.getElementById('setup-error').textContent = 'Select at least one CEFR level!';
+    return;
+  }
+
+  const { assignments, required } = buildHubAssignments(cefrActive);
+  state.cefrActive = cefrActive;
+  state.hubAssignments = assignments;
+  state.requiredTokens = required;
+  state.roundLimit = parseInt(document.getElementById('round-limit-select').value) || 10;
+  state.totalTurnsCount = 0;
+  state.mines = {};
+  
+  document.getElementById('required-tokens-list-ui').textContent = required.join(', ');
+  
+  state.teams = active.map(t => ({
+    name: t.name,
+    color: t.color,
+    position: 0,
+    points: 0,
+    tokens: [],
+    rerolls: 0,
+    skipTurns: 0,
+    correctCount: 0, // Tiebreaker metric
+    hasCheatDice: false
+  }));
+  
+  state.currentTeam = 0;
+  state.phase = 'roll';
+  state.rolled = 0;
+  state.usedQs = { A1: [], A2: [], B1: [], B2: [], GK: [] };
+
+  buildBoardSquares();
+  renderBoard();
+  renderScorecards();
+  updateTurnHeader();
+  showConsoleDeck('dice-deck-card');
+  
+  document.getElementById('setup-screen').classList.remove('active');
+  document.getElementById('game-screen').classList.add('active');
+  sizeBoardCells();
+}
+
+// ==========================================
+// 5. MAP ARCHITECTURE & GRID GENERATION
+// ==========================================
+function buildBoardSquares() {
+  const pool = [...SQUARE_TYPES_POOL];
+  shuffleArray(pool);
+  
+  state.boardSquares = [];
+  let poolIdx = 0;
+  
+  for (let i = 0; i < TOTAL_SQUARES; i++) {
+    const cIdx = CORNER_INDICES.indexOf(i);
+    if (cIdx !== -1) {
+      state.boardSquares.push({ type: 'hub', hubLevel: state.hubAssignments[cIdx] });
+    } else if (i === 26) {
+      // Force permanently to custom Shop zone
+      state.boardSquares.push({ type: 'shop' });
+    } else {
+      state.boardSquares.push({ type: pool[poolIdx++] || 'gk' });
+    }
+  }
+}
+
+function getCoordsForIndex(idx) {
+  const N = 8;
+  if (idx < N) return { r: 0, c: idx };
+  if (idx < 2 * N - 1) return { r: idx - (N - 1), c: N - 1 };
+  if (idx < 3 * N - 2) return { r: N - 1, c: (3 * N - 3) - idx };
+  if (idx < TOTAL_SQUARES) return { r: TOTAL_SQUARES - idx, c: 0 };
+  return { r: 0, c: 0 };
+}
+
+function getIndexForCoords(r, c) {
+  const N = 8;
+  if (r === 0) return c;
+  if (c === N - 1) return 7 + r;
+  if (r === N - 1) return 14 + ((N - 1) - c);
+  if (c === 0) return 21 + ((N - 1) - r);
+  return -1;
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  const consoleBlock = document.getElementById('board-center-console');
+  board.innerHTML = '';
+  board.appendChild(consoleBlock);
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const sqIdx = getIndexForCoords(r, c);
+      if (sqIdx !== -1) {
+        const cell = document.createElement('div');
+        cell.className = 'board-cell';
+        cell.id = `sq-${sqIdx}`;
+        
+        const tokensContainer = document.createElement('div');
+        tokensContainer.className = 'cell-tokens';
+        tokensContainer.id = `tokens-${sqIdx}`;
+        cell.appendChild(tokensContainer);
+        
+        const sq = state.boardSquares[sqIdx];
+        if (sq.type === 'hub') {
+          const lvl = sq.hubLevel;
+          HUB_CLS[lvl].split(' ').forEach(cls => cell.classList.add(cls));
+          cell.innerHTML += `<div class="cell-num">${sqIdx}</div><div class="cell-icon">${HUB_ICONS[lvl]}</div><div class="cell-label">${lvl} Hub</div>`;
+        } else {
+          const info = SQUARE_INFO[sq.type];
+          cell.classList.add(info.cls);
+          cell.innerHTML += `<div class="cell-num">${sqIdx}</div><div class="cell-icon">${info.icon}</div><div class="cell-label">${info.label}</div>`;
+        }
+
+        // Add visual landmine notifications on grid if active
+        if (state.mines[sqIdx] !== undefined) {
+          const mineBadge = document.createElement('div');
+          mineBadge.className = 'cell-mine-indicator';
+          mineBadge.textContent = '💥 MINE';
+          cell.appendChild(mineBadge);
+        }
+
+        board.appendChild(cell);
+      }
+    }
+  }
+  refreshTokens();
+}
+
+function sizeBoardCells() {
+  const area = document.getElementById('board-area');
+  const size = Math.min(area.clientWidth, area.clientHeight) - 32;
+  const board = document.getElementById('board');
+  board.style.width = `${size}px`;
+  board.style.height = `${size}px`;
+}
+window.addEventListener('resize', sizeBoardCells);
+
+// ==========================================
+// 6. MEEPLES TRACKING & GLOW INJECTION
+// ==========================================
+function refreshTokens() {
+  for (let i = 0; i < TOTAL_SQUARES; i++) {
+    const el = document.getElementById(`tokens-${i}`);
+    if (el) el.innerHTML = '';
+    const sq = document.getElementById(`sq-${i}`);
+    if (sq) {
+      sq.classList.remove('sq-active');
+      sq.classList.remove('sq-glowing-pulse');
+    }
+  }
+
+  let squareOccupancyCount = {};
+  state.teams.forEach((team, idx) => {
+    const pos = team.position;
+    squareOccupancyCount[pos] = (squareOccupancyCount[pos] || 0) + 1;
+
+    const el = document.getElementById(`tokens-${pos}`);
+    if (el) {
+      const pawn = document.createElement('div');
+      pawn.className = 'token-pawn';
+      pawn.style.backgroundColor = team.color;
+      pawn.style.boxShadow = `0 0 15px ${team.color}, inset 0 0 8px rgba(0,0,0,0.4)`;
+      pawn.textContent = idx + 1;
+      el.appendChild(pawn);
+    }
+  });
+
+  for (let i = 0; i < TOTAL_SQUARES; i++) {
+    if (squareOccupancyCount[i] > 0) {
+      const sq = document.getElementById(`sq-${i}`);
+      if (sq) sq.classList.add('sq-glowing-pulse');
+    }
+  }
+
+  const curTeam = state.teams[state.currentTeam];
+  if (curTeam) {
+    const pos = curTeam.position;
+    const el = document.getElementById(`sq-${pos}`);
+    if (el) el.classList.add('sq-active');
+  }
+}
+
+// ==========================================
+// 7. USER INTERFACE RENDERING & TURNS
+// ==========================================
+function renderScorecards() {
+  const grid = document.getElementById('scorecard-grid');
+  grid.innerHTML = '';
+  
+  state.teams.forEach((team, i) => {
+    const card = document.createElement('div');
+    card.className = 'scorecard' + (i === state.currentTeam ? ' active-turn' : '');
+    card.id = `sc-${i}`;
+    
+    const tokHTML = state.requiredTokens.map(t => {
+      const earned = team.tokens.includes(t);
+      return `<span class="sc-token ${earned ? 'earned' : ''}" style="background:${HUB_COLORS[t] || '#fff'}">${t}</span>`;
+    }).join('');
+
+    // Action buttons: reroll and cheat dice — usable anytime by any team
+    const rerollBtn = team.rerolls > 0
+      ? `<button class="sc-action-btn sc-reroll-btn" onclick="useRerollForTeam(${i})">🌟×${team.rerolls} Reroll</button>`
+      : '';
+    const cheatBtn = team.hasCheatDice
+      ? `<button class="sc-action-btn sc-cheat-btn" onclick="activateCheatDice(${i})">🔮 Cheat Dice</button>`
+      : '';
+    const actionRow = (rerollBtn || cheatBtn) ? `<div class="sc-actions">${rerollBtn}${cheatBtn}</div>` : '';
+    
+    card.innerHTML = `
+      <div class="sc-top-row">
+        <div class="sc-dot" style="background:${team.color}"></div>
+        <div class="sc-name">${team.name}</div>
+        <div class="sc-pts">${team.points}pts</div>
+        ${team.skipTurns > 0 ? `<span class="sc-skip">🚫DETNT</span>` : ''}
+      </div>
+      <div class="sc-tokens">${tokHTML}</div>
+      ${actionRow}
+    `;
+    grid.appendChild(card);
+  });
+
+  // Calculate current human-readable round
+  const currentRound = Math.floor(state.totalTurnsCount / state.teams.length) + 1;
+  document.getElementById('round-ui-label').textContent = `Round ${Math.min(currentRound, state.roundLimit)} / ${state.roundLimit} · Active Turn`;
+}
+
+function updateTurnHeader() {
+  const team = state.teams[state.currentTeam];
+  if (!team) return;
+  document.getElementById('turn-dot').style.background = team.color;
+  document.getElementById('turn-name').textContent = team.name;
+  updateRerollBtn();
+}
+
+// Use reroll token from leaderboard card (any team, any time during roll phase)
+function useRerollForTeam(teamIdx) {
+  const team = state.teams[teamIdx];
+  if (!team || team.rerolls <= 0) return;
+  // Only allow reroll if it's this team's turn and in roll/reroll phase
+  if (teamIdx !== state.currentTeam) {
+    showEvent('🌟', 'Not Your Turn', `${team.name} can only use a Reroll Token on their own turn.`);
+    return;
+  }
+  if (state.phase !== 'roll' && state.phase !== 'reroll' && state.phase !== 'reroll-intercept') {
+    showEvent('🌟', 'Wrong Time', 'Reroll Tokens can only be used during your roll phase.');
+    return;
+  }
+  if (state.rerollTimeout) clearTimeout(state.rerollTimeout);
+  team.rerolls--;
+  team.position = state.preRollPosition;
+  state.phase = 'roll';
+  const dice = document.getElementById('dice-display');
+  dice.classList.remove('disabled');
+  dice.textContent = '🎲';
+  document.getElementById('dice-label').textContent = 'Returned! Roll again!';
+  setStatus(`${team.name} spent a 🌟 Reroll Token and returned to space ${team.position}!`);
+  refreshTokens();
+  renderScorecards();
+  updateTurnHeader();
+  showConsoleDeck('dice-deck-card');
+}
+
+// Activate cheat dice from leaderboard card (team's turn only)
+function activateCheatDice(teamIdx) {
+  const team = state.teams[teamIdx];
+  if (!team || !team.hasCheatDice) return;
+  if (teamIdx !== state.currentTeam) {
+    showEvent('🔮', 'Not Your Turn', `${team.name} can only use the Cheat Dice on their own turn.`);
+    return;
+  }
+  if (state.phase !== 'roll') {
+    showEvent('🔮', 'Wrong Time', 'Cheat Dice can only be activated before rolling.');
+    return;
+  }
+  const cheatBox = document.getElementById('cheat-dice-container');
+  cheatBox.style.display = 'flex';
+  setStatus(`🔮 ${team.name}: select your desired roll value, then click the die!`);
+}
+
+function updateRerollBtn() {
+  // Reroll tokens are now used via leaderboard card buttons — hide the old inline button
+  const btn = document.getElementById('use-reroll-btn');
+  if (btn) btn.classList.add('hidden');
+}
+
+// ==========================================
+// 8. RNG DICE LOGIC (WITH WORKING REROLL)
+// ==========================================
+function rollDice() {
+  if (state.phase !== 'roll') return;
+  const team = state.teams[state.currentTeam];
+  
+  if (team.skipTurns > 0) {
+    team.skipTurns--;
+    Sound.play('wrong');
+    setStatus(`${team.name} is in Detention! Turn skipped.`);
+    renderScorecards();
+    setTimeout(nextTurn, 1800);
+    return;
+  }
+
+  state.preRollPosition = team.position;
+
+  const dice = document.getElementById('dice-display');
+  dice.classList.add('rolling', 'disabled');
+  document.getElementById('use-reroll-btn').classList.add('hidden');
+  document.getElementById('cheat-dice-container').style.display = 'none';
+  
+  let counter = 0;
+  const interval = setInterval(() => {
+    Sound.play('roll');
+    dice.textContent = Math.floor(Math.random() * 6) + 1;
+    counter++;
+    if (counter >= 8) {
+      clearInterval(interval);
+      
+      let result;
+      if (team.hasCheatDice) {
+        result = parseInt(document.getElementById('cheat-value-selector').value) || 1;
+        team.hasCheatDice = false; // Discard after single deployment
+      } else {
+        result = Math.floor(Math.random() * 6) + 1;
+      }
+      
+      dice.textContent = result;
+      dice.classList.remove('rolling');
+      
+      state.rolled = result;
+      document.getElementById('dice-label').textContent = `Rolled a ${result}!`;
+      state.phase = 'reroll';
+      updateRerollBtn();
+      
+      state.rerollTimeout = setTimeout(() => {
+        if (state.phase === 'reroll') {
+          executeMove();
+        }
+      }, 1200);
+    }
+  }, 60);
+}
+
+function executeMove() {
+  const team = state.teams[state.currentTeam];
+  team.position = (team.position + state.rolled) % TOTAL_SQUARES;
+  refreshTokens();
+  evaluateLandingSquare();
+}
+
+function confirmKeepSquare() {
+  evaluateLandingSquare();
+}
+
+function confirmTriggerReroll() {
+  const team = state.teams[state.currentTeam];
+  if (team.rerolls <= 0) return;
+  
+  team.rerolls--;
+  team.position = state.preRollPosition;
+  state.phase = 'roll';
+  
+  const dice = document.getElementById('dice-display');
+  dice.classList.remove('disabled');
+  dice.textContent = '🎲';
+  document.getElementById('dice-label').textContent = 'Returned! Roll again!';
+  
+  setStatus(`Spent a 🌟 Reroll Token and returned back to space ${team.position}!`);
+  refreshTokens();
+  renderScorecards();
+  updateTurnHeader();
+  showConsoleDeck('dice-deck-card');
+}
+
+// ==========================================
+// 9. EVENTS, PERIMETERS & HUBS VALIDATION
+// ==========================================
+function evaluateLandingSquare() {
+  const team = state.teams[state.currentTeam];
+  const pos = team.position;
+
+  // INTERCEPT: Step-on Landmine Traps Check (skip if resuming after landmine or movement event)
+  if (state.phase !== 'move' && state.mines[pos] !== undefined && state.mines[pos] !== state.currentTeam) {
+    const mineOwnerIdx = state.mines[pos];
+    const ownerTeam = state.teams[mineOwnerIdx];
+    const stolenPts = Math.floor(team.points * 0.25);
+    
+    team.points -= stolenPts;
+    ownerTeam.points += stolenPts;
+    delete state.mines[pos]; // Disarms instantly
+    
+    Sound.play('wrong');
+    renderBoard(); 
+    renderScorecards();
+    
+    // Show event card then continue the turn by re-evaluating the square after dismissal
+    state._landmineResume = true;
+    showEvent('💥', `Landmine! −${stolenPts} pts`, `Stepped on a mine planted by ${ownerTeam.name}! Lost 25% (${stolenPts} pts). Turn continues normally — click Continue.`);
+    return;
+  }
+
+  // Internal flag: resume evaluateLandingSquare after landmine/movement event dismissed
+  if (state.phase === 'move') {
+    state.phase = 'question'; // will be properly set by the square handler below
+  }
+
+  const sq = state.boardSquares[pos];
+  
+  if (sq.type === 'hub') {
+    const lvl = sq.hubLevel;
+    if (team.tokens.includes(lvl)) {
+      showEvent(HUB_ICONS[lvl], `${lvl} Hub`, `You already own the ${lvl} Token! No extra action here.`);
+    } else {
+      if (team.points < TOKEN_COST) {
+        Sound.play('wrong');
+        showEvent('🔒', `${lvl} Hub Locked`, `${team.name} landed on the ${lvl} Hub but only has ${team.points} pts. You need ${TOKEN_COST} pts to unlock this trial! Turn Over.`);
+      } else {
+        pendingHubLevel = lvl;
+        state.phase = 'question';
+        showQuestion(lvl, `${HUB_ICONS[lvl]} ${lvl} Hub Challenge — Answer right for a chance to spend ${TOKEN_COST} pts to buy this Token!`);
+      }
+    }
+    return;
+  }
+
+  switch (sq.type) {
+    case 'gk':
+      state.phase = 'question';
+      showQuestion('GK', '🧠 General Knowledge Space!');
+      break;
+    case 'efl':
+      state.phase = 'question';
+      showQuestion(randomFrom(state.cefrActive), '📖 EFL Practice Board Challenge!');
+      break;
+    case 'fast': {
+      // Dynamic Fast track rolls a 2, 3, or 4 space advance
+      const boost = Math.floor(Math.random() * 3) + 2; // [2, 3, 4]
+      team.position = (team.position + boost) % TOTAL_SQUARES;
+      Sound.play('correct');
+      refreshTokens();
+      renderScorecards();
+      state._fastTrackResume = true;
+      showEvent('⚡', `Fast Track! +${boost} spaces`, `Zoomed forward ${boost} extra spaces to square ${team.position}. Click Continue to activate that space!`);
+      break;
+    }
+    case 'back': {
+      // Setback returns the player back by the exact dice roll amount
+      const rb = state.rolled;
+      team.position = ((team.position - rb) + TOTAL_SQUARES) % TOTAL_SQUARES;
+      Sound.play('wrong');
+      refreshTokens();
+      renderScorecards();
+      state._setbackResume = true;
+      showEvent('↩️', `Setback! −${rb} spaces`, `Dragged back ${rb} squares to space ${team.position}. Click Continue to activate that space!`);
+      break;
+    }
+    case 'det':
+      team.skipTurns++;
+      Sound.play('wrong');
+      showEvent('✋', 'Sent to Detention!', `${team.name} gets stuck and must pass their next turn.`);
+      renderScorecards();
+      break;
+    case 'ec':
+      team.rerolls++;
+      Sound.play('correct');
+      showEvent('⭐', 'Extra Credit Token!', `${team.name} scored a 🌟 Reroll Token!`);
+      renderScorecards();
+      break;
+    case 'pet':
+      triggerTeachersPet();
+      break;
+    case 'don':
+      triggerDoubleOrNothing();
+      break;
+    case 'duel':
+      triggerDuel();
+      break;
+    case 'shop':
+      triggerShop();
+      break;
+    default:
+      nextTurn();
+  }
+}
+
+// ==========================================
+// 10. EVALUATION & CONSOLE UTILITIES
+// ==========================================
+function getRandomQuestion(level) {
+  const pool = QUESTIONS[level];
+  const used = state.usedQs[level];
+  let available = pool.filter((_, i) => !used.includes(i));
+  if (!available.length) {
+    state.usedQs[level] = [];
+    available = pool;
+  }
+  const idx = Math.floor(Math.random() * available.length);
+  const actualIndex = pool.indexOf(available[idx]);
+  state.usedQs[level].push(actualIndex);
+  return { ...pool[actualIndex], level };
+}
+
+function showQuestion(level, label) {
+  const q = getRandomQuestion(level);
+  currentQuestion = q;
+  const colors = { A1: 'var(--a1)', A2: 'var(--a2)', B1: 'var(--b1)', B2: 'var(--b2)', GK: 'var(--blue)' };
+  
+  const badge = document.getElementById('q-badge');
+  badge.textContent = level === 'GK' ? 'General Knowledge' : `EFL Practice — ${level}`;
+  badge.style.background = (colors[level] || 'var(--blue)');
+  badge.style.color = '#0f1117';
+  
+  document.getElementById('q-text').innerHTML = `<span style='color:var(--text-muted); font-size:12px;'>${label}</span><br><br>${q.q}`;
+  document.getElementById('q-answer').textContent = `Correct Answer Key: ${q.a}`;
+  document.getElementById('q-answer').classList.remove('revealed');
+  
+  showConsoleDeck('question-card');
+}
+
+function revealAnswer() {
+  document.getElementById('q-answer').classList.add('revealed');
+}
+
+function judgeAnswer(correct) {
+  const team = state.teams[state.currentTeam];
+  const lvl = currentQuestion.level;
+  const gain = state.donActive ? state.donPoints : (Q_PTS[lvl] || 10);
+  
+  if (correct) {
+    Sound.play('correct');
+    team.correctCount++; // Increment tiebreaker counter
+
+    if (state.donActive) {
+      team.points += gain;
+      state.donActive = false;
+      state.donPoints = 0;
+      renderScorecards();
+      showEvent('🔥', 'Wager Doubled!', `Success! +${gain} pts added.`);
+      return;
+    }
+    if (pendingHubLevel) {
+      showHubBuyCard(pendingHubLevel);
+      return;
+    }
+    team.points += gain;
+    setStatus(`✅ Correct! +${gain} points added.`);
+    renderScorecards();
+    checkWin();
+    if (state.phase !== 'win') setTimeout(nextTurn, 1200);
+  } else {
+    Sound.play('wrong');
+    if (state.donActive) {
+      const lost = state.donPoints;
+      team.points = Math.max(0, team.points - lost);
+      state.donActive = false;
+      state.donPoints = 0;
+      renderScorecards();
+      showEvent('💀', 'Gamble Failed', `${team.name} dropped ${lost} pts on the wager.`);
+      return;
+    }
+    const rb = state.rolled;
+    if (pendingHubLevel) {
+      team.position = ((team.position - rb) + TOTAL_SQUARES) % TOTAL_SQUARES;
+      pendingHubLevel = null;
+      refreshTokens();
+      renderScorecards();
+      showEvent('❌', 'Hub Failure!', `Incorrect answer! ${team.name} drops back ${rb} spaces and cannot claim the token.`);
+      return;
+    }
+    team.position = ((team.position - rb) + TOTAL_SQUARES) % TOTAL_SQUARES;
+    refreshTokens();
+    renderScorecards();
+    setStatus(`❌ Incorrect! Forced backward ${rb} fields.`);
+    setTimeout(nextTurn, 1200);
+  }
+}
+
+// ==========================================
+// 11. HUB TOKEN PROCUREMENT CONSOLE
+// ==========================================
+function showHubBuyCard(level) {
+  const team = state.teams[state.currentTeam];
+  state.phase = 'buy';
+  
+  document.getElementById('hub-buy-desc').innerHTML = `
+    Nice job! You answered correctly.<br>
+    Your Current Wallet Balance: <strong style="color:var(--gold)">${team.points} pts</strong>.<br>
+    Do you want to buy the <strong>${level} Token</strong> right now for <strong>${TOKEN_COST} pts</strong>?
+  `;
+  
+  showConsoleDeck('hub-buy-card');
+}
+
+function confirmBuyToken() {
+  const team = state.teams[state.currentTeam];
+  const lvl = pendingHubLevel;
+  if (!lvl || team.points < TOKEN_COST) return;
+  
+  team.points -= TOKEN_COST;
+  team.tokens.push(lvl);
+  pendingHubLevel = null;
+  
+  Sound.play('shop');
+  renderScorecards();
+  showEvent(HUB_ICONS[lvl], 'Token Purchased!', `${team.name} successfully spent ${TOKEN_COST} pts to unlock the ${lvl} badge!`);
+  checkWin();
+}
+
+function declineBuyToken() {
+  pendingHubLevel = null;
+  nextTurn();
+}
+
+function showEvent(icon, title, desc) {
+  document.getElementById('event-icon').textContent = icon;
+  document.getElementById('event-title').textContent = title;
+  document.getElementById('event-desc').textContent = desc;
+  showConsoleDeck('event-card');
+  state.phase = 'event';
+}
+
+function closeEvent() {
+  if (state.phase === 'event') {
+    if (state._landmineResume) {
+      state._landmineResume = false;
+      state.phase = 'move';
+      evaluateLandingSquare();
+    } else if (state._fastTrackResume) {
+      state._fastTrackResume = false;
+      evaluateLandingSquare();
+    } else if (state._setbackResume) {
+      state._setbackResume = false;
+      evaluateLandingSquare();
+    } else {
+      nextTurn();
+    }
+  }
+}
+
+// ==========================================
+// 12. SPECIAL CTAs (PET, DUEL, GAMBLE, SHOP)
+// ==========================================
+function triggerTeachersPet() {
+  state.phase = 'pet';
+  const list = document.getElementById('pet-team-list');
+  list.innerHTML = '';
+  
+  state.teams.forEach((team, i) => {
+    if (i === state.currentTeam) return;
+    const btn = document.createElement('button');
+    btn.className = 'pet-team-btn';
+    btn.innerHTML = `<div class='sc-dot' style='background:${team.color}'></div> Swap with ${team.name} (Square ${team.position})`;
+    btn.onclick = () => {
+      const activeTeam = state.teams[state.currentTeam];
+      const temp = activeTeam.position;
+      activeTeam.position = team.position;
+      team.position = temp;
+      Sound.play('correct');
+      refreshTokens();
+      renderScorecards();
+      nextTurn();
+    };
+    list.appendChild(btn);
+  });
+  showConsoleDeck('pet-card');
+}
+
+function triggerDoubleOrNothing() {
+  const team = state.teams[state.currentTeam];
+  if (team.points <= 0) {
+    showEvent('🎲', 'Double or Nothing', 'You have 0 points to wager! Turn skipped.');
+    return;
+  }
+  
+  state.phase = 'don';
+  document.getElementById('don-pts-avail').textContent = `Max points risk value: ${team.points}`;
+  const slider = document.getElementById('don-slider');
+  slider.max = team.points;
+  slider.value = Math.floor(team.points / 2);
+  updateDonValue(slider.value);
+  
+  showConsoleDeck('don-card');
+}
+
+function updateDonValue(val) {
+  document.getElementById('don-value').textContent = val;
+}
+
+function acceptDon() {
+  const val = parseInt(document.getElementById('don-slider').value);
+  if (isNaN(val) || val <= 0) return;
+  state.donActive = true;
+  state.donPoints = val;
+  state.phase = 'question';
+  showQuestion(randomFrom(state.cefrActive), `🎲 Double or Nothing Risk: ${val} Points!`);
+}
+
+function declineDon() {
+  nextTurn();
+}
+
+function triggerDuel() {
+  const ch = state.currentTeam;
+  state.duelChallenger = ch;
+  
+  const ta = document.getElementById('duel-target-area');
+  ta.innerHTML = '<h4>Select targeted victim team:</h4>';
+  ta.style.display = 'block';
+  
+  state.teams.forEach((team, i) => {
+    if (i === ch) return;
+    const btn = document.createElement('button');
+    btn.className = 'duel-target-btn';
+    btn.innerHTML = `${team.name}`;
+    btn.onclick = () => selectDuelTarget(i);
+    ta.appendChild(btn);
+  });
+  
+  document.getElementById('duel-buzz-area').style.display = 'none';
+  document.getElementById('duel-q-area').style.display = 'none';
+  showConsoleDeck('duel-card');
+  state.phase = 'duel';
+}
+
+function selectDuelTarget(idx) {
+  state.duelTarget = idx;
+  document.getElementById('duel-target-area').style.display = 'none';
+  
+  const q = getRandomQuestion('GK');
+  currentQuestion = q;
+  document.getElementById('duel-q-text').textContent = q.q;
+  document.getElementById('duel-q-answer').textContent = 'Correct Key Answer: ' + q.a;
+  document.getElementById('duel-q-answer').classList.remove('revealed');
+  
+  const challenger = state.teams[state.duelChallenger];
+  const target = state.teams[state.duelTarget];
+  
+  document.getElementById('duel-buzz-row').innerHTML = `
+    <button class="buzz-btn" style="border-color:${challenger.color};" onclick="setBuzzWinner('challenger')">🔔 ${challenger.name}</button>
+    <button class="buzz-btn" style="border-color:${target.color};" onclick="setBuzzWinner('target')">🔔 ${target.name}</button>
+  `;
+  document.getElementById('duel-buzz-area').style.display = 'block';
+  document.getElementById('duel-q-area').style.display = 'flex';
+}
+
+function setBuzzWinner(who) {
+  const buzzes = document.querySelectorAll('.buzz-btn');
+  buzzes.forEach(b => b.style.background = 'none');
+  
+  if(who === 'challenger') {
+    buzzes[0].style.background = 'rgba(255,255,255,0.15)';
+  } else {
+    buzzes[1].style.background = 'rgba(255,255,255,0.15)';
+  }
+  state.duelBuzzWinner = who;
+}
+
+function revealDuelAnswer() {
+  document.getElementById('duel-q-answer').classList.add('revealed');
+}
+
+function judgeDuel(correct) {
+  if (!state.duelBuzzWinner) { setStatus('⚠️ Click a buzz button to confirm who answered first!'); return; }
+  
+  const challenger = state.teams[state.duelChallenger];
+  const target = state.teams[state.duelTarget];
+  const winner = state.duelBuzzWinner === 'challenger' ? challenger : target;
+  const loser = state.duelBuzzWinner === 'challenger' ? target : challenger;
+  
+  if (correct) {
+    Sound.play('correct');
+    winner.correctCount++;
+
+    const stolenPoints = Math.floor(loser.points * 0.25);
+    loser.points -= stolenPoints;
+    winner.points += stolenPoints;
+    
+    showEvent('⚔️', 'Duel Settled!', `${winner.name} got it right! Stole 25% (${stolenPoints} pts) from ${loser.name}.`);
+  } else {
+    Sound.play('wrong');
+    winner.points = Math.max(0, winner.points - 10);
+    showEvent('⚔️', 'Duel Failure', `${winner.name} guessed wrong! Fined 10 points.`);
+  }
+  
+  state.duelChallenger = null;
+  state.duelTarget = null;
+  state.duelBuzzWinner = null;
+  renderScorecards();
+}
+
+// --- PERMANENT SHOP INJECTION CONTROLS ---
+function triggerShop() {
+  state.phase = 'shop';
+  updateShopButtonsUI();
+  showConsoleDeck('shop-card');
+}
+
+function updateShopButtonsUI() {
+  const team = state.teams[state.currentTeam];
+  document.getElementById('shop-b-reroll').disabled = (team.points < 10);
+  document.getElementById('shop-b-cheat').disabled = (team.points < 15);
+  document.getElementById('shop-b-mine').disabled = (team.points < 15);
+  document.getElementById('shop-b-token').disabled = (team.points < 50);
+}
+
+function buyShopItem(item, cost) {
+  const team = state.teams[state.currentTeam];
+  if (team.points < cost) return;
+  
+  team.points -= cost;
+  Sound.play('shop');
+
+  if (item === 'reroll') {
+    team.rerolls++;
+    setStatus(`✅ Bought 1 Reroll Token! ${team.name} now has ${team.rerolls}.`);
+  } else if (item === 'cheat') {
+    team.hasCheatDice = true;
+    setStatus(`🔮 Cheat Dice purchased! Use the button on ${team.name}'s card when it's your turn.`);
+  } else if (item === 'mine') {
+    // Choose 2 random squares on board (excluding current square and hubs)
+    let planted = 0;
+    let attempts = 0;
+    while(planted < 2 && attempts < 100) {
+      attempts++;
+      let randSq = Math.floor(Math.random() * TOTAL_SQUARES);
+      if (randSq !== team.position && state.boardSquares[randSq].type !== 'hub' && state.mines[randSq] === undefined) {
+        state.mines[randSq] = state.currentTeam;
+        planted++;
+      }
+    }
+    renderBoard(); // Redraw board to display mine badges
+    setStatus(`💥 Planted 2 Landmines on random board spaces!`);
+  } else if (item === 'token') {
+    // Buy any required token not already owned
+    const unowned = state.requiredTokens.filter(t => !team.tokens.includes(t));
+    if (unowned.length > 0) {
+      const targetedToken = unowned[0];
+      team.tokens.push(targetedToken);
+      setStatus(`🎓 Purchased ${targetedToken} Token from the shop!`);
+    } else {
+      team.points += cost; // refund
+      setStatus(`⚠️ You already own all token types! Points refunded.`);
+    }
+  }
+
+  renderScorecards();
+  updateShopButtonsUI();
+  checkWin();
+}
+
+// ==========================================
+// 13. WIN PROTOCOLS & DECK CONTROL MANAGER
+// ==========================================
+function showConsoleDeck(visibleId) {
+  document.getElementById('dice-deck-card').style.display = 'none';
+  ['question-card', 'event-card', 'duel-card', 'don-card', 'pet-card', 'hub-buy-card', 'reroll-intercept-card', 'shop-card'].forEach(id => {
+    document.getElementById(id).classList.remove('visible');
+  });
+
+  if (visibleId === 'dice-deck-card') {
+    document.getElementById('dice-deck-card').style.display = 'block';
+  } else {
+    document.getElementById(visibleId).classList.add('visible');
+  }
+}
+
+function checkWin() {
+  for (let i = 0; i < state.teams.length; i++) {
+    const team = state.teams[i];
+    const hasAll = state.requiredTokens.every(t => team.tokens.includes(t));
+    if (hasAll) {
+      declareUltimateWinner(team, `All required tokens (${state.requiredTokens.join(', ')}) collected!`);
+      return;
+    }
+  }
+}
+
+function declareUltimateWinner(team, reason) {
+  state.phase = 'win';
+  Sound.play('win');
+  document.getElementById('win-title').textContent = `${team.name} Wins!`;
+  document.getElementById('win-sub').textContent = reason;
+  document.getElementById('win-overlay').classList.add('active');
+  startConfetti();
+}
+
+function handleRoundLimitExpiration() {
+  // Sort teams based on strict tiebreaker hierarchy: Tokens -> Correct Answers -> Points
+  let rankings = [...state.teams];
+  rankings.sort((a, b) => {
+    if (a.tokens.length !== b.tokens.length) {
+      return b.tokens.length - a.tokens.length;
+    }
+    if (a.correctCount !== b.correctCount) {
+      return b.correctCount - a.correctCount;
+    }
+    return b.points - a.points;
+  });
+
+  const ultimateWinner = rankings[0];
+  const summaryText = `Match limit of ${state.roundLimit} rounds reached!<br>
+    🥇 Winner: <strong>${ultimateWinner.name}</strong> (${ultimateWinner.tokens.length} Tokens, ${ultimateWinner.correctCount} Correct answers, ${ultimateWinner.points} Pts).`;
+  
+  declareUltimateWinner(ultimateWinner, summaryText);
+}
+
+function nextTurn() {
+  pendingHubLevel = null;
+  state.phase = 'roll';
+  
+  // Track total game steps taken to compute rounds accurately
+  state.totalTurnsCount++;
+  
+  const currentRound = Math.floor(state.totalTurnsCount / state.teams.length);
+  if (currentRound >= state.roundLimit) {
+    handleRoundLimitExpiration();
+    return;
+  }
+
+  state.currentTeam = (state.currentTeam + 1) % state.teams.length;
+  
+  const dice = document.getElementById('dice-display');
+  dice.textContent = '🎲';
+  dice.classList.remove('disabled');
+  document.getElementById('dice-label').textContent = 'Click die to roll';
+  document.getElementById('cheat-dice-container').style.display = 'none';
+  
+  setStatus('');
+  refreshTokens();
+  renderScorecards();
+  updateTurnHeader();
+  showConsoleDeck('dice-deck-card');
+}
+
+function setStatus(msg) {
+  document.getElementById('status-msg').textContent = msg;
+}
+
+function randomFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function startConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.classList.add('active');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  const particles = Array.from({ length: 140 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    w: Math.random() * 10 + 5,
+    h: Math.random() * 6 + 4,
+    color: TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)],
+    speed: Math.random() * 3 + 2,
+    spin: Math.random() * 0.2 - 0.1,
+    angle: Math.random() * Math.PI * 2
+  }));
+  
+  (function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+      
+      p.y += p.speed;
+      p.angle += p.spin;
+      if (p.y > canvas.height) {
+        p.y = -20;
+        p.x = Math.random() * canvas.width;
+      }
+    });
+    if (state.phase === 'win') requestAnimationFrame(draw);
+  })();
+}
+
+renderSetupTeams();
+</script>
+</body>
+</html>

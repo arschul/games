@@ -15,7 +15,7 @@
   --sq-det:#2d1b36;--sq-ec:#332d1c;--sq-pet:#163136;--sq-don:#221d36;--sq-duel:#3b1e15;--sq-shop:#162e2a;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden;}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden;transition:background 0.8s ease;}
 .screen{display:none;width:100vw;height:100vh;}.screen.active{display:flex;}
 
 /* SETUP */
@@ -77,6 +77,36 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-he
 @keyframes meeplePulse {
   0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(255,255,255,0.4); }
   50% { transform: scale(1.08); box-shadow: 0 0 20px rgba(255,255,255,0.8); }
+}
+
+/* Flying meeple animation overlay */
+#flying-meeple {
+  position: fixed;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  pointer-events: none;
+  z-index: 9999;
+  transition: left 0.20s cubic-bezier(.4,1.6,.6,1), top 0.20s cubic-bezier(.4,1.6,.6,1);
+  display: none;
+  will-change: left, top;
+}
+#flying-meeple.visible { display: flex; }
+#flying-meeple.hop {
+  animation: meepleHop 0.20s ease-out;
+}
+@keyframes meepleHop {
+  0%   { transform: scale(1) translateY(0); }
+  40%  { transform: scale(1.18) translateY(-12px); }
+  100% { transform: scale(1) translateY(0); }
 }
 
 @keyframes boardSquareGlow {
@@ -264,6 +294,9 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-he
 <div id="setup-screen" class="screen active">
   <div class="setup-title">⚔️ CEFR Quest</div>
   <div class="setup-sub">Grammar Board Game · Phil Young's English School</div>
+  <div id="debug-indicator" style="display:none;align-items:center;gap:8px;background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.5);border-radius:8px;padding:5px 14px;margin:4px auto 0;width:fit-content;">
+    <span style="font-size:12px;color:#ff6b6b;font-weight:700;letter-spacing:.5px;">🛠️ DEBUG — 100pts · ∞ Rerolls · Cheat Dice permanent</span>
+  </div>
   <div class="setup-grid">
     <div class="setup-card">
       <h3>🏆 Teams (2–6)</h3>
@@ -416,19 +449,15 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-he
             <div class="duel-desc" id="duel-desc">Select an opponent team to challenge. Winner steals 25% points from the loser!</div>
             <div id="duel-target-area" class="duel-target-select" style="margin-top:6px;"></div>
             
-            <div id="duel-buzz-area" style="display:none; margin-top:6px;">
-              <div style="font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:6px;">First to call out answers or buzz in!</div>
-              <div class="duel-buzz-row" id="duel-buzz-row"></div>
-            </div>
-            
             <div id="duel-q-area" style="display:none;flex-direction:column;gap:8px;margin-top:6px;">
               <div class="q-text" id="duel-q-text"></div>
               <div class="q-answer" id="duel-q-answer"></div>
               <div class="q-actions">
                 <button class="btn-reveal" onclick="revealDuelAnswer()">👁 Show Answer</button>
-                <button class="btn-correct" onclick="judgeDuel(true)">✅ Correct</button>
-                <button class="btn-wrong" onclick="judgeDuel(false)">❌ Wrong</button>
+                <button class="btn-correct" onclick="judgeDuel(true)">🏆 WIN</button>
+                <button class="btn-wrong" onclick="judgeDuel(false)">💀 LOSE</button>
               </div>
+              <div style="font-size:11px;color:var(--text-muted);text-align:center;" id="duel-outcome-hint"></div>
             </div>
           </div>
 
@@ -477,6 +506,21 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-he
             <button class="event-done-btn" onclick="closeEvent()" style="margin-top:6px; align-self:flex-end;">Continue →</button>
           </div>
 
+          <!-- Reroll Offer Card (shown before ending turn if team has reroll tokens) -->
+          <div id="reroll-offer-card" class="cta-card">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+              <div class="event-icon">🌟</div>
+              <div>
+                <div class="event-title">Use a Reroll Token?</div>
+                <div class="event-desc" id="reroll-offer-desc">You have reroll tokens. Spend one to go back and roll again from your previous position?</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn-primary" style="flex:1;" onclick="confirmUseReroll()">🌟 Yes, Reroll!</button>
+              <button class="btn-ghost" style="flex:1;" onclick="nextTurn()">No, End Turn</button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -486,6 +530,9 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-he
   <!-- RIGHT SIDE PANEL (hidden - leaderboard moved to center console) -->
   <div id="right-panel"></div>
 </div>
+
+<!-- Flying meeple animation overlay -->
+<div id="flying-meeple"></div>
 
 <!-- WIN CELEBRATION OVERLAY -->
 <div id="win-overlay">
@@ -594,7 +641,61 @@ const QUESTIONS = {
     { q: "What time is it? The clock shows 3:00. Say it in English.", a: "It's three o'clock." },
     { q: "Complete: 'He ___ (not like) vegetables.' (present simple)", a: "doesn't like" },
     { q: "What is the possessive form? 'The bag belongs to Maria.' → It's ___.", a: "Maria's bag" },
-    { q: "Put in order: [now / are / they / playing / football]", a: "They are playing football now." }
+    { q: "Put in order: [now / are / they / playing / football]", a: "They are playing football now." },
+    { q: "What is the past simple of 'have'?", a: "had" },
+    { q: "Complete: 'She ___ (be) a doctor.' (present simple)", a: "is" },
+    { q: "What is the plural of 'mouse'?", a: "mice" },
+    { q: "Make this a question: 'He works here.' → ___?", a: "Does he work here?" },
+    { q: "Complete with 'in', 'on', or 'at': 'My birthday is ___ July.'", a: "in" },
+    { q: "What is the opposite of 'tall'?", a: "short" },
+    { q: "Complete: 'I can ___ (swim).' What form is the verb?", a: "swim (bare infinitive)" },
+    { q: "What is the past simple of 'see'?", a: "saw" },
+    { q: "Make negative: 'He is happy.'", a: "He is not (isn't) happy." },
+    { q: "Complete: 'They ___ (not be) at school yesterday.'", a: "weren't" },
+    { q: "What is the plural of 'foot'?", a: "feet" },
+    { q: "Which article do we use before a consonant sound? 'a' or 'an'?", a: "a" },
+    { q: "Complete: '___ you like coffee?' (do/does)", a: "Do" },
+    { q: "What is the past simple of 'come'?", a: "came" },
+    { q: "Complete: 'He ___ football every Saturday.' (play)", a: "plays" },
+    { q: "Make a question: 'She is a teacher.' → ___?", a: "Is she a teacher?" },
+    { q: "Complete: 'I ___ (be) born in 2005.'", a: "was" },
+    { q: "What is the opposite of 'open'?", a: "closed / shut" },
+    { q: "Complete: 'We ___ watching TV right now.' (present continuous)", a: "are" },
+    { q: "What is the past simple of 'run'?", a: "ran" },
+    { q: "What are the days of the week? Name all seven.", a: "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday" },
+    { q: "Complete: 'I would like ___ coffee, please.' (a/an/some)", a: "some" },
+    { q: "What is the plural of 'man'?", a: "men" },
+    { q: "Complete: 'She ___ English very well.' (speak)", a: "speaks" },
+    { q: "What is the opposite of 'young'?", a: "old" },
+    { q: "Complete: 'They ___ football yesterday.' (play, past simple)", a: "played" },
+    { q: "Make a question: 'He likes pizza.' → ___?", a: "Does he like pizza?" },
+    { q: "What preposition do we use with times? '___ 7 o'clock'", a: "at" },
+    { q: "What is the past simple of 'buy'?", a: "bought" },
+    { q: "Complete: 'There ___ a cat on the sofa.' (there is/are)", a: "is" },
+    { q: "What is the plural of 'person'?", a: "people" },
+    { q: "Complete: 'I ___ (not know) the answer.'", a: "don't know" },
+    { q: "What is the opposite of 'fast'?", a: "slow" },
+    { q: "Complete: 'She is ___ umbrella.' (a/an)", a: "an" },
+    { q: "What is the past simple of 'write'?", a: "wrote" },
+    { q: "Make negative: 'They are at home.'", a: "They aren't / are not at home." },
+    { q: "Complete: 'He ___ (live) in Madrid.' (present simple)", a: "lives" },
+    { q: "What question word do we use to ask about a place?", a: "Where" },
+    { q: "Complete: 'I ___ to school by bus.' (go)", a: "go" },
+    { q: "What is the plural of 'knife'?", a: "knives" },
+    { q: "Complete: 'Can you ___ (help) me, please?'", a: "help" },
+    { q: "What is the opposite of 'big'?", a: "small / little" },
+    { q: "Complete: '___ your name?' 'My name is Ana.' (What is / What are)", a: "What is" },
+    { q: "What is the past simple of 'take'?", a: "took" },
+    { q: "Complete: 'She ___ reading a book.' (present continuous)", a: "is" },
+    { q: "What question word do we use to ask about a reason?", a: "Why" },
+    { q: "Complete: 'I ___ breakfast every morning.' (have)", a: "have" },
+    { q: "What is the plural of 'city'?", a: "cities" },
+    { q: "Complete: 'He ___ (not speak) French.' (present simple)", a: "doesn't speak" },
+    { q: "What is the past simple of 'drink'?", a: "drank" },
+    { q: "Complete: 'She ___ a new phone yesterday.' (buy, past simple)", a: "bought" },
+    { q: "What subject pronoun replaces 'Maria and Pedro'?", a: "They" },
+    { q: "Complete: 'I ___ happy today.' (verb to be)", a: "am" },
+    { q: "What is the opposite of 'happy'?", a: "sad / unhappy" }
   ],
   A2: [
     { q: "Complete with the correct past continuous form: 'They ___ (watch) TV when it started to rain.'", a: "were watching" },
@@ -612,7 +713,55 @@ const QUESTIONS = {
     { q: "Complete: 'She ___ (already / finish) her homework.' (present perfect)", a: "has already finished" },
     { q: "What is the passive form of: 'Someone stole the car.'?", a: "The car was stolen." },
     { q: "Use a modal to give advice: 'You look tired. You ___ go to bed.'", a: "should" },
-    { q: "Complete with 'too' or 'enough': 'This coffee is ___ hot to drink.'", a: "too" }
+    { q: "Complete with 'too' or 'enough': 'This coffee is ___ hot to drink.'", a: "too" },
+    { q: "Complete with 'yet' or 'already': 'Have you eaten ___?' (question about expectation)", a: "yet" },
+    { q: "What is the comparative form of 'bad'?", a: "worse" },
+    { q: "Complete: 'I ___ (never / try) sushi.' (present perfect)", a: "have never tried" },
+    { q: "Complete: 'She was tired, ___ she went to bed early.' (so/because)", a: "so" },
+    { q: "What is the difference between 'a few' and 'a little'?", a: "'A few' = countable nouns. 'A little' = uncountable nouns." },
+    { q: "Complete: 'He ___ (work) here since 2018.' (present perfect)", a: "has worked / has been working" },
+    { q: "What question word asks about time?", a: "When" },
+    { q: "Complete: 'I ___ (go) to the gym twice a week.' (present simple)", a: "go" },
+    { q: "What is the superlative of 'bad'?", a: "the worst" },
+    { q: "Complete: 'She asked me ___ I liked the film.' (reported question)", a: "if / whether" },
+    { q: "Complete with the correct preposition: 'I'm interested ___ learning English.'", a: "in" },
+    { q: "What is the present perfect of 'break'?", a: "has/have broken" },
+    { q: "Complete: 'You don't need to shout — I ___ (can/could) hear you.'", a: "can" },
+    { q: "What is the future form using 'be going to': 'She / travel / next year'?", a: "She is going to travel next year." },
+    { q: "Complete with 'whose' or 'who's': '___ book is this?'", a: "Whose" },
+    { q: "Make a question tag: 'You like pizza, ___ ___?'", a: "don't you?" },
+    { q: "Complete: 'It's the ___ (good) film I've ever seen.' (superlative)", a: "best" },
+    { q: "What is the difference between WILL and WON'T?", a: "WILL = positive future. WON'T = will not, negative future refusal or prediction." },
+    { q: "Complete: 'She's ___ (study) at the moment.' (present continuous)", a: "studying" },
+    { q: "Complete with 'used to': 'He ___ smoke, but he stopped.' ", a: "used to smoke" },
+    { q: "Complete: 'I've been waiting ___ two hours.' (since/for)", a: "for" },
+    { q: "What is the past simple of 'teach'?", a: "taught" },
+    { q: "Choose the correct modal: 'You ___ have a passport to travel abroad.' (must/should)", a: "must" },
+    { q: "Complete: '___ you mind closing the window?' (Would/Do)", a: "Would" },
+    { q: "What does EVER mean in the question 'Have you ever been to London?'", a: "At any time in your life." },
+    { q: "Complete: 'She ___ (write) the report when the power went out.'", a: "was writing" },
+    { q: "What is the opposite of 'remember'?", a: "forget" },
+    { q: "Complete with the correct pronoun: 'Give the book to ___.' (I/me)", a: "me" },
+    { q: "What tense uses 'have/has + past participle'?", a: "Present perfect" },
+    { q: "Make a sentence using BOTH … AND: 'She speaks Spanish. She speaks French.'", a: "She speaks both Spanish and French." },
+    { q: "Complete: 'This is the book ___ I told you about.' (that/which)", a: "that / which" },
+    { q: "Complete with 'unless': '___ you study, you'll fail the exam.'", a: "Unless" },
+    { q: "What is the past simple of 'lose'?", a: "lost" },
+    { q: "Complete: 'He told me ___ wait for him.' (to/not to/don't)", a: "to" },
+    { q: "What is the difference between MUCH and MANY?", a: "MUCH = uncountable. MANY = countable." },
+    { q: "Complete: 'She ___ (just / arrive) home.' (present perfect)", a: "has just arrived" },
+    { q: "Complete: 'It's ___ cold outside. You should wear a coat.' (too/enough)", a: "too" },
+    { q: "What modal expresses possibility? 'It ___ rain later.'", a: "might / may / could" },
+    { q: "Complete with the correct relative pronoun: 'The man ___ called is my uncle.'", a: "who" },
+    { q: "What is the gerund form of 'swim'?", a: "swimming" },
+    { q: "Complete: 'I ___ (be) to Paris three times.' (present perfect)", a: "have been" },
+    { q: "What preposition follows 'good'? 'She's good ___ maths.'", a: "at" },
+    { q: "What is the opposite of 'arrive'?", a: "leave / depart" },
+    { q: "Complete: 'He's the ___ (tall) student in the class.' (superlative)", a: "tallest" },
+    { q: "Complete: 'I'm looking forward ___ seeing you.' (to/of/for)", a: "to" },
+    { q: "What does NOT ONLY … BUT ALSO express?", a: "Addition/emphasis — two things are true, the second one is more surprising." },
+    { q: "Complete: 'The homework ___ (do) by all students.' (passive present)", a: "is done" },
+    { q: "What is the past continuous of 'sleep'? (she)", a: "she was sleeping" }
   ],
   B1: [
     { q: "What is the difference between MAKE and DO? Give one collocation for each.", a: "MAKE = create/produce (make a cake); DO = perform/activity (do homework)." },
@@ -632,7 +781,61 @@ const QUESTIONS = {
     { q: "What does 'It's high time you ___ (study).' mean and what form follows?", a: "It's overdue. Followed by past simple: It's high time you studied." },
     { q: "Give the noun form of the adjective 'happy'.", a: "happiness" },
     { q: "Complete with the correct preposition: 'She is good ___ maths.'", a: "at" },
-    { q: "What is the difference between SAY and TELL? Give an example of each.", a: "SAY has no object (she said hello). TELL needs an object (she told me hello)." }
+    { q: "What is the difference between SAY and TELL? Give an example of each.", a: "SAY has no object (she said hello). TELL needs an object (she told me hello)." },
+    { q: "What verb form follows 'I'd rather'? Give an example.", a: "Bare infinitive. E.g. I'd rather stay home." },
+    { q: "Complete: 'She ___ (be) able to drive by the time she's 18.' (future)", a: "will be" },
+    { q: "What is the difference between ALTHOUGH and HOWEVER?", a: "ALTHOUGH = subordinating conjunction (mid-clause). HOWEVER = adverb (new sentence/clause)." },
+    { q: "Complete: 'I don't mind ___ (wait) for you.' (gerund/infinitive)", a: "waiting" },
+    { q: "What is a COMPOUND ADJECTIVE? Give an example.", a: "Two or more words acting as one adjective. E.g. well-known, hard-working, fast-moving." },
+    { q: "Complete with MUST or HAVE TO: 'It's the law. You ___ wear a seatbelt.'", a: "must / have to" },
+    { q: "What is the PRESENT PERFECT CONTINUOUS? Give an example.", a: "Has/have been + -ing. E.g. I have been studying for two hours." },
+    { q: "Rewrite using a passive: 'They built this house in 1980.'", a: "This house was built in 1980." },
+    { q: "Complete: 'He ___ (finish) by the time you arrive.' (future perfect)", a: "will have finished" },
+    { q: "What verb follows 'look forward to'? Why?", a: "Gerund (-ing). Because 'to' here is a preposition, not part of an infinitive." },
+    { q: "Complete: 'I wish I ___ (have) more free time.' (present wish)", a: "had" },
+    { q: "What does UNLESS mean? Rewrite: 'If you don't hurry, you'll miss the bus.'", a: "Unless = if not. → Unless you hurry, you'll miss the bus." },
+    { q: "Give an example of a LINKER OF CONTRAST.", a: "However, although, even though, despite, in spite of, nevertheless, yet, while." },
+    { q: "Complete: 'She ___ (just / leave) when I called.' (past perfect)", a: "had just left" },
+    { q: "What is the difference between FEW and A FEW?", a: "FEW = almost none (negative). A FEW = some (positive). E.g. Few people came vs. A few people came." },
+    { q: "Complete: 'The film ___ (release) next Friday.' (passive future)", a: "will be released" },
+    { q: "What form follows 'It's worth'? Give an example.", a: "Gerund. E.g. It's worth visiting that museum." },
+    { q: "Complete: 'By 2030, scientists ___ (find) a cure.' (future perfect)", a: "will have found" },
+    { q: "What is the difference between CAN and BE ABLE TO?", a: "CAN = general ability (present). BE ABLE TO = used in more tenses, esp. future/past formal." },
+    { q: "Complete: 'She ___ (study) for three hours when the lights went out.' (past perfect continuous)", a: "had been studying" },
+    { q: "What is the second conditional? Give an example.", a: "If + past simple, would + bare infinitive. E.g. If I had a car, I would drive to work." },
+    { q: "Complete with a CAUSATIVE: 'She ___ her hair ___ (cut) at the salon.' (have)", a: "had her hair cut" },
+    { q: "What is an INFINITIVE OF PURPOSE? Give an example.", a: "Using TO + infinitive to explain why. E.g. I go to the gym to stay fit." },
+    { q: "What is the PASSIVE VOICE? Rewrite: 'The chef cooked the meal.'", a: "The meal was cooked by the chef." },
+    { q: "Complete: 'He ___ (must) left early — his car is gone.' (deduction, past)", a: "must have left" },
+    { q: "What are MODAL PERFECT structures? Give one example.", a: "Modal + have + past participle. E.g. She could have called. / He should have studied." },
+    { q: "Complete: '___ he arrives, we'll start the meeting.' (as soon as/until)", a: "As soon as" },
+    { q: "What is a DEFINING RELATIVE CLAUSE? Give an example.", a: "Clause that identifies which person/thing. E.g. The student who passed is my cousin." },
+    { q: "Complete: 'You ___ (need) bring anything — we have everything.' (needn't/mustn't)", a: "needn't" },
+    { q: "What does CONCESSION mean in grammar? Give an example.", a: "Admitting one fact while contrasting it. E.g. Even though it rained, we enjoyed the trip." },
+    { q: "Complete: 'The more you practice, ___ (good) you become.'", a: "the better" },
+    { q: "What is HEDGING? Give a B1-level example.", a: "Making a statement less absolute. E.g. 'It seems that…', 'It might be…', 'I think probably…'" },
+    { q: "Correct the error: 'She told me to not go out.'", a: "She told me not to go out. (NOT comes before the infinitive)" },
+    { q: "Complete: 'I'd better ___ (leave) now or I'll be late.'", a: "leave" },
+    { q: "What is the PAST PERFECT? When do we use it?", a: "Had + past participle. Used for an action that happened before another past action." },
+    { q: "Complete: 'Neither of them ___ (be) happy about the result.'", a: "was" },
+    { q: "Give the adjective form of the noun 'danger'.", a: "dangerous" },
+    { q: "Complete: 'He was too tired ___ (continue).'", a: "to continue" },
+    { q: "What does IT'S ABOUT TIME mean? Give an example.", a: "Something should have happened already. E.g. It's about time you apologised." },
+    { q: "Complete: 'She ___ (not finish) her essay yet.' (present perfect)", a: "hasn't finished" },
+    { q: "What is the difference between BRING and TAKE?", a: "BRING = movement toward speaker. TAKE = movement away from speaker." },
+    { q: "Complete: 'I'd sooner ___ (stay) home than go out in this weather.'", a: "stay" },
+    { q: "What is a MIXED TENSE sentence? Give an example.", a: "A sentence using more than one tense. E.g. 'She was studying when he called and she told him to leave.'" },
+    { q: "Complete: 'The results were ___ (disappoint).' (adjective form)", a: "disappointing" },
+    { q: "What is DISCOURSE COHERENCE? Give one example technique.", a: "How ideas connect logically in a text. Techniques: linkers, pronouns, repetition, synonyms." },
+    { q: "Complete: 'I've ___ (already) told you the answer.' Where does ALREADY go?", a: "between have and the past participle: I've already told you." },
+    { q: "Correct this sentence: 'She's been knowing him for years.'", a: "She's known him for years. (KNOW is a stative verb — no continuous form.)" },
+    { q: "What is the difference between MUSTN'T and DON'T HAVE TO?", a: "MUSTN'T = prohibition (not allowed). DON'T HAVE TO = no obligation (not necessary)." },
+    { q: "Complete: 'He denied ___ (steal) the money.'", a: "stealing" },
+    { q: "What is a REPORTING VERB? Give three examples.", a: "A verb used to introduce reported speech. E.g. say, tell, explain, claim, admit, deny." },
+    { q: "Complete: 'By the time she arrived, everyone ___ (leave).'", a: "had left" },
+    { q: "What is the difference between DESPITE and EVEN THOUGH?", a: "DESPITE + noun/gerund. EVEN THOUGH + full clause." },
+    { q: "Complete: 'The exam ___ (hold) next Monday.' (passive future)", a: "will be held" },
+    { q: "What tense is 'She had been waiting for an hour before he arrived'?", a: "Past perfect continuous" }
   ],
   B2: [
     { q: "Explain the difference between INFER and IMPLY with examples.", a: "IMPLY = speaker suggests something indirectly. INFER = listener draws a conclusion." },
@@ -656,7 +859,67 @@ const QUESTIONS = {
     { q: "Correct and explain: 'The data shows that there is less errors now.'", a: "Two errors: 'data' is plural → 'show'; 'less' for countable → 'fewer errors'." },
     { q: "What is the SUBJUNCTIVE mood? Give a formal example.", a: "Used for hypothetical/formal situations. E.g. 'It is essential that he be present.' / 'If I were you…'" },
     { q: "Explain the pragmatic difference: 'Can you open the window?' vs 'Open the window.'", a: "'Can you…?' is an indirect request — more polite. The imperative is direct and can sound abrupt." },
-    { q: "What is a DANGLING MODIFIER? Give an example and correct it.", a: "A modifier not logically attached to the right noun. E.g. 'Running to school, the bag fell.' → 'Running to school, I dropped my bag.'" }
+    { q: "What is a DANGLING MODIFIER? Give an example and correct it.", a: "A modifier not logically attached to the right noun. E.g. 'Running to school, the bag fell.' → 'Running to school, I dropped my bag.'" },
+    { q: "What is REGISTER in linguistics? Give an example of high and low register.", a: "The level of formality in language. E.g. 'Please be advised' (high) vs 'Just so you know' (low)." },
+    { q: "Explain COLLOCATION. Give two strong collocations with MAKE.", a: "Words that naturally go together. E.g. make a decision, make progress, make an effort." },
+    { q: "What is a CONCESSIVE CLAUSE? Give an example with 'although'.", a: "A clause that admits a fact while contrasting it. E.g. 'Although she was tired, she kept working.'" },
+    { q: "Rewrite using NOT ONLY … BUT ALSO with inversion: 'She sings and acts.'", a: "Not only does she sing, but she also acts." },
+    { q: "What is the difference between AFFECT and EFFECT?", a: "AFFECT = verb (to influence). EFFECT = noun (the result). E.g. 'Stress affects health; the effect is serious.'" },
+    { q: "Explain the difference between DEFINING and NON-DEFINING relative clauses.", a: "Defining = essential info, no commas (the man who called). Non-defining = extra info, with commas (my brother, who called)." },
+    { q: "Complete with the correct form: 'I would sooner ___ (leave) than apologise.'", a: "leave (bare infinitive)" },
+    { q: "What is COHESION in writing? Name two cohesive devices.", a: "How a text holds together logically. E.g. pronouns, synonyms, linkers, repetition, ellipsis." },
+    { q: "Correct this sentence and explain: 'Each of the students have submitted their essay.'", a: "'Each of' takes singular verb: 'Each of the students has submitted their essay.'" },
+    { q: "What is the difference between DESPITE and IN SPITE OF in usage?", a: "Both are prepositions with the same meaning, followed by noun/gerund. They are interchangeable." },
+    { q: "Rewrite as a reduced relative clause: 'The report which was written by the team was excellent.'", a: "The report written by the team was excellent." },
+    { q: "Explain DISCOURSE MARKERS. Give three examples.", a: "Words/phrases that organise speech/writing. E.g. 'Furthermore', 'On the other hand', 'In contrast', 'As a result'." },
+    { q: "What is the PASSIVE INFINITIVE? Give an example.", a: "To be + past participle. E.g. 'She expects to be promoted.' / 'He needs to be told.'"},
+    { q: "Explain the difference between LITERAL and IDIOMATIC language.", a: "Literal = exact meaning ('it's raining'). Idiomatic = non-literal ('it's raining cats and dogs')." },
+    { q: "What is ANAPHORIC REFERENCE? Give an example.", a: "Referring back to something mentioned earlier. E.g. 'Maria arrived late. She apologised immediately.'" },
+    { q: "Complete correctly: 'The committee ___ (disagree) on the proposal.' Why?", a: "'disagrees' — collective nouns in British English can be singular or plural, but singular is standard in formal writing." },
+    { q: "What is a COMPLEX SENTENCE? Give one example.", a: "A sentence with a main clause and one or more subordinate clauses. E.g. 'Although it rained, we enjoyed the picnic.'" },
+    { q: "Rewrite using a PERFECT PARTICIPLE: 'After she finished, she left.'", a: "Having finished, she left." },
+    { q: "Explain the term LEXICAL DENSITY and when it is high.", a: "The proportion of content words to total words. High lexical density = academic/formal writing (more nouns/adjectives per sentence)." },
+    { q: "What is EPISTEMIC MODALITY? Give two examples.", a: "Expressing probability or possibility. E.g. 'It must be true.' / 'She might come.' / 'That could be dangerous.'" },
+    { q: "Correct and explain: 'Neither the manager nor the staff was informed.'", a: "With neither…nor, the verb agrees with the nearest subject: 'staff' (plural) → 'were informed'." },
+    { q: "What is a GARDEN-PATH SENTENCE? Give an example.", a: "A sentence that misleads the reader before resolving. E.g. 'The horse raced past the barn fell.' (correct but confusing)." },
+    { q: "What is CATAPHORIC REFERENCE? Give an example.", a: "Referring forward to something mentioned later. E.g. 'Here it is — the announcement everyone has been waiting for.'" },
+    { q: "Explain the difference between RESTRICTIVE and NON-RESTRICTIVE modifiers.", a: "Restrictive = essential to identify the noun (no commas). Non-restrictive = adds extra info (commas required)." },
+    { q: "What is THEME and RHEME in information structure?", a: "THEME = topic of the sentence (given info, usually subject). RHEME = the new/key information." },
+    { q: "Rewrite to avoid the PASSIVE: 'Mistakes were made by the management.'", a: "The management made mistakes." },
+    { q: "What is DEIXIS? Give a spatial and a temporal example.", a: "Words whose meaning depends on context. Spatial: here/there. Temporal: now/then/yesterday." },
+    { q: "Explain the difference between COMPETENCE and PERFORMANCE in linguistics.", a: "COMPETENCE = the internal grammar knowledge. PERFORMANCE = actual language use, which may contain errors." },
+    { q: "What is an ERGATIVE VERB? Give two examples.", a: "A verb that can be transitive or intransitive with the same meaning change. E.g. 'She opened the door.' / 'The door opened.'" },
+    { q: "What is METALANGUAGE? Give an example of its use.", a: "Language used to talk about language. E.g. 'The word 'run' is a verb.' / 'That clause is subordinate.'" },
+    { q: "Rewrite using SO … THAT: 'The bag was very heavy. She couldn't carry it.'", a: "The bag was so heavy that she couldn't carry it." },
+    { q: "What is the difference between SUCH and SO for intensification?", a: "SUCH + noun phrase (such a great idea). SO + adjective/adverb (so great, so quickly)." },
+    { q: "What is ASPECT in English grammar? Name the two aspects.", a: "Aspect shows how an action unfolds over time. The two aspects: perfective (completed) and progressive (ongoing)." },
+    { q: "Explain TOPICALISATION. Give an example.", a: "Moving an object or complement to the front for emphasis. E.g. 'That book, I really loved.' " },
+    { q: "What is the difference between SHALL and WILL in formal British English?", a: "SHALL was traditionally used with I/we for future; WILL for others. Today SHALL is rare except in formal offers/suggestions (Shall I help?)." },
+    { q: "Complete with inversion: 'No sooner ___ he sat down ___ the alarm went off.'", a: "had … than" },
+    { q: "What is COORDINATION vs SUBORDINATION? Give one example of each.", a: "COORDINATION = joining equal clauses (and, but, or). SUBORDINATION = one clause depends on another (although, because, if)." },
+    { q: "Explain the PERFORMATIVE USE of language. Give an example.", a: "Utterances that perform an action when said. E.g. 'I promise to pay.' / 'I hereby declare this open.'" },
+    { q: "What is a PSEUDO-CLEFT sentence? Give an example.", a: "A cleft using 'What + clause + is/was'. E.g. 'What she needs is a break.'" },
+    { q: "Correct and explain: 'She is one of the students who has passed.'", a: "'who' refers to 'students' (plural) → 'have passed'." },
+    { q: "What is POLYSEMY? Give an example.", a: "One word with multiple related meanings. E.g. 'bank' = financial institution / riverbank." },
+    { q: "Explain the difference between IMPLICATURE and ENTAILMENT.", a: "ENTAILMENT = logically follows (John ran → John moved). IMPLICATURE = suggested but not stated ('Can you pass the salt?' implies please do so)." },
+    { q: "What is ZERO ARTICLE? Give two cases where it is used.", a: "Omitting 'the/a'. Used with: general plural nouns (Dogs are loyal), abstract nouns (Love is blind), most proper nouns." },
+    { q: "Rewrite with WERE IT NOT FOR: 'If she hadn't helped, we would have failed.'", a: "Were it not for her help, we would have failed." },
+    { q: "What is LEXICAL PRIMING? Give an example.", a: "Words tend to occur in specific contexts due to usage patterns. E.g. 'rancid' primes with butter/fat, not with flowers." },
+    { q: "Explain STATIVE vs DYNAMIC meaning. Give one verb that can be both.", a: "STATIVE = state (no change, no continuous). DYNAMIC = action/process. E.g. 'think' — I think it's true (stative) / I'm thinking about it (dynamic)." },
+    { q: "What is MARKED vs UNMARKED word order in English?", a: "UNMARKED = default SVO order. MARKED = anything else, used for emphasis or style (e.g. fronted adverbials, inversion)." },
+    { q: "Correct: 'She suggested me to apply for the job.'", a: "'Suggest' doesn't take an object + infinitive. → She suggested that I apply / She suggested applying." },
+    { q: "What is the difference between DEONTIC and EPISTEMIC uses of MUST?", a: "DEONTIC = obligation (You must stop). EPISTEMIC = logical deduction (He must be tired)." },
+    { q: "Explain TYPE vs TOKEN in linguistics.", a: "TYPE = distinct word form. TOKEN = each individual occurrence. E.g. 'the cat sat on the mat' has 6 tokens but 5 types ('the' appears twice)." },
+    { q: "What is SCOPE in grammar? Illustrate with a negation example.", a: "How far a grammatical element extends. E.g. 'I don't always agree' (negation scopes over 'always') vs 'I always don't agree'." },
+    { q: "Rewrite using SUCH … THAT: 'He was very rude. We left immediately.'", a: "He was such a rude person that we left immediately." },
+    { q: "What is GIVEN-NEW structure in discourse? Why does it matter?", a: "Good sentences move from GIVEN (known info) to NEW (unknown). It aids comprehension and cohesion." },
+    { q: "What is a BINOMIAL EXPRESSION? Give two examples.", a: "Two words joined by a conjunction in a fixed order. E.g. black and white, bread and butter, safe and sound." },
+    { q: "Explain the difference between DIRECT and INDIRECT SPEECH ACTS.", a: "DIRECT = literal meaning ('Close the door.'). INDIRECT = meaning differs from form ('Could you close the door?' = request, not question)." },
+    { q: "What is COHESIVE HARMONY in a paragraph? Give an example technique.", a: "When all cohesive devices reinforce the same referential chain. E.g. consistent pronoun use + synonyms for the same concept across sentences." },
+    { q: "What is SYNTACTIC AMBIGUITY? Give an example.", a: "A sentence that can be parsed in more than one way. E.g. 'I saw the man with the telescope.' (Did I use the telescope, or did he have one?)" },
+    { q: "Rewrite in formal academic style: 'We think the results show that the drug works.'", a: "It is suggested that the results indicate the efficacy of the drug. (Or similar formal hedged version.)" },
+    { q: "What is ASPECT COERCION? Give an example.", a: "When aspect imposed by context forces a reinterpretation. E.g. 'She was dying for hours' — 'die' is normally perfective but continuous forces durative reading." },
+    { q: "Explain PRAGMATIC FAILURE. Give an example in EFL contexts.", a: "When a learner is grammatically correct but communicatively inappropriate. E.g. using 'Give me…' instead of 'Could I have…' in formal contexts." }
   ],
   GK: [
     { q: "What is the capital of Australia?", a: "Canberra" },
@@ -694,7 +957,116 @@ const QUESTIONS = {
     { q: "What is the capital of Canada?", a: "Ottawa" },
     { q: "What does DNA stand for?", a: "Deoxyribonucleic acid" },
     { q: "How many zeros are in one million?", a: "6" },
-    { q: "What is the main language spoken in Argentina?", a: "Spanish" }
+    { q: "What is the main language spoken in Argentina?", a: "Spanish" },
+    { q: "What is the capital of France?", a: "Paris" },
+    { q: "How many players are on a basketball team?", a: "5" },
+    { q: "What is the boiling point of water in Celsius?", a: "100°C" },
+    { q: "Which country is home to the kangaroo?", a: "Australia" },
+    { q: "How many days are in a leap year?", a: "366" },
+    { q: "What is the largest planet in the solar system?", a: "Jupiter" },
+    { q: "Which ocean lies between Europe and America?", a: "The Atlantic Ocean" },
+    { q: "What is 7 × 8?", a: "56" },
+    { q: "Who wrote 'Harry Potter'?", a: "J.K. Rowling" },
+    { q: "What is the capital of Germany?", a: "Berlin" },
+    { q: "How many sides does a triangle have?", a: "3" },
+    { q: "What element does 'O' represent on the periodic table?", a: "Oxygen" },
+    { q: "Which country has the most natural lakes?", a: "Canada" },
+    { q: "What is the capital of Italy?", a: "Rome" },
+    { q: "What sport is played at Wimbledon?", a: "Tennis" },
+    { q: "How many degrees are in a right angle?", a: "90" },
+    { q: "What is the chemical symbol for water?", a: "H₂O" },
+    { q: "Which bird is the international symbol of peace?", a: "The dove" },
+    { q: "What is the capital of Spain?", a: "Madrid" },
+    { q: "How many teeth does an adult human have?", a: "32" },
+    { q: "What is the speed of light (approx.)?", a: "300,000 km/s" },
+    { q: "In which country is the Sahara Desert located (mainly)?", a: "Africa (multiple countries — main answer accepted)" },
+    { q: "What is the capital of Egypt?", a: "Cairo" },
+    { q: "How many colours are in a rainbow?", a: "7" },
+    { q: "What does 'FIFA' stand for?", a: "Fédération Internationale de Football Association" },
+    { q: "Which planet has rings around it?", a: "Saturn (also Uranus, Jupiter, Neptune)" },
+    { q: "What is the largest continent?", a: "Asia" },
+    { q: "How many seconds are in one minute?", a: "60" },
+    { q: "What is the capital of Portugal?", a: "Lisbon" },
+    { q: "Who invented the telephone?", a: "Alexander Graham Bell" },
+    { q: "What is the capital of Argentina?", a: "Buenos Aires" },
+    { q: "How many planets are in the solar system?", a: "8" },
+    { q: "What is the national sport of Japan?", a: "Sumo wrestling (also baseball is accepted)" },
+    { q: "What is 25% of 80?", a: "20" },
+    { q: "What is the capital of South Korea?", a: "Seoul" },
+    { q: "What is the freezing point of water in Fahrenheit?", a: "32°F" },
+    { q: "Which country invented pizza?", a: "Italy" },
+    { q: "How many keys does a standard piano have?", a: "88" },
+    { q: "What is the capital of Mexico?", a: "Mexico City" },
+    { q: "Which gas makes up most of Earth's atmosphere?", a: "Nitrogen (about 78%)" },
+    { q: "What is the square root of 81?", a: "9" },
+    { q: "Who painted the Sistine Chapel ceiling?", a: "Michelangelo" },
+    { q: "Which country is the largest by land area?", a: "Russia" },
+    { q: "How many minutes are in a day?", a: "1,440" },
+    { q: "What is the chemical symbol for iron?", a: "Fe" },
+    { q: "What sport uses a puck?", a: "Ice hockey" },
+    { q: "How many legs does a spider have?", a: "8" },
+    { q: "What is the capital of China?", a: "Beijing" },
+    { q: "Who wrote 'Don Quixote'?", a: "Miguel de Cervantes" },
+    { q: "Which organ pumps blood around the body?", a: "The heart" },
+    { q: "How many faces does a cube have?", a: "6" },
+    { q: "What is the capital of India?", a: "New Delhi" },
+    { q: "What does HTTP stand for?", a: "HyperText Transfer Protocol" },
+    { q: "Which country is famous for the Eiffel Tower?", a: "France" },
+    { q: "What is 12 squared?", a: "144" },
+    { q: "Who composed 'Für Elise'?", a: "Ludwig van Beethoven" },
+    { q: "What is the longest bone in the human body?", a: "The femur (thigh bone)" },
+    { q: "What is the capital of Russia?", a: "Moscow" },
+    { q: "How many sides does a pentagon have?", a: "5" },
+    { q: "Which country won the 2018 FIFA World Cup?", a: "France" },
+    { q: "What is the chemical symbol for silver?", a: "Ag" },
+    { q: "What is the name of the fairy tale character who slept for 100 years?", a: "Sleeping Beauty" },
+    { q: "Which planet is known as the Blue Planet?", a: "Earth" },
+    { q: "How many chambers does the human heart have?", a: "4" },
+    { q: "What country has the most volcanoes?", a: "Indonesia" },
+    { q: "What is the capital of Turkey?", a: "Ankara" },
+    { q: "How many members are in a standard volleyball team?", a: "6" },
+    { q: "What is the name of the closest star to Earth (excluding the Sun)?", a: "Proxima Centauri" },
+    { q: "Who was the first woman to win a Nobel Prize?", a: "Marie Curie" },
+    { q: "What is the world's most spoken language?", a: "Mandarin Chinese" },
+    { q: "What is 9 × 9?", a: "81" },
+    { q: "In which sport do players use a shuttlecock?", a: "Badminton" },
+    { q: "What is the capital of Greece?", a: "Athens" },
+    { q: "How many strings does a violin have?", a: "4" },
+    { q: "What is the powerhouse of the cell?", a: "The mitochondria" },
+    { q: "What is the capital of the Netherlands?", a: "Amsterdam" },
+    { q: "What is the largest organ inside the human body?", a: "The liver" },
+    { q: "How many Olympic rings are there?", a: "5" },
+    { q: "What is the world's largest ocean trench?", a: "The Mariana Trench" },
+    { q: "Who wrote '1984'?", a: "George Orwell" },
+    { q: "What is the chemical symbol for sodium?", a: "Na" },
+    { q: "In which sport would you perform a 'slam dunk'?", a: "Basketball" },
+    { q: "What is the capital of Sweden?", a: "Stockholm" },
+    { q: "How many chromosomes do humans have?", a: "46 (23 pairs)" },
+    { q: "What gas do humans exhale?", a: "Carbon dioxide (CO₂)" },
+    { q: "Who invented the lightbulb?", a: "Thomas Edison" },
+    { q: "What is the capital of Poland?", a: "Warsaw" },
+    { q: "How many players are in a rugby union team?", a: "15" },
+    { q: "What is the Pythagorean theorem?", a: "a² + b² = c² (in a right triangle)" },
+    { q: "Which country gifted the Statue of Liberty to the USA?", a: "France" },
+    { q: "What is the capital of Norway?", a: "Oslo" },
+    { q: "What is 1,000 squared?", a: "1,000,000" },
+    { q: "Which planet is the hottest in the solar system?", a: "Venus" },
+    { q: "Who was the first US President?", a: "George Washington" },
+    { q: "What type of animal is a Komodo dragon?", a: "A lizard (reptile)" },
+    { q: "How many grams are in one kilogram?", a: "1,000" },
+    { q: "What is the capital of Switzerland?", a: "Bern" },
+    { q: "Who wrote 'Pride and Prejudice'?", a: "Jane Austen" },
+    { q: "What is the hardest rock type?", a: "Igneous (specifically granite is one of the hardest)" },
+    { q: "How many millimetres are in one centimetre?", a: "10" },
+    { q: "What is the capital of Nigeria?", a: "Abuja" },
+    { q: "In which year did the Berlin Wall fall?", a: "1989" },
+    { q: "What does 'UNESCO' stand for?", a: "United Nations Educational, Scientific and Cultural Organization" },
+    { q: "What is the primary ingredient in guacamole?", a: "Avocado" },
+    { q: "How many players are on a baseball team?", a: "9" },
+    { q: "What is the only mammal capable of true flight?", a: "The bat" },
+    { q: "What is the capital of Saudi Arabia?", a: "Riyadh" },
+    { q: "What is the square root of 225?", a: "15" },
+    { q: "Who developed the theory of relativity?", a: "Albert Einstein" }
   ]
 };
 
@@ -858,6 +1230,15 @@ function startGame() {
   state.rolled = 0;
   state.usedQs = { A1: [], A2: [], B1: [], B2: [], GK: [] };
 
+  // Apply debug mode bonuses
+  if (debugMode) {
+    state.teams.forEach(t => {
+      t.points = 100;
+      t.hasCheatDice = true;
+      t.rerolls = 999;
+    });
+  }
+
   buildBoardSquares();
   renderBoard();
   renderScorecards();
@@ -883,7 +1264,7 @@ function buildBoardSquares() {
     const cIdx = CORNER_INDICES.indexOf(i);
     if (cIdx !== -1) {
       state.boardSquares.push({ type: 'hub', hubLevel: state.hubAssignments[cIdx] });
-    } else if (i === 26) {
+    } else if (i === 25) {
       // Force permanently to custom Shop zone
       state.boardSquares.push({ type: 'shop' });
     } else {
@@ -1060,51 +1441,77 @@ function updateTurnHeader() {
   if (!team) return;
   document.getElementById('turn-dot').style.background = team.color;
   document.getElementById('turn-name').textContent = team.name;
+  // Tint the background with the active team's color at low opacity
+  document.body.style.background = `color-mix(in srgb, ${team.color} 12%, #0f1117)`;
   updateRerollBtn();
 }
 
-// Use reroll token from leaderboard card (any team, any time during roll phase)
-function useRerollForTeam(teamIdx) {
-  const team = state.teams[teamIdx];
-  if (!team || team.rerolls <= 0) return;
-  // Only allow reroll if it's this team's turn and in roll/reroll phase
-  if (teamIdx !== state.currentTeam) {
-    showEvent('🌟', 'Not Your Turn', `${team.name} can only use a Reroll Token on their own turn.`);
-    return;
+// Show the reroll offer card at end of turn if current team has tokens
+function offerRerollIfAvailable() {
+  const team = state.teams[state.currentTeam];
+  if (team && team.rerolls > 0 && state.preRollPosition !== undefined) {
+    state.phase = 'reroll-offer';
+    document.getElementById('reroll-offer-desc').textContent =
+      `${team.name} has ${team.rerolls} Reroll Token${team.rerolls > 1 ? 's' : ''}. Spend one to return to space ${state.preRollPosition} and roll again?`;
+    showConsoleDeck('reroll-offer-card');
+  } else {
+    nextTurn();
   }
-  if (state.phase !== 'roll' && state.phase !== 'reroll' && state.phase !== 'reroll-intercept') {
-    showEvent('🌟', 'Wrong Time', 'Reroll Tokens can only be used during your roll phase.');
-    return;
-  }
-  if (state.rerollTimeout) clearTimeout(state.rerollTimeout);
+}
+
+// Called when player clicks "Yes, Reroll!" on the offer card
+function confirmUseReroll() {
+  const team = state.teams[state.currentTeam];
+  if (!team || team.rerolls <= 0) { nextTurn(); return; }
   team.rerolls--;
   team.position = state.preRollPosition;
   state.phase = 'roll';
   const dice = document.getElementById('dice-display');
   dice.classList.remove('disabled');
   dice.textContent = '🎲';
-  document.getElementById('dice-label').textContent = 'Returned! Roll again!';
-  setStatus(`${team.name} spent a 🌟 Reroll Token and returned to space ${team.position}!`);
+  document.getElementById('dice-label').textContent = 'Rerolled — roll again!';
+  // Show cheat dice selector again if they still have it
+  if (team.hasCheatDice) {
+    document.getElementById('cheat-dice-container').style.display = 'flex';
+    setStatus(`🌟 Rerolled! 🔮 Cheat Dice still available — select a value, then roll.`);
+  } else {
+    setStatus(`🌟 ${team.name} spent a Reroll Token and returned to space ${team.position}!`);
+  }
   refreshTokens();
   renderScorecards();
   updateTurnHeader();
   showConsoleDeck('dice-deck-card');
 }
 
-// Activate cheat dice from leaderboard card (team's turn only)
+// Leaderboard button: only informs the player what to do (cheat dice is pre-roll, reroll is post-event)
+function useRerollForTeam(teamIdx) {
+  const team = state.teams[teamIdx];
+  if (!team || team.rerolls <= 0) return;
+  if (teamIdx !== state.currentTeam) {
+    setStatus(`⚠️ ${team.name}: Reroll Tokens can only be used on your own turn.`);
+    return;
+  }
+  // If we're in the reroll-offer phase, just confirm it directly
+  if (state.phase === 'reroll-offer') {
+    confirmUseReroll();
+    return;
+  }
+  setStatus(`🌟 ${team.name} has ${team.rerolls} Reroll Token${team.rerolls > 1 ? 's' : ''}. You'll be offered to use it at the end of your turn!`);
+}
+
+// Activate cheat dice from leaderboard card — only usable before rolling (phase === 'roll')
 function activateCheatDice(teamIdx) {
   const team = state.teams[teamIdx];
   if (!team || !team.hasCheatDice) return;
   if (teamIdx !== state.currentTeam) {
-    showEvent('🔮', 'Not Your Turn', `${team.name} can only use the Cheat Dice on their own turn.`);
+    setStatus(`⚠️ ${team.name}: Cheat Dice can only be used on your own turn.`);
     return;
   }
   if (state.phase !== 'roll') {
-    showEvent('🔮', 'Wrong Time', 'Cheat Dice can only be activated before rolling.');
+    setStatus(`🔮 Cheat Dice must be used before rolling. Wait for your next turn!`);
     return;
   }
-  const cheatBox = document.getElementById('cheat-dice-container');
-  cheatBox.style.display = 'flex';
+  document.getElementById('cheat-dice-container').style.display = 'flex';
   setStatus(`🔮 ${team.name}: select your desired roll value, then click the die!`);
 }
 
@@ -1119,6 +1526,7 @@ function updateRerollBtn() {
 // ==========================================
 function rollDice() {
   if (state.phase !== 'roll') return;
+  state.phase = 'rolling'; // immediately lock against re-entry
   const team = state.teams[state.currentTeam];
   
   if (team.skipTurns > 0) {
@@ -1126,7 +1534,7 @@ function rollDice() {
     Sound.play('wrong');
     setStatus(`${team.name} is in Detention! Turn skipped.`);
     renderScorecards();
-    setTimeout(nextTurn, 1800);
+    setTimeout(offerRerollIfAvailable, 1800);
     return;
   }
 
@@ -1148,7 +1556,7 @@ function rollDice() {
       let result;
       if (team.hasCheatDice) {
         result = parseInt(document.getElementById('cheat-value-selector').value) || 1;
-        team.hasCheatDice = false; // Discard after single deployment
+        if (!debugMode) team.hasCheatDice = false; // Discard after use (unless debug)
       } else {
         result = Math.floor(Math.random() * 6) + 1;
       }
@@ -1170,11 +1578,188 @@ function rollDice() {
   }, 60);
 }
 
+// Get center pixel coords of a board square (in viewport space)
+function getSquareCenter(sqIdx) {
+  const el = document.getElementById(`sq-${sqIdx}`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
 function executeMove() {
   const team = state.teams[state.currentTeam];
-  team.position = (team.position + state.rolled) % TOTAL_SQUARES;
-  refreshTokens();
-  evaluateLandingSquare();
+  const startPos = team.position;
+  let rawTarget = (startPos + state.rolled) % TOTAL_SQUARES;
+
+  // Hub magnetism check (same logic as before, determine final destination first)
+  let magnetMessage = null;
+  for (const cornerIdx of CORNER_INDICES) {
+    const hubIdx = CORNER_INDICES.indexOf(cornerIdx);
+    const hubKey = `hub-${hubIdx}`;
+    if (team.tokens.includes(hubKey)) continue;
+    const distToHub = (cornerIdx - startPos + TOTAL_SQUARES) % TOTAL_SQUARES;
+    const distMoved = state.rolled;
+    if (distMoved === distToHub - 1 && Math.random() < 0.5) {
+      rawTarget = cornerIdx;
+      magnetMessage = `🧲 Magnetic pull! ${team.name} drawn 1 square forward to Hub ${hubIdx + 1}!`;
+      break;
+    }
+    if (distMoved === distToHub - 2 && Math.random() < 0.2) {
+      rawTarget = cornerIdx;
+      magnetMessage = `🧲 Strong magnetic pull! ${team.name} drawn 2 squares forward to Hub ${hubIdx + 1}!`;
+      break;
+    }
+  }
+
+  const steps = (rawTarget - startPos + TOTAL_SQUARES) % TOTAL_SQUARES;
+  if (steps === 0) {
+    // No movement needed
+    if (magnetMessage) setStatus(magnetMessage);
+    team.position = rawTarget;
+    refreshTokens();
+    evaluateLandingSquare();
+    return;
+  }
+
+  // Build path: array of square indices visited step by step
+  const path = [];
+  for (let s = 1; s <= steps; s++) {
+    path.push((startPos + s) % TOTAL_SQUARES);
+  }
+
+  // Set up flying meeple
+  const flyEl = document.getElementById('flying-meeple');
+  flyEl.textContent = state.currentTeam + 1;
+  flyEl.style.background = team.color;
+  flyEl.style.boxShadow = `0 0 18px ${team.color}, 0 4px 12px rgba(0,0,0,0.5)`;
+
+  // Position it at start square, make visible
+  const startCenter = getSquareCenter(startPos);
+  if (startCenter) {
+    flyEl.style.left = (startCenter.x - 18) + 'px';
+    flyEl.style.top  = (startCenter.y - 18) + 'px';
+  }
+  flyEl.classList.add('visible');
+
+  // Hide the team's static pawn while animating
+  const staticPawn = document.querySelector(`#tokens-${startPos} .token-pawn:nth-child(${state.currentTeam + 1})`);
+  // Simpler: just hide all pawns for this team's current slot and re-render after
+  const existingPawn = [...document.querySelectorAll('.token-pawn')].find(p => p.style.backgroundColor === team.color);
+  if (existingPawn) existingPawn.style.opacity = '0';
+
+  const STEP_MS = 220; // ms per square
+
+  let stepIdx = 0;
+  function animateStep() {
+    if (stepIdx >= path.length) {
+      // Animation complete — land at destination
+      flyEl.classList.remove('visible');
+      if (magnetMessage) setStatus(magnetMessage);
+      team.position = rawTarget;
+      refreshTokens();
+      evaluateLandingSquare();
+      return;
+    }
+
+    const sqIdx = path[stepIdx];
+    const center = getSquareCenter(sqIdx);
+    if (center) {
+      flyEl.style.left = (center.x - 18) + 'px';
+      flyEl.style.top  = (center.y - 18) + 'px';
+      // Trigger hop CSS animation by removing and re-adding class
+      flyEl.classList.remove('hop');
+      void flyEl.offsetWidth; // reflow
+      flyEl.classList.add('hop');
+    }
+
+    // Highlight current square briefly
+    const sq = document.getElementById(`sq-${sqIdx}`);
+    if (sq) {
+      sq.classList.add('sq-active');
+      // Remove highlight from previous square
+      if (stepIdx > 0) {
+        const prevSq = document.getElementById(`sq-${path[stepIdx - 1]}`);
+        if (prevSq) prevSq.classList.remove('sq-active');
+      } else {
+        const prevSq = document.getElementById(`sq-${startPos}`);
+        if (prevSq) prevSq.classList.remove('sq-active');
+      }
+    }
+
+    stepIdx++;
+    setTimeout(animateStep, STEP_MS);
+  }
+
+  // Small delay so the meeple appears at start before moving
+  setTimeout(animateStep, 80);
+}
+
+// Animate meeple from its current board position to a new position,
+// then call onDone() when the animation finishes.
+// forward=true means move ahead, forward=false means move backward.
+function animateMeepleMove(teamIdx, fromPos, toPos, forward, onDone) {
+  const team = state.teams[teamIdx];
+  const flyEl = document.getElementById('flying-meeple');
+  flyEl.textContent = teamIdx + 1;
+  flyEl.style.background = team.color;
+  flyEl.style.boxShadow = `0 0 18px ${team.color}, 0 4px 12px rgba(0,0,0,0.5)`;
+
+  // Build path
+  const path = [];
+  if (forward) {
+    const steps = (toPos - fromPos + TOTAL_SQUARES) % TOTAL_SQUARES;
+    for (let s = 1; s <= steps; s++) path.push((fromPos + s) % TOTAL_SQUARES);
+  } else {
+    const steps = (fromPos - toPos + TOTAL_SQUARES) % TOTAL_SQUARES;
+    for (let s = 1; s <= steps; s++) path.push((fromPos - s + TOTAL_SQUARES) % TOTAL_SQUARES);
+  }
+
+  if (path.length === 0) { onDone(); return; }
+
+  // Position at fromPos and show
+  const startCenter = getSquareCenter(fromPos);
+  if (startCenter) {
+    flyEl.style.left = (startCenter.x - 18) + 'px';
+    flyEl.style.top  = (startCenter.y - 18) + 'px';
+  }
+  flyEl.classList.add('visible');
+
+  // Hide static pawn
+  const existingPawn = [...document.querySelectorAll('.token-pawn')].find(p => p.style.backgroundColor === team.color);
+  if (existingPawn) existingPawn.style.opacity = '0';
+
+  const STEP_MS = 220;
+  let stepIdx = 0;
+
+  function animateStep() {
+    if (stepIdx >= path.length) {
+      flyEl.classList.remove('visible');
+      onDone();
+      return;
+    }
+    const sqIdx = path[stepIdx];
+    const center = getSquareCenter(sqIdx);
+    if (center) {
+      flyEl.style.left = (center.x - 18) + 'px';
+      flyEl.style.top  = (center.y - 18) + 'px';
+      flyEl.classList.remove('hop');
+      void flyEl.offsetWidth;
+      flyEl.classList.add('hop');
+    }
+    const sq = document.getElementById(`sq-${sqIdx}`);
+    if (sq) sq.classList.add('sq-active');
+    if (stepIdx > 0) {
+      const prevSq = document.getElementById(`sq-${path[stepIdx - 1]}`);
+      if (prevSq) prevSq.classList.remove('sq-active');
+    } else {
+      const prevSq = document.getElementById(`sq-${fromPos}`);
+      if (prevSq) prevSq.classList.remove('sq-active');
+    }
+    stepIdx++;
+    setTimeout(animateStep, STEP_MS);
+  }
+
+  setTimeout(animateStep, 80);
 }
 
 function confirmKeepSquare() {
@@ -1265,25 +1850,31 @@ function evaluateLandingSquare() {
       showQuestion(randomFrom(state.cefrActive), '📖 EFL Practice Board Challenge!');
       break;
     case 'fast': {
-      // Dynamic Fast track rolls a 2, 3, or 4 space advance
       const boost = Math.floor(Math.random() * 3) + 2; // [2, 3, 4]
-      team.position = (team.position + boost) % TOTAL_SQUARES;
+      const fromPos = team.position;
+      const toPos = (team.position + boost) % TOTAL_SQUARES;
       Sound.play('correct');
-      refreshTokens();
       renderScorecards();
-      state._fastTrackResume = true;
-      showEvent('⚡', `Fast Track! +${boost} spaces`, `Zoomed forward ${boost} extra spaces to square ${team.position}. Click Continue to activate that space!`);
+      animateMeepleMove(state.currentTeam, fromPos, toPos, true, () => {
+        team.position = toPos;
+        refreshTokens();
+        state._fastTrackResume = true;
+        showEvent('⚡', `Fast Track! +${boost} spaces`, `Zoomed forward ${boost} extra spaces to square ${toPos}. Click Continue to activate that space!`);
+      });
       break;
     }
     case 'back': {
-      // Setback returns the player back by the exact dice roll amount
       const rb = state.rolled;
-      team.position = ((team.position - rb) + TOTAL_SQUARES) % TOTAL_SQUARES;
+      const fromPos = team.position;
+      const toPos = ((team.position - rb) + TOTAL_SQUARES) % TOTAL_SQUARES;
       Sound.play('wrong');
-      refreshTokens();
       renderScorecards();
-      state._setbackResume = true;
-      showEvent('↩️', `Setback! −${rb} spaces`, `Dragged back ${rb} squares to space ${team.position}. Click Continue to activate that space!`);
+      animateMeepleMove(state.currentTeam, fromPos, toPos, false, () => {
+        team.position = toPos;
+        refreshTokens();
+        state._setbackResume = true;
+        showEvent('↩️', `Setback! −${rb} spaces`, `Dragged back ${rb} squares to space ${toPos}. Click Continue to activate that space!`);
+      });
       break;
     }
     case 'det':
@@ -1311,7 +1902,7 @@ function evaluateLandingSquare() {
       triggerShop();
       break;
     default:
-      nextTurn();
+      offerRerollIfAvailable();
   }
 }
 
@@ -1378,7 +1969,7 @@ function judgeAnswer(correct) {
     setStatus(`✅ Correct! +${gain} points added.`);
     renderScorecards();
     checkWin();
-    if (state.phase !== 'win') setTimeout(nextTurn, 1200);
+    if (state.phase !== 'win') setTimeout(offerRerollIfAvailable, 1200);
   } else {
     Sound.play('wrong');
     if (state.donActive) {
@@ -1404,7 +1995,7 @@ function judgeAnswer(correct) {
     refreshTokens();
     renderScorecards();
     setStatus(`❌ Incorrect! Forced backward ${rb} fields.`);
-    setTimeout(nextTurn, 1200);
+    setTimeout(offerRerollIfAvailable, 1200);
   }
 }
 
@@ -1444,7 +2035,7 @@ function confirmBuyToken() {
 function declineBuyToken() {
   pendingHubLevel = null;
   pendingHubKey = null;
-  nextTurn();
+  offerRerollIfAvailable();
 }
 
 function showEvent(icon, title, desc) {
@@ -1468,7 +2059,7 @@ function closeEvent() {
       state._setbackResume = false;
       evaluateLandingSquare();
     } else {
-      nextTurn();
+      offerRerollIfAvailable();
     }
   }
 }
@@ -1494,7 +2085,7 @@ function triggerTeachersPet() {
       Sound.play('correct');
       refreshTokens();
       renderScorecards();
-      nextTurn();
+      offerRerollIfAvailable();
     };
     list.appendChild(btn);
   });
@@ -1552,7 +2143,6 @@ function triggerDuel() {
     ta.appendChild(btn);
   });
   
-  document.getElementById('duel-buzz-area').style.display = 'none';
   document.getElementById('duel-q-area').style.display = 'none';
   showConsoleDeck('duel-card');
   state.phase = 'duel';
@@ -1565,59 +2155,42 @@ function selectDuelTarget(idx) {
   const q = getRandomQuestion('GK');
   currentQuestion = q;
   document.getElementById('duel-q-text').textContent = q.q;
-  document.getElementById('duel-q-answer').textContent = 'Correct Key Answer: ' + q.a;
+  document.getElementById('duel-q-answer').textContent = 'Answer: ' + q.a;
   document.getElementById('duel-q-answer').classList.remove('revealed');
   
   const challenger = state.teams[state.duelChallenger];
   const target = state.teams[state.duelTarget];
+  const stealAmt = Math.floor(target.points * 0.25);
+  const loseAmt = Math.floor(challenger.points * 0.25);
+  document.getElementById('duel-outcome-hint').textContent =
+    `WIN → steal ${stealAmt} pts from ${target.name}  |  LOSE → ${target.name} takes ${loseAmt} pts from you`;
   
-  document.getElementById('duel-buzz-row').innerHTML = `
-    <button class="buzz-btn" style="border-color:${challenger.color};" onclick="setBuzzWinner('challenger')">🔔 ${challenger.name}</button>
-    <button class="buzz-btn" style="border-color:${target.color};" onclick="setBuzzWinner('target')">🔔 ${target.name}</button>
-  `;
-  document.getElementById('duel-buzz-area').style.display = 'block';
   document.getElementById('duel-q-area').style.display = 'flex';
-}
-
-function setBuzzWinner(who) {
-  const buzzes = document.querySelectorAll('.buzz-btn');
-  buzzes.forEach(b => b.style.background = 'none');
-  
-  if(who === 'challenger') {
-    buzzes[0].style.background = 'rgba(255,255,255,0.15)';
-  } else {
-    buzzes[1].style.background = 'rgba(255,255,255,0.15)';
-  }
-  state.duelBuzzWinner = who;
 }
 
 function revealDuelAnswer() {
   document.getElementById('duel-q-answer').classList.add('revealed');
 }
 
-function judgeDuel(correct) {
-  if (!state.duelBuzzWinner) { setStatus('⚠️ Click a buzz button to confirm who answered first!'); return; }
-  
+function judgeDuel(currentPlayerWon) {
   const challenger = state.teams[state.duelChallenger];
   const target = state.teams[state.duelTarget];
-  const winner = state.duelBuzzWinner === 'challenger' ? challenger : target;
-  const loser = state.duelBuzzWinner === 'challenger' ? target : challenger;
-  
-  if (correct) {
-    Sound.play('correct');
-    winner.correctCount++;
 
-    const stolenPoints = Math.floor(loser.points * 0.25);
-    loser.points -= stolenPoints;
-    winner.points += stolenPoints;
-    
-    showEvent('⚔️', 'Duel Settled!', `${winner.name} got it right! Stole 25% (${stolenPoints} pts) from ${loser.name}.`);
+  if (currentPlayerWon) {
+    Sound.play('correct');
+    challenger.correctCount++;
+    const stolen = Math.floor(target.points * 0.25);
+    target.points -= stolen;
+    challenger.points += stolen;
+    showEvent('🏆', 'Duel Victory!', `${challenger.name} won! Stole ${stolen} pts from ${target.name}.`);
   } else {
     Sound.play('wrong');
-    winner.points = Math.max(0, winner.points - 10);
-    showEvent('⚔️', 'Duel Failure', `${winner.name} guessed wrong! Fined 10 points.`);
+    const stolen = Math.floor(challenger.points * 0.25);
+    challenger.points -= stolen;
+    target.points += stolen;
+    showEvent('💀', 'Duel Defeat', `${challenger.name} lost! ${target.name} takes ${stolen} pts.`);
   }
-  
+
   state.duelChallenger = null;
   state.duelTarget = null;
   state.duelBuzzWinner = null;
@@ -1689,7 +2262,7 @@ function buyShopItem(item, cost) {
 // ==========================================
 function showConsoleDeck(visibleId) {
   document.getElementById('dice-deck-card').style.display = 'none';
-  ['question-card', 'event-card', 'duel-card', 'don-card', 'pet-card', 'hub-buy-card', 'reroll-intercept-card', 'shop-card'].forEach(id => {
+  ['question-card', 'event-card', 'reroll-offer-card', 'duel-card', 'don-card', 'pet-card', 'hub-buy-card', 'reroll-intercept-card', 'shop-card'].forEach(id => {
     document.getElementById(id).classList.remove('visible');
   });
 
@@ -1743,6 +2316,7 @@ function handleRoundLimitExpiration() {
 
 function nextTurn() {
   pendingHubLevel = null;
+  pendingHubKey = null;
   state.phase = 'roll';
   
   // Track total game steps taken to compute rounds accurately
@@ -1760,9 +2334,16 @@ function nextTurn() {
   dice.textContent = '🎲';
   dice.classList.remove('disabled');
   document.getElementById('dice-label').textContent = 'Click die to roll';
-  document.getElementById('cheat-dice-container').style.display = 'none';
-  
-  setStatus('');
+
+  const newTeam = state.teams[state.currentTeam];
+  if (newTeam && newTeam.hasCheatDice) {
+    document.getElementById('cheat-dice-container').style.display = 'flex';
+    setStatus(`🔮 ${newTeam.name}: Cheat Dice ready! Pick a value then roll, or just roll normally.`);
+  } else {
+    document.getElementById('cheat-dice-container').style.display = 'none';
+    setStatus('');
+  }
+
   refreshTokens();
   renderScorecards();
   updateTurnHeader();
@@ -1818,6 +2399,19 @@ function startConfetti() {
 }
 
 renderSetupTeams();
+
+// ==========================================
+// DEBUG MODE — Press C on setup screen
+// ==========================================
+let debugMode = false;
+document.addEventListener('keydown', (e) => {
+  const setupActive = document.getElementById('setup-screen').classList.contains('active');
+  if (setupActive && e.key.toLowerCase() === 'c') {
+    debugMode = !debugMode;
+    const indicator = document.getElementById('debug-indicator');
+    if (indicator) indicator.style.display = debugMode ? 'flex' : 'none';
+  }
+});
 </script>
 </body>
 </html>

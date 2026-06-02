@@ -469,29 +469,32 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-he
             <button class="btn-ghost" onclick="nextTurn()">Pass (Do Nothing)</button>
           </div>
 
-          <!-- Permanent Square 26 Shop Console Card -->
+          <!-- Permanent Square 25 Shop Console Card -->
           <div id="shop-card" class="cta-card">
             <div class="hub-buy-title" style="color:var(--teal)">🛒 Black Market Advantage Shop</div>
-            <div style="font-size:12px; color:var(--text-muted);">Spend points on custom high-tier modifiers. You can buy multiple things if you have enough points!</div>
+            <div style="font-size:12px; color:var(--text-muted);">Spend points on high-tier modifiers. Buy multiple if you have enough!</div>
             <div class="shop-grid">
               <div class="shop-item">
-                <div class="shop-item-info"><h4>🌟 Reroll Token</h4><p>Allows safe mid-turn rewinds.</p></div>
-                <button class="btn-buy" id="shop-b-reroll" onclick="buyShopItem('reroll', 10)">10 Pts</button>
+                <div class="shop-item-info"><h4>💥 Landmines ×2</h4><p>Plant 2 hidden traps that steal 25% from any opponent who steps on them.</p></div>
+                <button class="btn-buy" id="shop-b-mine" onclick="buyShopItem('mine', 10)">10 Pts</button>
               </div>
               <div class="shop-item">
-                <div class="shop-item-info"><h4>🔮 Cheat Dice</h4><p>Pick exact results on your next turn.</p></div>
-                <button class="btn-buy" id="shop-b-cheat" onclick="buyShopItem('cheat', 15)">15 Pts</button>
+                <div class="shop-item-info"><h4>🕵️ Sabotage</h4><p>Choose a player — they can only roll 1 or 2 for their next 2 turns.</p></div>
+                <button class="btn-buy" id="shop-b-sabotage" onclick="buyShopItem('sabotage', 10)">10 Pts</button>
               </div>
               <div class="shop-item">
-                <div class="shop-item-info"><h4>💥 Point Stealing Mines</h4><p>Place 2 trap landmines on the board maps.</p></div>
-                <button class="btn-buy" id="shop-b-mine" onclick="buyShopItem('mine', 15)">15 Pts</button>
-              </div>
-              <div class="shop-item">
-                <div class="shop-item-info"><h4>🎓 Core Hub Level Token</h4><p>Purchase an elusive CEFR completion token directly.</p></div>
+                <div class="shop-item-info"><h4>🎓 Core Hub Token</h4><p>Purchase a CEFR completion token directly from the dealer.</p></div>
                 <button class="btn-buy" id="shop-b-token" onclick="buyShopItem('token', 50)">50 Pts</button>
               </div>
             </div>
             <button class="btn-primary" onclick="nextTurn()" style="background:var(--teal); margin-top:8px;">Exit Shop & Pass Turn</button>
+          </div>
+
+          <!-- Sabotage Target Picker -->
+          <div id="sabotage-card" class="cta-card">
+            <div class="hub-buy-title" style="color:#f25c6e">🕵️ Choose Your Target</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Select a player to sabotage. They can only roll 1 or 2 for their next 2 turns.</div>
+            <div id="sabotage-target-list" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
 
           <!-- Global Event Confirmation Card -->
@@ -596,22 +599,21 @@ const CORNER_INDICES = [0, 7, 14, 21];
 const SQUARE_TYPES_POOL = [
   'gk', 'gk', 'gk', 'gk',
   'efl', 'efl', 'efl', 'efl',
-  'fast', 'fast', 'back', 'back', 'det',
-  'ec', 'ec', 'pet', 'don', 'duel', 'duel'
-  // Cell 26 will be forced to 'shop' downstream
+  'pts_up', 'pts_up', 'pts_down', 'pts_down', 'det',
+  'cheat_gift', 'don', 'don', 'duel', 'duel', 'duel'
+  // Square 25 will be forced to 'shop' downstream
 ];
 
 const SQUARE_INFO = {
-  gk:   { label: 'General K.', icon: '🧠', cls: 'sq-gk' },
-  efl:  { label: 'EFL Practice', icon: '📖', cls: 'sq-efl' },
-  fast: { label: 'Fast Track', icon: '⚡', cls: 'sq-fast' },
-  back: { label: 'Setback', icon: '↩️', cls: 'sq-back' },
-  det:  { label: 'Detention!', icon: '✋', cls: 'sq-det' },
-  ec:   { label: 'Extra Credit', icon: '⭐', cls: 'sq-ec' },
-  pet:  { label: "Teacher's Pet", icon: '🍎', cls: 'sq-pet' },
-  don:  { label: 'Dbl or Nothing', icon: '🎲', cls: 'sq-don' },
-  duel: { label: '1v1 Duel', icon: '⚔️', cls: 'sq-duel' },
-  shop: { label: 'Advantage Shop', icon: '🛒', cls: 'sq-shop' }
+  gk:         { label: 'General K.',    icon: '🧠', cls: 'sq-gk' },
+  efl:        { label: 'EFL Practice',  icon: '📖', cls: 'sq-efl' },
+  pts_up:     { label: 'Bonus Points',  icon: '⭐', cls: 'sq-fast' },
+  pts_down:   { label: 'Point Penalty', icon: '💸', cls: 'sq-back' },
+  det:        { label: 'Detention!',    icon: '✋', cls: 'sq-det' },
+  cheat_gift: { label: "Teacher's Pet", icon: '🍎', cls: 'sq-pet' },
+  don:        { label: 'Dbl or Nothing',icon: '🎲', cls: 'sq-don' },
+  duel:       { label: '1v1 Duel',      icon: '⚔️', cls: 'sq-duel' },
+  shop:       { label: 'Advantage Shop',icon: '🛒', cls: 'sq-shop' }
 };
 
 const HUB_COLORS = { A1: 'var(--a1)', A2: 'var(--a2)', B1: 'var(--b1)', B2: 'var(--b2)' };
@@ -1219,9 +1221,9 @@ function startGame() {
     position: 0,
     points: 0,
     tokens: [],
-    rerolls: 0,
     skipTurns: 0,
-    correctCount: 0, // Tiebreaker metric
+    sabotaged: 0,
+    correctCount: 0,
     hasCheatDice: false
   }));
   
@@ -1235,7 +1237,6 @@ function startGame() {
     state.teams.forEach(t => {
       t.points = 100;
       t.hasCheatDice = true;
-      t.rerolls = 999;
     });
   }
 
@@ -1409,14 +1410,11 @@ function renderScorecards() {
       return `<span class="sc-token ${earned ? 'earned' : ''}" style="background:${color}" title="Hub ${i+1}: ${lvl}">${lvl}</span>`;
     }).join('');
 
-    // Action buttons: reroll and cheat dice — usable anytime by any team
-    const rerollBtn = team.rerolls > 0
-      ? `<button class="sc-action-btn sc-reroll-btn" onclick="useRerollForTeam(${i})">🌟×${team.rerolls} Reroll</button>`
-      : '';
+    // Action buttons: cheat dice only now
     const cheatBtn = team.hasCheatDice
       ? `<button class="sc-action-btn sc-cheat-btn" onclick="activateCheatDice(${i})">🔮 Cheat Dice</button>`
       : '';
-    const actionRow = (rerollBtn || cheatBtn) ? `<div class="sc-actions">${rerollBtn}${cheatBtn}</div>` : '';
+    const actionRow = cheatBtn ? `<div class="sc-actions">${cheatBtn}</div>` : '';
     
     card.innerHTML = `
       <div class="sc-top-row">
@@ -1424,6 +1422,7 @@ function renderScorecards() {
         <div class="sc-name">${team.name}</div>
         <div class="sc-pts">${team.points}pts</div>
         ${team.skipTurns > 0 ? `<span class="sc-skip">🚫DETNT</span>` : ''}
+        ${team.sabotaged > 0 ? `<span class="sc-skip" style="color:var(--red)">🕵️×${team.sabotaged}</span>` : ''}
       </div>
       <div class="sc-tokens">${tokHTML}</div>
       ${actionRow}
@@ -1441,65 +1440,13 @@ function updateTurnHeader() {
   if (!team) return;
   document.getElementById('turn-dot').style.background = team.color;
   document.getElementById('turn-name').textContent = team.name;
-  // Tint the background with the active team's color at low opacity
   document.body.style.background = `color-mix(in srgb, ${team.color} 12%, #0f1117)`;
-  updateRerollBtn();
 }
 
-// Show the reroll offer card at end of turn if current team has tokens
 function offerRerollIfAvailable() {
-  const team = state.teams[state.currentTeam];
-  if (team && team.rerolls > 0 && state.preRollPosition !== undefined) {
-    state.phase = 'reroll-offer';
-    document.getElementById('reroll-offer-desc').textContent =
-      `${team.name} has ${team.rerolls} Reroll Token${team.rerolls > 1 ? 's' : ''}. Spend one to return to space ${state.preRollPosition} and roll again?`;
-    showConsoleDeck('reroll-offer-card');
-  } else {
-    nextTurn();
-  }
+  nextTurn();
 }
 
-// Called when player clicks "Yes, Reroll!" on the offer card
-function confirmUseReroll() {
-  const team = state.teams[state.currentTeam];
-  if (!team || team.rerolls <= 0) { nextTurn(); return; }
-  team.rerolls--;
-  team.position = state.preRollPosition;
-  state.phase = 'roll';
-  const dice = document.getElementById('dice-display');
-  dice.classList.remove('disabled');
-  dice.textContent = '🎲';
-  document.getElementById('dice-label').textContent = 'Rerolled — roll again!';
-  // Show cheat dice selector again if they still have it
-  if (team.hasCheatDice) {
-    document.getElementById('cheat-dice-container').style.display = 'flex';
-    setStatus(`🌟 Rerolled! 🔮 Cheat Dice still available — select a value, then roll.`);
-  } else {
-    setStatus(`🌟 ${team.name} spent a Reroll Token and returned to space ${team.position}!`);
-  }
-  refreshTokens();
-  renderScorecards();
-  updateTurnHeader();
-  showConsoleDeck('dice-deck-card');
-}
-
-// Leaderboard button: only informs the player what to do (cheat dice is pre-roll, reroll is post-event)
-function useRerollForTeam(teamIdx) {
-  const team = state.teams[teamIdx];
-  if (!team || team.rerolls <= 0) return;
-  if (teamIdx !== state.currentTeam) {
-    setStatus(`⚠️ ${team.name}: Reroll Tokens can only be used on your own turn.`);
-    return;
-  }
-  // If we're in the reroll-offer phase, just confirm it directly
-  if (state.phase === 'reroll-offer') {
-    confirmUseReroll();
-    return;
-  }
-  setStatus(`🌟 ${team.name} has ${team.rerolls} Reroll Token${team.rerolls > 1 ? 's' : ''}. You'll be offered to use it at the end of your turn!`);
-}
-
-// Activate cheat dice from leaderboard card — only usable before rolling (phase === 'roll')
 function activateCheatDice(teamIdx) {
   const team = state.teams[teamIdx];
   if (!team || !team.hasCheatDice) return;
@@ -1515,14 +1462,8 @@ function activateCheatDice(teamIdx) {
   setStatus(`🔮 ${team.name}: select your desired roll value, then click the die!`);
 }
 
-function updateRerollBtn() {
-  // Reroll tokens are now used via leaderboard card buttons — hide the old inline button
-  const btn = document.getElementById('use-reroll-btn');
-  if (btn) btn.classList.add('hidden');
-}
-
 // ==========================================
-// 8. RNG DICE LOGIC (WITH WORKING REROLL)
+// 8. RNG DICE LOGIC
 // ==========================================
 function rollDice() {
   if (state.phase !== 'roll') return;
@@ -1544,6 +1485,13 @@ function rollDice() {
   dice.classList.add('rolling', 'disabled');
   document.getElementById('use-reroll-btn').classList.add('hidden');
   document.getElementById('cheat-dice-container').style.display = 'none';
+
+  // Consume one sabotage turn if active
+  let sabotageActive = false;
+  if (team.sabotaged > 0) {
+    team.sabotaged--;
+    sabotageActive = true;
+  }
   
   let counter = 0;
   const interval = setInterval(() => {
@@ -1556,19 +1504,25 @@ function rollDice() {
       let result;
       if (team.hasCheatDice) {
         result = parseInt(document.getElementById('cheat-value-selector').value) || 1;
-        if (!debugMode) team.hasCheatDice = false; // Discard after use (unless debug)
+        if (!debugMode) team.hasCheatDice = false;
       } else {
         result = Math.floor(Math.random() * 6) + 1;
       }
-      
+
+      // Sabotage cap: max roll is 2
+      if (sabotageActive && result > 2) {
+        result = Math.floor(Math.random() * 2) + 1;
+      }
+
       dice.textContent = result;
       dice.classList.remove('rolling');
-      
+
       state.rolled = result;
-      document.getElementById('dice-label').textContent = `Rolled a ${result}!`;
+      document.getElementById('dice-label').textContent = sabotageActive
+        ? `🕵️ Sabotaged! Rolled a ${result}!`
+        : `Rolled a ${result}!`;
       state.phase = 'reroll';
-      updateRerollBtn();
-      
+
       state.rerollTimeout = setTimeout(() => {
         if (state.phase === 'reroll') {
           executeMove();
@@ -1766,25 +1720,9 @@ function confirmKeepSquare() {
   evaluateLandingSquare();
 }
 
-function confirmTriggerReroll() {
-  const team = state.teams[state.currentTeam];
-  if (team.rerolls <= 0) return;
-  
-  team.rerolls--;
-  team.position = state.preRollPosition;
-  state.phase = 'roll';
-  
-  const dice = document.getElementById('dice-display');
-  dice.classList.remove('disabled');
-  dice.textContent = '🎲';
-  document.getElementById('dice-label').textContent = 'Returned! Roll again!';
-  
-  setStatus(`Spent a 🌟 Reroll Token and returned back to space ${team.position}!`);
-  refreshTokens();
-  renderScorecards();
-  updateTurnHeader();
-  showConsoleDeck('dice-deck-card');
-}
+
+// ==========================================
+// 9. EVENTS, PERIMETERS & HUBS VALIDATION
 
 // ==========================================
 // 9. EVENTS, PERIMETERS & HUBS VALIDATION
@@ -1849,48 +1787,33 @@ function evaluateLandingSquare() {
       state.phase = 'question';
       showQuestion(randomFrom(state.cefrActive), '📖 EFL Practice Board Challenge!');
       break;
-    case 'fast': {
-      const boost = Math.floor(Math.random() * 3) + 2; // [2, 3, 4]
-      const fromPos = team.position;
-      const toPos = (team.position + boost) % TOTAL_SQUARES;
+    case 'pts_up': {
+      const gain = Math.floor(Math.random() * 6) + 5; // 5–10
+      team.points += gain;
       Sound.play('correct');
       renderScorecards();
-      animateMeepleMove(state.currentTeam, fromPos, toPos, true, () => {
-        team.position = toPos;
-        refreshTokens();
-        state._fastTrackResume = true;
-        showEvent('⚡', `Fast Track! +${boost} spaces`, `Zoomed forward ${boost} extra spaces to square ${toPos}. Click Continue to activate that space!`);
-      });
+      showEvent('⭐', `+${gain} Bonus Points!`, `${team.name} found some extra credit lying around and pocketed ${gain} points!`);
       break;
     }
-    case 'back': {
-      const rb = state.rolled;
-      const fromPos = team.position;
-      const toPos = ((team.position - rb) + TOTAL_SQUARES) % TOTAL_SQUARES;
+    case 'pts_down': {
+      const loss = Math.floor(Math.random() * 6) + 5; // 5–10
+      team.points = Math.max(0, team.points - loss);
       Sound.play('wrong');
       renderScorecards();
-      animateMeepleMove(state.currentTeam, fromPos, toPos, false, () => {
-        team.position = toPos;
-        refreshTokens();
-        state._setbackResume = true;
-        showEvent('↩️', `Setback! −${rb} spaces`, `Dragged back ${rb} squares to space ${toPos}. Click Continue to activate that space!`);
-      });
+      showEvent('💸', `−${loss} Point Penalty!`, `${team.name} got caught slacking and lost ${loss} points!`);
       break;
     }
+    case 'cheat_gift':
+      team.hasCheatDice = true;
+      Sound.play('correct');
+      renderScorecards();
+      showEvent('🍎', "Teacher's Pet!", `${team.name} is the teacher's favourite! 🔮 Cheat Dice granted for next turn — pick your roll value!`);
+      break;
     case 'det':
       team.skipTurns++;
       Sound.play('wrong');
       showEvent('✋', 'Sent to Detention!', `${team.name} gets stuck and must pass their next turn.`);
       renderScorecards();
-      break;
-    case 'ec':
-      team.rerolls++;
-      Sound.play('correct');
-      showEvent('⭐', 'Extra Credit Token!', `${team.name} scored a 🌟 Reroll Token!`);
-      renderScorecards();
-      break;
-    case 'pet':
-      triggerTeachersPet();
       break;
     case 'don':
       triggerDoubleOrNothing();
@@ -2067,31 +1990,6 @@ function closeEvent() {
 // ==========================================
 // 12. SPECIAL CTAs (PET, DUEL, GAMBLE, SHOP)
 // ==========================================
-function triggerTeachersPet() {
-  state.phase = 'pet';
-  const list = document.getElementById('pet-team-list');
-  list.innerHTML = '';
-  
-  state.teams.forEach((team, i) => {
-    if (i === state.currentTeam) return;
-    const btn = document.createElement('button');
-    btn.className = 'pet-team-btn';
-    btn.innerHTML = `<div class='sc-dot' style='background:${team.color}'></div> Swap with ${team.name} (Square ${team.position})`;
-    btn.onclick = () => {
-      const activeTeam = state.teams[state.currentTeam];
-      const temp = activeTeam.position;
-      activeTeam.position = team.position;
-      team.position = temp;
-      Sound.play('correct');
-      refreshTokens();
-      renderScorecards();
-      offerRerollIfAvailable();
-    };
-    list.appendChild(btn);
-  });
-  showConsoleDeck('pet-card');
-}
-
 function triggerDoubleOrNothing() {
   const team = state.teams[state.currentTeam];
   if (team.points <= 0) {
@@ -2206,30 +2104,27 @@ function triggerShop() {
 
 function updateShopButtonsUI() {
   const team = state.teams[state.currentTeam];
-  document.getElementById('shop-b-reroll').disabled = (team.points < 10);
-  document.getElementById('shop-b-cheat').disabled = (team.points < 15);
-  document.getElementById('shop-b-mine').disabled = (team.points < 15);
+  document.getElementById('shop-b-mine').disabled = (team.points < 10);
+  document.getElementById('shop-b-sabotage').disabled = (team.points < 10);
   document.getElementById('shop-b-token').disabled = (team.points < 50);
 }
 
 function buyShopItem(item, cost) {
   const team = state.teams[state.currentTeam];
   if (team.points < cost) return;
-  
+
+  if (item === 'sabotage') {
+    // Show target picker before deducting — only deduct on target confirm
+    showSabotageTargetPicker();
+    return;
+  }
+
   team.points -= cost;
   Sound.play('shop');
 
-  if (item === 'reroll') {
-    team.rerolls++;
-    setStatus(`✅ Bought 1 Reroll Token! ${team.name} now has ${team.rerolls}.`);
-  } else if (item === 'cheat') {
-    team.hasCheatDice = true;
-    setStatus(`🔮 Cheat Dice purchased! Use the button on ${team.name}'s card when it's your turn.`);
-  } else if (item === 'mine') {
-    // Choose 2 random squares on board (excluding current square and hubs)
-    let planted = 0;
-    let attempts = 0;
-    while(planted < 2 && attempts < 100) {
+  if (item === 'mine') {
+    let planted = 0, attempts = 0;
+    while (planted < 2 && attempts < 100) {
       attempts++;
       let randSq = Math.floor(Math.random() * TOTAL_SQUARES);
       if (randSq !== team.position && state.boardSquares[randSq].type !== 'hub' && state.mines[randSq] === undefined) {
@@ -2237,17 +2132,15 @@ function buyShopItem(item, cost) {
         planted++;
       }
     }
-    renderBoard(); // Redraw board to display mine badges
+    renderBoard();
     setStatus(`💥 Planted 2 Landmines on random board spaces!`);
   } else if (item === 'token') {
-    // Buy any required token not already owned
     const unowned = state.requiredTokens.filter(t => !team.tokens.includes(t));
     if (unowned.length > 0) {
-      const targetedToken = unowned[0];
-      team.tokens.push(targetedToken);
-      setStatus(`🎓 Purchased ${targetedToken} Token from the shop!`);
+      team.tokens.push(unowned[0]);
+      setStatus(`🎓 Purchased a Hub Token from the shop!`);
     } else {
-      team.points += cost; // refund
+      team.points += cost;
       setStatus(`⚠️ You already own all token types! Points refunded.`);
     }
   }
@@ -2257,12 +2150,38 @@ function buyShopItem(item, cost) {
   checkWin();
 }
 
+function showSabotageTargetPicker() {
+  const list = document.getElementById('sabotage-target-list');
+  list.innerHTML = '';
+  state.teams.forEach((t, i) => {
+    if (i === state.currentTeam) return;
+    const btn = document.createElement('button');
+    btn.className = 'pet-team-btn';
+    btn.innerHTML = `<div class='sc-dot' style='background:${t.color}'></div> Sabotage ${t.name}`;
+    btn.onclick = () => confirmSabotage(i);
+    list.appendChild(btn);
+  });
+  showConsoleDeck('sabotage-card');
+}
+
+function confirmSabotage(targetIdx) {
+  const buyer = state.teams[state.currentTeam];
+  const target = state.teams[targetIdx];
+  buyer.points -= 10;
+  Sound.play('shop');
+  target.sabotaged = (target.sabotaged || 0) + 2;
+  renderScorecards();
+  setStatus(`🕵️ ${target.name} is sabotaged for 2 turns! They can only roll 1 or 2.`);
+  showConsoleDeck('shop-card');
+  updateShopButtonsUI();
+}
+
 // ==========================================
 // 13. WIN PROTOCOLS & DECK CONTROL MANAGER
 // ==========================================
 function showConsoleDeck(visibleId) {
   document.getElementById('dice-deck-card').style.display = 'none';
-  ['question-card', 'event-card', 'reroll-offer-card', 'duel-card', 'don-card', 'pet-card', 'hub-buy-card', 'reroll-intercept-card', 'shop-card'].forEach(id => {
+  ['question-card', 'event-card', 'reroll-offer-card', 'sabotage-card', 'duel-card', 'don-card', 'pet-card', 'hub-buy-card', 'reroll-intercept-card', 'shop-card'].forEach(id => {
     document.getElementById(id).classList.remove('visible');
   });
 

@@ -342,52 +342,6 @@
     flex-wrap: wrap;
   }
 
-  /* Round-end overlay — bottom sheet, grid fully visible and interactive above */
-  .round-end-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 500;
-    align-items: flex-end;
-    justify-content: center;
-    pointer-events: none; /* let clicks through by default */
-  }
-  .round-end-overlay.show { display: flex; }
-  .round-end-backdrop {
-    display: none; /* removed — no full-screen scrim */
-  }
-  .round-end-panel {
-    pointer-events: all; /* only the panel captures events */
-    position: relative;
-    z-index: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 2px solid var(--accent);
-    border-radius: 16px 16px 0 0;
-    padding: 20px 28px 28px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    max-width: 560px;
-    box-shadow: 0 -8px 60px rgba(0,0,0,0.8);
-  }
-  .round-end-panel .re-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    letter-spacing: 4px;
-    color: var(--accent);
-  }
-  .round-end-panel .re-sub {
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-top: -8px;
-  }
-
   /* Answer grid */
   .answers-grid {
     display: grid;
@@ -505,10 +459,11 @@
     display: flex;
     justify-content: center;
     gap: 20px;
+    flex-wrap: wrap;
   }
   .score-item {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
     color: var(--muted);
     display: flex;
     align-items: center;
@@ -518,7 +473,66 @@
     width: 8px; height: 8px;
     border-radius: 50%;
   }
-  .score-item strong { color: var(--text); }
+  .score-item .score-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .reveal-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--green);
+    border: none;
+    border-radius: var(--radius);
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(76,219,138,0.3);
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .reveal-btn:hover { opacity: 0.85; transform: scale(1.01); }
+
+  /* Fixed bottom bar — no overlay, board fully visible above */
+  .round-end-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 2px solid var(--accent);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 500;
+    box-shadow: 0 -4px 30px rgba(0,0,0,0.6);
+    flex-wrap: wrap;
+  }
+  .round-end-scores {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .re-score-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .re-score-item .re-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .re-score-item .re-name { font-weight: 600; }
+  .re-score-item .re-pts {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+  }
 
   /* ─── BETWEEN ROUNDS ─── */
   #screen-between {
@@ -731,22 +745,16 @@
       <input type="text" id="answerInput" placeholder="Type your answer…" autocomplete="off" autocorrect="off" spellcheck="false">
       <button class="pass-btn" id="passBtn">PASS</button>
     </div>
+    <button class="reveal-btn" id="revealBtn" style="display:none">👁 REVEAL BOARD</button>
     <div id="guessCounter" class="guess-counter"></div>
     <div class="score-strip" id="scoreStrip"></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     ROUND END OVERLAY (sits over game screen)
-══════════════════════════════════════════ -->
-<div class="round-end-overlay" id="roundEndOverlay">
-  <div class="round-end-backdrop"></div>
-  <div class="round-end-panel">
-    <div class="re-sub">Round Complete</div>
-    <div class="re-title" id="reTitle">—</div>
-    <table class="scores-table" id="scoresTable"></table>
-    <button class="next-btn" id="nextRoundBtn">NEXT ROUND</button>
-  </div>
+<!-- Fixed bottom bar shown after round ends — no overlay, board stays visible -->
+<div class="round-end-bar" id="roundEndBar" style="display:none">
+  <div class="round-end-scores" id="roundEndScores"></div>
+  <button class="next-btn" id="nextRoundBtn">NEXT ROUND</button>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -761,31 +769,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script type="module">
-import { triviaData } from './triviaData.js';
-
-const categoryLabels = {
-  largestCountries:         "Largest Countries by Area",
-  highestGrossingMovies:    "Highest-Grossing Movies of All Time",
-  mostSpokenLanguages:      "Most Spoken Languages",
-  famousInventors:          "Famous Inventors",
-  olympicMedalsByCountry:   "Countries with Most Olympic Medals",
-  mostDownloadedApps:       "Most Downloaded Apps",
-  mostVisitedWebsites:      "Most Visited Websites",
-  mostPopularFastFoodChains:"Most Popular Fast Food Chains",
-  countriesMostCoffee:      "Countries That Consume the Most Coffee",
-  topTouristDestinations:   "Top Tourist Destinations",
-  mostStreamedArtistsSpotify: "Most Streamed Artists on Spotify",
-  countriesLargestArmies:   "Countries with the Largest Armies",
-  mostCommonDogBreeds:      "Most Common Dog Breeds",
-  mostPlayedOnlineGames:    "Most Played Online Games (Peak Concurrent Players)",
-  mostCommonVerbsEnglish:   "Most Common Verbs in English",
-  mostWatchedAnime:         "Most Watched Anime Series",
-  heaviestAnimals:          "Heaviest Animals (one per species)",
-  mostPopularFruits:        "Most Popular Fruits Worldwide",
-  countriesMostBeer:        "Countries Consuming Most Beer",
-  mostFIFAWorldCupMatches:  "Nations with Most FIFA World Cup Wins",
-};
+<script src="triviaData.js"></script>
+<script>
 
 // ══════════════════════════════════════════
 // AUDIO
@@ -835,166 +820,6 @@ function playStart() {
 }
 
 // ══════════════════════════════════════════
-// ALIASES
-// Keyed by normalized answer name → array of accepted alternate strings
-// ══════════════════════════════════════════
-const aliases = {
-  // Countries
-  "united states":          ["us", "usa", "united states of america", "america"],
-  "united kingdom":         ["uk", "great britain", "britain", "england", "gb"],
-  "soviet union":           ["ussr"],
-  "democratic republic of congo": ["drc", "congo", "dr congo", "droc"],
-  "uae":                    ["united arab emirates", "emirates"],
-  "czech republic":         ["czechia", "czech"],
-  "south korea":            ["korea"],
-  "north korea":            ["dprk"],
-  "bosnia":                 ["bosnia and herzegovina", "bosnia herzegovina"],
-  "saudi arabia":           ["saudi"],
-  // Languages
-  "mandarin":               ["mandarin chinese", "chinese"],
-  "cantonese":              ["yue chinese", "yue"],
-  "nigerian pidgin":        ["pidgin"],
-  // Inventors / people
-  "wright brothers":        ["wright", "orville wright", "wilbur wright"],
-  "johannes gutenberg":     ["gutenberg"],
-  "alexander graham bell":  ["graham bell", "bell"],
-  "tim berners-lee":        ["berners lee", "berners-lee"],
-  "guglielmo marconi":      ["marconi"],
-  "alexander fleming":      ["fleming"],
-  "charles babbage":        ["babbage"],
-  "thomas edison":          ["edison"],
-  "nikola tesla":           ["tesla"],
-  "leonardo da vinci":      ["da vinci", "davinci", "vinci"],
-  "marie curie":            ["curie"],
-  "galileo galilei":        ["galileo"],
-  "isaac newton":           ["newton"],
-  "louis pasteur":          ["pasteur"],
-  "benjamin franklin":      ["franklin"],
-  "ada lovelace":           ["lovelace"],
-  "james watt":             ["watt"],
-  "karl benz":              ["benz"],
-  "archimedes":             ["archimedes"],
-  "steve jobs":             ["jobs"],
-  // Movies
-  "avengers endgame":       ["endgame", "avengers end game"],
-  "spider-man no way home": ["no way home", "spiderman no way home"],
-  "super mario bros movie": ["mario movie", "mario bros movie", "super mario movie"],
-  "deadpool and wolverine": ["deadpool wolverine", "deadpool 3"],
-  "harry potter deathly hallows": ["deathly hallows", "harry potter"],
-  "star wars the force awakens": ["force awakens", "star wars 7", "star wars vii"],
-  "top gun maverick":       ["maverick", "top gun 2"],
-  "the lion king":          ["lion king"],
-  "inside out 2":           ["inside out"],
-  "jurassic world":         ["jurassic park"],
-  "black panther":          ["wakanda"],
-  "the dark knight rises":  ["dark knight", "batman dark knight"],
-  "joker":                  ["joker 2019"],
-  "minions":                ["despicable me", "minion"],
-  "transformers age of extinction": ["transformers", "age of extinction"],
-  "furious 7":              ["fast and furious", "fast furious", "fast 7"],
-  "frozen ii":              ["frozen 2", "frozen"],
-  "barbie":                 ["barbie 2023"],
-  // Apps / sites
-  "twitter":                ["x", "twitter x"],
-  "google":                 ["google.com"],
-  "youtube":                ["youtube.com"],
-  "facebook":               ["facebook.com"],
-  "duckduckgo":             ["ddg"],
-  "new york times":         ["nyt", "ny times"],
-  "counter-strike":         ["cs", "csgo", "cs2", "counter strike"],
-  "league of legends":      ["lol", "league"],
-  "genshin impact":         ["genshin"],
-  "pubg":                   ["playerunknowns battlegrounds", "battlegrounds"],
-  "among us":               ["among"],
-  "dota 2":                 ["dota"],
-  "gta online":             ["gta", "grand theft auto"],
-  "apex legends":           ["apex"],
-  "black myth wukong":      ["black myth", "wukong"],
-  "palworld":               ["pal world"],
-  "lost ark":               ["lostark"],
-  "new world":              ["amazon new world"],
-  "path of exile 2":        ["poe2", "poe 2", "path of exile"],
-  "cyberpunk 2077":         ["cyberpunk"],
-  "elden ring":             ["eldenring"],
-  "hogwarts legacy":        ["hogwarts"],
-  "valheim":                ["val heim"],
-  // Fast food
-  "mcdonald's":             ["mcdonalds", "mcd", "mickey ds", "mickey d"],
-  "dunkin":                 ["dunkin donuts", "dunkin'"],
-  "hardee's":               ["hardees", "carls jr", "carl's jr"],
-  "five guys":              ["five guys burgers"],
-  "taco bell":              ["taco"],
-  "baskin-robbins":         ["baskin robbins"],
-  "papa john's":            ["papa johns"],
-  "little caesars":         ["little caesar"],
-  "dairy queen":            ["dq"],
-  "burger king":            ["bk"],
-  "pizza hut":              ["pizza"],
-  "wendy's":                ["wendys"],
-  "tim hortons":            ["tim horton", "timmies"],
-  // Anime
-  "dragon ball z":          ["dbz", "dragon ball"],
-  "dragon ball super":      ["dbs"],
-  "fullmetal alchemist":    ["fma", "fullmetal", "full metal alchemist"],
-  "attack on titan":        ["aot", "shingeki no kyojin", "shingeki"],
-  "demon slayer":           ["kimetsu no yaiba", "kimetsu"],
-  "sword art online":       ["sao"],
-  "my hero academia":       ["mha", "boku no hero", "bnha"],
-  "jujutsu kaisen":         ["jjk"],
-  "hunter x hunter":        ["hxh", "hunter hunter"],
-  "neon genesis evangelion":["nge", "evangelion", "eva", "neon genesis"],
-  "cowboy bebop":           ["bebop"],
-  "one punch man":          ["opm"],
-  "sailor moon":            ["bishoujo senshi sailor moon"],
-  "naruto":                 ["naruto shippuden", "shippuden"],
-  "spy x family":           ["spy family"],
-  "death note":             ["deathnote"],
-  "fairy tail":             ["fairytail"],
-  "one piece":              ["onepiece"],
-  "pokemon":                ["pokémon"],
-  "tokyo ghoul":            ["tg"],
-  // Animals
-  "african elephant":       ["elephant", "african bush elephant"],
-  "white rhinoceros":       ["rhino", "rhinoceros", "white rhino"],
-  "nile crocodile":         ["nile croc"],
-  "saltwater crocodile":    ["saltwater croc", "croc", "crocodile"],
-  "blue whale":             ["blue"],
-  "polar bear":             ["polar"],
-  "leatherback sea turtle": ["leatherback", "sea turtle"],
-  "whale shark":            ["whale shark"],
-  "bison":                  ["american bison", "buffalo", "american buffalo"],
-  "giant panda":            ["panda"],
-  "giant tortoise":         ["tortoise", "galapagos tortoise"],
-  "komodo dragon":          ["komodo"],
-  "wandering albatross":    ["albatross"],
-  "goliath grouper":        ["grouper"],
-  "ocean sunfish":          ["sunfish", "mola mola", "mola"],
-  "gaur":                   ["indian bison"],
-  // Dog breeds
-  "french bulldog":         ["frenchie", "french bull"],
-  "labrador retriever":     ["labrador", "lab"],
-  "golden retriever":       ["golden", "goldie"],
-  "german shepherd":        ["gsd", "alsatian"],
-  "corgi":                  ["welsh corgi", "pembroke corgi"],
-  "australian shepherd":    ["aussie"],
-  "yorkshire terrier":      ["yorkie"],
-  "cavalier king charles spaniel": ["cavalier", "king charles"],
-  "miniature schnauzer":    ["schnauzer"],
-  "siberian husky":         ["husky"],
-  "doberman":               ["dobermann"],
-  "border collie":          ["border"],
-  "german shorthaired pointer": ["gsp"],
-  // Fruits
-  "cantaloupe":             ["melon", "rockmelon"],
-  "peach":                  ["peach nectarine"],
-  "lemon":                  ["lemon lime", "lime"],
-  // FIFA
-  "netherlands":            ["holland", "dutch"],
-  "czechia":                ["czech republic"],
-  "great britain":          ["uk", "united kingdom", "britain"],
-};
-
-// ══════════════════════════════════════════
 // FUZZY MATCH
 // ══════════════════════════════════════════
 function normalize(s) {
@@ -1018,22 +843,35 @@ function matchesAnswer(input, answerName) {
   const ans = normalize(answerName);
   if (!inp) return false;
 
-  // Check aliases first (exact match only — aliases are explicit, no fuzzy)
-  const aliasKey = Object.keys(aliases).find(k => normalize(k) === ans);
+  // Check aliases (exact only)
+  const categoryAliases = (triviaData[currentCategory] && triviaData[currentCategory].aliases) || {};
+  const aliasKey = Object.keys(categoryAliases).find(k => normalize(k) === ans);
   if (aliasKey) {
-    for (const alt of aliases[aliasKey]) {
+    for (const alt of categoryAliases[aliasKey]) {
       if (normalize(alt) === inp) return true;
     }
   }
 
-  // Exact
+  // Exact match
   if (ans === inp) return true;
 
-  // Substring (input is part of answer, min 3 chars)
-  if (ans.includes(inp) && inp.length >= 3) return true;
+  // Before fuzzy: check if input exactly matches ANY other answer in the category.
+  // If so, refuse fuzzy — the player typed something real but wrong.
+  const exactMatchExists = currentAnswers.some(a => normalize(a.name) === inp);
+  if (exactMatchExists) return false;
 
-  // Word-level: any significant word in the answer matches input
-  const words = ans.split(' ').filter(w => w.length > 2);
+  // Also check if input exactly matches any alias of any other answer
+  const aliasMatchExists = Object.keys(categoryAliases).some(k =>
+    normalize(k) !== ans &&
+    categoryAliases[k].some(alt => normalize(alt) === inp)
+  );
+  if (aliasMatchExists) return false;
+
+  // Substring (input contained in answer, min 4 chars)
+  if (ans.includes(inp) && inp.length >= 4) return true;
+
+  // Word-level: only for inputs that are a significant unique word
+  const words = ans.split(' ').filter(w => w.length > 3);
   for (const word of words) {
     if (word === inp) return true;
     if (inp.length >= 6 && levenshtein(inp, word) <= 1) return true;
@@ -1167,14 +1005,14 @@ function startRound() {
   currentRound++;
   currentCategory = pickCategory();
   usedCategories.push(currentCategory);
-  currentAnswers = triviaData[currentCategory];
-  revealed = new Array(20).fill(false);
-  revealedBy = new Array(20).fill(-1);
+  currentAnswers = triviaData[currentCategory].items;
+  revealed = new Array(currentAnswers.length).fill(false);
+  revealedBy = new Array(currentAnswers.length).fill(-1);
   guessesLeft = teams.map(() => 3);
 
   document.getElementById('roundNum').textContent = currentRound;
   document.getElementById('roundTotal').textContent = totalRounds;
-  document.getElementById('categoryName').textContent = categoryLabels[currentCategory];
+  document.getElementById('categoryName').textContent = triviaData[currentCategory].label;
 
   buildTeamsBar();
   buildAnswerGrid();
@@ -1236,7 +1074,7 @@ function buildScoreStrip() {
   teams.forEach((t, i) => {
     const item = document.createElement('div');
     item.className = 'score-item';
-    item.innerHTML = `<div class="dot" style="background:${TEAM_COLORS[i]}"></div>${t}: <strong id="score-${i}">${scores[i]}</strong>`;
+    item.innerHTML = `<div class="dot" style="background:${TEAM_COLORS[i]}"></div><span style="color:${TEAM_COLORS[i]};font-weight:600">${t}</span>: <span class="score-val ts-${i}" id="score-${i}" style="color:${TEAM_COLORS[i]}">${scores[i]}</span>`;
     strip.appendChild(item);
   });
 }
@@ -1294,7 +1132,6 @@ function updateTimerUI() {
 function onTimerEnd() {
   const input = document.getElementById('answerInput');
   input.value = '';
-  // 20pt penalty for the current player
   scores[currentTeamIdx] += 20;
   updateScoreStrip();
   showToast(`+20 pts penalty — time's up!`, false);
@@ -1355,10 +1192,9 @@ function advanceTurn() {
   // Check if round is over: all teams have 0 guesses left, OR all answers revealed
   const roundDone = guessesLeft.every(g => g <= 0) || revealed.every(Boolean);
   if (roundDone) {
-    revealAll();
     clearInterval(timerInterval);
     gameRunning = false;
-    setTimeout(endRound, 800);
+    showRevealButton();
     return;
   }
 
@@ -1418,36 +1254,48 @@ function showToast(msg, correct) {
   toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 1800);
 }
 
+function showRevealButton() {
+  document.getElementById('revealBtn').style.display = 'block';
+  document.getElementById('answerInput').style.display = 'none';
+  document.getElementById('passBtn').style.display = 'none';
+  document.getElementById('guessCounter').style.display = 'none';
+}
+
+document.getElementById('revealBtn').addEventListener('click', () => {
+  revealAll();
+  document.getElementById('revealBtn').style.display = 'none';
+  endRound();
+});
+
 // ── Round end ──
 function endRound() {
   playRoundEnd();
 
   // Next round starts with the player who has MORE points (losing in golf scoring)
   const maxScore = Math.max(...scores);
-  // In case of tie, rotate from firstTeamThisRound
   let loser = scores.indexOf(maxScore);
-  // If tie, pick the one that isn't current leader
   firstTeamThisRound = loser;
   currentTeamIdx = loser;
 
-  document.getElementById('reTitle').textContent = `Round ${currentRound}`;
-
-  const table = document.getElementById('scoresTable');
-  // Sort ascending (lower = better)
-  const sorted = teams.map((t, i) => ({name: t, score: scores[i], color: TEAM_COLORS[i], orig: i}))
+  // Build bottom bar scores
+  const sorted = teams.map((t, i) => ({name: t, score: scores[i], color: TEAM_COLORS[i]}))
                        .sort((a, b) => a.score - b.score);
-  table.innerHTML = `
-    <tr style="opacity:0.4"><td colspan="2" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;padding-bottom:4px">SCORES (lower wins)</td></tr>
-    ${sorted.map((t, i) =>
-      `<tr><td style="color:${t.color}">${i === 0 ? '⭐ ' : ''}${t.name}</td><td style="color:${t.color};font-family:'Bebas Neue',sans-serif;font-size:26px;text-align:right">${t.score}</td></tr>`
-    ).join('')}
-  `;
+  document.getElementById('roundEndScores').innerHTML = sorted.map((t, i) =>
+    `<div class="re-score-item">
+      <div class="re-dot" style="background:${t.color}"></div>
+      <span class="re-name" style="color:${t.color}">${i === 0 ? '⭐ ' : ''}${t.name}</span>
+      <span class="re-pts" style="color:${t.color}">${t.score}</span>
+    </div>`
+  ).join('');
 
-  document.getElementById('roundEndOverlay').classList.add('show');
+  document.getElementById('roundEndBar').style.display = 'flex';
 }
 
 document.getElementById('nextRoundBtn').addEventListener('click', () => {
-  document.getElementById('roundEndOverlay').classList.remove('show');
+  document.getElementById('roundEndBar').style.display = 'none';
+  document.getElementById('answerInput').style.display = '';
+  document.getElementById('passBtn').style.display = '';
+  document.getElementById('guessCounter').style.display = '';
   if (currentRound >= totalRounds) {
     showEndScreen();
   } else {

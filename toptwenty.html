@@ -342,52 +342,6 @@
     flex-wrap: wrap;
   }
 
-  /* Round-end overlay — bottom sheet, grid fully visible and interactive above */
-  .round-end-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 500;
-    align-items: flex-end;
-    justify-content: center;
-    pointer-events: none; /* let clicks through by default */
-  }
-  .round-end-overlay.show { display: flex; }
-  .round-end-backdrop {
-    display: none; /* removed — no full-screen scrim */
-  }
-  .round-end-panel {
-    pointer-events: all; /* only the panel captures events */
-    position: relative;
-    z-index: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 2px solid var(--accent);
-    border-radius: 16px 16px 0 0;
-    padding: 20px 28px 28px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    max-width: 560px;
-    box-shadow: 0 -8px 60px rgba(0,0,0,0.8);
-  }
-  .round-end-panel .re-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    letter-spacing: 4px;
-    color: var(--accent);
-  }
-  .round-end-panel .re-sub {
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-top: -8px;
-  }
-
   /* Answer grid */
   .answers-grid {
     display: grid;
@@ -505,10 +459,11 @@
     display: flex;
     justify-content: center;
     gap: 20px;
+    flex-wrap: wrap;
   }
   .score-item {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
     color: var(--muted);
     display: flex;
     align-items: center;
@@ -518,7 +473,64 @@
     width: 8px; height: 8px;
     border-radius: 50%;
   }
-  .score-item strong { color: var(--text); }
+  .score-item .score-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .reveal-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--green);
+    border: none;
+    border-radius: var(--radius);
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(76,219,138,0.3);
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .reveal-btn:hover { opacity: 0.85; transform: scale(1.01); }
+
+  /* Fixed bottom bar — no overlay, board fully visible above */
+  .round-end-bar {
+    background: var(--surface2);
+    border-top: 2px solid var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .round-end-bar.visible {
+    display: flex;
+  }
+  .round-end-scores {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .re-score-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .re-score-item .re-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .re-score-item .re-name { font-weight: 600; }
+  .re-score-item .re-pts {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+  }
 
   /* ─── BETWEEN ROUNDS ─── */
   #screen-between {
@@ -726,26 +738,19 @@
 
   <div class="answers-grid" id="answersGrid"></div>
 
+  <div id="roundEndBar" style="display:none" class="round-end-bar">
+    <div class="round-end-scores" id="roundEndScores"></div>
+    <button class="next-btn" id="nextRoundBtn">NEXT ROUND</button>
+  </div>
+
   <div class="input-area">
     <div class="answer-input-wrap">
       <input type="text" id="answerInput" placeholder="Type your answer…" autocomplete="off" autocorrect="off" spellcheck="false">
       <button class="pass-btn" id="passBtn">PASS</button>
     </div>
+    <button class="reveal-btn" id="revealBtn" style="display:none">👁 REVEAL BOARD</button>
     <div id="guessCounter" class="guess-counter"></div>
     <div class="score-strip" id="scoreStrip"></div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     ROUND END OVERLAY (sits over game screen)
-══════════════════════════════════════════ -->
-<div class="round-end-overlay" id="roundEndOverlay">
-  <div class="round-end-backdrop"></div>
-  <div class="round-end-panel">
-    <div class="re-sub">Round Complete</div>
-    <div class="re-title" id="reTitle">—</div>
-    <table class="scores-table" id="scoresTable"></table>
-    <button class="next-btn" id="nextRoundBtn">NEXT ROUND</button>
   </div>
 </div>
 
@@ -835,7 +840,7 @@ function matchesAnswer(input, answerName) {
   const ans = normalize(answerName);
   if (!inp) return false;
 
-  // Check aliases from the current category's alias map
+  // Check aliases (exact only)
   const categoryAliases = (triviaData[currentCategory] && triviaData[currentCategory].aliases) || {};
   const aliasKey = Object.keys(categoryAliases).find(k => normalize(k) === ans);
   if (aliasKey) {
@@ -844,22 +849,36 @@ function matchesAnswer(input, answerName) {
     }
   }
 
-  // Exact
+  // Exact match
   if (ans === inp) return true;
 
-  // Substring (input is part of answer, min 3 chars)
-  if (ans.includes(inp) && inp.length >= 3) return true;
+  // Before fuzzy: check if input exactly matches ANY other answer in the category.
+  // If so, refuse fuzzy — the player typed something real but wrong.
+  const exactMatchExists = currentAnswers.some(a => normalize(a.name) === inp);
+  if (exactMatchExists) return false;
 
-  // Word-level: any significant word in the answer matches input
-  const words = ans.split(' ').filter(w => w.length > 2);
+  // Also check if input exactly matches any alias of any other answer
+  const aliasMatchExists = Object.keys(categoryAliases).some(k =>
+    normalize(k) !== ans &&
+    categoryAliases[k].some(alt => normalize(alt) === inp)
+  );
+  if (aliasMatchExists) return false;
+
+  // Substring: input must be at least 80% the length of the answer to avoid "austria" matching "australia"
+  if (ans.includes(inp) && inp.length >= 4 && inp.length >= ans.length * 0.8) return true;
+
+  // Word-level: only for inputs that are a significant unique word
+  const words = ans.split(' ').filter(w => w.length > 3);
   for (const word of words) {
     if (word === inp) return true;
     if (inp.length >= 6 && levenshtein(inp, word) <= 1) return true;
     if (inp.length >= 8 && levenshtein(inp, word) <= 2) return true;
   }
 
-  // Full string fuzzy — only for longer inputs
-  const maxDist = inp.length <= 5 ? 0 : inp.length <= 7 ? 1 : inp.length <= 10 ? 2 : 3;
+  // Full string fuzzy — only if length difference is small AND input doesn't closely resemble another answer
+  const lenDiff = Math.abs(inp.length - ans.length);
+  if (lenDiff > 3) return false;
+  const maxDist = inp.length <= 5 ? 0 : inp.length <= 7 ? 1 : inp.length <= 10 ? 1 : 2;
   if (levenshtein(inp, ans) <= maxDist) return true;
 
   return false;
@@ -1054,7 +1073,7 @@ function buildScoreStrip() {
   teams.forEach((t, i) => {
     const item = document.createElement('div');
     item.className = 'score-item';
-    item.innerHTML = `<div class="dot" style="background:${TEAM_COLORS[i]}"></div>${t}: <strong id="score-${i}">${scores[i]}</strong>`;
+    item.innerHTML = `<div class="dot" style="background:${TEAM_COLORS[i]}"></div><span style="color:${TEAM_COLORS[i]};font-weight:600">${t}</span>: <span class="score-val ts-${i}" id="score-${i}" style="color:${TEAM_COLORS[i]}">${scores[i]}</span>`;
     strip.appendChild(item);
   });
 }
@@ -1112,7 +1131,6 @@ function updateTimerUI() {
 function onTimerEnd() {
   const input = document.getElementById('answerInput');
   input.value = '';
-  // 20pt penalty for the current player
   scores[currentTeamIdx] += 20;
   updateScoreStrip();
   showToast(`+20 pts penalty — time's up!`, false);
@@ -1173,10 +1191,9 @@ function advanceTurn() {
   // Check if round is over: all teams have 0 guesses left, OR all answers revealed
   const roundDone = guessesLeft.every(g => g <= 0) || revealed.every(Boolean);
   if (roundDone) {
-    revealAll();
     clearInterval(timerInterval);
     gameRunning = false;
-    setTimeout(endRound, 800);
+    showRevealButton();
     return;
   }
 
@@ -1236,36 +1253,48 @@ function showToast(msg, correct) {
   toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 1800);
 }
 
+function showRevealButton() {
+  document.getElementById('revealBtn').style.display = 'block';
+  document.getElementById('answerInput').style.display = 'none';
+  document.getElementById('passBtn').style.display = 'none';
+  document.getElementById('guessCounter').style.display = 'none';
+}
+
+document.getElementById('revealBtn').addEventListener('click', () => {
+  revealAll();
+  document.getElementById('revealBtn').style.display = 'none';
+  endRound();
+});
+
 // ── Round end ──
 function endRound() {
   playRoundEnd();
 
   // Next round starts with the player who has MORE points (losing in golf scoring)
   const maxScore = Math.max(...scores);
-  // In case of tie, rotate from firstTeamThisRound
   let loser = scores.indexOf(maxScore);
-  // If tie, pick the one that isn't current leader
   firstTeamThisRound = loser;
   currentTeamIdx = loser;
 
-  document.getElementById('reTitle').textContent = `Round ${currentRound}`;
-
-  const table = document.getElementById('scoresTable');
-  // Sort ascending (lower = better)
-  const sorted = teams.map((t, i) => ({name: t, score: scores[i], color: TEAM_COLORS[i], orig: i}))
+  // Build bottom bar scores
+  const sorted = teams.map((t, i) => ({name: t, score: scores[i], color: TEAM_COLORS[i]}))
                        .sort((a, b) => a.score - b.score);
-  table.innerHTML = `
-    <tr style="opacity:0.4"><td colspan="2" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;padding-bottom:4px">SCORES (lower wins)</td></tr>
-    ${sorted.map((t, i) =>
-      `<tr><td style="color:${t.color}">${i === 0 ? '⭐ ' : ''}${t.name}</td><td style="color:${t.color};font-family:'Bebas Neue',sans-serif;font-size:26px;text-align:right">${t.score}</td></tr>`
-    ).join('')}
-  `;
+  document.getElementById('roundEndScores').innerHTML = sorted.map((t, i) =>
+    `<div class="re-score-item">
+      <div class="re-dot" style="background:${t.color}"></div>
+      <span class="re-name" style="color:${t.color}">${i === 0 ? '⭐ ' : ''}${t.name}</span>
+      <span class="re-pts" style="color:${t.color}">${t.score}</span>
+    </div>`
+  ).join('');
 
-  document.getElementById('roundEndOverlay').classList.add('show');
+  document.getElementById('roundEndBar').classList.add('visible');
 }
 
 document.getElementById('nextRoundBtn').addEventListener('click', () => {
-  document.getElementById('roundEndOverlay').classList.remove('show');
+  document.getElementById('roundEndBar').classList.remove('visible');
+  document.getElementById('answerInput').style.display = '';
+  document.getElementById('passBtn').style.display = '';
+  document.getElementById('guessCounter').style.display = '';
   if (currentRound >= totalRounds) {
     showEndScreen();
   } else {

@@ -497,19 +497,13 @@
 
   /* Fixed bottom bar — no overlay, board fully visible above */
   .round-end-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    display: none;
     background: var(--surface);
     border-top: 2px solid var(--accent);
     padding: 12px 20px;
-    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    z-index: 500;
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.6);
     flex-wrap: wrap;
   }
   .round-end-scores {
@@ -867,8 +861,8 @@ function matchesAnswer(input, answerName) {
   );
   if (aliasMatchExists) return false;
 
-  // Substring (input contained in answer, min 4 chars)
-  if (ans.includes(inp) && inp.length >= 4) return true;
+  // Substring: input must be at least 80% the length of the answer to avoid "austria" matching "australia"
+  if (ans.includes(inp) && inp.length >= 4 && inp.length >= ans.length * 0.8) return true;
 
   // Word-level: only for inputs that are a significant unique word
   const words = ans.split(' ').filter(w => w.length > 3);
@@ -878,8 +872,10 @@ function matchesAnswer(input, answerName) {
     if (inp.length >= 8 && levenshtein(inp, word) <= 2) return true;
   }
 
-  // Full string fuzzy — only for longer inputs
-  const maxDist = inp.length <= 5 ? 0 : inp.length <= 7 ? 1 : inp.length <= 10 ? 2 : 3;
+  // Full string fuzzy — only if length difference is small AND input doesn't closely resemble another answer
+  const lenDiff = Math.abs(inp.length - ans.length);
+  if (lenDiff > 3) return false;
+  const maxDist = inp.length <= 5 ? 0 : inp.length <= 7 ? 1 : inp.length <= 10 ? 1 : 2;
   if (levenshtein(inp, ans) <= maxDist) return true;
 
   return false;

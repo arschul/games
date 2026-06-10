@@ -666,7 +666,7 @@ h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line
       <div class="ability-bar">
         <button class="ab-btn renew" id="p1-renew" data-tip="🔄 Renew Replaces the entire board with fresh letters. Refills at half HP." data-p="1" data-ab="renew">🔄 Renew</button>
         <button class="ab-btn defend" id="p1-defend" data-tip="🛡 Defend Halves the next attack you receive (rounds down)." data-p="1" data-ab="defend">🛡 Defend</button>
-        <button class="ab-btn curse" id="p1-curse" data-tip="☠ Curse Opponent's letter scores are halved next turn." data-p="1" data-ab="curse">☠ Curse</button>
+        <button class="ab-btn curse" id="p1-curse" data-tip="☠ Curse 2–3 of opponent's letter scores become 0 on their next attack (hidden)." data-p="1" data-ab="curse">☠ Curse</button>
         <button class="ab-btn hold" id="p1-hold" data-tip="🔒 Hold Locks 3–6 random tiles. Opponent can't use them next turn." data-p="1" data-ab="hold">🔒 Hold</button>
         <button class="ab-btn trap" id="p1-trap" data-tip="⚡ Trap Places 5 hidden traps. Each one hit deals −4 HP directly to the attacker." data-p="1" data-ab="trap">⚡ Trap</button>
       </div>
@@ -681,7 +681,7 @@ h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line
       <div class="ability-bar p2-bar">
         <button class="ab-btn renew" id="p2-renew" data-tip="🔄 Renew Replaces the entire board with fresh letters. Refills at half HP." data-p="2" data-ab="renew">🔄 Renew</button>
         <button class="ab-btn defend" id="p2-defend" data-tip="🛡 Defend Halves the next attack you receive (rounds down)." data-p="2" data-ab="defend">🛡 Defend</button>
-        <button class="ab-btn curse" id="p2-curse" data-tip="☠ Curse Opponent's letter scores are halved next turn." data-p="2" data-ab="curse">☠ Curse</button>
+        <button class="ab-btn curse" id="p2-curse" data-tip="☠ Curse 2–3 of opponent's letter scores become 0 on their next attack (hidden)." data-p="2" data-ab="curse">☠ Curse</button>
         <button class="ab-btn hold" id="p2-hold" data-tip="🔒 Hold Locks 3–6 random tiles. Opponent can't use them next turn." data-p="2" data-ab="hold">🔒 Hold</button>
         <button class="ab-btn trap" id="p2-trap" data-tip="⚡ Trap Places 5 hidden traps. Each one hit deals −4 HP directly to the attacker." data-p="2" data-ab="trap">⚡ Trap</button>
       </div>
@@ -1040,24 +1040,27 @@ function enforceVowels(){
 }
 
 function effectiveScore(i){
-  const base=BASE_SCORES[G.grid[i]]||1;
-  // if current player's own incoming "cursed" effect is active, scores halved
-  if(G.effects[G.cur].cursed) return Math.max(1,Math.floor(base/2));
-  return base;
+  return BASE_SCORES[G.grid[i]]||1; // curse no longer affects display — applied blindly at submission
 }
 
 function calcDmg(word,idx){
-  let base=0;
-  for(const i of idx)base+=effectiveScore(i);
+  let scores=idx.map(i=>effectiveScore(i));
+  // Curse: silently zero out 2–3 random letter scores — not previewed, revealed after
+  let cursedCount=0;
+  if(G.effects[G.cur].cursed){
+    cursedCount=2+Math.floor(Math.random()*2); // 2 or 3
+    const toZero=shuffle([...Array(idx.length).keys()]).slice(0,Math.min(cursedCount,idx.length));
+    toZero.forEach(j=>scores[j]=0);
+  }
+  const base=scores.reduce((s,v)=>s+v,0);
   let m=1,n=word.length;
   if(n>=4)m+=.3;if(n>=6)m+=.3;if(n>=8)m+=.3;if(n>=10)m+=.3;
   let dmg=Math.round(base*m);
-  // Note: traps and defend handled in submitWord
   const opp=G.cur===1?2:1;
   let trapHits=0;
   for(const i of idx){if(G.effects[G.cur].traps.includes(i))trapHits++;}
   const defended=G.effects[opp].defend;
-  return{dmg,trapHits,defended,cursed:G.effects[G.cur].cursed};
+  return{dmg,trapHits,defended,cursed:G.effects[G.cur].cursed,cursedCount};
 }
 
 /* ═══════════ UI HELPERS ═══════════ */
@@ -1071,8 +1074,8 @@ function renderGrid(){
     c.className='cell';
     if(G.chaosRotations&&G.chaosRotations[i])c.classList.add(G.chaosRotations[i]);
     const isHeld=ef.held.includes(i);
-    const isCursed=ef.cursed; // whole board cursed
-    const isRare=RARE.has(l)&&!isCursed;
+    const isCursed=false; // curse is now hidden — no visual tell on tiles
+    const isRare=RARE.has(l);
     c.dataset.rare=isRare?'true':'false';
     if(isHeld)c.classList.add('held');
     if(isCursed)c.classList.add('cursed');
@@ -1123,11 +1126,11 @@ function renderWord(){
   const ef=G.effects[G.cur];
   wd.innerHTML=G.sel.map(i=>{
     const l=G.grid[i];
-    const cls=ef.cursed?'cursed':RARE.has(l)?'rare':'normal';
+    const cls=RARE.has(l)?'rare':'normal';
     return`<span class="wl ${cls}">${l}</span>`;
   }).join('');
   const word=G.sel.map(i=>G.grid[i]).join('');
-  const {dmg,trapHits,defended,cursed}=calcDmg(word,G.sel);
+  const {dmg,trapHits,defended}=calcDmg(word,G.sel);
   // Show breakdown: base score × multiplier = damage
   const baseSum=G.sel.reduce((s,i)=>s+effectiveScore(i),0);
   const n=word.length;
@@ -1135,7 +1138,7 @@ function renderWord(){
   if(n>=4)mult+=.3;if(n>=6)mult+=.3;if(n>=8)mult+=.3;if(n>=10)mult+=.3;
   const multStr=mult>1?` × ${parseFloat(mult.toFixed(1))}`:' × 1';
   let hint=`${baseSum}${multStr} = ${dmg} dmg`;
-  if(cursed)hint+=' ☠';if(defended)hint+=' 🛡';if(trapHits)hint+=` ⚡×${trapHits}(−${trapHits*4}HP)`;
+  if(defended)hint+=' 🛡';
   dp.textContent=word.length>=2?hint:'Need 2+ letters';
   dp.className='dmg-preview'+(word.length>=2?' hot':'');
   $$('submit-btn').disabled=word.length<2;
@@ -1187,7 +1190,6 @@ function renderEffectsBar(){
   // Show shield on the OPPONENT (defender) — visible to attacker so they know damage will be halved
   if(G.effects[opp].defend)bar.innerHTML+=`<span class="eff-tag defend-tag">🛡 ${oppName} Shielded</span>`;
   // Current player's incoming effects
-  if(ef.cursed)bar.innerHTML+=`<span class="eff-tag curse-tag">🔥 Letters Weakened</span>`;
   if(ef.held.length)bar.innerHTML+=`<span class="eff-tag hold-tag">🔒 ${ef.held.length} Tiles Locked</span>`;
   if(ef.traps.length)bar.innerHTML+=`<span class="eff-tag trap-tag">⚡ ${ef.traps.length} Traps Active</span>`;
   // Poison stacks on current player
@@ -1477,7 +1479,7 @@ async function submitWord(){
     trapIndices.forEach(i=>{if(cells[i])cells[i].classList.remove('trap-reveal');});
   }
 
-  const{dmg,trapHits,defended,cursed}=calcDmg(word,G.sel);
+  const{dmg,trapHits,defended,cursed,cursedCount}=calcDmg(word,G.sel);
 
   // consume defend
   if(defended)consumeDefend(opp);
@@ -1505,7 +1507,7 @@ async function submitWord(){
   used.forEach(i=>repLetter(i));
 
   const fxLog=[];
-  if(cursed)fxLog.push('🔥 Cursed');
+  if(cursed&&cursedCount>0)fxLog.push(`🔥 ${cursedCount} letters cursed`);
   if(defended)fxLog.push('🛡 Blocked');
   if(trapHits)fxLog.push(`⚡×${trapHits}(−${trapDmg}HP)`);
 
@@ -1554,7 +1556,7 @@ async function submitWord(){
   }
 
   let extra='';
-  if(cursed)extra+='🔥 Weakened ';if(defended)extra+='🛡 Halved ';if(trapHits)extra+=`⚡−${trapDmg} HP `;
+  if(defended)extra+='🛡 Halved ';
   if(bonusDmg)extra+=`⚔️+${bonusDmg} `;if(boomVal)extra+=`💥${boomVal>=0?'+':''}${boomVal} `;
   if(selfHeal)extra+=`❤️+${selfHeal} `;
   SFX.ok(totalDmg);setTimeout(()=>SFX.hit(totalDmg),200);

@@ -508,6 +508,37 @@ h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line
 
 /* scrollbars handled per-column above */
 
+/* ═══ SOLO MODE ═══ */
+.mode-pills{display:flex;gap:.4rem;margin-top:.35rem}
+.mode-pill{background:var(--bg);border:1px solid var(--bord);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;padding:.4rem .85rem;border-radius:20px;cursor:pointer;transition:all .15s}
+.mode-pill.active{background:var(--surf2);border-color:var(--p1);color:var(--p1)}
+
+.solo-setup{display:none;flex-direction:column;gap:.4rem;align-items:center}
+.solo-setup.visible{display:flex}
+.solo-setup label{font-size:.68rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+
+/* hide p2 input in solo mode */
+.solo-hide{transition:opacity .2s}
+.solo-hide.hidden{opacity:.25;pointer-events:none}
+
+/* monster card in game screen */
+.monster-card{display:flex;flex-direction:column;align-items:flex-end;gap:.2rem}
+.monster-name{font-size:1.05rem;font-weight:700;color:var(--danger)}
+.monster-dmg-badge{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);opacity:.8}
+#solo-enemy-wrap{position:relative}
+.monster-atk-flash{animation:monsterAtk .45s ease}
+@keyframes monsterAtk{0%{transform:scaleX(-1)}20%{transform:scaleX(-1) translateX(22px)}55%{transform:scaleX(-1) translateX(14px)}100%{transform:scaleX(-1)}}
+
+/* solo wave badge */
+.wave-badge{font-size:.62rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;padding:.18rem .5rem;border-radius:5px;background:var(--danger);color:#fff;display:inline-block;margin-left:.4rem}
+
+/* in solo mode hide p2 abilities entirely */
+.solo-mode .p2-ab-col{display:none}
+.solo-mode .player-ab-col{grid-column:1/-1}
+
+/* solo heal toast */
+.toast-heal{font-size:1rem;font-weight:700;color:var(--ok)}
+
 
 /* ═══ TOOLTIPS — JS-driven fixed overlay ═══ */
 #tooltip{
@@ -588,9 +619,16 @@ h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line
   </div>
   <div class="setup-card">
     <div class="setup-label">Battle Setup</div>
+    <div class="hp-group" style="align-items:center">
+      <label>Mode</label>
+      <div class="mode-pills">
+        <div class="mode-pill active" data-mode="pvp">⚔️ PvP</div>
+        <div class="mode-pill" data-mode="solo">🧟 Solo</div>
+      </div>
+    </div>
     <div class="player-inputs">
       <div class="igrp p1"><label>Player 1</label><input id="p1n" value="Champion" maxlength="14"></div>
-      <div class="igrp p2"><label>Player 2</label><input id="p2n" value="Challenger" maxlength="14"></div>
+      <div class="igrp p2 solo-hide" id="p2-input-grp"><label>Player 2</label><input id="p2n" value="Challenger" maxlength="14"></div>
     </div>
     <div class="row-2">
       <div class="hp-group">
@@ -735,7 +773,7 @@ h1{font-size:clamp(2.4rem,8vw,4.8rem);font-weight:700;letter-spacing:-.03em;line
     <div class="grid-section">
       <div class="grid" id="grid"></div>
     </div>
-    <div class="warrior-wrap" id="w2-wrap">
+    <div class="warrior-wrap" id="w2-wrap" style="position:relative">
       <svg class="warrior-img" id="warrior-p2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 160" width="80" height="160">
   <ellipse cx="40" cy="154" rx="22" ry="5" fill="#00000040"/>
   <rect x="24" y="130" width="14" height="22" rx="4" fill="#1a3a6b"/>
@@ -937,6 +975,190 @@ let G={
 };
 
 let startHP=100,turnSecs=60,seriesRounds=1,seriesWins={1:0,2:0},tileChance=0.05;
+let soloMode=false;
+
+/* ═══════════ MONSTERS ═══════════ */
+const MONSTERS=[
+  {name:'Slimeling',  baseDmg:4,  emoji:'🟢', svgFn:drawSlime},
+  {name:'Ratclaw',    baseDmg:6,  emoji:'🐀', svgFn:drawRat},
+  {name:'Stoneback',  baseDmg:8,  emoji:'🪨', svgFn:drawStone},
+  {name:'Swampwraith',baseDmg:10, emoji:'💀', svgFn:drawWraith},
+  {name:'Ironjaw',    baseDmg:12, emoji:'🦷', svgFn:drawIronjaw},
+  {name:'Voidlurker', baseDmg:14, emoji:'👁️', svgFn:drawVoid},
+  {name:'Dreadlord',  baseDmg:16, emoji:'👿', svgFn:drawDreadlord},
+  {name:'Abyssbeast', baseDmg:18, emoji:'🐲', svgFn:drawAbyss},
+];
+let soloWave=0; // index into MONSTERS (loops with +2 dmg per cycle)
+
+function getMonster(){
+  const idx=soloWave%MONSTERS.length;
+  const cycle=Math.floor(soloWave/MONSTERS.length);
+  const m=MONSTERS[idx];
+  return{...m, dmg:m.baseDmg+cycle*2};
+}
+
+// SVG generator functions — each returns SVG inner HTML string
+function drawSlime(){return`
+  <ellipse cx="40" cy="140" rx="24" ry="7" fill="#00000040"/>
+  <ellipse cx="40" cy="105" rx="34" ry="38" fill="#2a7a1a"/>
+  <ellipse cx="40" cy="100" rx="28" ry="30" fill="#3db82a"/>
+  <ellipse cx="40" cy="95" rx="22" ry="24" fill="#52e030"/>
+  <circle cx="28" cy="90" r="7" fill="#fff"/>
+  <circle cx="52" cy="90" r="7" fill="#fff"/>
+  <circle cx="30" cy="91" r="4" fill="#111"/>
+  <circle cx="54" cy="91" r="4" fill="#111"/>
+  <path d="M32 108 Q40 116 48 108" stroke="#1a5a10" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="22" cy="82" rx="6" ry="9" fill="#3db82a"/>
+  <ellipse cx="58" cy="79" rx="5" ry="8" fill="#3db82a"/>
+  <ellipse cx="40" cy="70" rx="4" ry="7" fill="#52e030"/>
+`;}
+function drawRat(){return`
+  <ellipse cx="40" cy="148" rx="20" ry="5" fill="#00000040"/>
+  <ellipse cx="15" cy="115" rx="8" ry="12" fill="#8B4513" transform="rotate(-20,15,115)"/>
+  <ellipse cx="65" cy="115" rx="8" ry="12" fill="#8B4513" transform="rotate(20,65,115)"/>
+  <ellipse cx="40" cy="115" rx="26" ry="30" fill="#6b3a1f"/>
+  <ellipse cx="40" cy="112" rx="20" ry="24" fill="#8B4513"/>
+  <ellipse cx="25" cy="68" rx="10" ry="14" fill="#6b3a1f"/>
+  <ellipse cx="55" cy="68" rx="10" ry="14" fill="#6b3a1f"/>
+  <ellipse cx="25" cy="67" rx="7" ry="10" fill="#e8a0a0"/>
+  <ellipse cx="55" cy="67" rx="7" ry="10" fill="#e8a0a0"/>
+  <ellipse cx="40" cy="88" rx="18" ry="22" fill="#8B4513"/>
+  <circle cx="31" cy="83" r="6" fill="#fff"/>
+  <circle cx="49" cy="83" r="6" fill="#fff"/>
+  <circle cx="33" cy="84" r="3.5" fill="#f00"/>
+  <circle cx="51" cy="84" r="3.5" fill="#f00"/>
+  <path d="M40 92 Q28 98 20 95" stroke="#5a2a0a" stroke-width="2" fill="none"/>
+  <path d="M40 92 Q52 98 60 95" stroke="#5a2a0a" stroke-width="2" fill="none"/>
+  <path d="M40 92 Q26 94 18 90" stroke="#5a2a0a" stroke-width="2" fill="none"/>
+  <path d="M40 92 Q54 94 62 90" stroke="#5a2a0a" stroke-width="2" fill="none"/>
+  <ellipse cx="40" cy="100" rx="5" ry="3" fill="#e8706070"/>
+  <path d="M20 130 Q10 150 5 155" stroke="#8B4513" stroke-width="3" fill="none" stroke-linecap="round"/>
+`;}
+function drawStone(){return`
+  <ellipse cx="40" cy="150" rx="25" ry="6" fill="#00000040"/>
+  <polygon points="20,145 60,145 68,110 55,85 40,78 25,85 12,110" fill="#5a5a5a"/>
+  <polygon points="22,142 58,142 65,110 53,88 40,82 27,88 15,110" fill="#787878"/>
+  <polygon points="24,138 56,138 62,112 51,92 40,86 29,92 18,112" fill="#909090"/>
+  <polygon points="30,100 36,92 44,92 50,100 44,108 36,108" fill="#aaa"/>
+  <rect x="26" y="96" width="10" height="8" rx="2" fill="#ff4422" opacity=".85"/>
+  <rect x="44" y="96" width="10" height="8" rx="2" fill="#ff4422" opacity=".85"/>
+  <path d="M30 114 Q40 120 50 114" stroke="#5a5a5a" stroke-width="3" fill="none"/>
+  <rect x="8" y="105" width="10" height="28" rx="4" fill="#686868"/>
+  <rect x="62" y="105" width="10" height="28" rx="4" fill="#686868"/>
+  <polygon points="15,65 28,55 40,62 52,55 65,65 62,80 50,76 40,80 30,76 18,80" fill="#5a5a5a"/>
+  <polygon points="18,68 28,60 40,66 52,60 62,68 60,78 50,74 40,78 30,74 20,78" fill="#909090"/>
+`;}
+function drawWraith(){return`
+  <ellipse cx="40" cy="148" rx="18" ry="4" fill="#00000030"/>
+  <path d="M18,155 Q20,120 22,100 Q28,70 40,60 Q52,70 58,100 Q60,120 62,155 Q55,148 50,155 Q45,148 40,155 Q35,148 30,155 Q25,148 18,155Z" fill="#1a0a2e"/>
+  <path d="M20,150 Q22,118 24,98 Q30,68 40,60 Q50,68 56,98 Q58,118 60,150" fill="#2d0a4e" opacity=".7"/>
+  <ellipse cx="40" cy="72" rx="18" ry="20" fill="#1a0a2e"/>
+  <ellipse cx="40" cy="70" rx="14" ry="16" fill="#2d0a4e"/>
+  <ellipse cx="31" cy="66" rx="6" ry="7" fill="#00d4b4" opacity=".9"/>
+  <ellipse cx="49" cy="66" rx="6" ry="7" fill="#00d4b4" opacity=".9"/>
+  <ellipse cx="32" cy="67" rx="3.5" ry="4" fill="#fff"/>
+  <ellipse cx="50" cy="67" rx="3.5" ry="4" fill="#fff"/>
+  <path d="M34 79 Q40 76 46 79" stroke="#00d4b4" stroke-width="1.5" fill="none" opacity=".8"/>
+  <path d="M18,120 Q8,115 6,105 Q4,95 12,90 Q14,100 18,105Z" fill="#1a0a2e"/>
+  <path d="M62,120 Q72,115 74,105 Q76,95 68,90 Q66,100 62,105Z" fill="#1a0a2e"/>
+  <circle cx="40" cy="50" r="3" fill="#c266ff" opacity=".6"/>
+  <circle cx="30" cy="45" r="2" fill="#c266ff" opacity=".4"/>
+  <circle cx="50" cy="47" r="2" fill="#c266ff" opacity=".4"/>
+`;}
+function drawIronjaw(){return`
+  <ellipse cx="40" cy="150" rx="22" ry="6" fill="#00000040"/>
+  <rect x="18" y="95" width="44" height="52" rx="6" fill="#2a2a2a"/>
+  <rect x="22" y="99" width="36" height="44" rx="4" fill="#444"/>
+  <rect x="10" y="105" width="12" height="30" rx="4" fill="#333"/>
+  <rect x="58" y="105" width="12" height="30" rx="4" fill="#333"/>
+  <rect x="12" y="118" width="16" height="8" rx="3" fill="#555"/>
+  <rect x="52" y="118" width="16" height="8" rx="3" fill="#555"/>
+  <rect x="22" y="110" width="36" height="18" rx="3" fill="#222"/>
+  <rect x="24" y="112" width="8" height="14" rx="2" fill="#ff4422"/>
+  <rect x="34" y="112" width="4" height="14" rx="1" fill="#ff4422" opacity=".7"/>
+  <rect x="40" y="112" width="4" height="14" rx="1" fill="#ff4422" opacity=".7"/>
+  <rect x="46" y="112" width="8" height="14" rx="2" fill="#ff4422"/>
+  <ellipse cx="40" cy="68" rx="20" ry="22" fill="#333"/>
+  <ellipse cx="40" cy="66" rx="16" ry="18" fill="#555"/>
+  <rect x="28" y="56" width="24" height="6" rx="2" fill="#ff6600"/>
+  <circle cx="32" cy="65" r="5" fill="#ff4422"/>
+  <circle cx="48" cy="65" r="5" fill="#ff4422"/>
+  <circle cx="32" cy="65" r="3" fill="#fff"/>
+  <circle cx="48" cy="65" r="3" fill="#fff"/>
+  <rect x="34" y="78" width="12" height="6" rx="2" fill="#222"/>
+`;}
+function drawVoid(){return`
+  <ellipse cx="40" cy="148" rx="20" ry="5" fill="#00000060"/>
+  <circle cx="40" cy="100" r="38" fill="#0a0010"/>
+  <circle cx="40" cy="100" r="32" fill="#12002a"/>
+  <circle cx="40" cy="100" r="26" fill="#1e0044"/>
+  <circle cx="40" cy="100" r="16" fill="#4400aa" opacity=".7"/>
+  <circle cx="40" cy="100" r="10" fill="#8800ff"/>
+  <circle cx="40" cy="100" r="6" fill="#cc44ff"/>
+  <circle cx="40" cy="100" r="3" fill="#fff"/>
+  <circle cx="20" cy="75" r="4" fill="#c266ff" opacity=".8"/>
+  <circle cx="60" cy="75" r="4" fill="#c266ff" opacity=".8"/>
+  <circle cx="15" cy="100" r="3" fill="#c266ff" opacity=".6"/>
+  <circle cx="65" cy="100" r="3" fill="#c266ff" opacity=".6"/>
+  <circle cx="25" cy="122" r="3" fill="#c266ff" opacity=".5"/>
+  <circle cx="55" cy="122" r="3" fill="#c266ff" opacity=".5"/>
+  <path d="M40,62 Q38,50 35,45" stroke="#c266ff" stroke-width="2" fill="none" opacity=".6"/>
+  <path d="M40,62 Q42,50 45,45" stroke="#c266ff" stroke-width="2" fill="none" opacity=".6"/>
+  <circle cx="35" cy="43" r="2.5" fill="#c266ff"/>
+  <circle cx="45" cy="43" r="2.5" fill="#c266ff"/>
+`;}
+function drawDreadlord(){return`
+  <ellipse cx="40" cy="150" rx="22" ry="6" fill="#00000040"/>
+  <rect x="22" y="128" width="14" height="22" rx="4" fill="#3a0a0a"/>
+  <rect x="44" y="128" width="14" height="22" rx="4" fill="#3a0a0a"/>
+  <rect x="20" y="142" width="18" height="8" rx="3" fill="#220000"/>
+  <rect x="42" y="142" width="18" height="8" rx="3" fill="#220000"/>
+  <rect x="20" y="95" width="40" height="40" rx="6" fill="#4a0a0a"/>
+  <rect x="24" y="99" width="32" height="32" rx="4" fill="#660f0f"/>
+  <rect x="10" y="100" width="14" height="28" rx="4" fill="#4a0a0a"/>
+  <rect x="56" y="100" width="14" height="28" rx="4" fill="#4a0a0a"/>
+  <rect x="8" y="108" width="18" height="8" rx="3" fill="#660f0f"/>
+  <rect x="54" y="108" width="18" height="8" rx="3" fill="#660f0f"/>
+  <rect x="60" y="55" width="5" height="50" rx="1" fill="#888"/>
+  <rect x="55" y="98" width="15" height="4" rx="1" fill="#666"/>
+  <rect x="59" y="52" width="7" height="9" rx="1" fill="#cc0000"/>
+  <ellipse cx="40" cy="76" rx="20" ry="22" fill="#3a0a0a"/>
+  <ellipse cx="40" cy="74" rx="16" ry="18" fill="#660f0f"/>
+  <rect x="28" y="64" width="24" height="6" rx="2" fill="#111"/>
+  <circle cx="32" cy="73" r="6" fill="#ff2200"/>
+  <circle cx="48" cy="73" r="6" fill="#ff2200"/>
+  <circle cx="32" cy="73" r="3" fill="#ffaa00"/>
+  <circle cx="48" cy="73" r="3" fill="#ffaa00"/>
+  <rect x="33" y="82" width="14" height="5" rx="2" fill="#222"/>
+  <polygon points="26,48 30,38 34,48" fill="#3a0a0a"/>
+  <polygon points="46,48 50,38 54,48" fill="#3a0a0a"/>
+  <polygon points="27,48 31,38 35,48" fill="#880000"/>
+  <polygon points="45,48 49,38 53,48" fill="#880000"/>
+`;}
+function drawAbyss(){return`
+  <ellipse cx="40" cy="150" rx="24" ry="6" fill="#00000050"/>
+  <ellipse cx="40" cy="100" rx="30" ry="36" fill="#0a1a2a"/>
+  <ellipse cx="40" cy="97" rx="24" ry="30" fill="#102a3a"/>
+  <ellipse cx="15" cy="88" rx="12" ry="8" fill="#0a1a2a" transform="rotate(-30,15,88)"/>
+  <ellipse cx="65" cy="88" rx="12" ry="8" fill="#0a1a2a" transform="rotate(30,65,88)"/>
+  <ellipse cx="40" cy="68" rx="22" ry="24" fill="#0a1a2a"/>
+  <ellipse cx="40" cy="66" rx="18" ry="20" fill="#102a3a"/>
+  <polygon points="22,52 28,38 34,52" fill="#1a4a6a"/>
+  <polygon points="38,48 40,34 42,48" fill="#1a4a6a"/>
+  <polygon points="46,52 52,38 58,52" fill="#1a4a6a"/>
+  <ellipse cx="29" cy="62" rx="8" ry="9" fill="#00aaff" opacity=".9"/>
+  <ellipse cx="51" cy="62" rx="8" ry="9" fill="#00aaff" opacity=".9"/>
+  <ellipse cx="29" cy="63" rx="5" ry="6" fill="#003366"/>
+  <ellipse cx="51" cy="63" rx="5" ry="6" fill="#003366"/>
+  <ellipse cx="29" cy="63" rx="2.5" ry="3" fill="#00eeff"/>
+  <ellipse cx="51" cy="63" rx="2.5" ry="3" fill="#00eeff"/>
+  <path d="M28 78 Q34 84 40 80 Q46 84 52 78" stroke="#1a4a6a" stroke-width="2.5" fill="none"/>
+  <circle cx="20" cy="100" r="3" fill="#00aaff" opacity=".4"/>
+  <circle cx="60" cy="100" r="3" fill="#00aaff" opacity=".4"/>
+  <circle cx="25" cy="120" r="4" fill="#00aaff" opacity=".3"/>
+  <circle cx="55" cy="120" r="4" fill="#00aaff" opacity=".3"/>
+`;}
+
 
 function rnd(){return POOL[Math.floor(Math.random()*POOL.length)];}
 function vCount(g){return g.filter(l=>VOWELS.has(l)).length;}
@@ -1065,6 +1287,8 @@ function calcDmg(word,idx){
 
 /* ═══════════ UI HELPERS ═══════════ */
 function $$(id){return document.getElementById(id);}
+// Back up original P2 warrior SVG for PvP mode restoration
+const P2_SVG_BACKUP=document.getElementById('warrior-p2')?.innerHTML||'';
 
 function renderGrid(){
   const el=$$('grid');if(!el)return;el.innerHTML='';
@@ -1288,7 +1512,16 @@ function skipTurn(){
   $$('skip-title').textContent='Time\'s Up!';
   $$('skip-sub').textContent=`${skippedName}'s turn is skipped.`;
   const ov=$$('skip-overlay');ov?.classList.add('show');
-  setTimeout(()=>{ov?.classList.remove('show');nextTurn();},1800);
+  setTimeout(()=>{
+    ov?.classList.remove('show');
+    if(soloMode){
+      G.sel=[];
+      G.busy=true;
+      enemyAttack();
+    } else {
+      nextTurn();
+    }
+  },1800);
 }
 
 /* ═══════════ ABILITIES ═══════════ */
@@ -1601,8 +1834,21 @@ async function submitWord(){
     }
   }
 
-  if(G.p1HP<=0||G.p2HP<=0){setTimeout(gameOver,800);G.busy=false;return;}
-  setTimeout(()=>{nextTurn();G.busy=false;},400);
+  if(G.p1HP<=0||G.p2HP<=0){
+    if(soloMode){
+      if(G.p2HP<=0){setTimeout(soloWin,800);}
+      else{setTimeout(soloGameOver,800);}
+    } else {
+      setTimeout(gameOver,800);
+    }
+    G.busy=false;return;
+  }
+  if(soloMode){
+    // enemy attacks on same cycle — busy stays true until enemyAttack resolves
+    setTimeout(()=>enemyAttack(),600);
+  } else {
+    setTimeout(()=>{nextTurn();G.busy=false;},400);
+  }
 }
 
 /* ═══════════ TURN FLOW ═══════════ */
@@ -1805,6 +2051,21 @@ document.querySelectorAll('.series-pill').forEach(pill=>{
 $$('hp-up').addEventListener('click',()=>{startHP=Math.min(500,startHP+10);$$('hp-val').textContent=startHP;SFX.step();});
 $$('hp-dn').addEventListener('click',()=>{startHP=Math.max(20,startHP-10);$$('hp-val').textContent=startHP;SFX.step();});
 
+// Mode pills
+document.querySelectorAll('.mode-pill').forEach(pill=>{
+  pill.addEventListener('click',()=>{
+    document.querySelectorAll('.mode-pill').forEach(p=>p.classList.remove('active'));
+    pill.classList.add('active');
+    soloMode=pill.dataset.mode==='solo';
+    const p2grp=$$('p2-input-grp');
+    if(p2grp) p2grp.classList.toggle('hidden',soloMode);
+    // hide/show series pills in solo mode (series doesn't apply)
+    const seriesRow=document.querySelector('.series-pills');
+    if(seriesRow) seriesRow.closest('.timer-group').style.display=soloMode?'none':'';
+    SFX.step();
+  });
+});
+
 // Ability buttons
 document.querySelectorAll('.ab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
@@ -1813,7 +2074,174 @@ document.querySelectorAll('.ab-btn').forEach(btn=>{
   });
 });
 
+/* ═══════════ SOLO MODE FUNCTIONS ═══════════ */
+function renderMonster(){
+  const mon=getMonster();
+  // Update P2 warrior SVG with monster art
+  const svg=$$('warrior-p2');
+  if(svg) svg.innerHTML=mon.svgFn();
+  // Update P2 name display
+  if($$('p2-name-disp')) $$('p2-name-disp').textContent=mon.name;
+  if($$('log-h-p2')) $$('log-h-p2').textContent=mon.name;
+  // Update HP label
+  const p2lbl=$$('p2-hp-wrap')?.querySelector('.hp-lbl');
+  if(p2lbl) p2lbl.textContent='Enemy';
+  // Show damage badge
+  let badge=$$('solo-dmg-badge');
+  if(!badge){
+    badge=document.createElement('div');
+    badge.id='solo-dmg-badge';
+    badge.className='monster-dmg-badge';
+    $$('p2-hp-wrap')?.appendChild(badge);
+  }
+  badge.textContent=`${mon.emoji} ${mon.dmg} dmg/turn`;
+  // Wave badge in round-badge area
+  const rb=$$('round-badge');
+  if(rb) rb.innerHTML=`Wave <span class="wave-badge">${soloWave+1}</span>`;
+}
+
+function enemyAttack(){
+  if(!soloMode)return;
+  const mon=getMonster();
+  const dmg=mon.dmg;
+  // Animate monster
+  const w2=$$('w2-wrap');
+  if(w2){w2.classList.remove('lunge');void w2.offsetWidth;w2.classList.add('lunge');}
+  setTimeout(()=>{
+    w2?.classList.remove('lunge');
+    G.p1HP=Math.max(0,G.p1HP-dmg);
+    flashHit(1);
+    warriorHit(1);
+    addCharge(1,dmg);
+    // Log enemy attack
+    const col=$$('log-p2');
+    if(col){
+      const d=document.createElement('div');
+      d.className='log-entry p2-e';
+      d.innerHTML=`<span class="log-word">${mon.emoji} STRIKE</span><div class="log-meta"><span class="log-dmg">−${dmg}</span></div>`;
+      col.insertBefore(d,col.firstChild);
+    }
+    SFX.hit(dmg);
+    updateHP();
+    if(G.p1HP<=0){setTimeout(soloGameOver,600);return;}
+    // Now pass turn back to player
+    G.cur=1;
+    G.sel=[];
+    applyPendingEffects();
+    // tick down power tile lifetimes
+    for(let i=0;i<G.powers.length;i++){
+      if(G.powers[i]){G.powers[i].turns--;if(G.powers[i].turns<=0)G.powers[i]=null;}
+    }
+    // poison on player from previous turns
+    let poisonTotal=0;
+    G.poison[1]=G.poison[1].filter(stack=>{
+      G.p1HP-=stack.dmg;poisonTotal+=stack.dmg;stack.turns--;return stack.turns>0;
+    });
+    if(poisonTotal>0){updateHP();flashHit(1);showAbilityToast(`☠️ Poison −${poisonTotal} HP`,'Poison damage!');}
+    if(G.p1HP<=0){setTimeout(soloGameOver,600);return;}
+    updateHP();
+    SFX.turn();
+    updateTurnUI();
+    renderGrid();renderWord();renderEffectsBar();
+    startTimer();
+    G.busy=false;
+  },220);
+}
+
+function soloWin(){
+  stopTimer();
+  SFX.win();
+  // Heal player
+  const healAmt=20;
+  G.p1HP=Math.min(G.maxHP,G.p1HP+healAmt);
+  updateHP();
+  // Show heal toast
+  const t=$$('toast');
+  $$('tb-word').textContent=`🏆 Wave ${soloWave+1} Defeated!`;
+  $$('tb-body').innerHTML=`<div class="toast-heal">+${healAmt} HP Restored!</div>`;
+  t.style.borderColor='var(--ok)';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+  soloWave++;
+  setTimeout(()=>{
+    startSoloRound(G.p1Name, G.p1HP);
+  },2100);
+}
+
+function soloGameOver(){
+  stopTimer();
+  SFX.win();
+  const go=$$('go-winner');go.textContent=G.p1Name;go.className='go-winner p1';
+  $$('go-sub').textContent=`fell on Wave ${soloWave+1} — reached ${G.p1Name}'s best!`;
+  const totalTurns=G.stats.p1w;
+  const avgDmg1=totalTurns>0?Math.round(G.stats.p1d/totalTurns):0;
+  $$('go-stats').innerHTML=`
+    <div class="go-stats-cols">
+      <div class="go-col go-col-p1" style="grid-column:1/-1">
+        <div class="go-col-head">📊 Run Stats — ${G.p1Name}</div>
+        <div class="go-stat"><div class="go-stat-label">Waves Cleared</div><div class="go-stat-val">${soloWave}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Words Played</div><div class="go-stat-val">${G.stats.p1w}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${G.stats.p1d}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Avg Dmg / Word</div><div class="go-stat-val">${avgDmg1}</div></div>
+      </div>
+    </div>
+    <div class="go-footer">
+      <div><div class="go-footer-label">Final Wave</div><div class="go-footer-val">${soloWave+1}</div></div>
+      <div><div class="go-footer-label">Defeated By</div><div class="go-footer-val" style="color:var(--danger)">${getMonster().name}</div></div>
+    </div>`;
+  showScreen('gameover-screen');
+}
+
+function startSoloRound(p1Name, carryHP){
+  soloMode=true;
+  const _g=genGrid();
+  const mon=getMonster();
+  const hpToUse=(carryHP!==undefined)?carryHP:startHP;
+  G={
+    grid:_g,
+    powers:genTilePowers(_g.length),
+    poison:{1:[],2:[]},pendingSmall:false,pendingChaos:false,pendingTimeDist:false,pendingInvis:false,
+    invisActive:false,invisStart:null,chaosRotations:null,turnSecsOverride:null,_thisTurnSecs:null,
+    p1Name:p1Name,p2Name:mon.name,
+    p1HP:hpToUse,p2HP:startHP,maxHP:startHP,
+    cur:1,sel:[],busy:false,
+    turnSecs:turnSecs,timerLeft:turnSecs,timerInt:null,
+    stats:{p1w:0,p1d:0,p2w:0,p2d:0},
+    ab:{1:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false},2:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false}},
+    charge:{1:0,2:0},chargeReady:{1:false,2:false},
+    effects:{1:{defend:false,cursed:false,held:[],traps:[]},2:{defend:false,cursed:false,held:[],traps:[]}},
+    pending:{1:{renew:false,defend:false,curse:false,hold:false,trap:false},2:{renew:false,defend:false,curse:false,hold:false,trap:false}}
+  };
+  // Remove old dmg badge if wave reset
+  const old=$$('solo-dmg-badge');if(old)old.remove();
+  // Show correct p1 HP (carry-over)
+  G.p1HP=hpToUse;
+  $$('p1-name-disp').textContent=p1Name;
+  $$('p2-name-disp').textContent=mon.name;
+  $$('log-p1').innerHTML='';
+  $$('log-p2').innerHTML='';
+  $$('log-h-p1').textContent=p1Name;
+  $$('log-h-p2').textContent=mon.name;
+  // Hide P2 ability column
+  const gameScr=$$('game-screen');
+  if(gameScr)gameScr.classList.add('solo-mode');
+  renderMonster();
+  updateHP();updateTurnUI();renderGrid();renderWord();updateChargeBars();
+  SFX.start();
+  showScreen('game-screen');
+  startTimer();
+}
+
+
 function startRound(p1,p2){
+  soloMode=false;
+  const gameScr=$$('game-screen');
+  if(gameScr)gameScr.classList.remove('solo-mode');
+  const oldBadge=$$('solo-dmg-badge');if(oldBadge)oldBadge.remove();
+  const p2lbl=$$('p2-hp-wrap')?.querySelector('.hp-lbl');
+  if(p2lbl) p2lbl.textContent='Player 2';
+  // Restore original warrior-p2 SVG
+  const p2svg=$$('warrior-p2');if(p2svg)p2svg.innerHTML=P2_SVG_BACKUP;
   const _g=genGrid();
   G={
     grid:_g,
@@ -1848,9 +2276,15 @@ function startRound(p1,p2){
 
 $$('start-btn').addEventListener('click',()=>{
   const p1=$$('p1n').value.trim()||'Champion';
-  const p2=$$('p2n').value.trim()||'Challenger';
-  seriesWins={1:0,2:0};
-  startRound(p1,p2);
+  if(soloMode){
+    soloWave=0;
+    seriesWins={1:0,2:0};
+    startSoloRound(p1);
+  } else {
+    const p2=$$('p2n').value.trim()||'Challenger';
+    seriesWins={1:0,2:0};
+    startRound(p1,p2);
+  }
 });
 
 $$('clear-btn').addEventListener('click',clearSel);
@@ -1972,3 +2406,4 @@ $$('override-btn').addEventListener('click',()=>{
 <div id="tooltip"></div>
 </body>
 </html>
+

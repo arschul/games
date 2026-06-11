@@ -921,12 +921,14 @@ for(const[l,w]of Object.entries(WGT))for(let i=0;i<w;i++)POOL.push(l);
 // types: 'poison','xdmg','heal','boom','small','chaos'
 
 const POWER_TYPES=['poison','xdmg','heal','boom','small','chaos','time','invis'];
+const SOLO_USELESS_TYPES=new Set(['small','chaos','time','invis']);
+function soloSafeTileType(t){return(soloMode&&SOLO_USELESS_TYPES.has(t))?'heal':t;}
 
 function genTilePowers(gridLen){
   const powers=new Array(gridLen).fill(null);
   for(let i=0;i<gridLen;i++){
     if(Math.random()<tileChance){
-      const t=POWER_TYPES[Math.floor(Math.random()*POWER_TYPES.length)];
+      const t=soloSafeTileType(POWER_TYPES[Math.floor(Math.random()*POWER_TYPES.length)]);
       powers[i]={type:t,turns:2};
     }
   }
@@ -944,7 +946,7 @@ let G={
   grid:[],
   powers:[],
   p1Name:'',p2Name:'',
-  p1HP:100,p2HP:100,maxHP:100,
+  p1HP:100,p2HP:100,maxHP:100,monsterMaxHP:0,
   cur:1,sel:[],busy:false,
   turnSecs:60,timerLeft:60,timerInt:null,
   stats:{p1w:0,p1d:0,p2w:0,p2d:0},
@@ -1221,7 +1223,7 @@ function repLetter(i){
   G.grid[i]=l;
   // new tile: dynamic chance of spawning a power
   if(Math.random()<tileChance){
-    const t=POWER_TYPES[Math.floor(Math.random()*POWER_TYPES.length)];
+    const t=soloSafeTileType(POWER_TYPES[Math.floor(Math.random()*POWER_TYPES.length)]);
     G.powers[i]={type:t,turns:2};
   } else {
     G.powers[i]=null;
@@ -1370,7 +1372,8 @@ function renderWord(){
 }
 
 function updateHP(){
-  const p1p=Math.max(0,G.p1HP/G.maxHP*100),p2p=Math.max(0,G.p2HP/G.maxHP*100);
+  const p2max=soloMode?G.monsterMaxHP:G.maxHP;
+  const p1p=Math.max(0,G.p1HP/G.maxHP*100),p2p=Math.max(0,G.p2HP/p2max*100);
   if($$('p1-hp-n'))$$('p1-hp-n').textContent=Math.max(0,G.p1HP);
   if($$('p2-hp-n'))$$('p2-hp-n').textContent=Math.max(0,G.p2HP);
   if($$('p1-hp-f'))$$('p1-hp-f').style.width=p1p+'%';
@@ -1751,15 +1754,7 @@ async function submitWord(){
   // Apply collected tile powers
   let bonusDmg=0,healAmt=0,boomVal=0;
   let hasSmall=false,hasChaos=false;
-  // Tile types that target the opponent and do nothing in solo mode — convert to heal
-  const SOLO_USELESS=new Set(['small','chaos','time','invis']);
   for(const pw of collectedPowers){
-    // In solo mode, redirect useless opponent-targeting powers to a small heal
-    if(soloMode&&SOLO_USELESS.has(pw.type)){
-      const v=3+Math.floor(Math.random()*5); // 3-7 HP
-      healAmt+=v; fxLog.push(`❤️+${v} (converted)`);
-      continue;
-    }
     if(pw.type==='xdmg'){
       const v=4+Math.floor(Math.random()*5); // 4-8
       bonusDmg+=v; fxLog.push(`⚔️+${v}`);
@@ -2219,7 +2214,7 @@ function startSoloRound(p1Name, carryHP){
     poison:{1:[],2:[]},pendingSmall:false,pendingChaos:false,pendingTimeDist:false,pendingInvis:false,
     invisActive:false,invisStart:null,chaosRotations:null,turnSecsOverride:null,_thisTurnSecs:null,
     p1Name:p1Name,p2Name:mon.name,
-    p1HP:hpToUse,p2HP:startHP,maxHP:startHP,
+    p1HP:hpToUse,p2HP:Math.floor(startHP/2),maxHP:startHP,monsterMaxHP:Math.floor(startHP/2),
     cur:1,sel:[],busy:false,
     turnSecs:turnSecs,timerLeft:turnSecs,timerInt:null,
     stats:{p1w:0,p1d:0,p2w:0,p2d:0},
@@ -2265,7 +2260,7 @@ function startRound(p1,p2){
     poison:{1:[],2:[]},pendingSmall:false,pendingChaos:false,pendingTimeDist:false,pendingInvis:false,
     invisActive:false,invisStart:null,chaosRotations:null,turnSecsOverride:null,_thisTurnSecs:null,
     p1Name:p1,p2Name:p2,
-    p1HP:startHP,p2HP:startHP,maxHP:startHP,
+    p1HP:startHP,p2HP:startHP,maxHP:startHP,monsterMaxHP:0,
     cur:1,sel:[],busy:false,
     turnSecs:turnSecs,timerLeft:turnSecs,timerInt:null,
     stats:{p1w:0,p1d:0,p2w:0,p2d:0},
@@ -2423,5 +2418,6 @@ $$('override-btn').addEventListener('click',()=>{
 <div id="tooltip"></div>
 </body>
 </html>
+
 
 

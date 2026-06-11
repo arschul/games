@@ -949,7 +949,7 @@ let G={
   p1HP:100,p2HP:100,maxHP:100,monsterMaxHP:0,
   cur:1,sel:[],busy:false,
   turnSecs:60,timerLeft:60,timerInt:null,
-  stats:{p1w:0,p1d:0,p2w:0,p2d:0},
+  stats:{p1w:0,p1d:0,p2w:0,p2d:0,p1best:{word:'—',dmg:0},p2best:{word:'—',dmg:0}},
   poison:{1:[],2:[]},
   pendingSmall:false,
   pendingChaos:false,
@@ -978,7 +978,7 @@ let G={
 
 let startHP=100,turnSecs=60,seriesRounds=1,seriesWins={1:0,2:0},tileChance=0.05;
 let soloMode=false;
-let soloRunStats={words:0,damage:0};
+let soloRunStats={words:0,damage:0,best:{word:'—',dmg:0}};
 
 /* ═══════════ MONSTERS ═══════════ */
 const MONSTERS=[
@@ -1846,10 +1846,12 @@ async function submitWord(){
   if(G.cur===1){
     G.p2HP-=totalDmg; if(selfHeal)G.p1HP=Math.min(G.maxHP,G.p1HP+selfHeal);
     G.stats.p1w++;G.stats.p1d+=totalDmg;
+    if(totalDmg>G.stats.p1best.dmg)G.stats.p1best={word,dmg:totalDmg};
     if(totalDmg>0){flashHit(2);warriorLunge(1);setTimeout(()=>warriorHit(2),180);addCharge(2,totalDmg);}
   } else {
     G.p1HP-=totalDmg; if(selfHeal)G.p2HP=Math.min(G.maxHP,G.p2HP+selfHeal);
     G.stats.p2w++;G.stats.p2d+=totalDmg;
+    if(totalDmg>G.stats.p2best.dmg)G.stats.p2best={word,dmg:totalDmg};
     if(totalDmg>0){flashHit(1);warriorLunge(2);setTimeout(()=>warriorHit(1),180);addCharge(1,totalDmg);}
   }
 
@@ -2058,6 +2060,7 @@ function gameOver(){
         <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${G.stats.p1d}</div></div>
         <div class="go-stat"><div class="go-stat-label">Avg / Word</div><div class="go-stat-val">${avgDmg1}</div></div>
         <div class="go-stat"><div class="go-stat-label">HP Remaining</div><div class="go-stat-val">${p1FinalHP}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Best Word</div><div class="go-stat-val" style="font-size:.95rem">${G.stats.p1best.word} <span style="font-size:.75rem;opacity:.7">(${G.stats.p1best.dmg})</span></div></div>
       </div>
       <div class="go-col go-col-p2">
         <div class="go-col-head">${w===2?'👑 ':''}${G.p2Name}</div>
@@ -2065,6 +2068,7 @@ function gameOver(){
         <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${G.stats.p2d}</div></div>
         <div class="go-stat"><div class="go-stat-label">Avg / Word</div><div class="go-stat-val">${avgDmg2}</div></div>
         <div class="go-stat"><div class="go-stat-label">HP Remaining</div><div class="go-stat-val">${p2FinalHP}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Best Word</div><div class="go-stat-val" style="font-size:.95rem">${G.stats.p2best.word} <span style="font-size:.75rem;opacity:.7">(${G.stats.p2best.dmg})</span></div></div>
       </div>
     </div>
     <div class="go-footer">
@@ -2229,6 +2233,7 @@ function soloWin(){
   setTimeout(()=>t.classList.remove('show'),2000);
   soloRunStats.words+=G.stats.p1w;
   soloRunStats.damage+=G.stats.p1d;
+  if(G.stats.p1best.dmg>soloRunStats.best.dmg)soloRunStats.best=G.stats.p1best;
   soloWave++;
   setTimeout(()=>{
     startSoloRound(G.p1Name, G.p1HP);
@@ -2242,6 +2247,7 @@ function soloGameOver(){
   const totalWords=soloRunStats.words+G.stats.p1w;
   const totalDmg=soloRunStats.damage+G.stats.p1d;
   const avgDmg=totalWords>0?Math.round(totalDmg/totalWords):0;
+  const runBest=G.stats.p1best.dmg>soloRunStats.best.dmg?G.stats.p1best:soloRunStats.best;
   const go=$$('go-winner');go.textContent=G.p1Name;go.className='go-winner p1';
   $$('go-sub').textContent=`fell on Wave ${soloWave+1} — ${soloWave} wave${soloWave!==1?'s':''} cleared`;
   $$('go-stats').innerHTML=`
@@ -2252,6 +2258,7 @@ function soloGameOver(){
         <div class="go-stat"><div class="go-stat-label">Words Played</div><div class="go-stat-val">${totalWords}</div></div>
         <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${totalDmg}</div></div>
         <div class="go-stat"><div class="go-stat-label">Avg Dmg / Word</div><div class="go-stat-val">${avgDmg}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Best Word</div><div class="go-stat-val" style="font-size:.95rem">${runBest.word} <span style="font-size:.75rem;opacity:.7">(${runBest.dmg})</span></div></div>
       </div>
     </div>
     <div class="go-footer">
@@ -2276,7 +2283,7 @@ function startSoloRound(p1Name, carryHP){
     p1HP:hpToUse,p2HP:monHP,maxHP:startHP,monsterMaxHP:monHP,
     cur:1,sel:[],busy:false,
     turnSecs:turnSecs,timerLeft:turnSecs,timerInt:null,
-    stats:{p1w:0,p1d:0,p2w:0,p2d:0},
+    stats:{p1w:0,p1d:0,p2w:0,p2d:0,p1best:{word:'—',dmg:0},p2best:{word:'—',dmg:0}},
     ab:{1:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false},2:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false}},
     charge:{1:0,2:0},chargeReady:{1:false,2:false},
     effects:{1:{defend:false,cursed:false,held:[],traps:[]},2:{defend:false,cursed:false,held:[],traps:[]}},
@@ -2322,7 +2329,7 @@ function startRound(p1,p2){
     p1HP:startHP,p2HP:startHP,maxHP:startHP,monsterMaxHP:0,
     cur:1,sel:[],busy:false,
     turnSecs:turnSecs,timerLeft:turnSecs,timerInt:null,
-    stats:{p1w:0,p1d:0,p2w:0,p2d:0},
+    stats:{p1w:0,p1d:0,p2w:0,p2d:0,p1best:{word:'—',dmg:0},p2best:{word:'—',dmg:0}},
     ab:{1:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false},2:{renew:false,renewRestored:false,defend:false,curse:false,hold:false,trap:false}},
     charge:{1:0,2:0},chargeReady:{1:false,2:false},
     effects:{1:{defend:false,cursed:false,held:[],traps:[]},2:{defend:false,cursed:false,held:[],traps:[]}},
@@ -2348,7 +2355,7 @@ $$('start-btn').addEventListener('click',()=>{
   const p1=$$('p1n').value.trim()||'Champion';
   if(soloMode){
     soloWave=0;
-    soloRunStats={words:0,damage:0};
+    soloRunStats={words:0,damage:0,best:{word:'—',dmg:0}};
     seriesWins={1:0,2:0};
     startSoloRound(p1);
   } else {
@@ -2477,6 +2484,7 @@ $$('override-btn').addEventListener('click',()=>{
 <div id="tooltip"></div>
 </body>
 </html>
+
 
 
 

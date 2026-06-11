@@ -976,6 +976,7 @@ let G={
 
 let startHP=100,turnSecs=60,seriesRounds=1,seriesWins={1:0,2:0},tileChance=0.05;
 let soloMode=false;
+let soloRunStats={words:0,damage:0};
 
 /* ═══════════ MONSTERS ═══════════ */
 const MONSTERS=[
@@ -1424,6 +1425,7 @@ function renderEffectsBar(){
   }
 }
 
+const SOLO_DISABLED_ABS=new Set(['curse','hold','trap']);
 function updateAbilityButtons(){
   [1,2].forEach(p=>{
     ['renew','defend','curse','hold','trap'].forEach(ab=>{
@@ -1433,9 +1435,11 @@ function updateAbilityButtons(){
       const used=G.ab[p][ab];
       const pendingActive=!!(G.pending[p]&&G.pending[p][ab]);
       const charged=G.chargeReady&&G.chargeReady[p];
-      btn.disabled=(!isMyTurn)||used||pendingActive||!charged;
+      const soloBlocked=soloMode&&SOLO_DISABLED_ABS.has(ab);
+      btn.disabled=(!isMyTurn)||used||pendingActive||!charged||soloBlocked;
       btn.className=`ab-btn ${ab}`;
-      if(used)btn?.classList.add('used');
+      if(soloBlocked)btn?.classList.add('used');
+      else if(used)btn?.classList.add('used');
       else if(pendingActive)btn?.classList.add('active-effect');
       else if(!charged)btn?.classList.add('charge-locked');
     });
@@ -1747,7 +1751,15 @@ async function submitWord(){
   // Apply collected tile powers
   let bonusDmg=0,healAmt=0,boomVal=0;
   let hasSmall=false,hasChaos=false;
+  // Tile types that target the opponent and do nothing in solo mode — convert to heal
+  const SOLO_USELESS=new Set(['small','chaos','time','invis']);
   for(const pw of collectedPowers){
+    // In solo mode, redirect useless opponent-targeting powers to a small heal
+    if(soloMode&&SOLO_USELESS.has(pw.type)){
+      const v=3+Math.floor(Math.random()*5); // 3-7 HP
+      healAmt+=v; fxLog.push(`❤️+${v} (converted)`);
+      continue;
+    }
     if(pw.type==='xdmg'){
       const v=4+Math.floor(Math.random()*5); // 4-8
       bonusDmg+=v; fxLog.push(`⚔️+${v}`);
@@ -2162,6 +2174,8 @@ function soloWin(){
   t.style.borderColor='var(--ok)';
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2000);
+  soloRunStats.words+=G.stats.p1w;
+  soloRunStats.damage+=G.stats.p1d;
   soloWave++;
   setTimeout(()=>{
     startSoloRound(G.p1Name, G.p1HP);
@@ -2171,18 +2185,20 @@ function soloWin(){
 function soloGameOver(){
   stopTimer();
   SFX.win();
+  // Add current (unfinished) wave stats to cumulative total
+  const totalWords=soloRunStats.words+G.stats.p1w;
+  const totalDmg=soloRunStats.damage+G.stats.p1d;
+  const avgDmg=totalWords>0?Math.round(totalDmg/totalWords):0;
   const go=$$('go-winner');go.textContent=G.p1Name;go.className='go-winner p1';
-  $$('go-sub').textContent=`fell on Wave ${soloWave+1} — reached ${G.p1Name}'s best!`;
-  const totalTurns=G.stats.p1w;
-  const avgDmg1=totalTurns>0?Math.round(G.stats.p1d/totalTurns):0;
+  $$('go-sub').textContent=`fell on Wave ${soloWave+1} — ${soloWave} wave${soloWave!==1?'s':''} cleared`;
   $$('go-stats').innerHTML=`
     <div class="go-stats-cols">
       <div class="go-col go-col-p1" style="grid-column:1/-1">
         <div class="go-col-head">📊 Run Stats — ${G.p1Name}</div>
         <div class="go-stat"><div class="go-stat-label">Waves Cleared</div><div class="go-stat-val">${soloWave}</div></div>
-        <div class="go-stat"><div class="go-stat-label">Words Played</div><div class="go-stat-val">${G.stats.p1w}</div></div>
-        <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${G.stats.p1d}</div></div>
-        <div class="go-stat"><div class="go-stat-label">Avg Dmg / Word</div><div class="go-stat-val">${avgDmg1}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Words Played</div><div class="go-stat-val">${totalWords}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Total Damage</div><div class="go-stat-val">${totalDmg}</div></div>
+        <div class="go-stat"><div class="go-stat-label">Avg Dmg / Word</div><div class="go-stat-val">${avgDmg}</div></div>
       </div>
     </div>
     <div class="go-footer">
@@ -2278,6 +2294,7 @@ $$('start-btn').addEventListener('click',()=>{
   const p1=$$('p1n').value.trim()||'Champion';
   if(soloMode){
     soloWave=0;
+    soloRunStats={words:0,damage:0};
     seriesWins={1:0,2:0};
     startSoloRound(p1);
   } else {
@@ -2406,4 +2423,5 @@ $$('override-btn').addEventListener('click',()=>{
 <div id="tooltip"></div>
 </body>
 </html>
+
 

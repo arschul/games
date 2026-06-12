@@ -935,9 +935,9 @@ function genTilePowers(gridLen){
   return powers;
 }
 
-async function isValid(word){
+async function isValid(word, signal){
   if(word.length<2)return false;
-  try{return(await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`)).ok;}
+  try{return(await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`,{signal})).ok;}
   catch(e){return word.length>=3;}
 }
 
@@ -1746,8 +1746,29 @@ async function submitWord(){
   stopTimer();
   const word=G.sel.map(i=>G.grid[i]).join('');
   SFX.check();
-  const ok=G._forceAccept||await isValid(word);
+  let ok,timedOut=false;
+  if(G._forceAccept){
+    ok=true;
+  }else{
+    const controller=new AbortController();
+    const slowTimer=setTimeout(()=>{
+      timedOut=true;
+      controller.abort();
+      // Dictionary is too slow — unblock the UI and let the player override
+      const bar=$$('invalid-bar');
+      if(bar){
+        $$('invalid-msg').textContent=`⏳ Dictionary is taking too long for "${word}"`;
+        bar.style.display='flex';
+      }
+      G.busy=false;
+      $$('submit-btn').disabled=false;
+      startTimerWith(G.timerLeft);
+    },10000);
+    ok=await isValid(word,controller.signal);
+    clearTimeout(slowTimer);
+  }
   G._forceAccept=false;
+  if(timedOut)return; // UI already unblocked above — abandon this attempt
   if(!ok){
     SFX.bad();
     // Show invalid bar — timer keeps running, player can override

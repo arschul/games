@@ -1386,7 +1386,7 @@ function renderGrid(){
     const turnsLeft=pw&&pw.turns!=null?pw.turns:null;
     const turnsTag=turnsLeft!=null?`<span class="cell-turns-tag">${turnsLeft}</span>`:'';
     const pwTag=pw?`<span class="cell-power-tag" data-tip="${pwTips[pw.type]||pw.type}">${pwIcons[pw.type]}</span>${turnsTag}`:'';
-    if(pw&&!isHeld&&!isCursed)c.classList.add('pow-'+pw.type);
+    if(pw&&!isHeld&&!isCursed){c.classList.add('pow-'+pw.type);c.dataset.tip=pwTips[pw.type]||pw.type;}
     c.innerHTML=`${heldTag}${cursTag}${pwTag}<div class="cell-letter">${l}</div><div class="cell-score">${sc}pt</div>`;
     // Preserve invisibility animation phase so clicking doesn't reset it
     if(G.invisActive && G.invisStart){
@@ -1475,6 +1475,8 @@ function renderEffectsBar(){
   const oppName=opp===1?G.p1Name:G.p2Name;
   // Show shield on the OPPONENT (defender) — visible to attacker so they know damage will be halved
   if(G.effects[opp].defend)bar.innerHTML+=`<span class="eff-tag defend-tag">🛡 ${oppName} Shielded</span>`;
+  // In solo mode, also show the player's own shield (it guards against the monster's next hit)
+  if(soloMode&&G.effects[1].defend)bar.innerHTML+=`<span class="eff-tag defend-tag">🛡 ${G.p1Name} Shielded</span>`;
   // Current player's incoming effects
   if(ef.held.length)bar.innerHTML+=`<span class="eff-tag hold-tag">🔒 ${ef.held.length} Tiles Locked</span>`;
   if(ef.traps.length)bar.innerHTML+=`<span class="eff-tag trap-tag">⚡ ${ef.traps.length} Traps Active</span>`;
@@ -1842,12 +1844,18 @@ async function submitWord(){
   if(hasSmall)G.pendingSmall=true;
   if(hasChaos)G.pendingChaos=true;
 
+  // Overkill damage against the monster converts to bonus energy for the player
+  let overkill=0;
+  if(G.cur===1&&soloMode)overkill=Math.max(0,totalDmg-Math.max(0,G.p2HP));
+  if(overkill>0)fxLog.push(`⚡+${overkill} Energy`);
+
   addLog(G.cur,word,totalDmg,fxLog);
   if(G.cur===1){
     G.p2HP-=totalDmg; if(selfHeal)G.p1HP=Math.min(G.maxHP,G.p1HP+selfHeal);
     G.stats.p1w++;G.stats.p1d+=totalDmg;
     if(totalDmg>G.stats.p1best.dmg)G.stats.p1best={word,dmg:totalDmg};
     if(totalDmg>0){flashHit(2);warriorLunge(1);setTimeout(()=>warriorHit(2),180);addCharge(2,totalDmg);}
+    if(overkill>0)addCharge(1,overkill);
   } else {
     G.p1HP-=totalDmg; if(selfHeal)G.p2HP=Math.min(G.maxHP,G.p2HP+selfHeal);
     G.stats.p2w++;G.stats.p2d+=totalDmg;
@@ -1859,6 +1867,7 @@ async function submitWord(){
   if(defended)extra+='🛡 Halved ';
   if(bonusDmg)extra+=`⚔️+${bonusDmg} `;if(boomVal)extra+=`💥${boomVal>=0?'+':''}${boomVal} `;
   if(selfHeal)extra+=`❤️+${selfHeal} `;
+  if(overkill>0)extra+=`⚡+${overkill} Energy `;
   SFX.ok(totalDmg);setTimeout(()=>SFX.hit(totalDmg),200);
   showToast(word,totalDmg,true,extra.trim());
 
@@ -2172,7 +2181,9 @@ function renderMonster(){
 function enemyAttack(){
   if(!soloMode)return;
   const mon=getMonster();
-  const dmg=mon.dmg;
+  let dmg=mon.dmg;
+  const defended=G.effects[1].defend;
+  if(defended){dmg=Math.floor(dmg/2);consumeDefend(1);}
   // Animate monster
   const w2=$$('w2-wrap');
   if(w2){w2.classList.remove('lunge');void w2.offsetWidth;w2.classList.add('lunge');}
@@ -2185,12 +2196,14 @@ function enemyAttack(){
     // Log enemy attack
     const col=$$('log-p2');
     if(col){
+      const fxStr=defended?`<span class="log-fx">🛡 Halved</span>`:'';
       const d=document.createElement('div');
       d.className='log-entry p2-e';
-      d.innerHTML=`<span class="log-word">${mon.emoji} STRIKE</span><div class="log-meta"><span class="log-dmg">−${dmg}</span></div>`;
+      d.innerHTML=`<span class="log-word">${mon.emoji} STRIKE</span><div class="log-meta">${fxStr}<span class="log-dmg">−${dmg}</span></div>`;
       col.insertBefore(d,col.firstChild);
     }
     SFX.hit(dmg);
+    if(defended)showAbilityToast('🛡 BLOCKED',`Damage halved: ${mon.dmg} → ${dmg}`);
     updateHP();
     if(G.p1HP<=0){setTimeout(soloGameOver,600);return;}
     // Now pass turn back to player
@@ -2236,7 +2249,7 @@ function soloWin(){
   if(G.stats.p1best.dmg>soloRunStats.best.dmg)soloRunStats.best=G.stats.p1best;
   soloWave++;
   setTimeout(()=>{
-    startSoloRound(G.p1Name, G.p1HP);
+    startSoloRound(G.p1Name, G.p1HP, G.grid, G.powers);
   },2100);
 }
 
@@ -2268,15 +2281,15 @@ function soloGameOver(){
   showScreen('gameover-screen');
 }
 
-function startSoloRound(p1Name, carryHP){
+function startSoloRound(p1Name, carryHP, carryGrid, carryPowers){
   soloMode=true;
-  const _g=genGrid();
+  const _g=carryGrid||genGrid();
   const mon=getMonster();
   const hpToUse=(carryHP!==undefined)?carryHP:startHP;
   const monHP=Math.floor(startHP*(mon.cycle>0?0.6:0.5));
   G={
     grid:_g,
-    powers:genTilePowers(_g.length),
+    powers:carryPowers||genTilePowers(_g.length),
     poison:{1:[],2:[]},pendingSmall:false,pendingChaos:false,pendingTimeDist:false,pendingInvis:false,
     invisActive:false,invisStart:null,chaosRotations:null,turnSecsOverride:null,_thisTurnSecs:null,
     p1Name:p1Name,p2Name:mon.name,

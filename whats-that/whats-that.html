@@ -145,7 +145,6 @@
     display: block; width: 100%; height: auto;
     border-radius: 14px;
   }
-  #gameCanvas.clickable { cursor: pointer; }
 
   .status-pill {
     background: var(--card); border-radius: 12px;
@@ -153,19 +152,6 @@
     font-family: 'Fredoka One', cursive; font-size: 1.05rem; color: var(--text);
   }
   .status-pill span { color: var(--TC); transition: color var(--T); }
-
-  .reveal-row { width: 100%; max-width: 520px; display: flex; justify-content: center; }
-  .btn-reveal {
-    width: 100%;
-    padding: 14px 20px; border-radius: 16px; border: none;
-    font-family: 'Fredoka One', cursive; font-size: 1.15rem;
-    background: var(--TC); color: white;
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--TC) 40%, transparent);
-    transition: background var(--T), box-shadow var(--T), transform 0.2s;
-    cursor: pointer;
-  }
-  .btn-reveal:hover { transform: translateY(-2px); }
-  .btn-reveal:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
   .guess-area {
     background: var(--card); border-radius: 20px;
@@ -307,10 +293,6 @@
       <div class="status-pill">Bonus points if you guess now: <span id="status-value">—</span></div>
       <div class="grid-wrap"><canvas id="gameCanvas" width="480" height="480"></canvas></div>
 
-      <div class="reveal-row" id="reveal-row" style="display:none;">
-        <button class="btn-reveal" id="reveal-btn" onclick="revealMore()">🔍 Reveal More</button>
-      </div>
-
       <div class="guess-area">
         <label>What's the object?</label>
         <div class="guess-row">
@@ -375,7 +357,6 @@ let currentTeam = 'red';
 let roundsWon   = { red:0, blue:0 };
 let revealed    = [];
 let pixelStep   = 0;
-let waitingForGuess = false;
 let roundOver       = false;
 let currentObject   = null;
 let usedObjects      = [];
@@ -408,19 +389,13 @@ function startGame() {
 
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('game-screen').style.display  = 'flex';
-  document.getElementById('reveal-row').style.display   = mode === 'pixel' ? 'flex' : 'none';
-
-  const gc = document.getElementById('gameCanvas');
-  gc.classList.toggle('clickable', mode === 'square');
-  gc.onclick = mode === 'square' ? onGameClick : null;
 
   startRound();
 }
 
 /* ── ROUND ── */
 function startRound() {
-  roundOver       = false;
-  waitingForGuess = false;
+  roundOver = false;
   setGuessButtons(false);
   clearFeedback();
   document.getElementById('guess-input').value = '';
@@ -440,14 +415,24 @@ function startRound() {
 
     if (mode === 'square') {
       revealed = new Array(totalCells).fill(false);
+      revealRandomTile(); // start with a small peek, like pixel mode's level 0
     } else {
       pixelStep = 0;
-      document.getElementById('reveal-btn').disabled = false;
     }
     render();
     updateStatusPill();
+    setGuessButtons(true);
+    document.getElementById('guess-input').focus();
   };
   img.src = currentObject.img;
+}
+
+function revealRandomTile() {
+  const hidden = [];
+  for (let i = 0; i < totalCells; i++) if (!revealed[i]) hidden.push(i);
+  if (!hidden.length) return;
+  const idx = hidden[Math.floor(Math.random() * hidden.length)];
+  revealed[idx] = true;
 }
 
 /* ── RENDERING ── */
@@ -479,13 +464,6 @@ function renderSquare() {
       g.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = g;
       ctx.fillRect(px, py, cell, cell);
-
-      const fontSize = Math.max(10, Math.round(cell * 0.32));
-      ctx.font = `bold ${fontSize}px Nunito, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.fillText(i + 1, px + cell / 2, py + cell / 2);
     }
   }
 }
@@ -510,44 +488,6 @@ function renderPixel() {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, CS, CS);
   ctx.drawImage(tinyCanvas, 0, 0, blocks, blocks, 0, 0, CS, CS);
-}
-
-/* ── INPUT ── */
-function onGameClick(e) {
-  if (roundOver || waitingForGuess) return;
-  const gc   = document.getElementById('gameCanvas');
-  const rect = gc.getBoundingClientRect();
-  const sx   = CS / rect.width;
-  const sy   = CS / rect.height;
-  const mx   = (e.clientX - rect.left) * sx;
-  const my   = (e.clientY - rect.top)  * sy;
-  const cell = CS / gridSize;
-  const col  = Math.floor(mx / cell);
-  const row  = Math.floor(my / cell);
-  const idx  = row * gridSize + col;
-  if (idx < 0 || idx >= totalCells || revealed[idx]) return;
-
-  revealed[idx] = true;
-  waitingForGuess = true;
-  setGuessButtons(true);
-  render();
-  updateStatusPill();
-  showFeedback('pass', '👆 Now guess the object — or pass your turn!');
-  document.getElementById('guess-input').focus();
-}
-
-function revealMore() {
-  if (roundOver || waitingForGuess) return;
-  if (pixelStep >= maxSteps - 1) return;
-
-  pixelStep++;
-  waitingForGuess = true;
-  setGuessButtons(true);
-  document.getElementById('reveal-btn').disabled = true;
-  render();
-  updateStatusPill();
-  showFeedback('pass', '👆 Now guess the object — or pass your turn!');
-  document.getElementById('guess-input').focus();
 }
 
 /* ── LOGIC ── */
@@ -636,51 +576,62 @@ function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 /* ── GUESSING ── */
 function submitGuess() {
-  if (roundOver || !waitingForGuess) return;
+  if (roundOver) return;
   const input = document.getElementById('guess-input');
   const guess = input.value.trim();
   if (!guess) return;
 
   if (isCorrectGuess(guess, currentObject.names)) {
-    waitingForGuess = false;
     const pts = mode === 'square' ? squaresLeft() : (maxSteps - pixelStep);
     roundsWon[currentTeam]++;
     updateScoreUI();
     revealFully();
     render();
+    setGuessButtons(false);
     showFeedback('correct', `✅ Correct! +${pts} bonus point${pts === 1 ? '' : 's'}!`);
     setTimeout(() => showRoundResult(currentTeam, pts), 700);
   } else {
-    showFeedback('wrong', '❌ Not quite!');
-    waitingForGuess = false;
-    setGuessButtons(false);
-    input.value = '';
-
-    if (isAtMaxReveal()) {
-      revealFully();
-      render();
-      setTimeout(() => showRoundResult(null, 0), 900);
-    } else {
-      setTimeout(() => { switchTeam(); clearFeedback(); }, 1200);
-    }
+    handleMissedGuess('wrong');
   }
 }
 
 function passGuess() {
-  if (roundOver || !waitingForGuess) return;
+  if (roundOver) return;
+  handleMissedGuess('pass');
+}
+
+function handleMissedGuess(type) {
   const teamName = currentTeam === 'red' ? 'Team Red' : 'Team Blue';
-  waitingForGuess = false;
+  const input = document.getElementById('guess-input');
   setGuessButtons(false);
+  input.value = '';
 
   if (isAtMaxReveal()) {
-    showFeedback('pass', `⏭️ ${teamName} passed.`);
+    // Already fully revealed before this guess — nothing left to show.
+    showFeedback(type, type === 'wrong' ? '❌ Not quite — and the picture is fully revealed!' : `⏭️ ${teamName} passed — the picture is fully revealed!`);
     revealFully();
     render();
     setTimeout(() => showRoundResult(null, 0), 900);
-  } else {
-    showFeedback('pass', `⏭️ ${teamName} passed. Turn switches!`);
-    setTimeout(() => { switchTeam(); clearFeedback(); }, 900);
+    return;
   }
+
+  // Reveal a bit more, then it's the other team's turn.
+  if (mode === 'square') revealRandomTile();
+  else pixelStep++;
+  render();
+  updateStatusPill();
+
+  const msg = type === 'wrong'
+    ? '❌ Not quite! More is revealed — next team\'s turn!'
+    : `⏭️ ${teamName} passed. More is revealed — next team's turn!`;
+  showFeedback(type, msg);
+
+  setTimeout(() => {
+    switchTeam();
+    clearFeedback();
+    setGuessButtons(true);
+    input.focus();
+  }, 1400);
 }
 
 function revealFully() {

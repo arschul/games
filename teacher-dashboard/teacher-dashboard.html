@@ -100,6 +100,7 @@
     color:#fff;
     box-shadow:0 4px 14px -2px rgba(79,109,245,.6);
   }
+  .sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:10px 4px 10px;}
 
   /* Main */
   .main{flex:1;padding:28px 36px;max-width:1180px;}
@@ -341,6 +342,16 @@
     <div class="nav-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg></div>
     Reports
   </div>
+  <div class="sidebar-divider"></div>
+  <div class="nav-item" onclick="exportData()">
+    <div class="nav-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
+    Backup data
+  </div>
+  <label class="nav-item" style="margin-bottom:0;">
+    <div class="nav-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 3h14"/></svg></div>
+    Restore backup
+    <input type="file" accept="application/json" style="display:none;" onchange="importData(this.files[0]); this.value='';">
+  </label>
 </div>
 
 <div class="main">
@@ -1193,6 +1204,62 @@ function removeHoliday(dateStr){
   scheduleSave('holidays', state.holidays);
   renderCalendar();
   openDayModal(dateStr);
+}
+
+/* ================= BACKUP / RESTORE ================= */
+function exportData(){
+  const data = {
+    app: 'efl-teacher-dashboard',
+    exportedAt: new Date().toISOString(),
+    classes: state.classes,
+    students: state.students,
+    sessions: state.sessions,
+    events: state.events,
+    holidays: state.holidays
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `efl-dashboard-backup-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function importData(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let data;
+    try{
+      data = JSON.parse(e.target.result);
+    }catch(err){
+      alert("Could not read this file — make sure it's a backup JSON exported from this dashboard.");
+      return;
+    }
+    if(!data || !Array.isArray(data.classes)){
+      alert("This file doesn't look like a valid dashboard backup.");
+      return;
+    }
+    if(!confirm('This will replace ALL current classes, students, roll call records, calendar events, and holidays with the contents of this backup. Continue?')) return;
+    state.classes = data.classes || [];
+    state.students = data.students || [];
+    state.sessions = data.sessions || {};
+    state.events = data.events || [];
+    state.holidays = data.holidays || [];
+    saveKey('classes', state.classes);
+    saveKey('students', state.students);
+    saveKey('sessions', state.sessions);
+    saveKey('events', state.events);
+    saveKey('holidays', state.holidays);
+    state.expandedClassId = null;
+    state.openDrawer = null;
+    state.reportsSelection = {classId:'', studentId:''};
+    navigate('dashboard');
+    alert('Backup restored.');
+  };
+  reader.readAsText(file);
 }
 
 /* ================= INIT ================= */

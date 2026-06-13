@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What's That? — Object Reveal</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #ff4757;
+    --red-light: #ff6b81;
+    --red-bg: #fff0f1;
+    --blue: #1e90ff;
+    --blue-light: #74b9ff;
+    --blue-bg: #f0f7ff;
+    --card: #ffffff;
+    --text: #2d3436;
+    --shadow: rgba(0,0,0,0.12);
+    --T: 0.5s cubic-bezier(.4,0,.2,1);
+    --TC: var(--red);
+    --TB: var(--red-bg);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--TB);
+    min-height: 100vh;
+    transition: background var(--T);
+    overflow-x: hidden;
+    color: var(--text);
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--TC) 12%, transparent) 0%, transparent 50%),
+      radial-gradient(circle at 90% 80%, color-mix(in srgb, var(--TC) 8%, transparent) 0%, transparent 50%);
+    pointer-events: none;
+    transition: background var(--T);
+    z-index: 0;
+  }
+  #app {
+    position: relative; z-index: 1;
+    max-width: 860px; margin: 0 auto;
+    padding: 16px;
+    min-height: 100vh;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  header { text-align: center; position: relative; }
+  header h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    color: var(--TC);
+    text-shadow: 3px 3px 0 color-mix(in srgb, var(--TC) 20%, transparent);
+    transition: color var(--T), text-shadow var(--T);
+  }
+  header p {
+    font-weight: 700; color: #888; font-size: 0.92rem; margin-top: 4px;
+  }
+
+  .topbar { display: flex; justify-content: flex-end; }
+  .link-btn {
+    background: none; border: none; cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 0.82rem; color: #999; padding: 4px 10px;
+    border-radius: 8px; transition: color 0.2s, background 0.2s;
+  }
+  .link-btn:hover { color: var(--TC); background: var(--card); }
+
+  .scoreboard { display: flex; gap: 10px; justify-content: center; }
+  .team-score {
+    flex: 1; max-width: 210px;
+    padding: 12px 18px;
+    border-radius: 18px;
+    background: var(--card);
+    box-shadow: 0 4px 20px var(--shadow);
+    display: flex; align-items: center; gap: 10px;
+    transition: all 0.3s;
+    border: 3px solid transparent;
+  }
+  .team-score.active-red  { border-color: var(--red);  box-shadow: 0 4px 24px rgba(255,71,87,0.3); }
+  .team-score.active-blue { border-color: var(--blue); box-shadow: 0 4px 24px rgba(30,144,255,0.3); }
+  .team-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+  .dot-red  { background: var(--red); }
+  .dot-blue { background: var(--blue); }
+  .team-name { font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text); }
+  .team-pts  { font-family: 'Fredoka One', cursive; font-size: 1.5rem; line-height: 1; color: var(--text); }
+
+  .turn-banner {
+    text-align: center;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.25rem;
+    padding: 9px 24px;
+    border-radius: 50px;
+    background: var(--TC);
+    color: white;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--TC) 40%, transparent);
+    transition: background var(--T), box-shadow var(--T);
+    align-self: center;
+  }
+
+  /* SETUP */
+  #setup-screen {
+    display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 26px 16px;
+  }
+  .setup-title { font-family: 'Fredoka One', cursive; font-size: 2.1rem; color: var(--text); text-align: center; }
+  .setup-title span { color: var(--red); }
+  .setup-subtitle { font-family: 'Fredoka One', cursive; font-size: 1.25rem; color: var(--text); text-align: center; }
+  .setup-subtitle span { color: var(--red); }
+
+  .mode-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; width: 100%; max-width: 460px; }
+  .mode-grid.narrow { max-width: 320px; }
+  .mode-btn {
+    padding: 18px 14px; border-radius: 20px; border: 3px solid #e0e0e0;
+    background: var(--card); cursor: pointer; text-align: center;
+    transition: all 0.2s; font-family: 'Nunito', sans-serif;
+  }
+  .mode-btn:hover { border-color: var(--red); transform: translateY(-3px); box-shadow: 0 8px 24px var(--shadow); }
+  .mode-btn.selected { border-color: var(--red); background: color-mix(in srgb, var(--red) 8%, white); box-shadow: 0 8px 24px color-mix(in srgb, var(--red) 25%, transparent); }
+  .mode-btn .mode-emoji { font-size: 1.9rem; display: block; margin-bottom: 5px; }
+  .mode-btn .mode-label { font-family: 'Fredoka One', cursive; font-size: 1.15rem; color: var(--text); display: block; }
+  .mode-btn .mode-desc  { font-size: 0.78rem; color: #888; }
+
+  .start-btn {
+    padding: 15px 46px; border-radius: 50px; border: none;
+    background: linear-gradient(135deg, var(--red), var(--red-light));
+    color: white; font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+    cursor: pointer; box-shadow: 0 8px 24px rgba(255,71,87,0.4);
+    transition: all 0.2s;
+  }
+  .start-btn:hover { transform: translateY(-3px) scale(1.05); }
+
+  /* GAME */
+  #game-screen { display: none; flex-direction: column; gap: 14px; align-items: center; }
+  #play-phase { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+
+  .grid-wrap {
+    width: 100%; max-width: 520px;
+    background: var(--card); border-radius: 24px;
+    padding: 10px; box-shadow: 0 8px 32px var(--shadow);
+  }
+  #gameCanvas {
+    display: block; width: 100%; height: auto;
+    border-radius: 14px;
+  }
+  #gameCanvas.clickable { cursor: pointer; }
+
+  .status-pill {
+    background: var(--card); border-radius: 12px;
+    padding: 7px 20px; box-shadow: 0 2px 12px var(--shadow);
+    font-family: 'Fredoka One', cursive; font-size: 1.05rem; color: var(--text);
+  }
+  .status-pill span { color: var(--TC); transition: color var(--T); }
+
+  .reveal-row { width: 100%; max-width: 520px; display: flex; justify-content: center; }
+  .btn-reveal {
+    width: 100%;
+    padding: 14px 20px; border-radius: 16px; border: none;
+    font-family: 'Fredoka One', cursive; font-size: 1.15rem;
+    background: var(--TC); color: white;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--TC) 40%, transparent);
+    transition: background var(--T), box-shadow var(--T), transform 0.2s;
+    cursor: pointer;
+  }
+  .btn-reveal:hover { transform: translateY(-2px); }
+  .btn-reveal:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .guess-area {
+    background: var(--card); border-radius: 20px;
+    padding: 14px 18px; box-shadow: 0 4px 20px var(--shadow);
+    width: 100%; max-width: 520px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .guess-area label { font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--TC); transition: color var(--T); }
+  .guess-row { display: flex; gap: 8px; }
+  .guess-input {
+    flex: 1; padding: 11px 15px; border-radius: 12px;
+    border: 2px solid #e0e0e0; font-family: 'Nunito', sans-serif;
+    font-size: 1rem; font-weight: 700; outline: none;
+    transition: border-color 0.2s; background: #fafafa;
+  }
+  .guess-input:focus { border-color: var(--TC); }
+  .btn {
+    padding: 11px 20px; border-radius: 12px; border: none;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+  .btn-guess { background: var(--TC); color: white; box-shadow: 0 4px 12px color-mix(in srgb, var(--TC) 40%, transparent); transition: background var(--T), box-shadow var(--T); }
+  .btn-pass  { background: #f0f0f0; color: #666; }
+  .btn-pass:hover { background: #e0e0e0; }
+  .feedback { min-height: 26px; text-align: center; font-weight: 700; font-size: 0.92rem; border-radius: 8px; padding: 3px 12px; transition: all 0.3s; }
+  .feedback.correct { color: #00b894; background: #e6fff9; }
+  .feedback.wrong   { color: #d63031; background: #fff5f5; }
+  .feedback.pass    { color: #636e72; background: #f5f5f5; }
+
+  /* RESULT OVERLAY */
+  #result-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  #result-overlay.show { display: flex; }
+  .win-card {
+    background: white; border-radius: 32px;
+    padding: 44px 36px; text-align: center;
+    max-width: 400px; width: 90%;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+    animation: winPop 0.5s cubic-bezier(.175,.885,.32,1.275);
+  }
+  @keyframes winPop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  #resultCanvas { display: block; margin: 0 auto 14px; border-radius: 16px; border: 3px solid #eee; }
+  .win-title { font-family: 'Fredoka One', cursive; font-size: 1.7rem; margin-bottom: 6px; }
+  .win-team-red  { color: var(--red); }
+  .win-team-blue { color: var(--blue); }
+  .win-points { font-size: 1rem; color: #636e72; margin-bottom: 20px; font-weight: 700; }
+  .win-scores { display: flex; gap: 14px; justify-content: center; margin-bottom: 24px; }
+  .win-score-item { padding: 10px 18px; border-radius: 14px; background: #f8f9fa; }
+  .ws-name { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .ws-pts  { font-family: 'Fredoka One', cursive; font-size: 1.9rem; }
+  .ws-red  { color: var(--red); }
+  .ws-blue { color: var(--blue); }
+  .win-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn-next { background: linear-gradient(135deg,#00b894,#00cec9); color:white; }
+  .btn-new  { background: linear-gradient(135deg,#636e72,#2d3436); color:white; }
+
+  .confetti-piece {
+    position: fixed; top: -10px;
+    animation: confettiFall linear forwards;
+    z-index: 200; border-radius: 2px;
+  }
+  @keyframes confettiFall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🔍 What's That?</h1>
+    <p>Reveal the picture together — first team to call it correctly scores!</p>
+  </header>
+
+  <!-- SETUP -->
+  <div id="setup-screen">
+    <div class="setup-title">Choose <span>Mode</span></div>
+    <div class="mode-grid">
+      <button class="mode-btn selected" data-group="mode" data-value="square" onclick="selectOption(this)">
+        <span class="mode-emoji">🟦</span><span class="mode-label">Square Reveal</span><span class="mode-desc">Click tiles to reveal</span>
+      </button>
+      <button class="mode-btn" data-group="mode" data-value="pixel" onclick="selectOption(this)">
+        <span class="mode-emoji">🌫️</span><span class="mode-label">Pixelation</span><span class="mode-desc">Sharpen the photo</span>
+      </button>
+    </div>
+
+    <div class="setup-subtitle">Choose <span>Difficulty</span></div>
+    <div class="mode-grid">
+      <button class="mode-btn selected" data-group="diff" data-value="easy" onclick="selectOption(this)">
+        <span class="mode-emoji">🌱</span><span class="mode-label">Easy</span><span class="mode-desc">Fast reveals</span>
+      </button>
+      <button class="mode-btn" data-group="diff" data-value="medium" onclick="selectOption(this)">
+        <span class="mode-emoji">🔥</span><span class="mode-label">Medium</span><span class="mode-desc">Steady reveals</span>
+      </button>
+      <button class="mode-btn" data-group="diff" data-value="hard" onclick="selectOption(this)">
+        <span class="mode-emoji">💀</span><span class="mode-label">Hard</span><span class="mode-desc">Slow reveals</span>
+      </button>
+      <button class="mode-btn" data-group="diff" data-value="expert" onclick="selectOption(this)">
+        <span class="mode-emoji">👑</span><span class="mode-label">Expert</span><span class="mode-desc">Very slow reveals</span>
+      </button>
+    </div>
+
+    <div class="setup-subtitle">First To <span>?</span></div>
+    <div class="mode-grid narrow">
+      <button class="mode-btn selected" data-group="win" data-value="3" onclick="selectOption(this)">
+        <span class="mode-emoji">🥉</span><span class="mode-label">3</span><span class="mode-desc">rounds to win</span>
+      </button>
+      <button class="mode-btn" data-group="win" data-value="5" onclick="selectOption(this)">
+        <span class="mode-emoji">🏆</span><span class="mode-label">5</span><span class="mode-desc">rounds to win</span>
+      </button>
+    </div>
+
+    <button class="start-btn" onclick="startGame()">Let's Play! 🎉</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen">
+    <div class="topbar">
+      <button class="link-btn" onclick="if(confirm('Start a new match? Current scores will be lost.')) newMatch();">⚙ New Match</button>
+    </div>
+
+    <div class="scoreboard">
+      <div class="team-score" id="score-red">
+        <div class="team-dot dot-red"></div>
+        <div><div class="team-name">Team Red</div><div class="team-pts" id="pts-red">0</div></div>
+      </div>
+      <div class="team-score" id="score-blue">
+        <div class="team-dot dot-blue"></div>
+        <div><div class="team-name">Team Blue</div><div class="team-pts" id="pts-blue">0</div></div>
+      </div>
+    </div>
+
+    <div class="turn-banner" id="turn-banner">🔴 Team Red's Turn</div>
+
+    <div id="play-phase">
+      <div class="status-pill">Bonus points if you guess now: <span id="status-value">—</span></div>
+      <div class="grid-wrap"><canvas id="gameCanvas" width="480" height="480"></canvas></div>
+
+      <div class="reveal-row" id="reveal-row" style="display:none;">
+        <button class="btn-reveal" id="reveal-btn" onclick="revealMore()">🔍 Reveal More</button>
+      </div>
+
+      <div class="guess-area">
+        <label>What's the object?</label>
+        <div class="guess-row">
+          <input class="guess-input" id="guess-input" type="text" placeholder="Type your guess…" autocomplete="off">
+          <button class="btn btn-guess" onclick="submitGuess()">Guess!</button>
+          <button class="btn btn-pass" onclick="passGuess()">Pass</button>
+        </div>
+        <div class="feedback" id="feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result-overlay">
+  <div class="win-card">
+    <canvas id="resultCanvas" width="140" height="140"></canvas>
+    <div class="win-title" id="result-title">Team Red Got It!</div>
+    <div class="win-points" id="result-points">It was a Backpack! +12 bonus points</div>
+    <div class="win-scores">
+      <div class="win-score-item"><div class="ws-name ws-red">Team Red</div><div class="ws-pts ws-red" id="ws-red">0</div></div>
+      <div class="win-score-item"><div class="ws-name ws-blue">Team Blue</div><div class="ws-pts ws-blue" id="ws-blue">0</div></div>
+    </div>
+    <div class="win-actions">
+      <button class="btn btn-next" id="btn-next" onclick="nextRound()">Next Object →</button>
+      <button class="btn btn-new"  onclick="newMatch()">New Match 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── DATA ── */
+const OBJECTS = [
+  { id:'umbrella',   img:'images/umbrella.jpg',   names:['umbrella'] },
+  { id:'bicycle',    img:'images/bicycle.jpg',    names:['bicycle','bike'] },
+  { id:'backpack',   img:'images/backpack.jpg',   names:['backpack','rucksack','bag'] },
+  { id:'guitar',     img:'images/guitar.jpg',     names:['guitar'] },
+  { id:'telescope',  img:'images/telescope.jpg',  names:['telescope'] },
+  { id:'skateboard', img:'images/skateboard.jpg', names:['skateboard'] },
+  { id:'teapot',     img:'images/teapot.jpg',     names:['teapot','tea pot'] },
+  { id:'camera',     img:'images/camera.jpg',     names:['camera'] },
+  { id:'cactus',     img:'images/cactus.jpg',     names:['cactus'] },
+  { id:'balloon',    img:'images/balloon.jpg',    names:['hot air balloon','balloon','air balloon'] },
+];
+
+const DIFF = {
+  easy:   { grid:4, steps:4 },
+  medium: { grid:5, steps:6 },
+  hard:   { grid:6, steps:8 },
+  expert: { grid:7, steps:10 },
+};
+
+const CS = 480;
+
+/* ── STATE ── */
+let mode       = 'square';
+let difficulty = 'easy';
+let winTarget  = 3;
+
+let gridSize, maxSteps, totalCells;
+let currentTeam = 'red';
+let roundsWon   = { red:0, blue:0 };
+let revealed    = [];
+let pixelStep   = 0;
+let waitingForGuess = false;
+let roundOver       = false;
+let currentObject   = null;
+let usedObjects      = [];
+
+const bakedCanvas = document.createElement('canvas');
+const tinyCanvas  = document.createElement('canvas');
+
+/* ── SETUP SCREEN ── */
+function selectOption(btn) {
+  const group = btn.dataset.group;
+  document.querySelectorAll(`.mode-btn[data-group="${group}"]`).forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const val = btn.dataset.value;
+  if (group === 'mode') mode = val;
+  else if (group === 'diff') difficulty = val;
+  else if (group === 'win') winTarget = parseInt(val);
+}
+
+function startGame() {
+  const d   = DIFF[difficulty];
+  gridSize  = d.grid;
+  totalCells = gridSize * gridSize;
+  maxSteps  = d.steps;
+
+  roundsWon   = { red:0, blue:0 };
+  usedObjects = [];
+  currentTeam = 'red';
+  updateScoreUI();
+  updateTurnUI();
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  document.getElementById('reveal-row').style.display   = mode === 'pixel' ? 'flex' : 'none';
+
+  const gc = document.getElementById('gameCanvas');
+  gc.classList.toggle('clickable', mode === 'square');
+  gc.onclick = mode === 'square' ? onGameClick : null;
+
+  startRound();
+}
+
+/* ── ROUND ── */
+function startRound() {
+  roundOver       = false;
+  waitingForGuess = false;
+  setGuessButtons(false);
+  clearFeedback();
+  document.getElementById('guess-input').value = '';
+
+  let pool = OBJECTS.filter(o => !usedObjects.includes(o.id));
+  if (!pool.length) { usedObjects = []; pool = [...OBJECTS]; }
+  currentObject = pool[Math.floor(Math.random() * pool.length)];
+  usedObjects.push(currentObject.id);
+
+  updateTurnUI();
+
+  const img = new Image();
+  img.onload = () => {
+    bakedCanvas.width  = CS;
+    bakedCanvas.height = CS;
+    bakedCanvas.getContext('2d').drawImage(img, 0, 0, CS, CS);
+
+    if (mode === 'square') {
+      revealed = new Array(totalCells).fill(false);
+    } else {
+      pixelStep = 0;
+      document.getElementById('reveal-btn').disabled = false;
+    }
+    render();
+    updateStatusPill();
+  };
+  img.src = currentObject.img;
+}
+
+/* ── RENDERING ── */
+function render() {
+  if (mode === 'square') renderSquare();
+  else renderPixel();
+}
+
+function renderSquare() {
+  const ctx  = document.getElementById('gameCanvas').getContext('2d');
+  ctx.clearRect(0, 0, CS, CS);
+  const cell = CS / gridSize;
+
+  for (let i = 0; i < totalCells; i++) {
+    const col = i % gridSize;
+    const row = Math.floor(i / gridSize);
+    const px  = col * cell;
+    const py  = row * cell;
+
+    if (revealed[i]) {
+      ctx.drawImage(bakedCanvas, px, py, cell, cell, px, py, cell, cell);
+    } else {
+      const isRed = currentTeam === 'red';
+      ctx.fillStyle = isRed ? '#3a0f1e' : '#0a1831';
+      ctx.fillRect(px, py, cell, cell);
+
+      const g = ctx.createLinearGradient(px, py, px, py + cell * 0.4);
+      g.addColorStop(0, 'rgba(255,255,255,0.09)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(px, py, cell, cell);
+
+      const fontSize = Math.max(10, Math.round(cell * 0.32));
+      ctx.font = `bold ${fontSize}px Nunito, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(i + 1, px + cell / 2, py + cell / 2);
+    }
+  }
+}
+
+function blocksForStep(i) {
+  const minB = 2, maxB = 48;
+  const t = maxSteps > 1 ? i / (maxSteps - 1) : 1;
+  return Math.max(1, Math.round(minB * Math.pow(maxB / minB, t)));
+}
+
+function renderPixel() {
+  const blocks = blocksForStep(pixelStep);
+
+  tinyCanvas.width  = blocks;
+  tinyCanvas.height = blocks;
+  const tctx = tinyCanvas.getContext('2d');
+  tctx.imageSmoothingEnabled = true;
+  tctx.clearRect(0, 0, blocks, blocks);
+  tctx.drawImage(bakedCanvas, 0, 0, CS, CS, 0, 0, blocks, blocks);
+
+  const ctx = document.getElementById('gameCanvas').getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, CS, CS);
+  ctx.drawImage(tinyCanvas, 0, 0, blocks, blocks, 0, 0, CS, CS);
+}
+
+/* ── INPUT ── */
+function onGameClick(e) {
+  if (roundOver || waitingForGuess) return;
+  const gc   = document.getElementById('gameCanvas');
+  const rect = gc.getBoundingClientRect();
+  const sx   = CS / rect.width;
+  const sy   = CS / rect.height;
+  const mx   = (e.clientX - rect.left) * sx;
+  const my   = (e.clientY - rect.top)  * sy;
+  const cell = CS / gridSize;
+  const col  = Math.floor(mx / cell);
+  const row  = Math.floor(my / cell);
+  const idx  = row * gridSize + col;
+  if (idx < 0 || idx >= totalCells || revealed[idx]) return;
+
+  revealed[idx] = true;
+  waitingForGuess = true;
+  setGuessButtons(true);
+  render();
+  updateStatusPill();
+  showFeedback('pass', '👆 Now guess the object — or pass your turn!');
+  document.getElementById('guess-input').focus();
+}
+
+function revealMore() {
+  if (roundOver || waitingForGuess) return;
+  if (pixelStep >= maxSteps - 1) return;
+
+  pixelStep++;
+  waitingForGuess = true;
+  setGuessButtons(true);
+  document.getElementById('reveal-btn').disabled = true;
+  render();
+  updateStatusPill();
+  showFeedback('pass', '👆 Now guess the object — or pass your turn!');
+  document.getElementById('guess-input').focus();
+}
+
+/* ── LOGIC ── */
+function squaresLeft() { return revealed.filter(r => !r).length; }
+function isAtMaxReveal() {
+  return mode === 'square' ? squaresLeft() === 0 : pixelStep >= maxSteps - 1;
+}
+
+function updateStatusPill() {
+  const el = document.getElementById('status-value');
+  if (mode === 'square') {
+    el.textContent = squaresLeft();
+  } else {
+    el.textContent = pixelStep > 0 ? (maxSteps - pixelStep) : '—';
+  }
+}
+
+function switchTeam() {
+  currentTeam = currentTeam === 'red' ? 'blue' : 'red';
+  updateTurnUI();
+  render();
+}
+
+function updateTurnUI() {
+  const r = currentTeam === 'red';
+  document.documentElement.style.setProperty('--TC', r ? 'var(--red)'    : 'var(--blue)');
+  document.documentElement.style.setProperty('--TB', r ? 'var(--red-bg)' : 'var(--blue-bg)');
+  document.getElementById('turn-banner').textContent = r ? "🔴 Team Red's Turn" : "🔵 Team Blue's Turn";
+  document.getElementById('score-red').classList.toggle('active-red',   r);
+  document.getElementById('score-red').classList.toggle('active-blue',  false);
+  document.getElementById('score-blue').classList.toggle('active-blue', !r);
+  document.getElementById('score-blue').classList.toggle('active-red',  false);
+}
+
+function updateScoreUI() {
+  document.getElementById('pts-red').textContent  = `${roundsWon.red} / ${winTarget}`;
+  document.getElementById('pts-blue').textContent = `${roundsWon.blue} / ${winTarget}`;
+}
+
+function setGuessButtons(enabled) {
+  document.getElementById('guess-input').disabled = !enabled;
+  document.querySelector('.btn-guess').disabled = !enabled;
+  document.querySelector('.btn-pass').disabled  = !enabled;
+}
+
+function showFeedback(type, msg) {
+  const el = document.getElementById('feedback');
+  el.className = 'feedback ' + type;
+  el.textContent = msg;
+}
+function clearFeedback() {
+  const el = document.getElementById('feedback');
+  el.className = 'feedback';
+  el.textContent = '';
+}
+
+/* ── FUZZY MATCH (handles simple typos) ── */
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function isCorrectGuess(guess, names) {
+  const g = guess.trim().toLowerCase();
+  if (!g) return false;
+  for (const name of names) {
+    const n = name.toLowerCase();
+    if (g === n) return true;
+    const threshold = n.length >= 6 ? 2 : 1;
+    if (levenshtein(g, n) <= threshold) return true;
+  }
+  return false;
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ── GUESSING ── */
+function submitGuess() {
+  if (roundOver || !waitingForGuess) return;
+  const input = document.getElementById('guess-input');
+  const guess = input.value.trim();
+  if (!guess) return;
+
+  if (isCorrectGuess(guess, currentObject.names)) {
+    waitingForGuess = false;
+    const pts = mode === 'square' ? squaresLeft() : (maxSteps - pixelStep);
+    roundsWon[currentTeam]++;
+    updateScoreUI();
+    revealFully();
+    render();
+    showFeedback('correct', `✅ Correct! +${pts} bonus point${pts === 1 ? '' : 's'}!`);
+    setTimeout(() => showRoundResult(currentTeam, pts), 700);
+  } else {
+    showFeedback('wrong', '❌ Not quite!');
+    waitingForGuess = false;
+    setGuessButtons(false);
+    input.value = '';
+
+    if (isAtMaxReveal()) {
+      revealFully();
+      render();
+      setTimeout(() => showRoundResult(null, 0), 900);
+    } else {
+      setTimeout(() => { switchTeam(); clearFeedback(); }, 1200);
+    }
+  }
+}
+
+function passGuess() {
+  if (roundOver || !waitingForGuess) return;
+  const teamName = currentTeam === 'red' ? 'Team Red' : 'Team Blue';
+  waitingForGuess = false;
+  setGuessButtons(false);
+
+  if (isAtMaxReveal()) {
+    showFeedback('pass', `⏭️ ${teamName} passed.`);
+    revealFully();
+    render();
+    setTimeout(() => showRoundResult(null, 0), 900);
+  } else {
+    showFeedback('pass', `⏭️ ${teamName} passed. Turn switches!`);
+    setTimeout(() => { switchTeam(); clearFeedback(); }, 900);
+  }
+}
+
+function revealFully() {
+  roundOver = true;
+  if (mode === 'square') revealed.fill(true);
+  else pixelStep = maxSteps - 1;
+  updateStatusPill();
+}
+
+/* ── ROUND / MATCH RESULT ── */
+function showRoundResult(team, pts) {
+  const rc = document.getElementById('resultCanvas');
+  const rctx = rc.getContext('2d');
+  rctx.clearRect(0, 0, 140, 140);
+  rctx.drawImage(bakedCanvas, 0, 0, CS, CS, 0, 0, 140, 140);
+
+  const titleEl  = document.getElementById('result-title');
+  const pointsEl = document.getElementById('result-points');
+  const objName  = capitalize(currentObject.names[0]);
+
+  if (team) {
+    titleEl.textContent = `Team ${team === 'red' ? 'Red' : 'Blue'} Got It!`;
+    titleEl.className   = 'win-title ' + (team === 'red' ? 'win-team-red' : 'win-team-blue');
+    pointsEl.textContent = `It was a ${objName}! +${pts} bonus point${pts === 1 ? '' : 's'}`;
+  } else {
+    titleEl.textContent = 'Nobody Got It!';
+    titleEl.className   = 'win-title';
+    pointsEl.textContent = `It was a ${objName}.`;
+  }
+
+  document.getElementById('ws-red').textContent  = roundsWon.red;
+  document.getElementById('ws-blue').textContent = roundsWon.blue;
+
+  const matchWon = team && roundsWon[team] >= winTarget;
+  document.getElementById('btn-next').style.display = matchWon ? 'none' : 'inline-block';
+  if (matchWon) {
+    titleEl.textContent = `🏆 Team ${team === 'red' ? 'Red' : 'Blue'} Wins the Match!`;
+  }
+
+  if (team) spawnConfetti(team);
+  document.getElementById('result-overlay').classList.add('show');
+}
+
+function nextRound() {
+  document.getElementById('result-overlay').classList.remove('show');
+  switchTeam();
+  startRound();
+}
+
+function newMatch() {
+  document.getElementById('result-overlay').classList.remove('show');
+  document.getElementById('game-screen').style.display  = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  document.documentElement.style.setProperty('--TC', 'var(--red)');
+  document.documentElement.style.setProperty('--TB', 'var(--red-bg)');
+}
+
+/* ── CONFETTI ── */
+function spawnConfetti(team) {
+  const colors = team === 'red'
+    ? ['#ff4757','#ff6b81','#ffd32a','#ff6348']
+    : ['#1e90ff','#74b9ff','#00cec9','#ffd32a'];
+  for (let i = 0; i < 70; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left            = Math.random()*100+'vw';
+    el.style.background      = colors[Math.floor(Math.random()*colors.length)];
+    el.style.width           = (7+Math.random()*9)+'px';
+    el.style.height          = (7+Math.random()*9)+'px';
+    el.style.animationDuration = (2+Math.random()*2)+'s';
+    el.style.animationDelay    = (Math.random()*0.6)+'s';
+    el.style.borderRadius      = Math.random()>0.5 ? '50%' : '3px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4500);
+  }
+}
+
+/* ── INIT ── */
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('guess-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitGuess();
+  });
+});
+</script>
+</body>
+</html>

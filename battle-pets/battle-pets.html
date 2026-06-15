@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle Pets — EFL Elemental Showdown</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --bg:#0b0e1a;
+  --panel:#161b2e;
+  --panel2:#1f2640;
+  --panel3:#272f52;
+  --border:#323a5c;
+  --border-lt:#454f80;
+  --text:#eef1fb;
+  --muted:#8089b3;
+  --p1:#f5c84a;
+  --p1d:#f5c84a22;
+  --p2:#8c6cff;
+  --p2d:#8c6cff22;
+  --ok:#5fd97a;
+  --bad:#ff5e6a;
+  --warn:#ffe14a;
+  --t-fire:#ff5e3a;
+  --t-nature:#5fd97a;
+  --t-stone:#c9a36a;
+  --t-electric:#ffe14a;
+  --t-water:#3fc7ff;
+  --t-normal:#cfd2e6;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  background-image:
+    radial-gradient(circle at 15% 20%, #ff5e3a08, transparent 35%),
+    radial-gradient(circle at 85% 75%, #3fc7ff08, transparent 35%);
+}
+
+.pixel{font-family:'Press Start 2P',monospace;}
+
+/* ─────────────── SCREEN SYSTEM ─────────────── */
+.screen{display:none;min-height:100vh;width:100%;flex-direction:column;align-items:center;padding:1.5rem 1rem 3rem}
+.screen.active{display:flex}
+
+/* ─────────────── SHARED PANEL / PIXEL BORDER ─────────────── */
+.panel{
+  background:var(--panel);
+  border:3px solid var(--border);
+  box-shadow:0 0 0 3px var(--bg);
+}
+
+/* ─────────────── BUTTONS ─────────────── */
+.btn{
+  font-family:'DM Sans',sans-serif;
+  font-weight:700;
+  font-size:.9rem;
+  letter-spacing:.04em;
+  padding:.75rem 1.4rem;
+  border:3px solid var(--border);
+  background:var(--panel2);
+  color:var(--text);
+  cursor:pointer;
+  box-shadow:0 0 0 3px var(--bg);
+  transition:transform .08s, background .15s, border-color .15s;
+}
+.btn:hover:not(:disabled){border-color:var(--border-lt); transform:translateY(-2px)}
+.btn:active:not(:disabled){transform:translateY(0)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-primary{background:linear-gradient(135deg,var(--t-fire),var(--t-water));color:#0b0e1a;border-color:#0b0e1a}
+.btn-primary:hover:not(:disabled){filter:brightness(1.1)}
+.btn-ok{background:var(--ok);color:#06210f;border-color:#06210f}
+.btn-bad{background:var(--bad);color:#2a0508;border-color:#2a0508}
+.btn-ghost{background:transparent}
+.btn-wide{width:100%}
+
+/* ─────────────── TITLE / TYPE BADGES ─────────────── */
+.title-wrap{text-align:center;margin-bottom:1.6rem}
+h1.title{
+  font-size:clamp(1.6rem,6vw,2.6rem);
+  line-height:1.5;
+  background:linear-gradient(110deg,var(--t-fire) 0%, var(--t-electric) 35%, var(--t-water) 75%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:.05em;
+}
+.subtitle{margin-top:.6rem;font-size:.75rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
+
+.type-badge{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:.2rem .5rem;border-radius:3px;border:2px solid currentColor;
+  color:#0b0e1a;
+}
+.type-badge[data-type="fire"]{background:var(--t-fire)}
+.type-badge[data-type="nature"]{background:var(--t-nature)}
+.type-badge[data-type="stone"]{background:var(--t-stone)}
+.type-badge[data-type="electric"]{background:var(--t-electric)}
+.type-badge[data-type="water"]{background:var(--t-water)}
+.type-badge[data-type="normal"]{background:var(--t-normal)}
+
+/* ─────────────── SETUP SCREEN ─────────────── */
+.setup-wrap{width:100%;max-width:980px;display:flex;flex-direction:column;gap:1.4rem}
+
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.player-card{padding:1.2rem 1.4rem;display:flex;flex-direction:column;gap:.6rem}
+.player-card.p1{border-color:var(--p1)}
+.player-card.p2{border-color:var(--p2)}
+.player-card label{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
+.player-card.p1 label{color:var(--p1)}
+.player-card.p2 label{color:var(--p2)}
+.player-card input{
+  background:var(--bg);border:2px solid var(--border);color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;
+  padding:.6rem .8rem;outline:none;width:100%;
+}
+.player-card.p1 input:focus{border-color:var(--p1)}
+.player-card.p2 input:focus{border-color:var(--p2)}
+
+.section-card{padding:1.4rem 1.4rem 1.2rem;display:flex;flex-direction:column;gap:1rem}
+.section-title{
+  font-size:.95rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  display:flex;align-items:center;gap:.5rem;color:var(--text);
+}
+.section-title .icon{font-size:1.1rem}
+
+/* topics */
+.topics-toolbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.2rem}
+.topics-toolbar .btn{font-size:.75rem;padding:.4rem .9rem}
+.topic-levels{display:flex;flex-direction:column;gap:.8rem}
+.topic-level-group{border:2px solid var(--border);background:var(--panel2);padding:.7rem .9rem}
+.level-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.level-header .level-name{font-weight:800;font-size:.8rem;letter-spacing:.15em}
+.level-header .level-toggle{font-size:.7rem;color:var(--muted)}
+.level-name[data-level="A1"]{color:#7fe8a0}
+.level-name[data-level="A2"]{color:var(--t-water)}
+.level-name[data-level="B1"]{color:var(--t-electric)}
+.level-name[data-level="B2"]{color:var(--t-fire)}
+.topic-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.4rem .8rem;margin-top:.6rem}
+.topic-check{display:flex;align-items:center;gap:.5rem;font-size:.8rem;cursor:pointer;padding:.25rem 0}
+.topic-check input{width:16px;height:16px;accent-color:var(--t-electric);cursor:pointer}
+.topic-count-bar{font-size:.78rem;color:var(--muted);border-top:2px solid var(--border);padding-top:.7rem}
+.topic-count-bar b{color:var(--text)}
+
+/* draft */
+.draft-status{
+  font-size:.85rem;font-weight:700;padding:.6rem 1rem;
+  background:var(--panel2);border:2px solid var(--border);
+}
+.draft-status.turn-p1{border-color:var(--p1);color:var(--p1)}
+.draft-status.turn-p2{border-color:var(--p2);color:var(--p2)}
+.draft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem}
+.pet-card{
+  background:var(--panel2);border:3px solid var(--border);box-shadow:0 0 0 3px var(--bg);
+  padding:.7rem;display:flex;flex-direction:column;gap:.4rem;cursor:pointer;
+  transition:transform .1s, border-color .15s;
+}
+.pet-card:hover:not(.taken){border-color:var(--border-lt); transform:translateY(-3px)}
+.pet-card.taken{cursor:default;opacity:.45}
+.pet-card.taken-p1{border-color:var(--p1);box-shadow:0 0 0 3px var(--p1d)}
+.pet-card.taken-p2{border-color:var(--p2);box-shadow:0 0 0 3px var(--p2d)}
+.pet-card-top{display:flex;align-items:center;justify-content:space-between}
+.pet-card-emoji{font-size:2.2rem;line-height:1}
+.pet-card-name{font-weight:800;font-size:.9rem}
+.pet-card-owner{font-size:.65rem;font-weight:800;letter-spacing:.1em;padding:.15rem .4rem}
+.pet-card-owner.o-p1{color:var(--p1)}
+.pet-card-owner.o-p2{color:var(--p2)}
+.pet-card-moves{display:flex;flex-direction:column;gap:.25rem;margin-top:.2rem}
+.pet-move-row{display:flex;align-items:center;justify-content:space-between;font-size:.68rem;color:var(--muted)}
+.pet-move-row .pm-name{color:var(--text);font-weight:600}
+.pet-move-row .pm-stats{display:flex;gap:.35rem;align-items:center;font-family:'Press Start 2P',monospace;font-size:.6rem}
+.mini-type-dot{width:10px;height:10px;display:inline-block;border-radius:2px;flex-shrink:0}
+.mini-type-dot[data-type="fire"]{background:var(--t-fire)}
+.mini-type-dot[data-type="nature"]{background:var(--t-nature)}
+.mini-type-dot[data-type="stone"]{background:var(--t-stone)}
+.mini-type-dot[data-type="electric"]{background:var(--t-electric)}
+.mini-type-dot[data-type="water"]{background:var(--t-water)}
+.mini-type-dot[data-type="normal"]{background:var(--t-normal)}
+
+.start-row{display:flex;justify-content:center;padding-top:.4rem}
+#start-btn{font-size:1.05rem;padding:1rem 3rem}
+
+/* ─────────────── BATTLE SCREEN ─────────────── */
+.battle-wrap{width:100%;max-width:1080px;display:flex;flex-direction:column;gap:1rem}
+
+.turn-banner{
+  text-align:center;padding:.8rem 1rem;
+  font-family:'Press Start 2P',monospace;font-size:.85rem;letter-spacing:.05em;
+}
+.turn-banner .round-tag{color:var(--muted);display:block;font-size:.65rem;margin-bottom:.4rem}
+.turn-banner.turn-p1{border-color:var(--p1);color:var(--p1)}
+.turn-banner.turn-p2{border-color:var(--p2);color:var(--p2)}
+
+.arena{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:stretch}
+.team-col{padding:1rem;display:flex;flex-direction:column;gap:.8rem}
+.team-col.team-a{border-color:var(--p1)}
+.team-col.team-b{border-color:var(--p2)}
+.team-label{font-size:.7rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.team-col.team-a .team-label{color:var(--p1)}
+.team-col.team-b .team-label{color:var(--p2)}
+
+.vs-badge{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Press Start 2P',monospace;font-size:1.1rem;color:var(--border-lt);
+  padding:0 .4rem;
+}
+
+.active-card{display:flex;flex-direction:column;gap:.5rem;align-items:center;text-align:center}
+.active-emoji{font-size:3.6rem;line-height:1;filter:drop-shadow(0 4px 0 rgba(0,0,0,.4))}
+.active-emoji.fainted{filter:grayscale(1) brightness(.5)}
+.active-name-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center}
+.active-name{font-weight:800;font-size:1.05rem}
+
+.hpbar{height:14px;background:#05060c;border:2px solid var(--border);width:100%;position:relative;overflow:hidden}
+.hpbar-fill{height:100%;transition:width .5s steps(12,end);width:100%}
+.hpbar-fill[data-level="high"]{background:var(--ok)}
+.hpbar-fill[data-level="mid"]{background:var(--t-electric)}
+.hpbar-fill[data-level="low"]{background:var(--bad)}
+.hp-text{font-size:.7rem;color:var(--muted);font-family:'Press Start 2P',monospace;align-self:flex-end}
+
+.energy-row{display:flex;align-items:center;gap:.5rem;width:100%;font-size:.78rem;color:var(--text);font-weight:600}
+.energy-bar{flex:1;height:10px;background:#05060c;border:2px solid var(--border);overflow:hidden}
+.energy-bar-fill{height:100%;background:var(--t-electric);transition:width .5s steps(10,end)}
+.energy-val{font-family:'Press Start 2P',monospace;font-size:.75rem;min-width:3.4em;text-align:right}
+
+.bench-row{display:flex;gap:.6rem;width:100%}
+.mini-card{
+  flex:1;background:var(--panel2);border:2px solid var(--border);
+  padding:.45rem;display:flex;flex-direction:column;align-items:center;gap:.25rem;
+  cursor:default;transition:border-color .15s, transform .1s;
+}
+.mini-card.switchable{cursor:pointer}
+.mini-card.switchable:hover{border-color:var(--border-lt);transform:translateY(-2px)}
+.mini-card .mc-emoji{font-size:1.6rem}
+.mini-card.fainted .mc-emoji{filter:grayscale(1) brightness(.45)}
+.mini-card .mc-name{font-size:.62rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mini-card .mc-hpbar{width:100%;height:6px}
+.mini-card .mc-tag{font-size:.55rem;color:var(--bad);font-weight:800;letter-spacing:.1em}
+
+/* moves panel */
+.moves-panel{padding:1rem;display:flex;flex-direction:column;gap:.7rem}
+.moves-panel-title{font-size:.78rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.moves-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+.move-btn{
+  background:var(--panel2);border:3px solid var(--border);box-shadow:0 0 0 3px var(--bg);
+  padding:.7rem .6rem;display:flex;flex-direction:column;gap:.35rem;align-items:flex-start;
+  cursor:pointer;text-align:left;color:var(--text);font-family:'DM Sans',sans-serif;
+  transition:border-color .15s, transform .1s;
+}
+.move-btn:hover:not(.disabled){border-color:var(--border-lt);transform:translateY(-2px)}
+.move-btn.disabled{opacity:.35;cursor:not-allowed}
+.move-btn .mv-name{font-weight:800;font-size:.88rem}
+.move-btn .mv-row{display:flex;align-items:center;justify-content:space-between;width:100%;font-size:.7rem;color:var(--muted)}
+.move-btn .mv-stats{font-family:'Press Start 2P',monospace;font-size:.6rem;display:flex;gap:.5rem;align-items:center}
+.eff-arrow{font-weight:800}
+.eff-arrow.up{color:var(--ok)}
+.eff-arrow.down{color:var(--bad)}
+.eff-arrow.flat{color:var(--muted)}
+.switch-hint{font-size:.7rem;color:var(--muted);text-align:center}
+
+/* battle log */
+.log-panel{padding:.8rem 1rem;max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem}
+.log-entry{font-size:.78rem;color:var(--muted);line-height:1.5}
+.log-entry b{color:var(--text)}
+.log-entry.hit-up{color:var(--ok)}
+.log-entry.hit-down{color:var(--bad)}
+
+/* ─────────────── MODAL ─────────────── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(5,6,12,.78);
+  align-items:center;justify-content:center;z-index:50;padding:1rem;
+}
+.modal-overlay.show{display:flex}
+.modal-box{
+  background:var(--panel);border:4px solid var(--border-lt);box-shadow:0 0 0 4px var(--bg), 0 0 40px rgba(0,0,0,.6);
+  max-width:560px;width:100%;padding:1.4rem;display:flex;flex-direction:column;gap:1rem;
+}
+.modal-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+.modal-topic{font-size:.7rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.modal-exercise-tag{
+  font-family:'Press Start 2P',monospace;font-size:.62rem;letter-spacing:.05em;
+  padding:.35rem .6rem;border:2px solid var(--t-electric);color:var(--t-electric);
+}
+.timer-wrap{display:none;flex-direction:column;gap:.3rem}
+.timer-wrap.show{display:flex}
+.timer-bar{height:14px;background:#05060c;border:2px solid var(--border);overflow:hidden}
+.timer-fill{height:100%;background:var(--ok);transition:width 1s linear, background .3s}
+.timer-text{font-family:'Press Start 2P',monospace;font-size:.7rem;text-align:right;color:var(--muted)}
+
+.modal-body{font-size:1.05rem;line-height:1.7;min-height:2.4em}
+.modal-body .blank{color:var(--t-electric);font-weight:800}
+.word-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.word-chip{
+  background:var(--panel2);border:2px solid var(--border);padding:.35rem .7rem;
+  font-size:.95rem;font-weight:600;
+}
+
+.modal-answer{display:none;border-top:2px dashed var(--border);padding-top:.8rem;font-size:.95rem;line-height:1.6}
+.modal-answer.show{display:block}
+.modal-answer .label{font-size:.65rem;letter-spacing:.15em;color:var(--ok);font-weight:800;display:block;margin-bottom:.3rem}
+
+.modal-result{display:none;border-top:2px dashed var(--border);padding-top:.8rem;font-size:.92rem;font-weight:700;text-align:center}
+.modal-result.show{display:block}
+.modal-result.good{color:var(--ok)}
+.modal-result.bad{color:var(--bad)}
+
+.modal-footer{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap}
+
+/* ─────────────── END SCREEN ─────────────── */
+.end-wrap{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:1.4rem;margin-top:3rem}
+.end-card{padding:2rem 1.6rem;text-align:center;display:flex;flex-direction:column;gap:1rem;align-items:center;width:100%}
+.end-eyebrow{font-size:.7rem;letter-spacing:.25em;color:var(--muted);text-transform:uppercase}
+.end-winner{font-family:'Press Start 2P',monospace;font-size:1.3rem;line-height:1.6}
+.end-winner.is-p1{color:var(--p1)}
+.end-winner.is-p2{color:var(--p2)}
+.end-emoji-row{font-size:2.2rem}
+.end-buttons{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center}
+
+/* ─────────────── RESPONSIVE ─────────────── */
+@media (max-width:800px){
+  .setup-grid{grid-template-columns:1fr}
+  .arena{grid-template-columns:1fr}
+  .vs-badge{padding:.3rem 0}
+  .moves-row{grid-template-columns:1fr}
+  .draft-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+}
+
+/* ─────────────── REDUCED MOTION ─────────────── */
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+<!-- ═══════════════════════ SETUP SCREEN ═══════════════════════ -->
+<div id="screen-setup" class="screen active">
+  <div class="setup-wrap">
+    <div class="title-wrap">
+      <h1 class="title pixel">BATTLE PETS</h1>
+      <div class="subtitle">EFL Elemental Showdown · Local 2-Player</div>
+    </div>
+
+    <div class="setup-grid">
+      <div class="player-card panel p1">
+        <label for="p1-name">Player 1</label>
+        <input id="p1-name" type="text" placeholder="Player 1" maxlength="16">
+      </div>
+      <div class="player-card panel p2">
+        <label for="p2-name">Player 2</label>
+        <input id="p2-name" type="text" placeholder="Player 2" maxlength="16">
+      </div>
+    </div>
+
+    <div class="section-card panel">
+      <div class="section-title"><span class="icon">📚</span>Choose Grammar Topics</div>
+      <div class="topics-toolbar">
+        <button class="btn" id="topics-all" type="button">Select All</button>
+        <button class="btn" id="topics-none" type="button">Clear</button>
+      </div>
+      <div class="topic-levels" id="topic-levels"></div>
+      <div class="topic-count-bar" id="topic-count-bar">Loading topics…</div>
+    </div>
+
+    <div class="section-card panel">
+      <div class="section-title"><span class="icon">🐾</span>Draft Your Teams</div>
+      <div class="draft-status" id="draft-status">Select at least one topic to begin the draft.</div>
+      <div class="draft-grid" id="draft-grid"></div>
+    </div>
+
+    <div class="start-row">
+      <button class="btn btn-primary" id="start-btn" type="button" disabled>Start Battle</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ BATTLE SCREEN ═══════════════════════ -->
+<div id="screen-battle" class="screen">
+  <div class="battle-wrap">
+    <div class="turn-banner panel" id="turn-banner">
+      <span class="round-tag" id="round-tag">ROUND 1</span>
+      <span id="turn-text">PLAYER 1's TURN</span>
+    </div>
+
+    <div class="arena">
+      <div class="team-col panel team-a">
+        <div class="team-label"><span id="team-a-name">Player 1</span><span id="team-a-left">3 left</span></div>
+        <div class="active-card">
+          <div class="active-emoji" id="active-a-emoji">🦊</div>
+          <div class="active-name-row">
+            <span class="active-name" id="active-a-name">—</span>
+            <span class="type-badge" id="active-a-type" data-type="normal">—</span>
+          </div>
+          <div class="hpbar"><div class="hpbar-fill" id="active-a-hpfill" data-level="high"></div></div>
+          <div class="hp-text" id="active-a-hptext">100 / 100 HP</div>
+          <div class="energy-row">
+            <span>⚡</span>
+            <div class="energy-bar"><div class="energy-bar-fill" id="active-a-enfill"></div></div>
+            <span class="energy-val" id="active-a-enval">100</span>
+          </div>
+        </div>
+        <div class="bench-row" id="bench-a"></div>
+      </div>
+
+      <div class="vs-badge pixel">VS</div>
+
+      <div class="team-col panel team-b">
+        <div class="team-label"><span id="team-b-name">Player 2</span><span id="team-b-left">3 left</span></div>
+        <div class="active-card">
+          <div class="active-emoji" id="active-b-emoji">🦊</div>
+          <div class="active-name-row">
+            <span class="active-name" id="active-b-name">—</span>
+            <span class="type-badge" id="active-b-type" data-type="normal">—</span>
+          </div>
+          <div class="hpbar"><div class="hpbar-fill" id="active-b-hpfill" data-level="high"></div></div>
+          <div class="hp-text" id="active-b-hptext">100 / 100 HP</div>
+          <div class="energy-row">
+            <span>⚡</span>
+            <div class="energy-bar"><div class="energy-bar-fill" id="active-b-enfill"></div></div>
+            <span class="energy-val" id="active-b-enval">100</span>
+          </div>
+        </div>
+        <div class="bench-row" id="bench-b"></div>
+      </div>
+    </div>
+
+    <div class="moves-panel panel" id="moves-panel">
+      <div class="moves-panel-title" id="moves-title">PLAYER 1 — CHOOSE A MOVE</div>
+      <div class="moves-row" id="moves-row"></div>
+      <div class="switch-hint">Tap a bench pet above to switch for free before attacking.</div>
+    </div>
+
+    <div class="log-panel panel" id="battle-log"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ END SCREEN ═══════════════════════ -->
+<div id="screen-end" class="screen">
+  <div class="end-wrap">
+    <div class="end-card panel">
+      <div class="end-eyebrow">Battle Over</div>
+      <div class="end-emoji-row">🏆</div>
+      <div class="end-winner pixel" id="end-winner-text">PLAYER 1 WINS!</div>
+      <div class="end-buttons">
+        <button class="btn btn-primary" id="rematch-btn" type="button">Rematch · Same Teams</button>
+        <button class="btn" id="newgame-btn" type="button">New Game</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ QUESTION MODAL ═══════════════════════ -->
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-exercise-tag" id="modal-exercise-tag">EXERCISE</div>
+      <div class="modal-topic" id="modal-topic-name">Topic</div>
+    </div>
+    <div class="timer-wrap" id="timer-wrap">
+      <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+      <div class="timer-text" id="timer-text">30s</div>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-answer" id="modal-answer"></div>
+    <div class="modal-result" id="modal-result"></div>
+    <div class="modal-footer" id="modal-footer">
+      <button class="btn btn-primary" id="btn-reveal" type="button">Reveal</button>
+      <button class="btn btn-ok" id="btn-correct" type="button" style="display:none">✓ Correct</button>
+      <button class="btn btn-bad" id="btn-incorrect" type="button" style="display:none">✗ Incorrect</button>
+      <button class="btn btn-primary" id="btn-continue" type="button" style="display:none">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   DATA: type chart + pet roster
+   ════════════════════════════════════════════════════════════════ */
+const TYPE_CYCLE = ['fire','nature','stone','electric','water']; // i beats (i+1) x2, loses to (i-1) x0.5
+const TYPE_ICONS = {fire:'🔥',nature:'🌿',stone:'🪨',electric:'⚡',water:'💧',normal:'⭐'};
+const TYPE_NAMES = {fire:'Fire',nature:'Nature',stone:'Stone',electric:'Electric',water:'Water',normal:'Normal'};
+
+function effectiveness(atkType, defType){
+  if (atkType === 'normal' || defType === 'normal') return 1;
+  if (atkType === defType) return 1;
+  const i = TYPE_CYCLE.indexOf(atkType);
+  const j = TYPE_CYCLE.indexOf(defType);
+  if ((i+1)%5 === j) return 2;
+  if ((i-1+5)%5 === j) return 0.5;
+  return 1;
+}
+
+const PETS = [
+  {id:'pyrelynx',     name:'Pyrelynx',     type:'fire',     emoji:'🦊', moves:[
+    {name:'Ember Claw',      type:'fire',     cost:20,  power:20},
+    {name:'Spark Pounce',    type:'electric', cost:50,  power:50},
+    {name:'Wildfire Howl',   type:'fire',     cost:100, power:95}]},
+  {id:'magmaul',      name:'Magmaul',      type:'fire',     emoji:'🐗', moves:[
+    {name:'Hot Tusk',        type:'fire',     cost:20,  power:20},
+    {name:'Boulder Charge',  type:'stone',    cost:50,  power:50},
+    {name:'Eruption Slam',   type:'fire',     cost:100, power:95}]},
+  {id:'thornling',    name:'Thornling',    type:'nature',   emoji:'🦔', moves:[
+    {name:'Vine Whip',       type:'nature',   cost:20,  power:20},
+    {name:'Pebble Toss',     type:'stone',    cost:50,  power:50},
+    {name:'Bramble Storm',   type:'nature',   cost:100, power:95}]},
+  {id:'mossfang',     name:'Mossfang',     type:'nature',   emoji:'🐺', moves:[
+    {name:'Leaf Slash',      type:'nature',   cost:20,  power:20},
+    {name:'Static Howl',     type:'electric', cost:50,  power:50},
+    {name:'Overgrowth Roar', type:'nature',   cost:100, power:95}]},
+  {id:'crumblestone', name:'Crumblestone', type:'stone',    emoji:'🐢', moves:[
+    {name:'Rock Tackle',     type:'stone',    cost:20,  power:20},
+    {name:'Mud Splash',      type:'water',    cost:50,  power:50},
+    {name:'Landslide',       type:'stone',    cost:100, power:95}]},
+  {id:'glimmerox',    name:'Glimmerox',    type:'stone',    emoji:'🦫', moves:[
+    {name:'Crystal Bash',    type:'stone',    cost:20,  power:20},
+    {name:'Ember Spark',     type:'fire',     cost:50,  power:50},
+    {name:'Quartz Quake',    type:'stone',    cost:100, power:95}]},
+  {id:'voltergeist',  name:'Voltergeist',  type:'electric', emoji:'👻', moves:[
+    {name:'Shock Tap',       type:'electric', cost:20,  power:20},
+    {name:'Frost Nip',       type:'water',    cost:50,  power:50},
+    {name:'Thunder Surge',   type:'electric', cost:100, power:95}]},
+  {id:'sparkitty',    name:'Sparkitty',    type:'electric', emoji:'🐱', moves:[
+    {name:'Static Paw',      type:'electric', cost:20,  power:20},
+    {name:'Thorn Pounce',    type:'nature',   cost:50,  power:50},
+    {name:'Lightning Pounce',type:'electric', cost:100, power:95}]},
+  {id:'tidalfin',     name:'Tidalfin',     type:'water',    emoji:'🐬', moves:[
+    {name:'Aqua Jet',        type:'water',    cost:20,  power:20},
+    {name:'Pebble Spin',     type:'stone',    cost:50,  power:50},
+    {name:'Tidal Wave',      type:'water',    cost:100, power:95}]},
+  {id:'drizzleur',    name:'Drizzleur',    type:'water',    emoji:'🦦', moves:[
+    {name:'Bubble Strike',   type:'water',    cost:20,  power:20},
+    {name:'Vine Tangle',     type:'nature',   cost:50,  power:50},
+    {name:'Maelstrom',       type:'water',    cost:100, power:95}]},
+  {id:'glowkin',      name:'Glowkin',      type:'normal',   emoji:'🐰', moves:[
+    {name:'Quick Hop',       type:'normal',   cost:20,  power:20},
+    {name:'Spark Nuzzle',    type:'electric', cost:50,  power:50},
+    {name:'Lucky Strike',    type:'normal',   cost:100, power:95}]},
+  {id:'doodlewump',   name:'Doodlewump',   type:'normal',   emoji:'🐻', moves:[
+    {name:'Bear Tackle',     type:'normal',   cost:20,  power:20},
+    {name:'Flame Paw',       type:'fire',     cost:50,  power:50},
+    {name:'Comet Crash',     type:'normal',   cost:100, power:95}]},
+];
+
+function petById(id){ return PETS.find(p=>p.id===id); }
+
+/* ════════════════════════════════════════════════════════════════
+   UTILITIES
+   ════════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function hpLevel(hp, max){
+  const pct = hp/max;
+  if (pct > 0.5) return 'high';
+  if (pct > 0.2) return 'mid';
+  return 'low';
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GAME STATE
+   ════════════════════════════════════════════════════════════════ */
+const state = {
+  players: [
+    {name:'Player 1', team:[], activeIdx:0},
+    {name:'Player 2', team:[], activeIdx:0},
+  ],
+  topicsIndex: [],
+  pool: [],
+  poolIndex: 0,
+  draft: { order:[0,1,1,0,0,1], step:0, picks:{} }, // picks: petId -> 0|1
+  round: 1,
+  turn: 0,            // 0 = Player 1's attack turn, 1 = Player 2's
+  pendingFaintSwitch: null, // playerIdx that must switch before continuing
+  renewalQueue: [],   // [{playerIdx, petIdx}]
+};
+
+function drawQuestion(){
+  if (state.poolIndex >= state.pool.length){
+    state.pool = shuffle(state.pool);
+    state.poolIndex = 0;
+  }
+  return state.pool[state.poolIndex++];
+}
+
+/* ════════════════════════════════════════════════════════════════
+   HELPERS: HTML escaping + screen switching
+   ════════════════════════════════════════════════════════════════ */
+function esc(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(`screen-${name}`).classList.add('active');
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SETUP SCREEN
+   ════════════════════════════════════════════════════════════════ */
+const LEVEL_ORDER = ['A1','A2','B1','B2'];
+
+async function loadTopicsIndex(){
+  try {
+    const res = await fetch('questions/index.json');
+    state.topicsIndex = await res.json();
+  } catch (err){
+    console.error('Failed to load topics index', err);
+    state.topicsIndex = [];
+  }
+  renderTopicLevels();
+  updateTopicCount();
+  renderDraftGrid();
+}
+
+function renderTopicLevels(){
+  const container = $('topic-levels');
+  container.innerHTML = '';
+
+  if (!state.topicsIndex.length){
+    container.innerHTML = `<div class="topic-count-bar">Could not load topics from <code>questions/index.json</code>. Make sure the question files are deployed alongside this page.</div>`;
+    return;
+  }
+
+  LEVEL_ORDER.forEach(level => {
+    const topics = state.topicsIndex.filter(t => t.level === level);
+    if (!topics.length) return;
+
+    const group = document.createElement('div');
+    group.className = 'topic-level-group';
+
+    const checks = document.createElement('div');
+    checks.className = 'topic-checks';
+    topics.forEach(t => {
+      const label = document.createElement('label');
+      label.className = 'topic-check';
+      label.innerHTML = `<input type="checkbox" value="${t.slug}" checked> ${esc(t.name)}`;
+      checks.appendChild(label);
+    });
+    checks.addEventListener('change', () => {
+      updateTopicCount();
+      renderDraftGrid();
+    });
+
+    const header = document.createElement('div');
+    header.className = 'level-header';
+    header.innerHTML = `<span class="level-name" data-level="${level}">${level} · ${topics.length} topics</span><span class="level-toggle">Toggle all</span>`;
+    header.addEventListener('click', () => {
+      const boxes = checks.querySelectorAll('input');
+      const anyUnchecked = [...boxes].some(b => !b.checked);
+      boxes.forEach(b => { b.checked = anyUnchecked; });
+      updateTopicCount();
+      renderDraftGrid();
+    });
+
+    group.appendChild(header);
+    group.appendChild(checks);
+    container.appendChild(group);
+  });
+}
+
+function getSelectedTopics(){
+  return [...document.querySelectorAll('.topic-check input:checked')].map(el => el.value);
+}
+
+function updateTopicCount(){
+  const selected = getSelectedTopics();
+  const totalQ = state.topicsIndex
+    .filter(t => selected.includes(t.slug))
+    .reduce((sum, t) => sum + t.count, 0);
+
+  $('topic-count-bar').innerHTML = selected.length
+    ? `<b>${selected.length}</b> topic${selected.length === 1 ? '' : 's'} selected · <b>${totalQ}</b> questions in the pool`
+    : 'No topics selected — pick at least one to start the draft.';
+
+  checkStartReady();
+}
+
+$('topics-all').addEventListener('click', () => {
+  document.querySelectorAll('.topic-check input').forEach(b => { b.checked = true; });
+  updateTopicCount();
+  renderDraftGrid();
+});
+$('topics-none').addEventListener('click', () => {
+  document.querySelectorAll('.topic-check input').forEach(b => { b.checked = false; });
+  updateTopicCount();
+  renderDraftGrid();
+});
+
+function getPlayerName(idx){
+  const v = $(`p${idx+1}-name`).value.trim();
+  return v || `Player ${idx+1}`;
+}
+
+$('p1-name').addEventListener('input', renderDraftGrid);
+$('p2-name').addEventListener('input', renderDraftGrid);
+
+function isDraftComplete(){
+  return state.draft.step >= state.draft.order.length;
+}
+
+function renderDraftGrid(){
+  const grid = $('draft-grid');
+  grid.innerHTML = '';
+
+  PETS.forEach(pet => {
+    const owner = state.draft.picks[pet.id];
+    const card = document.createElement('div');
+    card.className = 'pet-card';
+    if (owner !== undefined) card.classList.add('taken', `taken-p${owner+1}`);
+
+    const movesHtml = pet.moves.map(m => `
+      <div class="pet-move-row">
+        <span class="pm-name"><span class="mini-type-dot" data-type="${m.type}"></span> ${esc(m.name)}</span>
+        <span class="pm-stats">${TYPE_ICONS[m.type]} ${m.cost}⚡ ${m.power}pw</span>
+      </div>`).join('');
+
+    card.innerHTML = `
+      <div class="pet-card-top">
+        <div class="pet-card-emoji">${pet.emoji}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem">
+          <span class="type-badge" data-type="${pet.type}">${TYPE_NAMES[pet.type]}</span>
+          ${owner !== undefined ? `<span class="pet-card-owner o-p${owner+1}">${esc(getPlayerName(owner))}</span>` : ''}
+        </div>
+      </div>
+      <div class="pet-card-name">${esc(pet.name)}</div>
+      <div class="pet-card-moves">${movesHtml}</div>
+    `;
+
+    if (owner === undefined && !isDraftComplete()){
+      card.addEventListener('click', () => pickPet(pet.id));
+    }
+    grid.appendChild(card);
+  });
+
+  updateDraftStatus();
+}
+
+function updateDraftStatus(){
+  const statusEl = $('draft-status');
+  const selectedTopics = getSelectedTopics();
+
+  if (!selectedTopics.length){
+    statusEl.textContent = 'Select at least one topic to begin the draft.';
+    statusEl.className = 'draft-status';
+  } else if (isDraftComplete()){
+    statusEl.textContent = '✅ Both squads are set — review your pets and start the battle!';
+    statusEl.className = 'draft-status';
+  } else {
+    const turn = state.draft.order[state.draft.step];
+    statusEl.textContent = `🐾 ${getPlayerName(turn)}'s pick — ${state.draft.step + 1} of ${state.draft.order.length}`;
+    statusEl.className = `draft-status turn-p${turn+1}`;
+  }
+
+  checkStartReady();
+}
+
+function pickPet(petId){
+  if (isDraftComplete() || state.draft.picks[petId] !== undefined) return;
+  const turn = state.draft.order[state.draft.step];
+  state.draft.picks[petId] = turn;
+  state.draft.step++;
+  renderDraftGrid();
+}
+
+function checkStartReady(){
+  $('start-btn').disabled = !(isDraftComplete() && getSelectedTopics().length > 0);
+}
+
+async function startBattle(){
+  const selectedTopics = getSelectedTopics();
+  const startBtn = $('start-btn');
+  startBtn.disabled = true;
+  startBtn.textContent = 'Loading questions…';
+
+  const pool = [];
+  for (const slug of selectedTopics){
+    try {
+      const res = await fetch(`questions/${slug}.json`);
+      const data = await res.json();
+      (data.questions || []).forEach(q => pool.push({ ...q, topic: data.topic }));
+    } catch (err){
+      console.error('Failed to load topic', slug, err);
+    }
+  }
+  state.pool = shuffle(pool);
+  state.poolIndex = 0;
+
+  for (let p = 0; p < 2; p++){
+    const petIds = Object.keys(state.draft.picks).filter(id => state.draft.picks[id] === p);
+    state.players[p].name = getPlayerName(p);
+    state.players[p].team = petIds.map(id => {
+      const base = petById(id);
+      return { ...base, hp: 100, maxHp: 100, energy: 100, fainted: false };
+    });
+    state.players[p].activeIdx = 0;
+  }
+
+  state.round = 1;
+  state.turn = 0;
+  state.pendingFaintSwitch = null;
+  state.renewalQueue = [];
+
+  startBtn.disabled = false;
+  startBtn.textContent = 'Start Battle';
+
+  showScreen('battle');
+  $('battle-log').innerHTML = '';
+  appendLog(`<b>${esc(state.players[0].name)}</b> vs <b>${esc(state.players[1].name)}</b> — Round 1 begins!`);
+  renderBattle();
+  renderMoves();
+}
+
+$('start-btn').addEventListener('click', startBattle);
+
+/* ════════════════════════════════════════════════════════════════
+   BATTLE SCREEN: rendering
+   ════════════════════════════════════════════════════════════════ */
+function livingPets(p){
+  return state.players[p].team.filter(pet => !pet.fainted);
+}
+
+function canPlayerAct(p){
+  if (state.pendingFaintSwitch !== null) return state.pendingFaintSwitch === p;
+  return state.turn === p;
+}
+
+function appendLog(html, cls=''){
+  const log = $('battle-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry' + (cls ? ` ${cls}` : '');
+  entry.innerHTML = html;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderBattle(){
+  for (let p = 0; p < 2; p++){
+    const side = p === 0 ? 'a' : 'b';
+    const player = state.players[p];
+    const active = player.team[player.activeIdx];
+
+    $(`team-${side}-name`).textContent = player.name;
+    $(`team-${side}-left`).textContent = `${livingPets(p).length} / ${player.team.length} left`;
+
+    $(`active-${side}-emoji`).textContent = active.emoji;
+    $(`active-${side}-emoji`).classList.toggle('fainted', active.fainted);
+    $(`active-${side}-name`).textContent = active.name;
+    $(`active-${side}-type`).textContent = TYPE_NAMES[active.type];
+    $(`active-${side}-type`).dataset.type = active.type;
+
+    const hp = Math.max(0, active.hp);
+    $(`active-${side}-hpfill`).style.width = (hp / active.maxHp * 100) + '%';
+    $(`active-${side}-hpfill`).dataset.level = hpLevel(hp, active.maxHp);
+    $(`active-${side}-hptext`).textContent = `${hp} / ${active.maxHp} HP`;
+
+    const enPct = Math.max(0, Math.min(100, active.energy));
+    $(`active-${side}-enfill`).style.width = enPct + '%';
+    $(`active-${side}-enval`).textContent = active.energy;
+
+    const bench = $(`bench-${side}`);
+    bench.innerHTML = '';
+    player.team.forEach((pet, idx) => {
+      if (idx === player.activeIdx) return;
+      const canSwitch = !pet.fainted && canPlayerAct(p);
+      const mini = document.createElement('div');
+      mini.className = 'mini-card' + (canSwitch ? ' switchable' : '') + (pet.fainted ? ' fainted' : '');
+      const petHp = Math.max(0, pet.hp);
+      mini.innerHTML = `
+        <div class="mc-emoji">${pet.emoji}</div>
+        <div class="mc-name">${esc(pet.name)}</div>
+        <div class="hpbar mc-hpbar"><div class="hpbar-fill" data-level="${hpLevel(petHp,pet.maxHp)}" style="width:${petHp/pet.maxHp*100}%"></div></div>
+        ${pet.fainted ? '<div class="mc-tag">FAINTED</div>' : ''}
+      `;
+      if (canSwitch) mini.addEventListener('click', () => switchActive(p, idx));
+      bench.appendChild(mini);
+    });
+  }
+
+  const banner = $('turn-banner');
+  $('round-tag').textContent = `ROUND ${state.round}`;
+  if (state.pendingFaintSwitch !== null){
+    banner.className = `panel turn-banner turn-p${state.pendingFaintSwitch+1}`;
+    $('turn-text').textContent = `${state.players[state.pendingFaintSwitch].name.toUpperCase()} MUST SWITCH`;
+  } else {
+    banner.className = `panel turn-banner turn-p${state.turn+1}`;
+    $('turn-text').textContent = `${state.players[state.turn].name.toUpperCase()}'S TURN`;
+  }
+}
+
+function switchActive(p, idx){
+  const team = state.players[p].team;
+  if (team[idx].fainted || idx === state.players[p].activeIdx) return;
+
+  const wasForced = state.pendingFaintSwitch === p;
+  state.players[p].activeIdx = idx;
+
+  if (wasForced){
+    state.pendingFaintSwitch = null;
+    appendLog(`<b>${esc(state.players[p].name)}</b> sends out <b>${esc(team[idx].name)}</b>!`);
+    advanceTurn(state.turn);
+  } else {
+    appendLog(`<b>${esc(state.players[p].name)}</b> switches to <b>${esc(team[idx].name)}</b>.`);
+    renderBattle();
+    renderMoves();
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MOVES PANEL
+   ════════════════════════════════════════════════════════════════ */
+const EXERCISE_LABELS = { match:'MATCH THE HALVES', fill:'FILL THE GAP', mistake:'FIND THE MISTAKE', order:'WORD ORDER' };
+
+function renderMoves(){
+  const hint = document.querySelector('.switch-hint');
+
+  if (state.pendingFaintSwitch !== null){
+    $('moves-title').textContent = `${state.players[state.pendingFaintSwitch].name.toUpperCase()} — PICK A REPLACEMENT`;
+    $('moves-row').innerHTML = '';
+    if (hint) hint.textContent = 'Tap a bench pet above to send it into battle.';
+    return;
+  }
+
+  const attackerIdx = state.turn;
+  const attacker = state.players[attackerIdx];
+  const active = attacker.team[attacker.activeIdx];
+  const opponent = state.players[1-attackerIdx];
+  const defender = opponent.team[opponent.activeIdx];
+
+  $('moves-title').textContent = `${attacker.name.toUpperCase()} — CHOOSE A MOVE`;
+  if (hint) hint.textContent = 'Tap a bench pet above to switch for free before attacking.';
+
+  const row = $('moves-row');
+  row.innerHTML = '';
+
+  active.moves.forEach(move => {
+    const eff = effectiveness(move.type, defender.type);
+    const affordable = active.energy >= move.cost;
+
+    const arrow = eff === 2
+      ? '<span class="eff-arrow up">▲ x2</span>'
+      : eff === 0.5
+        ? '<span class="eff-arrow down">▼ x0.5</span>'
+        : '<span class="eff-arrow flat">— x1</span>';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'move-btn' + (affordable ? '' : ' disabled');
+    btn.innerHTML = `
+      <div class="mv-name"><span class="mini-type-dot" data-type="${move.type}"></span> ${esc(move.name)}</div>
+      <div class="mv-row"><span>${TYPE_NAMES[move.type]} · Power ${move.power}</span>${arrow}</div>
+      <div class="mv-row"><span>Cost: ${move.cost}⚡</span><span></span></div>
+    `;
+    if (affordable) btn.addEventListener('click', () => selectMove(move));
+    row.appendChild(btn);
+  });
+
+  if (!active.moves.some(m => active.energy >= m.cost)){
+    const passBtn = document.createElement('button');
+    passBtn.type = 'button';
+    passBtn.className = 'move-btn';
+    passBtn.style.gridColumn = '1 / -1';
+    passBtn.innerHTML = `<div class="mv-name">⏭ Pass — Not Enough Energy</div><div class="mv-row"><span>${esc(active.name)} can't afford any move this turn.</span></div>`;
+    passBtn.addEventListener('click', () => {
+      appendLog(`<b>${esc(attacker.name)}</b>: ${esc(active.name)} has no energy for any move and passes.`);
+      advanceTurn(attackerIdx);
+    });
+    row.appendChild(passBtn);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   QUESTION MODAL
+   ════════════════════════════════════════════════════════════════ */
+let modalTimer = null;
+let modalSeconds = 0;
+
+function clearModalTimer(){
+  if (modalTimer){ clearInterval(modalTimer); modalTimer = null; }
+}
+
+function renderQuestionBody(q){
+  const body = $('modal-body');
+  if (q.type === 'order'){
+    const shuffled = shuffle(q.words);
+    body.innerHTML = `<div>Put the words in the correct order:</div>
+      <div class="word-chips">${shuffled.map(w => `<span class="word-chip">${esc(w)}</span>`).join('')}</div>`;
+  } else {
+    const highlighted = esc(q.prompt).replace(/_{3,}/g, '<span class="blank">_____</span>');
+    body.innerHTML = `<div>${highlighted}</div>`;
+  }
+}
+
+function openQuestionModal({ mode, onJudge, onContinue }){
+  if (!state.pool.length){
+    onContinue();
+    return;
+  }
+  const q = drawQuestion();
+
+  $('modal-exercise-tag').textContent = EXERCISE_LABELS[q.type] || q.type.toUpperCase();
+  $('modal-topic-name').textContent = q.topic || '';
+
+  renderQuestionBody(q);
+
+  const answerEl = $('modal-answer');
+  answerEl.classList.remove('show');
+  answerEl.innerHTML = `<span class="label">Answer</span>${esc(q.answer)}`;
+
+  const resultEl = $('modal-result');
+  resultEl.classList.remove('show','good','bad');
+  resultEl.textContent = '';
+
+  $('btn-reveal').style.display = '';
+  $('btn-correct').style.display = 'none';
+  $('btn-incorrect').style.display = 'none';
+  $('btn-continue').style.display = 'none';
+
+  const timerWrap = $('timer-wrap');
+  const timerFill = $('timer-fill');
+  clearModalTimer();
+
+  function updateTimerDisplay(){
+    const safe = Math.max(0, modalSeconds);
+    timerFill.style.width = (safe/30*100) + '%';
+    $('timer-text').textContent = `${safe}s`;
+    timerFill.style.background = safe <= 5 ? 'var(--bad)' : safe <= 15 ? 'var(--warn)' : 'var(--ok)';
+  }
+
+  function reveal(){
+    clearModalTimer();
+    answerEl.classList.add('show');
+    $('btn-reveal').style.display = 'none';
+    $('btn-correct').style.display = '';
+    $('btn-incorrect').style.display = '';
+  }
+
+  if (mode === 'renewal'){
+    timerWrap.classList.add('show');
+    modalSeconds = 30;
+    updateTimerDisplay();
+    modalTimer = setInterval(() => {
+      modalSeconds--;
+      updateTimerDisplay();
+      if (modalSeconds <= 0) reveal();
+    }, 1000);
+  } else {
+    timerWrap.classList.remove('show');
+    modalSeconds = 0;
+  }
+
+  $('btn-reveal').onclick = reveal;
+
+  function judge(correct){
+    const secondsRemaining = Math.max(0, modalSeconds);
+    const { message, cls } = onJudge(correct, secondsRemaining);
+    resultEl.textContent = message;
+    resultEl.classList.add('show', cls);
+    $('btn-correct').style.display = 'none';
+    $('btn-incorrect').style.display = 'none';
+    $('btn-continue').style.display = '';
+  }
+
+  $('btn-correct').onclick = () => judge(true);
+  $('btn-incorrect').onclick = () => judge(false);
+
+  $('btn-continue').onclick = () => {
+    $('modal-overlay').classList.remove('show');
+    clearModalTimer();
+    onContinue();
+  };
+
+  $('modal-overlay').classList.add('show');
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ATTACK FLOW
+   ════════════════════════════════════════════════════════════════ */
+function selectMove(move){
+  if (state.pendingFaintSwitch !== null) return;
+
+  const attackerIdx = state.turn;
+  const defenderIdx = 1 - attackerIdx;
+  const attacker = state.players[attackerIdx].team[state.players[attackerIdx].activeIdx];
+  const defender = state.players[defenderIdx].team[state.players[defenderIdx].activeIdx];
+  if (attacker.energy < move.cost) return;
+
+  const eff = effectiveness(move.type, defender.type);
+  const effText = eff === 2 ? ' Super effective!' : eff === 0.5 ? ' Not very effective…' : '';
+
+  openQuestionModal({
+    mode: 'attack',
+    onJudge: (correct) => {
+      attacker.energy -= move.cost;
+      let dmg = 0;
+      if (correct){
+        dmg = Math.round(move.power * eff);
+        defender.hp = Math.max(0, defender.hp - dmg);
+        if (defender.hp <= 0) defender.fainted = true;
+      }
+      renderBattle();
+
+      if (correct){
+        appendLog(`<b>${esc(attacker.name)}</b> uses <b>${esc(move.name)}</b> on <b>${esc(defender.name)}</b> — ${dmg} damage!${effText} (−${move.cost}⚡)`,
+          eff === 2 ? 'hit-up' : eff === 0.5 ? 'hit-down' : '');
+      } else {
+        appendLog(`<b>${esc(attacker.name)}</b> uses <b>${esc(move.name)}</b> — wrong answer, no damage. (−${move.cost}⚡)`);
+      }
+
+      return correct
+        ? { message: `💥 ${dmg} damage!${effText}`, cls: 'good' }
+        : { message: `❌ Wrong — no damage, but ${move.cost}⚡ spent.`, cls: 'bad' };
+    },
+    onContinue: () => afterAttack(attackerIdx, defenderIdx)
+  });
+}
+
+function afterAttack(attackerIdx, defenderIdx){
+  const defenderPlayer = state.players[defenderIdx];
+  const activeDef = defenderPlayer.team[defenderPlayer.activeIdx];
+
+  if (activeDef.fainted){
+    appendLog(`<b>${esc(activeDef.name)}</b> has fainted!`, 'hit-down');
+    if (livingPets(defenderIdx).length === 0){
+      endGame(attackerIdx);
+      return;
+    }
+    state.pendingFaintSwitch = defenderIdx;
+    renderBattle();
+    renderMoves();
+    return;
+  }
+
+  advanceTurn(attackerIdx);
+}
+
+function advanceTurn(attackerIdx){
+  if (attackerIdx === 0){
+    state.turn = 1;
+    renderBattle();
+    renderMoves();
+  } else {
+    startRenewalPhase();
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RENEWAL PHASE
+   ════════════════════════════════════════════════════════════════ */
+function startRenewalPhase(){
+  state.renewalQueue = [];
+  for (let p = 0; p < 2; p++){
+    state.players[p].team.forEach((pet, idx) => {
+      if (!pet.fainted) state.renewalQueue.push({ playerIdx: p, petIdx: idx });
+    });
+  }
+  appendLog(`<b>⚡ Renewal Phase</b> — answer to recharge your pets.`);
+  $('moves-title').textContent = 'RENEWAL PHASE';
+  $('moves-row').innerHTML = '';
+  const hint = document.querySelector('.switch-hint');
+  if (hint) hint.textContent = 'Each living pet answers one question to recharge energy.';
+  renderBattle();
+  processNextRenewal();
+}
+
+function processNextRenewal(){
+  if (!state.renewalQueue.length){
+    finishRound();
+    return;
+  }
+  const { playerIdx, petIdx } = state.renewalQueue.shift();
+  const player = state.players[playerIdx];
+  const pet = player.team[petIdx];
+  if (pet.fainted){ processNextRenewal(); return; }
+
+  $('moves-title').textContent = `${player.name.toUpperCase()} — RENEW ${pet.name.toUpperCase()} ${pet.emoji}`;
+
+  openQuestionModal({
+    mode: 'renewal',
+    onJudge: (correct, secondsRemaining) => {
+      const gain = correct ? Math.max(secondsRemaining, 10) : 10;
+      pet.energy += gain;
+      if (player.activeIdx === petIdx) renderBattle();
+      appendLog(`<b>${esc(player.name)}</b>: ${esc(pet.name)} ${pet.emoji} renews — ${correct ? 'correct' : 'incorrect'}, +${gain}⚡ (now ${pet.energy}⚡)`);
+      return correct
+        ? { message: `⚡ +${gain} energy! ${pet.name} is now at ${pet.energy}⚡`, cls: 'good' }
+        : { message: `+${gain} energy (minimum). ${pet.name} is now at ${pet.energy}⚡`, cls: 'bad' };
+    },
+    onContinue: () => processNextRenewal()
+  });
+}
+
+function finishRound(){
+  state.round++;
+  state.turn = 0;
+  state.pendingFaintSwitch = null;
+  appendLog(`<b>— Round ${state.round} begins —</b>`);
+  renderBattle();
+  renderMoves();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   END GAME
+   ════════════════════════════════════════════════════════════════ */
+function endGame(winnerIdx){
+  const winner = state.players[winnerIdx];
+  appendLog(`<b>🏆 ${esc(winner.name)} wins the battle!</b>`);
+  $('end-winner-text').textContent = `${winner.name.toUpperCase()} WINS!`;
+  $('end-winner-text').className = `end-winner pixel is-p${winnerIdx+1}`;
+  showScreen('end');
+}
+
+$('rematch-btn').addEventListener('click', () => {
+  for (let p = 0; p < 2; p++){
+    state.players[p].team.forEach(pet => {
+      pet.hp = pet.maxHp;
+      pet.energy = 100;
+      pet.fainted = false;
+    });
+    state.players[p].activeIdx = 0;
+  }
+  state.round = 1;
+  state.turn = 0;
+  state.pendingFaintSwitch = null;
+  state.renewalQueue = [];
+  state.pool = shuffle(state.pool);
+  state.poolIndex = 0;
+
+  $('battle-log').innerHTML = '';
+  appendLog(`<b>Rematch!</b> ${esc(state.players[0].name)} vs ${esc(state.players[1].name)} — Round 1 begins!`);
+  showScreen('battle');
+  renderBattle();
+  renderMoves();
+});
+
+$('newgame-btn').addEventListener('click', () => {
+  state.draft = { order:[0,1,1,0,0,1], step:0, picks:{} };
+  showScreen('setup');
+  renderDraftGrid();
+});
+
+/* ════════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════════ */
+loadTopicsIndex();
+</script>
+</body>
+</html>

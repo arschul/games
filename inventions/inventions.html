@@ -1104,6 +1104,7 @@ let state = {
   timer: null,
   timeLeft: 120,
   turnTime: 120,
+  turnStartedAt: null,
   scores: []
 };
 
@@ -1162,6 +1163,7 @@ function soundTimeout() {
 function startTimer() {
   clearTimer();
   state.timeLeft = state.turnTime;
+  state.turnStartedAt = Date.now();
   updateTimerDisplay();
   state.timer = setInterval(() => {
     state.timeLeft--;
@@ -1180,6 +1182,14 @@ function clearTimer() {
   if (state.timer) { clearInterval(state.timer); state.timer = null; }
 }
 
+function recordElapsedTime() {
+  const p = state.players[state.currentPlayer];
+  if (!p || !state.turnStartedAt) return;
+  const elapsed = (Date.now() - state.turnStartedAt) / 1000;
+  p.totalTime = (p.totalTime || 0) + elapsed;
+  state.turnStartedAt = null;
+}
+
 function updateTimerDisplay() {
   const el = document.getElementById('timerDisplay');
   const mins = Math.floor(state.timeLeft / 60);
@@ -1196,11 +1206,12 @@ function updateTimerDisplay() {
 
 function handleTimeout() {
   // Penalise: draw new card for the selected (or first) card
+  recordElapsedTime();
   const p = state.players[state.currentPlayer];
   const idx = state.selectedCard !== null ? state.selectedCard : 0;
   replaceCard(p, idx);
   state.selectedCard = null;
-  showFeedback(false, null, null, null, true);
+  showFeedback(false, null, false, true);
 }
 
 /* ── CONFETTI ── */
@@ -1314,7 +1325,7 @@ function startGame(numPlayers, teamNames, turnTime) {
 
   let idx = 1;
   for (let i = 0; i < numPlayers; i++) {
-    state.players.push({ hand: shuffled.slice(idx, idx+5) });
+    state.players.push({ hand: shuffled.slice(idx, idx+5), finished: false, finishRound: null, totalTime: 0 });
     state.scores.push({ correct: 0, wrong: 0 });
     idx += 5;
   }
@@ -1437,6 +1448,7 @@ function selectCard(idx) {
 function placeCard(pos) {
   if (state.selectedCard === null || state.gameOver) return;
   clearTimer();
+  recordElapsedTime();
 
   const p = state.players[state.currentPlayer];
   const inv = p.hand[state.selectedCard];
@@ -1460,8 +1472,13 @@ function placeCard(pos) {
   const cardIdx = state.selectedCard;
   state.selectedCard = null;
 
-  if (correct && p.hand.length === 0) {
-    state.gameOver = true;
+  // A team emptying its hand doesn't win on the spot — every team finishes
+  // the current round first, so nobody is disadvantaged just for going later
+  // in the turn order. If more than one team clears their hand in the same
+  // round, the tie is broken by least total time spent on their turns.
+  if (correct && p.hand.length === 0 && !p.finished) {
+    p.finished = true;
+    p.finishRound = state.round;
     showFeedback(true, inv, true);
     return;
   }
@@ -1482,20 +1499,39 @@ function replaceCard(player, idx) {
 
 function nextTurn() {
   state.currentPlayer = (state.currentPlayer + 1) % state.numPlayers;
-  if (state.currentPlayer === 0) state.round++;
+  if (state.currentPlayer === 0) {
+    state.round++;
+    const finishers = state.players
+      .map((p, i) => ({ i, p }))
+      .filter(x => x.p.finished);
+    if (finishers.length > 0) {
+      finalizeGame(finishers);
+      return;
+    }
+  }
   renderAll();
   updateScoreTabs();
   startTimer();
 }
 
-/* ── FEEDBACK ── */
-let _feedbackIsWin = false;
+function finalizeGame(finishers) {
+  state.gameOver = true;
+  clearTimer();
 
-function showFeedback(correct, inv, isWin, _unused, timeout=false) {
+  let tieBroken = false;
+  if (finishers.length > 1) {
+    finishers.sort((a, b) => (a.p.totalTime || 0) - (b.p.totalTime || 0));
+    tieBroken = true;
+  }
+  updateScoreTabs();
+  showWinModal(finishers, tieBroken);
+}
+
+/* ── FEEDBACK ── */
+function showFeedback(correct, inv, cleared=false, timeout=false) {
   const overlay = document.getElementById('feedbackOverlay');
   const box = document.getElementById('feedbackBox');
   const btn = document.getElementById('fbNextBtn');
-  _feedbackIsWin = isWin;
 
   if (timeout) {
     document.getElementById('fbIcon').textContent = '⏰';
@@ -1506,40 +1542,48 @@ function showFeedback(correct, inv, isWin, _unused, timeout=false) {
     btn.textContent = 'Next →';
   } else {
     document.getElementById('fbIcon').textContent = inv ? inv.emoji : '';
-    document.getElementById('fbVerdict').textContent = correct ? (isWin ? '🎉 Winner!' : 'Correct!') : 'Wrong!';
+    document.getElementById('fbVerdict').textContent = cleared ? '🙌 Hand Cleared!' : (correct ? 'Correct!' : 'Wrong!');
     document.getElementById('fbYear').textContent = inv ? `Invented: ${fmtYear(inv.year)}` : '';
-    document.getElementById('fbDesc').textContent = inv ? inv.desc : '';
+    document.getElementById('fbDesc').textContent = cleared
+      ? `${inv ? inv.desc + ' ' : ''}${state.numPlayers > 1 ? 'Waiting for the rest of the round to finish before the winner is announced!' : ''}`
+      : (inv ? inv.desc : '');
     box.className = 'feedback-box ' + (correct ? 'correct' : 'wrong');
-    btn.textContent = isWin ? 'See Results' : 'Next →';
+    btn.textContent = 'Next →';
   }
 
   overlay.classList.add('show');
 }
 
 function dismissFeedback() {
-  const overlay = document.getElementById('feedbackOverlay');
-  overlay.classList.remove('show');
-  if (_feedbackIsWin) {
-    showWinModal();
-  } else {
-    nextTurn();
-  }
+  document.getElementById('feedbackOverlay').classList.remove('show');
+  nextTurn();
 }
 
 /* ── MODALS ── */
-function showWinModal() {
-  const cp = state.currentPlayer;
-  const winnerName = state.teamNames[cp] || `Team ${cp+1}`;
+function showWinModal(finishers, tieBroken) {
+  const winnerIdx = finishers[0].i;
+  const winnerName = state.teamNames[winnerIdx] || `Team ${winnerIdx+1}`;
+  const finishedSet = new Set(finishers.map(f => f.i));
+
+  let subtitle = 'Emptied their hand first — every team got an equal number of turns!';
+  if (tieBroken) {
+    const others = finishers.length - 1;
+    subtitle = `Tied with ${others} other team${others > 1 ? 's' : ''} for emptying their hand — won on speed (least total thinking time)!`;
+  }
+
   let html = `<span class="winner-emoji">🏆</span>
     <p style="font-size:1.4rem;font-weight:700;text-align:center;margin-bottom:8px;">${winnerName} wins!</p>
-    <p style="text-align:center;margin-bottom:20px;color:#666;">All cards placed correctly!</p>
+    <p style="text-align:center;margin-bottom:20px;color:#666;">${subtitle}</p>
     <div class="final-scores">`;
 
   for (let i = 0; i < state.numPlayers; i++) {
     const name = state.teamNames[i] || `Team ${i+1}`;
+    const pl = state.players[i];
+    const flag = finishedSet.has(i) ? ' 🏁' : '';
+    const timeStr = tieBroken && finishedSet.has(i) ? ` &nbsp; ⏱ ${Math.round(pl.totalTime || 0)}s` : '';
     html += `<div class="final-score-row ${PLAYER_COLORS[i]}">
-      <span>${name}</span>
-      <span>✅ ${state.scores[i].correct} correct &nbsp; ❌ ${state.scores[i].wrong} wrong</span>
+      <span>${name}${flag}</span>
+      <span>✅ ${state.scores[i].correct} correct &nbsp; ❌ ${state.scores[i].wrong} wrong${timeStr}</span>
     </div>`;
   }
 
@@ -1560,7 +1604,7 @@ function showRules() {
       <li>If <strong>correct</strong>, the card is added to the timeline and you keep your remaining cards.</li>
       <li>If <strong>wrong</strong>, you draw a new card to replace it (still 5 cards in hand).</li>
       <li>You have <strong>30 seconds</strong> per turn — don't run out of time!</li>
-      <li><strong>First player to empty their hand</strong> wins the game!</li>
+      <li><strong>First team to empty their hand</strong> doesn't win instantly — the round always finishes first, so every team gets the same number of turns. If more than one team empties their hand in that same round, the team that used <strong>less total time</strong> on their turns wins the tie.</li>
     </ol>
     <div style="text-align:center;margin-top:20px">
       <button class="btn-primary" onclick="closeModal()">Got it!</button>

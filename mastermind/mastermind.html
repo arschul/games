@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastermind – Game Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+[data-theme="dark"]{--bg:#0f172a;--sur:#1e293b;--sur2:#334155;--tx:#f1f5f9;--tm:#94a3b8;--brd:#475569;--acc:#059669;--acc2:#10b981;--sh:rgba(0,0,0,.5);}
+[data-theme="light"]{--bg:#f1f5f9;--sur:#ffffff;--sur2:#e2e8f0;--tx:#0f172a;--tm:#64748b;--brd:#cbd5e1;--acc:#059669;--acc2:#047857;--sh:rgba(0,0,0,.15);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Open Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1rem 1rem 4rem;}
+.back{position:fixed;top:1rem;left:1rem;background:var(--sur);color:var(--acc2);text-decoration:none;padding:.35rem .75rem;border-radius:999px;font-size:.82rem;font-weight:700;border:1px solid var(--brd);z-index:100;}
+.tbtn{position:fixed;top:1rem;right:1rem;background:var(--sur);color:var(--tx);border:1px solid var(--brd);padding:.35rem .75rem;border-radius:999px;cursor:pointer;font-size:.82rem;z-index:100;}
+h1{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.6rem,4vw,2.4rem);color:var(--acc2);margin-top:3.5rem;text-align:center;}
+.sub{color:var(--tm);font-size:.9rem;margin:.25rem 0 1.5rem;text-align:center;}
+.card{background:var(--sur);border-radius:1rem;border:1px solid var(--brd);padding:1.75rem;width:100%;max-width:460px;}
+/* Setup */
+.srow{display:flex;align-items:center;justify-content:space-between;padding:.62rem 0;border-bottom:1px solid var(--brd);gap:.5rem;}
+.srow:last-of-type{border-bottom:none;}
+.slbl{font-weight:700;font-size:.9rem;}
+.shnt{font-size:.73rem;color:var(--tm);margin-top:.1rem;}
+.opts{display:flex;gap:.3rem;flex-shrink:0;}
+.opt{padding:.28rem .58rem;border-radius:.35rem;border:1px solid var(--brd);background:var(--sur2);color:var(--tx);cursor:pointer;font-size:.8rem;font-weight:700;transition:background .12s;}
+.opt.on{background:var(--acc);border-color:var(--acc);color:#fff;}
+#tnames{margin-top:.65rem;}
+.trow{display:flex;align-items:center;gap:.45rem;margin-bottom:.38rem;}
+.tdot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.trow input{flex:1;background:var(--sur2);border:1px solid var(--brd);border-radius:.35rem;color:var(--tx);padding:.32rem .5rem;font-size:.85rem;font-family:'Open Sans',sans-serif;}
+.go{width:100%;margin-top:1.2rem;padding:.78rem;background:var(--acc);color:#fff;border:none;border-radius:.5rem;font-size:.98rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:background .15s;}
+.go:hover{background:var(--acc2);}
+/* Modal */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;}
+.ov.open{display:flex;}
+.modal{background:var(--sur);border-radius:1rem;padding:1.75rem;max-width:340px;width:90%;border:1px solid var(--brd);}
+.modal h3{font-family:'Montserrat',sans-serif;font-weight:700;color:var(--acc2);margin-bottom:.4rem;}
+.modal p{font-size:.8rem;color:var(--tm);margin-bottom:.9rem;}
+.mbtns{display:flex;gap:.5rem;margin-top:1rem;}
+.mbtns button{flex:1;padding:.55rem;border-radius:.4rem;font-weight:700;font-size:.88rem;cursor:pointer;border:none;}
+.mcanc{background:var(--sur2);color:var(--tx);}
+.mconf{background:var(--acc);color:#fff;}
+.mconf:disabled{opacity:.4;cursor:not-allowed;}
+/* Game */
+#game{display:none;width:100%;max-width:560px;}
+.gtop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.65rem;flex-wrap:wrap;gap:.4rem;}
+.gcnt{font-size:.82rem;color:var(--tm);font-weight:700;}
+.tscores{display:flex;gap:.4rem;flex-wrap:wrap;}
+.tsc{padding:.22rem .55rem;border-radius:.35rem;border:2px solid transparent;font-size:.75rem;font-weight:700;background:var(--sur);}
+.tsc.act{border-color:var(--acc2);}
+.banner{text-align:center;padding:.45rem 1rem;background:var(--sur);border:1px solid var(--brd);border-radius:.5rem;font-family:'Montserrat',sans-serif;font-weight:700;font-size:.98rem;margin-bottom:.65rem;}
+/* Board */
+.board{background:var(--sur);border-radius:.75rem;border:1px solid var(--brd);padding:.6rem;margin-bottom:.65rem;min-height:70px;max-height:36vh;overflow-y:auto;}
+.emsg{text-align:center;color:var(--tm);padding:1.25rem;font-size:.85rem;}
+.grow{display:flex;align-items:center;gap:.35rem;padding:.28rem 0;border-bottom:1px solid var(--brd);}
+.grow:last-child{border-bottom:none;}
+.rn{width:1.1rem;font-size:.7rem;color:var(--tm);font-weight:700;flex-shrink:0;text-align:center;}
+.rt{font-size:.68rem;font-weight:700;flex-shrink:0;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rpegs{display:flex;gap:.28rem;flex:1;}
+.peg{border-radius:50%;flex-shrink:0;}
+.pegf{border-color:rgba(255,255,255,.22)!important;box-shadow:inset 0 2px 4px rgba(255,255,255,.18),0 2px 5px rgba(0,0,0,.4);}
+.pege{background:var(--sur2);border:2px solid var(--brd);}
+/* Feedback */
+.fb{display:grid;gap:3px;flex-shrink:0;}
+.fbp{border-radius:50%;}
+.fbb{background:#1c2d3e;border:2px solid #94a3b8;}
+.fbw{background:#f0f4f8;border:2px solid #64748b;}
+.fbe{background:transparent;border:2px solid var(--brd);}
+/* Input */
+.ia{background:var(--sur);border-radius:.75rem;border:2px solid var(--acc);padding:.9rem;margin-bottom:.6rem;}
+.ialbl{font-size:.72rem;font-weight:700;color:var(--acc2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem;}
+.slotrow{display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;}
+.slot{border-radius:50%;background:var(--sur2);border:2.5px dashed var(--brd);cursor:pointer;transition:box-shadow .12s,transform .1s;flex-shrink:0;}
+.slot:hover{transform:scale(1.08);}
+.slot.sel{box-shadow:0 0 0 3px var(--acc2);}
+.slot.slotf{border-style:solid!important;border-color:rgba(255,255,255,.22)!important;box-shadow:inset 0 2px 4px rgba(255,255,255,.18),0 2px 5px rgba(0,0,0,.4);}
+.pal{display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;}
+.pp{border-radius:50%;border:3px solid transparent;cursor:pointer;flex-shrink:0;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:transform .1s,border-color .1s;}
+.pp:hover{transform:scale(1.12);}
+.pp.ssel{border-color:rgba(255,255,255,.85);transform:scale(1.12);}
+.iabtns{display:flex;gap:.45rem;}
+.btn{padding:.52rem .9rem;border-radius:.4rem;border:none;cursor:pointer;font-weight:700;font-size:.85rem;font-family:'Open Sans',sans-serif;transition:opacity .15s,transform .1s;}
+.btn:active{transform:scale(.97);}
+.bgo{background:var(--acc);color:#fff;flex:1;}
+.bgo:disabled{opacity:.4;cursor:not-allowed;}
+.bclr{background:var(--sur2);color:var(--tx);border:1px solid var(--brd)!important;}
+.hint{text-align:center;font-size:.75rem;color:var(--tm);line-height:1.5;}
+/* End */
+#end{display:none;text-align:center;}
+#end h2{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.75rem;margin-bottom:.3rem;}
+.esub{color:var(--tm);font-size:.88rem;margin-bottom:.6rem;}
+.srev{display:flex;gap:.45rem;justify-content:center;margin:1rem 0;}
+.etbl{margin:.75rem 0;}
+.etr{display:flex;justify-content:space-between;align-items:center;padding:.38rem .15rem;border-bottom:1px solid var(--brd);font-size:.88rem;}
+.etr:last-child{border-bottom:none;}
+.bag{width:100%;margin-top:1.1rem;padding:.78rem;background:var(--acc);color:#fff;border:none;border-radius:.5rem;font-size:.95rem;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;}
+.bag2{width:100%;margin-top:.45rem;padding:.58rem;background:var(--sur2);color:var(--tx);border:1px solid var(--brd);border-radius:.5rem;font-size:.88rem;font-weight:700;cursor:pointer;}
+</style>
+</head>
+<body>
+<a class="back" href="../">← Game Hub</a>
+<button class="tbtn" onclick="toggleTheme()">🌙 Theme</button>
+<h1>🔐 Mastermind</h1>
+<p class="sub">Crack the secret colour code</p>
+
+<!-- SETUP -->
+<div class="card" id="setup">
+  <h2 style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:1.05rem;color:var(--acc2);margin-bottom:1.1rem;">⚙️ Game Settings</h2>
+  <div class="srow">
+    <div><div class="slbl">Code length</div><div class="shnt">Pegs in the secret code</div></div>
+    <div class="opts" id="olen">
+      <button class="opt" data-v="3">3</button>
+      <button class="opt on" data-v="4">4</button>
+      <button class="opt" data-v="5">5</button>
+    </div>
+  </div>
+  <div class="srow">
+    <div><div class="slbl">Colours</div><div class="shnt">Options available</div></div>
+    <div class="opts" id="oclr">
+      <button class="opt" data-v="5">5</button>
+      <button class="opt on" data-v="6">6</button>
+      <button class="opt" data-v="8">8</button>
+    </div>
+  </div>
+  <div class="srow">
+    <div><div class="slbl">Duplicates</div><div class="shnt">Same colour allowed twice?</div></div>
+    <div class="opts" id="odup">
+      <button class="opt on" data-v="1">Yes</button>
+      <button class="opt" data-v="0">No</button>
+    </div>
+  </div>
+  <div class="srow">
+    <div><div class="slbl">Max guesses</div><div class="shnt">Per team</div></div>
+    <div class="opts" id="omax">
+      <button class="opt" data-v="8">8</button>
+      <button class="opt on" data-v="10">10</button>
+      <button class="opt" data-v="12">12</button>
+    </div>
+  </div>
+  <div class="srow">
+    <div><div class="slbl">Secret code</div><div class="shnt">Computer-random or teacher-set</div></div>
+    <div class="opts" id="osrc">
+      <button class="opt on" data-v="rand">Random</button>
+      <button class="opt" data-v="custom">Custom</button>
+    </div>
+  </div>
+  <div class="srow">
+    <div><div class="slbl">Teams</div><div class="shnt">Competing groups</div></div>
+    <div class="opts" id="oteam">
+      <button class="opt on" data-v="1">1</button>
+      <button class="opt" data-v="2">2</button>
+      <button class="opt" data-v="3">3</button>
+      <button class="opt" data-v="4">4</button>
+    </div>
+  </div>
+  <div id="tnames"></div>
+  <button class="go" onclick="startGame()">▶ Start Game</button>
+</div>
+
+<!-- CUSTOM CODE MODAL -->
+<div class="ov" id="modal">
+  <div class="modal">
+    <h3>🔒 Set Secret Code</h3>
+    <p>Pick the code colours — ask students to look away!</p>
+    <div class="slotrow" id="mslots"></div>
+    <div class="pal" id="mpal"></div>
+    <div class="mbtns">
+      <button class="mcanc" onclick="cancelModal()">Cancel</button>
+      <button class="mconf" id="mok" onclick="confirmModal()" disabled>✓ Set Code</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game">
+  <div class="gtop">
+    <div class="gcnt" id="gcnt">Guess 1 / 10</div>
+    <div class="tscores" id="tsc"></div>
+  </div>
+  <div class="banner" id="bnr" style="display:none"></div>
+  <div class="board" id="board"><div class="emsg">No guesses yet — pick colours below!</div></div>
+  <div class="ia">
+    <div class="ialbl">Your Guess</div>
+    <div class="slotrow" id="gslots"></div>
+    <div class="pal" id="gpal"></div>
+    <div class="iabtns">
+      <button class="btn bclr" onclick="clearGuess()">✕ Clear</button>
+      <button class="btn bgo" id="gsub" onclick="submitGuess()" disabled>✓ Submit</button>
+    </div>
+  </div>
+  <div class="hint">⚫ Right colour, right position &nbsp;·&nbsp; ⚪ Right colour, wrong position</div>
+</div>
+
+<!-- END -->
+<div class="card" id="end">
+  <h2 id="etitle"></h2>
+  <div class="esub" id="esub"></div>
+  <div style="font-size:.8rem;color:var(--tm);">The secret code was:</div>
+  <div class="srev" id="srev"></div>
+  <div class="etbl" id="etbl"></div>
+  <button class="bag" onclick="playAgain()">▶ Play Again</button>
+  <button class="bag2" onclick="goSetup()">⚙️ Change Settings</button>
+</div>
+
+<script>
+const COLS=[
+  {id:0,h:'#ef4444',n:'Red'},{id:1,h:'#3b82f6',n:'Blue'},
+  {id:2,h:'#22c55e',n:'Green'},{id:3,h:'#eab308',n:'Yellow'},
+  {id:4,h:'#a855f7',n:'Purple'},{id:5,h:'#f97316',n:'Orange'},
+  {id:6,h:'#ec4899',n:'Pink'},{id:7,h:'#06b6d4',n:'Cyan'},
+];
+const TC=['#3b82f6','#ef4444','#22c55e','#f97316'];
+const TN=['Team 1','Team 2','Team 3','Team 4'];
+
+const S={len:4,clr:6,dup:1,max:10,src:'rand',teams:1};
+let G={};
+
+// ── AUDIO ────────────────────────────────────────────────
+let AC;
+function ao(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
+function beep(f,d,t,v){
+  try{var c=ao(),o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);o.type=t||'sine';o.frequency.value=f||440;
+  g.gain.setValueAtTime(v||.3,c.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+(d||.1));
+  o.start();o.stop(c.currentTime+(d||.1));}catch(e){}
+}
+function sClick(){beep(520,.06,'sine',.15);}
+function sSub(){beep(600,.12,'sine',.2);}
+function sWin(){[523,659,784,1047].forEach(function(f,i){setTimeout(function(){beep(f,.2,'sine',.3);},i*110);});}
+function sLose(){beep(220,.3,'sawtooth',.2);setTimeout(function(){beep(160,.35,'sawtooth',.15);},250);}
+
+// ── SETUP ────────────────────────────────────────────────
+function initOpts(){
+  var map=[
+    ['olen',function(v){S.len=+v;}],
+    ['oclr',function(v){S.clr=+v;}],
+    ['odup',function(v){S.dup=+v;}],
+    ['omax',function(v){S.max=+v;}],
+    ['osrc',function(v){S.src=v;}],
+    ['oteam',function(v){S.teams=+v;renderTNames();}],
+  ];
+  map.forEach(function(pair){
+    var id=pair[0],fn=pair[1];
+    document.getElementById(id).addEventListener('click',function(e){
+      var b=e.target.closest('.opt');if(!b)return;
+      e.currentTarget.querySelectorAll('.opt').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');sClick();fn(b.dataset.v);
+    });
+  });
+}
+
+function renderTNames(){
+  var c=document.getElementById('tnames');
+  if(S.teams<2){c.innerHTML='';return;}
+  c.innerHTML=Array.from({length:S.teams},function(_,i){
+    return '<div class="trow"><div class="tdot" style="background:'+TC[i]+'"></div>'+
+      '<input id="tn'+i+'" type="text" placeholder="'+TN[i]+'" maxlength="20"></div>';
+  }).join('');
+}
+function gTName(i){var el=document.getElementById('tn'+i);return el&&el.value.trim()||TN[i];}
+
+function startGame(){
+  G.teams=Array.from({length:S.teams},function(_,i){
+    return{name:gTName(i),color:TC[i],guesses:0,solved:false,solvedAt:0};
+  });
+  if(S.src==='custom')openModal();
+  else{G.secret=genCode();launch();}
+}
+
+function genCode(){
+  var pool=COLS.slice(0,S.clr).map(function(c){return c.id;});
+  if(S.dup){
+    return Array.from({length:S.len},function(){return pool[Math.floor(Math.random()*pool.length)];});
+  }
+  return pool.slice().sort(function(){return Math.random()-.5;}).slice(0,S.len);
+}
+
+// ── MODAL ────────────────────────────────────────────────
+var mCode=[],mSlot=0;
+function openModal(){
+  mCode=Array(S.len).fill(null);mSlot=0;
+  renderMSlots();renderMPal();
+  document.getElementById('mok').disabled=true;
+  document.getElementById('modal').classList.add('open');
+}
+function cancelModal(){
+  document.getElementById('modal').classList.remove('open');
+  S.src='rand';
+  document.querySelectorAll('#osrc .opt').forEach(function(b){b.classList.toggle('on',b.dataset.v==='rand');});
+}
+function confirmModal(){
+  G.secret=mCode.slice();
+  document.getElementById('modal').classList.remove('open');
+  launch();
+}
+function renderMSlots(){
+  var el=document.getElementById('mslots');el.innerHTML='';
+  mCode.forEach(function(cid,i){
+    var d=document.createElement('div');
+    d.className='slot'+(i===mSlot?' sel':'')+(cid!==null?' slotf':'');
+    d.style.cssText='width:44px;height:44px;'+(cid!==null?'background:'+COLS[cid].h+';':'');
+    d.onclick=(function(idx){return function(){mSlot=idx;renderMSlots();};})(i);
+    el.appendChild(d);
+  });
+}
+function renderMPal(){
+  var el=document.getElementById('mpal');el.innerHTML='';
+  COLS.slice(0,S.clr).forEach(function(c){
+    var d=document.createElement('div');
+    d.className='pp';d.style.cssText='width:36px;height:36px;background:'+c.h;d.title=c.n;
+    d.onclick=(function(col){return function(){
+      if(!S.dup){var di=mCode.findIndex(function(x,j){return x===col.id&&j!==mSlot;});if(di!==-1)mCode[di]=null;}
+      mCode[mSlot]=col.id;sClick();
+      var nx=mCode.findIndex(function(x,j){return x===null&&j>mSlot;});
+      if(nx===-1)nx=mCode.findIndex(function(x){return x===null;});
+      if(nx!==-1)mSlot=nx;
+      renderMSlots();
+      document.getElementById('mok').disabled=mCode.indexOf(null)!==-1;
+    };})(c);
+    el.appendChild(d);
+  });
+}
+
+// ── LAUNCH ───────────────────────────────────────────────
+function launch(){
+  G.hist=[];G.cur=Array(S.len).fill(null);G.slot=0;G.selC=null;
+  G.team=0;G.over=false;
+  G.teams.forEach(function(t){t.guesses=0;t.solved=false;t.solvedAt=0;});
+  document.getElementById('setup').style.display='none';
+  document.getElementById('end').style.display='none';
+  document.getElementById('game').style.display='block';
+  rScores();rBanner();rBoard();rInput();rCount();
+}
+
+// ── RENDER ───────────────────────────────────────────────
+function rScores(){
+  var el=document.getElementById('tsc');
+  if(S.teams<2){el.innerHTML='';return;}
+  el.innerHTML=G.teams.map(function(t,i){
+    return '<div class="tsc'+(i===G.team?' act':'')+'" style="color:'+t.color+'">'+t.name+': '+t.guesses+'</div>';
+  }).join('');
+}
+function rBanner(){
+  var el=document.getElementById('bnr');
+  if(S.teams<2){el.style.display='none';return;}
+  el.style.display='';
+  var t=G.teams[G.team];
+  el.innerHTML='<span style="color:'+t.color+'">●</span> '+t.name+"'s turn";
+}
+function rBoard(){
+  var el=document.getElementById('board');
+  if(!G.hist.length){el.innerHTML='<div class="emsg">No guesses yet — pick colours below!</div>';return;}
+  var cols=Math.ceil(S.len/2),fbSz=14;
+  el.innerHTML='';
+  G.hist.forEach(function(g,i){
+    var row=document.createElement('div');row.className='grow';
+    row.innerHTML='<div class="rn">'+(i+1)+'</div>';
+    if(S.teams>1){
+      var t=G.teams[g.team];
+      row.innerHTML+='<div class="rt" style="color:'+t.color+';width:65px;">'+t.name+'</div>';
+    }
+    var pd=document.createElement('div');pd.className='rpegs';
+    g.colors.forEach(function(cid){
+      var p=document.createElement('div');
+      p.className='peg pegf';
+      p.style.cssText='width:30px;height:30px;background:'+COLS[cid].h+';border:2px solid rgba(255,255,255,.22);';
+      pd.appendChild(p);
+    });
+    row.appendChild(pd);
+    var fb=document.createElement('div');fb.className='fb';
+    fb.style.cssText='grid-template-columns:repeat('+cols+','+fbSz+'px);width:'+cols*(fbSz+3)+'px;';
+    var order=Array(g.black).fill('b').concat(Array(g.white).fill('w'));
+    while(order.length<S.len)order.push('e');
+    order.forEach(function(type){
+      var p=document.createElement('div');p.className='fbp fb'+type;
+      p.style.cssText='width:'+fbSz+'px;height:'+fbSz+'px;';fb.appendChild(p);
+    });
+    row.appendChild(fb);
+    el.appendChild(row);
+  });
+  el.scrollTop=el.scrollHeight;
+}
+function rInput(){
+  var sc=document.getElementById('gslots');sc.innerHTML='';
+  G.cur.forEach(function(cid,i){
+    var d=document.createElement('div');
+    d.className='slot'+(i===G.slot?' sel':'')+(cid!==null?' slotf':'');
+    d.style.cssText='width:44px;height:44px;'+(cid!==null?'background:'+COLS[cid].h+';':'');
+    d.onclick=(function(idx){return function(){G.slot=idx;if(G.selC!==null)placeClr(G.selC);else rInput();};})(i);
+    sc.appendChild(d);
+  });
+  var pc=document.getElementById('gpal');pc.innerHTML='';
+  COLS.slice(0,S.clr).forEach(function(c){
+    var d=document.createElement('div');
+    d.className='pp'+(G.selC===c.id?' ssel':'');
+    d.style.cssText='width:36px;height:36px;background:'+c.h;d.title=c.n;
+    d.onclick=(function(col){return function(){G.selC=col.id;placeClr(col.id);};})(c);
+    pc.appendChild(d);
+  });
+  document.getElementById('gsub').disabled=G.cur.indexOf(null)!==-1;
+}
+function rCount(){
+  var t=G.teams[G.team];
+  var gn=t.guesses+1;
+  var txt='Guess '+gn+' / '+S.max;
+  if(S.teams>1)txt+=' · Turn '+(G.hist.length+1);
+  document.getElementById('gcnt').textContent=txt;
+}
+
+// ── GAME LOGIC ───────────────────────────────────────────
+function placeClr(cid){
+  if(!S.dup){var di=G.cur.findIndex(function(x,j){return x===cid&&j!==G.slot;});if(di!==-1)G.cur[di]=null;}
+  G.cur[G.slot]=cid;sClick();
+  var nx=G.cur.findIndex(function(x,j){return x===null&&j>G.slot;});
+  if(nx===-1)nx=G.cur.findIndex(function(x){return x===null;});
+  if(nx!==-1)G.slot=nx;
+  rInput();
+}
+function clearGuess(){G.cur=Array(S.len).fill(null);G.slot=0;G.selC=null;rInput();}
+
+function evaluate(guess,secret){
+  var b=0,w=0,gl=[],sl=[];
+  for(var i=0;i<secret.length;i++){
+    if(guess[i]===secret[i])b++;
+    else{gl.push(guess[i]);sl.push(secret[i]);}
+  }
+  gl.forEach(function(c){var j=sl.indexOf(c);if(j!==-1){w++;sl.splice(j,1);}});
+  return{black:b,white:w};
+}
+
+function submitGuess(){
+  if(G.over||G.cur.indexOf(null)!==-1)return;
+  var res=evaluate(G.cur,G.secret);
+  G.hist.push({team:G.team,colors:G.cur.slice(),black:res.black,white:res.white});
+  var t=G.teams[G.team];t.guesses++;
+  G.cur=Array(S.len).fill(null);G.slot=0;G.selC=null;
+  sSub();
+  var won=res.black===S.len;
+  if(won){t.solved=true;t.solvedAt=t.guesses;}
+  rBoard();
+  if(S.teams===1){
+    if(won){endGame(true);return;}
+    if(t.guesses>=S.max){endGame(false);return;}
+  }else{
+    if(won){endGame(true);return;}
+    var allDone=G.teams.every(function(x){return x.guesses>=S.max;});
+    if(allDone){endGame(false);return;}
+    var nx=(G.team+1)%S.teams;
+    for(var i=0;i<S.teams;i++){
+      if(G.teams[nx].guesses<S.max)break;
+      nx=(nx+1)%S.teams;
+    }
+    G.team=nx;rBanner();rScores();
+  }
+  rCount();rInput();
+}
+
+// ── END GAME ─────────────────────────────────────────────
+function endGame(won){
+  G.over=true;
+  var sr=document.getElementById('srev');sr.innerHTML='';
+  G.secret.forEach(function(cid){
+    var d=document.createElement('div');d.className='peg pegf';
+    d.style.cssText='width:40px;height:40px;background:'+COLS[cid].h+';border:2px solid rgba(255,255,255,.22);cursor:default;';
+    sr.appendChild(d);
+  });
+  var et=document.getElementById('etitle'),es=document.getElementById('esub');
+  if(S.teams===1){
+    if(won){et.textContent='🎉 Code Cracked!';es.textContent='Solved in '+G.teams[0].guesses+' guess'+(G.teams[0].guesses!==1?'es':'')+'!';sWin();}
+    else{et.textContent='💀 Not This Time';es.textContent='The code survived '+S.max+' guesses.';sLose();}
+    document.getElementById('etbl').innerHTML='';
+  }else{
+    var solver=G.teams.find(function(x){return x.solved;});
+    if(solver){
+      et.textContent='🏆 '+solver.name+' Wins!';
+      es.textContent='Cracked in '+solver.solvedAt+' guess'+(solver.solvedAt!==1?'es':'')+'!';sWin();
+    }else{
+      et.textContent='💀 Nobody Cracked It!';es.textContent='The code defeated all teams.';sLose();
+    }
+    var sorted=G.teams.slice().sort(function(a,b){
+      if(a.solved&&!b.solved)return -1;if(!a.solved&&b.solved)return 1;
+      return a.solvedAt-b.solvedAt;
+    });
+    document.getElementById('etbl').innerHTML=sorted.map(function(t,r){
+      return '<div class="etr"><span style="color:'+t.color+';font-weight:700">'+(r===0&&t.solved?'🏆 ':'')+t.name+'</span>'+
+        '<span>'+(t.solved?'✅ '+t.solvedAt+' guesses':'❌ '+t.guesses+' guesses')+'</span></div>';
+    }).join('');
+  }
+  document.getElementById('game').style.display='none';
+  document.getElementById('end').style.display='block';
+}
+function playAgain(){if(S.src==='custom')openModal();else{G.secret=genCode();launch();}}
+function goSetup(){document.getElementById('end').style.display='none';document.getElementById('setup').style.display='block';}
+
+// ── THEME ────────────────────────────────────────────────
+function toggleTheme(){
+  var h=document.documentElement;
+  var n=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  h.setAttribute('data-theme',n);localStorage.setItem('mm-theme',n);
+}
+(function(){var s=localStorage.getItem('mm-theme');if(s)document.documentElement.setAttribute('data-theme',s);})();
+
+// ── INIT ─────────────────────────────────────────────────
+initOpts();
+</script>
+</body>
+</html>

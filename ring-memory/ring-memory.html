@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ring Memory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a09;
+    --chalk:#eae4d6;
+    --teal:#5ee6d3;
+    --gold:#c9a24b;
+    --yellow:#f4d35e;
+    --muted:#8d867a;
+    --red:#ff6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, #1a1712 0%, #0a0a09 55%);
+    color:var(--chalk);
+    font-family:'Patrick Hand', cursive;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 16px 60px;
+  }
+  h1{
+    font-family:'Cinzel', serif;
+    font-weight:700;
+    font-size:2rem;
+    letter-spacing:1px;
+    margin:0 0 2px;
+    color:var(--gold);
+    text-shadow:0 0 18px rgba(201,162,75,.3);
+    text-align:center;
+  }
+  .subtitle{
+    color:var(--muted);
+    font-size:1.05rem;
+    margin-bottom:18px;
+    text-align:center;
+    max-width:480px;
+  }
+
+  /* ---------- Setup screen ---------- */
+  #setupScreen{
+    width:100%;
+    max-width:520px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  .setup-card{
+    background:#151310;
+    border:1px solid #2c2822;
+    border-radius:16px;
+    padding:18px 20px;
+  }
+  .setup-card h2{
+    font-family:'Cinzel',serif;
+    font-size:1.05rem;
+    letter-spacing:.5px;
+    margin:0 0 12px;
+    color:var(--gold);
+  }
+  .field-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:10px;
+    font-size:1.05rem;
+  }
+  .field-row:last-child{margin-bottom:0;}
+  select, input[type="number"]{
+    background:#0a0a09;
+    border:1.5px solid #3a352c;
+    color:var(--chalk);
+    font-family:'Patrick Hand',cursive;
+    font-size:1rem;
+    padding:6px 10px;
+    border-radius:8px;
+  }
+  input[type="text"]{
+    background:#0a0a09;
+    border:1.5px solid #3a352c;
+    color:var(--chalk);
+    font-family:'Patrick Hand',cursive;
+    font-size:1rem;
+    padding:7px 10px;
+    border-radius:8px;
+    width:100%;
+  }
+  .team-name-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px;
+  }
+  .team-dot{
+    width:16px;height:16px;
+    border-radius:50%;
+    flex-shrink:0;
+    box-shadow:0 0 6px currentColor;
+  }
+  .radio-group{ display:flex; flex-direction:column; gap:8px; }
+  .radio-opt{ display:flex; align-items:center; gap:8px; font-size:1rem; cursor:pointer; }
+  .radio-opt input{accent-color:var(--gold);width:16px;height:16px;}
+  #startBtn{
+    background:linear-gradient(135deg,#e0c374,#b3893a);
+    color:#241d0f;
+    border:none;
+    font-family:'Cinzel',serif;
+    font-weight:700;
+    letter-spacing:.5px;
+    font-size:1.1rem;
+    padding:14px;
+    border-radius:12px;
+    cursor:pointer;
+    box-shadow:0 4px 14px rgba(201,162,75,.25);
+    transition:filter .15s ease;
+  }
+  #startBtn:hover{filter:brightness(1.08);}
+
+  /* ---------- Game screen ---------- */
+  #gameScreen{ display:none; flex-direction:column; align-items:center; width:100%; }
+
+  .scoreboard{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
+  .team-pill{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 14px;
+    border-radius:999px;
+    border:1.5px solid #2c2822;
+    background:#151310;
+    font-size:1rem;
+    color:var(--muted);
+    transition:border-color .2s ease, box-shadow .2s ease, color .2s ease;
+  }
+  .team-pill .dot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 6px currentColor;}
+  .team-pill.active{ color:var(--chalk); border-color:currentColor; box-shadow:0 0 12px rgba(201,162,75,.25); }
+  .team-pill b{color:inherit;}
+
+  .turn-row{ display:flex; align-items:center; gap:16px; margin-bottom:14px; font-size:1.1rem; }
+  .timer-badge{
+    display:flex; align-items:center; gap:6px;
+    color:var(--yellow);
+    font-family:'Cinzel',serif;
+    font-size:1.1rem;
+    border:1.5px solid var(--yellow);
+    border-radius:999px;
+    padding:4px 14px;
+  }
+  .timer-badge.low{ color:var(--red); border-color:var(--red); }
+
+  .board-wrap{
+    position:relative;
+    width:500px;
+    height:500px;
+    max-width:92vw;
+    max-height:92vw;
+  }
+  .board{
+    position:absolute; inset:0;
+    border-radius:50%;
+    background: radial-gradient(circle at 40% 28%, #221e18 0%, #17140f 55%, #0c0b09 100%);
+    box-shadow:
+      inset 0 0 60px rgba(0,0,0,.7),
+      inset 0 0 3px rgba(255,255,255,.03),
+      0 0 0 3px rgba(201,162,75,.35),
+      0 0 44px rgba(0,0,0,.55);
+  }
+  .stone-fill, .stone-cut{
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+  }
+  .stone-fill{
+    background:
+      repeating-radial-gradient(circle at 22% 26%, rgba(255,255,255,.035) 0 1px, transparent 1px 7px),
+      repeating-radial-gradient(circle at 68% 64%, rgba(0,0,0,.18) 0 1px, transparent 1px 5px),
+      radial-gradient(circle at 38% 30%, #6f6a5d 0%, #4c473c 35%, #2c2822 75%, #19170f 100%);
+    box-shadow:
+      inset 0 3px 6px rgba(255,255,255,.08),
+      inset 0 -8px 16px rgba(0,0,0,.6),
+      0 6px 16px rgba(0,0,0,.5);
+  }
+  .stone-cut{
+    background:#0c0b09;
+    box-shadow: inset 0 0 14px rgba(0,0,0,.85);
+  }
+  .ring-group{ position:absolute; inset:0; transform-origin:250px 250px; pointer-events:none; }
+  .ring-group.spinning{ filter:drop-shadow(0 0 12px rgba(201,162,75,.4)); }
+
+  .tile{
+    position:absolute;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    cursor:pointer;
+    pointer-events:auto;
+    background: radial-gradient(circle at 35% 28%, #46413a 0%, #241f1a 60%, #131110 100%);
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,.85),
+      inset 0 -1px 2px rgba(255,255,255,.06),
+      0 1px 3px rgba(0,0,0,.5);
+    transition: box-shadow .25s ease, filter .25s ease, transform .15s ease;
+  }
+  .tile:not(.matched):hover{
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.85), 0 0 10px rgba(94,230,211,.35);
+    transform:translate(-50%,-50%) scale(1.06);
+  }
+  .tile.gem{
+    clip-path: polygon(50% 2%, 88% 24%, 98% 64%, 68% 98%, 32% 98%, 2% 64%, 12% 24%);
+    background: linear-gradient(135deg, var(--gem-light) 0%, var(--gem-color) 48%, var(--gem-dark) 100%);
+    box-shadow: 0 0 5px var(--gem-color), 0 0 16px var(--gem-color), inset 0 0 6px rgba(255,255,255,.55);
+  }
+  .tile.gem::after{
+    content:'';
+    position:absolute;
+    top:18%; left:24%;
+    width:26%; height:26%;
+    background:rgba(255,255,255,.92);
+    clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+    pointer-events:none;
+  }
+  .tile.matched{
+    cursor:default;
+    filter:brightness(.68) saturate(.85);
+  }
+  .tile.matched::before{
+    content:'';
+    position:absolute; inset:-4px;
+    border-radius:50%;
+    box-shadow:0 0 0 1.5px rgba(201,162,75,.55);
+    pointer-events:none;
+  }
+  .center-label{
+    position:absolute;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:64px;height:64px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    font-size:.78rem;
+    color:var(--muted);
+    line-height:1.15;
+    pointer-events:none;
+  }
+
+  .bottom-row{
+    display:flex;
+    gap:16px;
+    margin-top:22px;
+    align-items:center;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  #restart, #backToSetup{
+    background:transparent;
+    border:1.5px solid var(--gold);
+    color:var(--gold);
+    font-family:'Patrick Hand',cursive;
+    font-size:1.05rem;
+    padding:8px 20px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background .15s ease,color .15s ease;
+  }
+  #restart:hover, #backToSetup:hover{background:var(--gold);color:#0a0a09;}
+  .chaos-toggle{
+    display:flex; align-items:center; gap:8px;
+    font-size:1.05rem; color:var(--muted);
+    cursor:pointer; user-select:none;
+  }
+  .chaos-toggle input{ width:18px;height:18px; accent-color:var(--gold); cursor:pointer; }
+
+  #log{ min-height:1.4em; color:var(--muted); font-size:1rem; margin-top:10px; }
+
+  .match-choice{ display:none; gap:14px; margin-top:16px; }
+  .match-choice button{
+    font-family:'Cinzel',serif;
+    font-size:1rem;
+    padding:10px 20px;
+    border-radius:999px;
+    cursor:pointer;
+    border:1.5px solid var(--gold);
+    background:transparent;
+    color:var(--gold);
+    transition:background .15s ease,color .15s ease;
+  }
+  .match-choice button.primary{ background:var(--gold); color:#0a0a09; }
+  .match-choice button:hover{ filter:brightness(1.1); }
+
+  #winMsg{
+    margin-top:18px;
+    font-family:'Cinzel',serif;
+    font-size:1.3rem;
+    color:var(--gold);
+    text-align:center;
+    display:none;
+  }
+  #winMsg .final-scores{
+    margin-top:10px;
+    font-family:'Patrick Hand',cursive;
+    font-size:1.1rem;
+    color:var(--chalk);
+  }
+</style>
+</head>
+<body>
+
+  <h1>Ring of Gems</h1>
+
+  <!-- ===================== SETUP SCREEN ===================== -->
+  <div id="setupScreen">
+    <div class="subtitle" style="margin:0 0 4px;">Set up your game, then spin into it.</div>
+
+    <div class="setup-card">
+      <h2>Teams</h2>
+      <div class="field-row">
+        <label for="teamCount">Number of teams</label>
+        <select id="teamCount">
+          <option value="1">1 (solo)</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </div>
+      <div id="teamNames"></div>
+    </div>
+
+    <div class="setup-card">
+      <h2>Turn timer</h2>
+      <div class="field-row">
+        <label for="timerEnabled">Enable turn timer</label>
+        <input type="checkbox" id="timerEnabled" checked style="width:18px;height:18px;accent-color:var(--gold);">
+      </div>
+      <div class="field-row">
+        <label for="timerSeconds">Seconds per turn</label>
+        <input type="number" id="timerSeconds" min="5" max="120" value="30" style="width:80px;">
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <h2>Ring rotation mode</h2>
+      <div class="radio-group">
+        <label class="radio-opt"><input type="radio" name="ringMode" value="normal" checked> Normal — outer CW, middle CCW, inner CW</label>
+        <label class="radio-opt"><input type="radio" name="ringMode" value="chaos"> Chaos — every ring turns a random direction</label>
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <h2>After a correct match</h2>
+      <div class="radio-group">
+        <label class="radio-opt"><input type="radio" name="afterMatch" value="choice" checked> Let the team choose — keep playing or end turn</label>
+        <label class="radio-opt"><input type="radio" name="afterMatch" value="continue"> Always keep playing on a match</label>
+        <label class="radio-opt"><input type="radio" name="afterMatch" value="end"> Always end the turn, even on a match</label>
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <h2>Sound</h2>
+      <div class="field-row">
+        <label for="soundEnabledSetup">Sound effects</label>
+        <input type="checkbox" id="soundEnabledSetup" checked style="width:18px;height:18px;accent-color:var(--gold);">
+      </div>
+    </div>
+
+    <button id="startBtn">Start Game</button>
+  </div>
+
+  <!-- ===================== GAME SCREEN ===================== -->
+  <div id="gameScreen">
+    <div class="subtitle">Match every gem pair. Miss one, and the rings turn.</div>
+
+    <div class="scoreboard" id="scoreboard"></div>
+
+    <div class="turn-row">
+      <span id="turnLabel">—</span>
+      <span class="timer-badge" id="timerBadge" style="display:none;">⏱ <span id="timerVal">30</span>s</span>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="match-choice" id="matchChoice">
+      <button class="primary" id="keepPlayingBtn">Keep Playing</button>
+      <button id="endTurnBtn">End Turn</button>
+    </div>
+
+    <div class="bottom-row">
+      <button id="backToSetup">← New Setup</button>
+      <button id="restart">↻ Same Setup</button>
+      <label class="chaos-toggle">
+        <input type="checkbox" id="soundToggle" checked>
+        Sound
+      </label>
+    </div>
+    <div id="log">&nbsp;</div>
+    <div id="winMsg"></div>
+  </div>
+
+<script>
+(function(){
+  // 13 evenly spaced hues (~27.7° apart) with alternating lightness/saturation
+  // so neighboring gems stay visually distinct even in the tricky green/teal/blue band.
+  const GEM_HUES = [0,28,55,83,111,138,166,194,222,249,277,305,332];
+  const GEM_PALETTE = GEM_HUES.map((h,i)=>{
+    const s = i % 2 === 0 ? 72 : 82;
+    const l = i % 2 === 0 ? 50 : 37;
+    return {
+      color: `hsl(${h},${s}%,${l}%)`,
+      light: `hsl(${h},${s}%,${Math.min(l+30,88)}%)`,
+      dark:  `hsl(${h},${Math.min(s+10,95)}%,${Math.max(l-22,10)}%)`
+    };
+  });
+  const TEAM_COLORS = ['#5ee6d3','#f4d35e','#ff5da2','#4361ee','#7cb518','#c9a24b'];
+
+  const RINGS = [
+    { name:'outer',  label:'Outer',  radius:220, size:12, tileSize:38, thickness:54 },
+    { name:'middle', label:'Middle', radius:148, size:8,  tileSize:34, thickness:44 },
+    { name:'inner',  label:'Inner',  radius:82,  size:6,  tileSize:30, thickness:36 }
+  ];
+  const NORMAL_DIRS = { outer: 1, middle: -1, inner: 1 };
+  const CX = 250, CY = 250;
+  const ROTATE_MS = 650;
+
+  // ---------------- element refs ----------------
+  const setupScreen = document.getElementById('setupScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const teamCountSel = document.getElementById('teamCount');
+  const teamNamesWrap = document.getElementById('teamNames');
+  const startBtn = document.getElementById('startBtn');
+
+  const board = document.getElementById('board');
+  const scoreboardEl = document.getElementById('scoreboard');
+  const turnLabelEl = document.getElementById('turnLabel');
+  const timerBadge = document.getElementById('timerBadge');
+  const timerValEl = document.getElementById('timerVal');
+  const logEl = document.getElementById('log');
+  const winEl = document.getElementById('winMsg');
+  const matchChoiceEl = document.getElementById('matchChoice');
+  const keepPlayingBtn = document.getElementById('keepPlayingBtn');
+  const endTurnBtn = document.getElementById('endTurnBtn');
+
+  // ---------------- state ----------------
+  let picks = [], lock = false, moves = 0, matchedPairs = 0, totalPairs = 0;
+  let soundOn = true;
+  const ringWrappers = {};
+
+  let teams = [];
+  let currentTeamIdx = 0;
+  let settings = { chaosMode:false, timerEnabled:true, timerSeconds:30, afterMatch:'choice' };
+  let timeLeft = 0, timerInterval = null;
+  let awaitingMatchChoice = false;
+  let gameOver = false;
+
+  // ---------------- sound ----------------
+  let audioCtx = null;
+  function ensureAudio(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beep({freq=440, duration=120, type='sine', vol=0.15, glideTo=null, delay=0}={}){
+    if(!soundOn || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    const now = audioCtx.currentTime + delay;
+    osc.frequency.setValueAtTime(freq, now);
+    if(glideTo !== null) osc.frequency.linearRampToValueAtTime(glideTo, now + duration/1000);
+    gain.gain.setValueAtTime(vol, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration/1000);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration/1000 + 0.03);
+  }
+  function sfxFlip(){ beep({ freq:540, duration:80, type:'triangle', vol:0.1 }); }
+  function sfxMatch(){
+    beep({ freq:660, duration:110, type:'sine', vol:0.16 });
+    beep({ freq:880, duration:160, type:'sine', vol:0.16, delay:0.1 });
+  }
+  function sfxMismatch(){ beep({ freq:220, duration:220, type:'sawtooth', vol:0.1, glideTo:130 }); }
+  function sfxRotate(){ beep({ freq:260, duration:ROTATE_MS, type:'sine', vol:0.05, glideTo:420 }); }
+  function sfxWin(){
+    [523, 659, 784, 1046].forEach((f,i)=> beep({ freq:f, duration:180, type:'sine', vol:0.16, delay:i*0.14 }));
+  }
+  function sfxTimeout(){
+    beep({ freq:300, duration:110, type:'square', vol:0.12 });
+    beep({ freq:220, duration:160, type:'square', vol:0.12, delay:0.13 });
+  }
+
+  // ---------------- setup screen ----------------
+  function buildTeamNameInputs(){
+    const n = parseInt(teamCountSel.value, 10);
+    teamNamesWrap.innerHTML = '';
+    for(let i=0;i<n;i++){
+      const row = document.createElement('div');
+      row.className = 'team-name-row';
+      const dot = document.createElement('div');
+      dot.className = 'team-dot';
+      dot.style.background = TEAM_COLORS[i % TEAM_COLORS.length];
+      dot.style.color = TEAM_COLORS[i % TEAM_COLORS.length];
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = n === 1 ? 'Player' : `Team ${i+1}`;
+      input.dataset.teamIndex = i;
+      row.appendChild(dot);
+      row.appendChild(input);
+      teamNamesWrap.appendChild(row);
+    }
+  }
+  teamCountSel.addEventListener('change', buildTeamNameInputs);
+  buildTeamNameInputs();
+
+  startBtn.addEventListener('click', ()=>{
+    ensureAudio();
+    const n = parseInt(teamCountSel.value, 10);
+    teams = [];
+    teamNamesWrap.querySelectorAll('input').forEach((inp, i)=>{
+      teams.push({
+        name: inp.value.trim() || `Team ${i+1}`,
+        score: 0,
+        color: TEAM_COLORS[i % TEAM_COLORS.length]
+      });
+    });
+    settings.timerEnabled = document.getElementById('timerEnabled').checked;
+    settings.timerSeconds = Math.max(5, parseInt(document.getElementById('timerSeconds').value, 10) || 30);
+    settings.chaosMode = document.querySelector('input[name="ringMode"]:checked').value === 'chaos';
+    settings.afterMatch = document.querySelector('input[name="afterMatch"]:checked').value;
+    soundOn = document.getElementById('soundEnabledSetup').checked;
+    document.getElementById('soundToggle').checked = soundOn;
+
+    setupScreen.style.display = 'none';
+    gameScreen.style.display = 'flex';
+    beginNewGame();
+  });
+
+  document.getElementById('backToSetup').addEventListener('click', ()=>{
+    stopTimer();
+    gameScreen.style.display = 'none';
+    setupScreen.style.display = 'flex';
+  });
+  document.getElementById('restart').addEventListener('click', beginNewGame);
+  document.getElementById('soundToggle').addEventListener('change', e=>{
+    soundOn = e.target.checked;
+    if(soundOn) ensureAudio();
+  });
+
+  // ---------------- deck / board building ----------------
+  function getRing(name){ return RINGS.find(r => r.name === name); }
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    return arr;
+  }
+  function newDeck(){
+    const totalSlots = RINGS.reduce((s,r)=>s+r.size,0);
+    totalPairs = totalSlots/2;
+    const pool = shuffle(GEM_PALETTE.slice(0, totalPairs).flatMap(g=>[g,g]));
+    let idx = 0;
+    RINGS.forEach(r=>{
+      r.tiles = [];
+      for(let i=0;i<r.size;i++) r.tiles.push({ gem: pool[idx++], revealed:false, matched:false });
+    });
+  }
+  function buildBoardShell(){
+    board.innerHTML = '';
+    RINGS.forEach(r=>{
+      const fill = document.createElement('div');
+      fill.className = 'stone-fill';
+      const fillD = 2*(r.radius + r.thickness/2);
+      fill.style.width = fillD+'px';
+      fill.style.height = fillD+'px';
+      board.appendChild(fill);
+
+      const cut = document.createElement('div');
+      cut.className = 'stone-cut';
+      const cutD = 2*(r.radius - r.thickness/2);
+      cut.style.width = cutD+'px';
+      cut.style.height = cutD+'px';
+      board.appendChild(cut);
+    });
+    RINGS.forEach(r=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'ring-group';
+      board.appendChild(wrap);
+      ringWrappers[r.name] = wrap;
+    });
+    const label = document.createElement('div');
+    label.className = 'center-label';
+    label.textContent = 'seek the gems';
+    board.appendChild(label);
+  }
+  function render(){
+    RINGS.forEach(r=>{
+      const wrap = ringWrappers[r.name];
+      wrap.innerHTML = '';
+      r.tiles.forEach((tile,i)=>{
+        const angle = -Math.PI/2 + i*(2*Math.PI/r.size);
+        const x = CX + r.radius*Math.cos(angle);
+        const y = CY + r.radius*Math.sin(angle);
+        const el = document.createElement('div');
+        let cls = 'tile';
+        if(tile.matched) cls += ' gem matched';
+        else if(tile.revealed) cls += ' gem';
+        el.className = cls;
+        el.style.width = r.tileSize+'px';
+        el.style.height = r.tileSize+'px';
+        el.style.left = x+'px';
+        el.style.top = y+'px';
+        if(tile.revealed || tile.matched){
+          el.style.setProperty('--gem-color', tile.gem.color);
+          el.style.setProperty('--gem-light', tile.gem.light);
+          el.style.setProperty('--gem-dark', tile.gem.dark);
+        }
+        el.dataset.ring = r.name;
+        el.dataset.index = i;
+        el.addEventListener('click', onTileClick);
+        wrap.appendChild(el);
+      });
+    });
+  }
+
+  // ---------------- rotation ----------------
+  function rotateData(name, dir){
+    const r = getRing(name);
+    if(dir === 1){ r.tiles.unshift(r.tiles.pop()); }
+    else { r.tiles.push(r.tiles.shift()); }
+  }
+  function spinRing(name, dir){
+    return new Promise(resolve=>{
+      const ring = getRing(name);
+      const wrap = ringWrappers[name];
+      const deg = dir * (360/ring.size);
+      wrap.style.transition = 'none';
+      wrap.style.transform = 'rotate(0deg)';
+      wrap.classList.add('spinning');
+      void wrap.offsetWidth;
+      requestAnimationFrame(()=>{
+        wrap.style.transition = `transform ${ROTATE_MS}ms cubic-bezier(.45,0,.2,1)`;
+        wrap.style.transform = `rotate(${deg}deg)`;
+      });
+      setTimeout(()=>{
+        wrap.style.transition = 'none';
+        wrap.style.transform = 'rotate(0deg)';
+        wrap.classList.remove('spinning');
+        rotateData(name, dir);
+        resolve();
+      }, ROTATE_MS + 30);
+    });
+  }
+  function spinAllRings(){
+    const dirs = {};
+    RINGS.forEach(r => {
+      dirs[r.name] = settings.chaosMode ? (Math.random() < 0.5 ? 1 : -1) : NORMAL_DIRS[r.name];
+    });
+    return Promise.all(RINGS.map(r => spinRing(r.name, dirs[r.name])));
+  }
+
+  // ---------------- teams / turn / timer ----------------
+  function renderScoreboard(){
+    scoreboardEl.innerHTML = '';
+    teams.forEach((t,i)=>{
+      const pill = document.createElement('div');
+      pill.className = 'team-pill' + (i===currentTeamIdx ? ' active' : '');
+      pill.style.color = i===currentTeamIdx ? t.color : '';
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.style.background = t.color;
+      dot.style.color = t.color;
+      const txt = document.createElement('span');
+      txt.innerHTML = `${t.name}: <b>${t.score}</b>`;
+      pill.appendChild(dot);
+      pill.appendChild(txt);
+      scoreboardEl.appendChild(pill);
+    });
+    turnLabelEl.textContent = teams.length > 1
+      ? `${teams[currentTeamIdx].name}'s turn`
+      : 'Your turn';
+    turnLabelEl.style.color = teams[currentTeamIdx].color;
+  }
+
+  function switchTeam(){
+    currentTeamIdx = (currentTeamIdx + 1) % teams.length;
+  }
+
+  function stopTimer(){
+    if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+  }
+  function startTimer(){
+    stopTimer();
+    if(!settings.timerEnabled || gameOver){ timerBadge.style.display = 'none'; return; }
+    timerBadge.style.display = 'inline-flex';
+    timeLeft = settings.timerSeconds;
+    updateTimerDisplay();
+    timerInterval = setInterval(()=>{
+      if(lock || awaitingMatchChoice || gameOver) return;
+      timeLeft--;
+      updateTimerDisplay();
+      if(timeLeft <= 0){ onTimeout(); }
+    }, 1000);
+  }
+  function updateTimerDisplay(){
+    timerValEl.textContent = Math.max(0, timeLeft);
+    timerBadge.classList.toggle('low', timeLeft <= 5);
+  }
+  function onTimeout(){
+    stopTimer();
+    sfxTimeout();
+    if(picks.length >= 1){
+      picks.forEach(p=>{ getRing(p.ring).tiles[p.index].revealed = false; });
+      picks = [];
+      render();
+    }
+    setLog(`Time's up for ${teams[currentTeamIdx].name}!`);
+    switchTeam();
+    renderScoreboard();
+    startTimer();
+  }
+
+  // ---------------- gameplay ----------------
+  function setLog(msg){ logEl.textContent = msg || '\u00A0'; }
+
+  function onTileClick(e){
+    if(lock || awaitingMatchChoice || gameOver) return;
+    ensureAudio();
+    const ringName = e.currentTarget.dataset.ring;
+    const index = parseInt(e.currentTarget.dataset.index, 10);
+    const ring = getRing(ringName);
+    const tile = ring.tiles[index];
+    if(tile.matched || tile.revealed) return;
+    if(picks.length === 1 && picks[0].ring === ringName && picks[0].index === index) return;
+
+    tile.revealed = true;
+    sfxFlip();
+    picks.push({ ring: ringName, index });
+    render();
+    setLog('');
+
+    if(picks.length === 2){
+      moves++;
+      lock = true;
+      const [a,b] = picks;
+      const ta = getRing(a.ring).tiles[a.index];
+      const tb = getRing(b.ring).tiles[b.index];
+
+      if(ta.gem === tb.gem){
+        setTimeout(()=>{
+          ta.matched = true;
+          tb.matched = true;
+          matchedPairs++;
+          teams[currentTeamIdx].score++;
+          picks = [];
+          render();
+          renderScoreboard();
+          sfxMatch();
+          if(matchedPairs === totalPairs){
+            lock = false;
+            endGame();
+            return;
+          }
+          setLog('Match!');
+          resolveAfterMatch();
+        }, 450);
+      } else {
+        setTimeout(()=>{
+          ta.revealed = false;
+          tb.revealed = false;
+          render();
+          sfxMismatch();
+          setLog('All three rings are turning\u2026');
+          sfxRotate();
+          spinAllRings().then(()=>{
+            render();
+            picks = [];
+            switchTeam();
+            renderScoreboard();
+            lock = false;
+            setLog('The rings turned \u2014 where did your gems go?');
+            startTimer();
+          });
+        }, 750);
+      }
+    }
+  }
+
+  function resolveAfterMatch(){
+    if(settings.afterMatch === 'continue'){
+      lock = false;
+      startTimer();
+    } else if(settings.afterMatch === 'end'){
+      switchTeam();
+      renderScoreboard();
+      lock = false;
+      startTimer();
+    } else {
+      stopTimer();
+      awaitingMatchChoice = true;
+      matchChoiceEl.style.display = 'flex';
+    }
+  }
+
+  keepPlayingBtn.addEventListener('click', ()=>{
+    if(!awaitingMatchChoice) return;
+    awaitingMatchChoice = false;
+    matchChoiceEl.style.display = 'none';
+    lock = false;
+    setLog(`${teams[currentTeamIdx].name} keeps playing.`);
+    startTimer();
+  });
+  endTurnBtn.addEventListener('click', ()=>{
+    if(!awaitingMatchChoice) return;
+    awaitingMatchChoice = false;
+    matchChoiceEl.style.display = 'none';
+    switchTeam();
+    renderScoreboard();
+    lock = false;
+    setLog('Turn ended.');
+    startTimer();
+  });
+
+  function endGame(){
+    gameOver = true;
+    stopTimer();
+    timerBadge.style.display = 'none';
+    matchChoiceEl.style.display = 'none';
+    sfxWin();
+    const maxScore = Math.max(...teams.map(t=>t.score));
+    const winners = teams.filter(t=>t.score === maxScore);
+    winEl.style.display = 'block';
+    const headline = teams.length === 1
+      ? `Cleared in ${moves} moves!`
+      : (winners.length > 1 ? `It's a tie at ${maxScore} pairs!` : `${winners[0].name} wins with ${maxScore} pairs!`);
+    const scoreLines = teams.map(t=>`${t.name}: ${t.score}`).join(' &nbsp;|&nbsp; ');
+    winEl.innerHTML = `${headline}<div class="final-scores">${scoreLines}</div>`;
+  }
+
+  // ---------------- game lifecycle ----------------
+  function beginNewGame(){
+    moves = 0; matchedPairs = 0; picks = []; lock = false; gameOver = false; awaitingMatchChoice = false;
+    currentTeamIdx = 0;
+    teams.forEach(t => t.score = 0);
+    winEl.style.display = 'none';
+    matchChoiceEl.style.display = 'none';
+    newDeck();
+    buildBoardShell();
+    render();
+    renderScoreboard();
+    setLog('');
+    startTimer();
+  }
+})();
+</script>
+</body>
+</html>

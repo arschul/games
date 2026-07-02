@@ -352,6 +352,14 @@
     </div>
 
     <div class="setup-card">
+      <h2>Difficulty</h2>
+      <div class="radio-group">
+        <label class="radio-opt"><input type="radio" name="difficulty" value="normal" checked> Normal — outer, middle, inner (13 pairs)</label>
+        <label class="radio-opt"><input type="radio" name="difficulty" value="easy"> Easy — middle, inner only (7 pairs)</label>
+      </div>
+    </div>
+
+    <div class="setup-card">
       <h2>Ring rotation mode</h2>
       <div class="radio-group">
         <label class="radio-opt"><input type="radio" name="ringMode" value="normal" checked> Normal — outer CW, middle CCW, inner CW</label>
@@ -435,6 +443,7 @@
   const NORMAL_DIRS = { outer: 1, middle: -1, inner: 1 };
   const CX = 250, CY = 250;
   const ROTATE_MS = 650;
+  function activeRings(){ return settings.easyMode ? RINGS.filter(r => r.name !== 'outer') : RINGS; }
 
   // ---------------- element refs ----------------
   const setupScreen = document.getElementById('setupScreen');
@@ -461,7 +470,7 @@
 
   let teams = [];
   let currentTeamIdx = 0;
-  let settings = { chaosMode:false, timerEnabled:true, timerSeconds:30, afterMatch:'choice' };
+  let settings = { chaosMode:false, timerEnabled:true, timerSeconds:30, afterMatch:'choice', easyMode:false };
   let timeLeft = 0, timerInterval = null;
   let awaitingMatchChoice = false;
   let gameOver = false;
@@ -537,6 +546,7 @@
     });
     settings.timerEnabled = document.getElementById('timerEnabled').checked;
     settings.timerSeconds = Math.max(5, parseInt(document.getElementById('timerSeconds').value, 10) || 30);
+    settings.easyMode = document.querySelector('input[name="difficulty"]:checked').value === 'easy';
     settings.chaosMode = document.querySelector('input[name="ringMode"]:checked').value === 'chaos';
     settings.afterMatch = document.querySelector('input[name="afterMatch"]:checked').value;
     soundOn = document.getElementById('soundEnabledSetup').checked;
@@ -568,18 +578,20 @@
     return arr;
   }
   function newDeck(){
-    const totalSlots = RINGS.reduce((s,r)=>s+r.size,0);
+    const rings = activeRings();
+    const totalSlots = rings.reduce((s,r)=>s+r.size,0);
     totalPairs = totalSlots/2;
     const pool = shuffle(GEM_PALETTE.slice(0, totalPairs).flatMap(g=>[g,g]));
     let idx = 0;
-    RINGS.forEach(r=>{
+    rings.forEach(r=>{
       r.tiles = [];
       for(let i=0;i<r.size;i++) r.tiles.push({ gem: pool[idx++], revealed:false, matched:false });
     });
   }
   function buildBoardShell(){
     board.innerHTML = '';
-    RINGS.forEach(r=>{
+    const rings = activeRings();
+    rings.forEach(r=>{
       const fill = document.createElement('div');
       fill.className = 'stone-fill';
       const fillD = 2*(r.radius + r.thickness/2);
@@ -594,7 +606,7 @@
       cut.style.height = cutD+'px';
       board.appendChild(cut);
     });
-    RINGS.forEach(r=>{
+    rings.forEach(r=>{
       const wrap = document.createElement('div');
       wrap.className = 'ring-group';
       board.appendChild(wrap);
@@ -606,7 +618,7 @@
     board.appendChild(label);
   }
   function render(){
-    RINGS.forEach(r=>{
+    activeRings().forEach(r=>{
       const wrap = ringWrappers[r.name];
       wrap.innerHTML = '';
       r.tiles.forEach((tile,i)=>{
@@ -664,11 +676,12 @@
     });
   }
   function spinAllRings(){
+    const rings = activeRings();
     const dirs = {};
-    RINGS.forEach(r => {
+    rings.forEach(r => {
       dirs[r.name] = settings.chaosMode ? (Math.random() < 0.5 ? 1 : -1) : NORMAL_DIRS[r.name];
     });
-    return Promise.all(RINGS.map(r => spinRing(r.name, dirs[r.name])));
+    return Promise.all(rings.map(r => spinRing(r.name, dirs[r.name])));
   }
 
   // ---------------- teams / turn / timer ----------------

@@ -389,6 +389,11 @@ input[type=range]::-moz-range-thumb{width:14px; height:14px; border-radius:50%; 
       <span class="switch-copy"><strong>Chaos Mode</strong> — from round 4 on, sometimes two commands fire at once.</span>
     </label>
     <label class="switch-field">
+      <input type="checkbox" id="shuffleToggle">
+      <span class="switch-visual"><span class="switch-nub"></span></span>
+      <span class="switch-copy"><strong>Shuffle Panel</strong> — two controls randomly trade places every turn, so players can't just memorize where things are.</span>
+    </label>
+    <label class="switch-field">
       <input type="checkbox" id="captionsToggle" checked>
       <span class="switch-visual"><span class="switch-nub"></span></span>
       <span class="switch-copy"><strong>Show captions</strong> — the command also appears as text on the readout. Turn off for a listening-only challenge.</span>
@@ -494,11 +499,12 @@ const CONTROLS = [
    ============================================================ */
 let state = {
   mode:'teams', teams:[], currentTeamIndex:0, round:0, maxLives:3,
-  chaos:false, showCaptions:true, soundFx:true, timerSeconds:14,
+  chaos:false, shuffleControls:false, showCaptions:true, soundFx:true, timerSeconds:14,
   voiceURI:null, rate:1, bag:[], activeTargets:[], timerInterval:null,
   timeLeft:0, lastTick:null, currentCommandText:''
 };
 let panelValues = {};
+let controlOrder = {};
 let currentMode = 'teams';
 
 /* ============================================================
@@ -694,6 +700,23 @@ function unitHTML(ctrl){
 function buildPanel(){
   document.getElementById('panelGrid').innerHTML = CONTROLS.map(unitHTML).join('');
   CONTROLS.forEach(c=>syncControlUI(c.id));
+  CONTROLS.forEach((c,i)=>{ controlOrder[c.id] = i; });
+  applyControlOrder();
+}
+function applyControlOrder(){
+  CONTROLS.forEach(c=>{
+    const unit = document.querySelector(`.unit[data-unit="${c.id}"]`);
+    if(unit) unit.style.order = controlOrder[c.id];
+  });
+}
+function swapTwoRandomControls(){
+  const ids = CONTROLS.map(c=>c.id);
+  const a = choice(ids);
+  let b; do{ b = choice(ids); }while(b===a);
+  const tmp = controlOrder[a];
+  controlOrder[a] = controlOrder[b];
+  controlOrder[b] = tmp;
+  applyControlOrder();
 }
 
 function syncControlUI(id){
@@ -978,6 +1001,7 @@ function showResult(msg, success){
 function nextRound(){
   state.round++;
   advanceTeam();
+  if(state.shuffleControls) swapTwoRandomControls();
   const n = decideNumTargets();
   const ids = drawIdsFromBag(n);
   state.activeTargets = ids.map(id=>{
@@ -1053,6 +1077,7 @@ function startGame(){
   state.mode = currentMode;
   state.maxLives = Number(document.getElementById('livesInput').value) || 3;
   state.chaos = document.getElementById('chaosToggle').checked;
+  state.shuffleControls = document.getElementById('shuffleToggle').checked;
   state.showCaptions = document.getElementById('captionsToggle').checked;
   state.soundFx = document.getElementById('soundToggle').checked;
   state.timerSeconds = Number(document.getElementById('timerSlider').value) || 14;

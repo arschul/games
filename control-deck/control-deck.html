@@ -247,6 +247,7 @@ select{
 }
 .unit.correct{animation:flashGreen .9s ease;}
 .unit.incorrect{animation:flashRed .9s ease;}
+.unit.shuffle-swap{box-shadow:0 0 0 2px var(--yellow), 0 0 24px rgba(246,217,74,.55), inset 0 1px 0 rgba(255,255,255,.03), 0 4px 10px rgba(0,0,0,.3);}
 @keyframes flashGreen{0%{box-shadow:0 0 0 0 rgba(67,209,122,.55);} 100%{box-shadow:0 0 0 16px rgba(67,209,122,0);}}
 @keyframes flashRed{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55);} 100%{box-shadow:0 0 0 16px rgba(239,68,68,0);}}
 .nameplate{
@@ -713,10 +714,37 @@ function swapTwoRandomControls(){
   const ids = CONTROLS.map(c=>c.id);
   const a = choice(ids);
   let b; do{ b = choice(ids); }while(b===a);
+  const unitA = document.querySelector(`.unit[data-unit="${a}"]`);
+  const unitB = document.querySelector(`.unit[data-unit="${b}"]`);
+
+  const rectA1 = unitA ? unitA.getBoundingClientRect() : null;
+  const rectB1 = unitB ? unitB.getBoundingClientRect() : null;
+
   const tmp = controlOrder[a];
   controlOrder[a] = controlOrder[b];
   controlOrder[b] = tmp;
   applyControlOrder();
+
+  if(unitA && rectA1) slideFromTo(unitA, rectA1, unitA.getBoundingClientRect());
+  if(unitB && rectB1) slideFromTo(unitB, rectB1, unitB.getBoundingClientRect());
+}
+function slideFromTo(el, r1, r2){
+  const dx = r1.left - r2.left;
+  const dy = r1.top - r2.top;
+  el.style.transition = 'none';
+  el.style.transform = `translate(${dx}px, ${dy}px)`;
+  el.style.zIndex = '5';
+  el.classList.add('shuffle-swap');
+  el.getBoundingClientRect(); // force reflow before animating
+  requestAnimationFrame(()=>{
+    el.style.transition = 'transform .5s cubic-bezier(.3,0,.2,1)';
+    el.style.transform = '';
+  });
+  setTimeout(()=>{
+    el.style.transition = '';
+    el.style.zIndex = '';
+    el.classList.remove('shuffle-swap');
+  }, 550);
 }
 
 function syncControlUI(id){

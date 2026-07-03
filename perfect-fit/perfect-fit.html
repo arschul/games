@@ -286,8 +286,12 @@
           <h2>Colors</h2>
           <div class="rounds-options" id="colorOptions"></div>
         </div>
+        <div class="setup-section">
+          <h2>Orientation</h2>
+          <div class="rounds-options" id="orientationOptions"></div>
+        </div>
         <button class="start-btn" onclick="startGame()">▶ Start Game</button>
-        <p class="how-to">Drag shapes into the matching slots on the grid before time runs out. Unplaced shapes pop away when the timer hits zero! Turn off matching colors for a shape-only challenge, or mismatch them so colors lie to you.</p>
+        <p class="how-to">Drag shapes into the matching slots on the grid before time runs out. Unplaced shapes pop away when the timer hits zero! Turn off matching colors for a shape-only challenge, mismatch them so colors lie to you, or randomize orientation so pieces point a different way than their hole.</p>
       </div>
     </div>
 
@@ -522,6 +526,8 @@ let selectedRounds = 3;         // 2 | 3 | 4 | 'custom'
 let customShapes = 10;
 let customTime = 45;
 let colorMode = 'matched';      // 'matched' | 'off' | 'mismatch'
+let orientationMode = 'fixed';  // 'fixed' | 'random'
+const ROTATION_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
 let roundsConfig = [];
 let turnQueue = [];
@@ -657,6 +663,21 @@ function renderColorOptions() {
   });
 }
 
+function renderOrientationOptions() {
+  const wrap = document.getElementById('orientationOptions');
+  wrap.innerHTML = '';
+  [
+    { v: 'fixed', label: '➡️ Fixed', sub: 'Pieces match hole angle' },
+    { v: 'random', label: '🔄 Random Rotation', sub: 'Pieces are spun — harder' }
+  ].forEach(o => {
+    const opt = document.createElement('div');
+    opt.className = 'round-opt' + (orientationMode === o.v ? ' selected' : '');
+    opt.innerHTML = `<strong>${o.label}</strong><span>${o.sub}</span>`;
+    opt.onclick = () => { orientationMode = o.v; renderOrientationOptions(); };
+    wrap.appendChild(opt);
+  });
+}
+
 function setupInitial() {
   teams = [{ nameInput: '', score: 0 }, { nameInput: '', score: 0 }];
   roster = [];
@@ -664,6 +685,7 @@ function setupInitial() {
   renderTeamsSection();
   renderRoundOptions();
   renderColorOptions();
+  renderOrientationOptions();
 }
 
 function startGame() {
@@ -782,6 +804,11 @@ function buildRound(shapeCount, seconds) {
     pieceEl.style.height = pieceDim + 'px';
     pieceEl.dataset.type = type;
     pieceEl.innerHTML = makeShapeSVG(type, true, pieceColor[type]);
+    if (orientationMode === 'random') {
+      const angle = ROTATION_ANGLES[Math.floor(Math.random() * ROTATION_ANGLES.length)];
+      const svgEl = pieceEl.querySelector('svg');
+      if (svgEl) svgEl.style.transform = `rotate(${angle}deg)`;
+    }
     attachDragHandlers(pieceEl);
     trayEl.appendChild(pieceEl);
   });
@@ -873,6 +900,11 @@ function snapToSlot(piece, slot) {
   piece.classList.add('placed');
   piece.classList.add('snap-pop');
   piece.style.pointerEvents = 'none';
+  const svgEl = piece.querySelector('svg');
+  if (svgEl) {
+    svgEl.style.transition = 'transform .25s ease';
+    svgEl.style.transform = 'rotate(0deg)';
+  }
   filledCount++;
   playSnap();
   updateProgress();

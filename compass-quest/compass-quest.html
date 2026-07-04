@@ -87,6 +87,12 @@
   .row-inline input[type=number]{width:70px; flex:none;}
   .row-inline .hint{color:var(--text-dim); font-size:.8rem;}
 
+  .btn-test{
+    flex:none; padding:9px 14px; border-radius:8px; border:1px solid var(--border);
+    background:var(--brass); color:#241a08; font-weight:700; cursor:pointer; font-size:.85rem;
+    font-family:'Manrope',sans-serif; white-space:nowrap;
+  }
+  .btn-test:hover{filter:brightness(1.05);}
   .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:14px; font-weight:600; font-size:.85rem;}
   .checkbox-row input{width:17px; height:17px;}
 
@@ -276,7 +282,10 @@
       </div>
 
       <label>Narrator voice</label>
-      <select class="select-input" id="voiceSelect"><option value="">🔊 Default voice</option></select>
+      <div class="row-inline">
+        <select class="select-input" id="voiceSelect"><option value="">🔊 Default voice</option></select>
+        <button type="button" class="btn-test" onclick="testVoice()">▶ Test</button>
+      </div>
 
       <label>Narrator speed</label>
       <div class="segmented" id="rateOptions">
@@ -410,6 +419,25 @@ function renderVoiceSelect(){
 if('speechSynthesis' in window){
   refreshVoices();
   speechSynthesis.onvoiceschanged = refreshVoices;
+  // Some browsers never fire voiceschanged reliably - poll briefly as a fallback.
+  let voicePollTries = 0;
+  const voicePoll = setInterval(()=>{
+    voicePollTries++;
+    if(availableVoices.length > 1 || voicePollTries > 12){ clearInterval(voicePoll); return; }
+    refreshVoices();
+  }, 300);
+}
+function testVoice(){
+  if(!('speechSynthesis' in window)){ alert('Sorry, this browser does not support text-to-speech.'); return; }
+  speechSynthesis.cancel();
+  const rateMap = {slow:0.75, normal:1, fast:1.25};
+  const rate = rateMap[setupRate]||1;
+  const voiceName = document.getElementById('voiceSelect').value;
+  const chosenVoice = voiceName ? availableVoices.find(v=>v.name===voiceName) : null;
+  const u = new SpeechSynthesisUtterance('Go forward two squares, then turn left.');
+  u.rate = rate;
+  if(chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; } else { u.lang = 'en-US'; }
+  speechSynthesis.speak(u);
 }
 
 /* ---------- GAME START ---------- */
@@ -613,8 +641,8 @@ function speakAllInstructions(){
     state.speakingLineIndex = i-1;
     renderCaptions();
     const u = new SpeechSynthesisUtterance(lines[i]);
-    u.rate = rate; u.lang='en-US';
-    if(chosenVoice) u.voice = chosenVoice;
+    u.rate = rate;
+    if(chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; } else { u.lang = 'en-US'; }
     u.onend = ()=>{ i++; next(); };
     speechSynthesis.speak(u);
   }

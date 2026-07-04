@@ -182,6 +182,8 @@
     60% { transform: translate(-5px,-2px) rotate(-1deg); }
     80% { transform: translate(5px,2px) rotate(1deg); }
   }
+  @keyframes spinCW { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes spinCCW { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
   .slot {
     position: relative; background: rgba(255,255,255,.035);
     border: 1px solid var(--panel-border); border-radius: 16%;
@@ -292,7 +294,7 @@
           <div class="rounds-options" id="orientationOptions"></div>
         </div>
         <button class="start-btn" onclick="startGame()">▶ Start Game</button>
-        <p class="how-to">Drag shapes into the matching slots on the grid before time runs out. Unplaced shapes pop away when the timer hits zero! Turn off matching colors for a shape-only challenge, mismatch them so colors lie to you, or randomize orientation so pieces point a different way than their hole.</p>
+        <p class="how-to">Drag shapes into the matching slots on the grid before time runs out. Unplaced shapes pop away when the timer hits zero! Turn off matching colors for a shape-only challenge, mismatch them so colors lie to you, randomize orientation, or set both shapes and holes constantly spinning — combine any of these for extra difficulty.</p>
       </div>
     </div>
 
@@ -527,8 +529,13 @@ let selectedRounds = 3;         // 2 | 3 | 4 | 'custom'
 let customShapes = 10;
 let customTime = 45;
 let colorMode = 'matched';      // 'matched' | 'off' | 'mismatch'
-let orientationMode = 'fixed';  // 'fixed' | 'random'
+let orientationMode = 'fixed';  // 'fixed' | 'random' | 'spin'
 const ROTATION_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+function applySpin(svgEl) {
+  const dir = Math.random() < 0.5 ? 'spinCW' : 'spinCCW';
+  const duration = (3 + Math.random() * 3).toFixed(2);
+  svgEl.style.animation = `${dir} ${duration}s linear infinite`;
+}
 
 let roundsConfig = [];
 let turnQueue = [];
@@ -669,7 +676,8 @@ function renderOrientationOptions() {
   wrap.innerHTML = '';
   [
     { v: 'fixed', label: '➡️ Fixed', sub: 'Pieces match hole angle' },
-    { v: 'random', label: '🔄 Random Rotation', sub: 'Pieces are spun — harder' }
+    { v: 'random', label: '🔄 Random Rotation', sub: 'Pieces are spun — harder' },
+    { v: 'spin', label: '🌀 Constant Spin', sub: 'Shapes & holes keep turning' }
   ].forEach(o => {
     const opt = document.createElement('div');
     opt.className = 'round-opt' + (orientationMode === o.v ? ' selected' : '');
@@ -790,6 +798,10 @@ function buildRound(shapeCount, seconds) {
     const slotEl = document.createElement('div');
     slotEl.className = 'slot';
     slotEl.innerHTML = makeShapeSVG(type, false, slotColor[type]);
+    if (orientationMode === 'spin') {
+      const svgEl = slotEl.querySelector('svg');
+      if (svgEl) applySpin(svgEl);
+    }
     boardEl.appendChild(slotEl);
     slots.push({ type, el: slotEl, filled: false });
   });
@@ -809,6 +821,9 @@ function buildRound(shapeCount, seconds) {
       const angle = ROTATION_ANGLES[Math.floor(Math.random() * ROTATION_ANGLES.length)];
       const svgEl = pieceEl.querySelector('svg');
       if (svgEl) svgEl.style.transform = `rotate(${angle}deg)`;
+    } else if (orientationMode === 'spin') {
+      const svgEl = pieceEl.querySelector('svg');
+      if (svgEl) applySpin(svgEl);
     }
     attachDragHandlers(pieceEl);
     trayEl.appendChild(pieceEl);
@@ -903,6 +918,7 @@ function snapToSlot(piece, slot) {
   piece.style.pointerEvents = 'none';
   const svgEl = piece.querySelector('svg');
   if (svgEl) {
+    svgEl.style.animation = 'none';
     svgEl.style.transition = 'transform .25s ease';
     svgEl.style.transform = 'rotate(0deg)';
   }

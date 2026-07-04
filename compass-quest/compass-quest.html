@@ -433,11 +433,15 @@ function testVoice(){
   const rateMap = {slow:0.75, normal:1, fast:1.25};
   const rate = rateMap[setupRate]||1;
   const voiceName = document.getElementById('voiceSelect').value;
-  const chosenVoice = voiceName ? availableVoices.find(v=>v.name===voiceName) : null;
-  const u = new SpeechSynthesisUtterance('Go forward two squares, then turn left.');
-  u.rate = rate;
-  if(chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; } else { u.lang = 'en-US'; }
-  speechSynthesis.speak(u);
+  const freshVoices = speechSynthesis.getVoices();
+  const pool = freshVoices.length ? freshVoices : availableVoices;
+  const chosenVoice = voiceName ? pool.find(v=>v.name===voiceName) : null;
+  setTimeout(()=>{
+    const u = new SpeechSynthesisUtterance('Go forward two squares, then turn left.');
+    u.rate = rate;
+    if(chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; } else { u.lang = 'en-US'; }
+    speechSynthesis.speak(u);
+  }, 60);
 }
 
 /* ---------- GAME START ---------- */
@@ -632,7 +636,14 @@ function speakAllInstructions(){
   renderAll();
   const rateMap = {slow:0.75, normal:1, fast:1.25};
   const rate = rateMap[state.rateSetting]||1;
-  const chosenVoice = state.voiceName ? availableVoices.find(v=>v.name===state.voiceName) : null;
+  // Re-fetch voices fresh right before speaking instead of trusting the array
+  // cached when the dropdown was built. Chrome in particular will silently
+  // ignore an assigned voice object if it's a stale reference from an earlier
+  // getVoices() call - the classic cause of "I picked a voice but it still
+  // talks in the default one".
+  const freshVoices = speechSynthesis.getVoices();
+  const pool = freshVoices.length ? freshVoices : availableVoices;
+  const chosenVoice = state.voiceName ? pool.find(v=>v.name===state.voiceName) : null;
   const lines = [`You start on the marked square, facing ${fullDirName(state.startFacing)}.`,
     ...state.instructions.map((ins,idx)=>`Instruction ${idx+1}. ${ins.text}.`)];
   let i=0;
@@ -646,7 +657,9 @@ function speakAllInstructions(){
     u.onend = ()=>{ i++; next(); };
     speechSynthesis.speak(u);
   }
-  next();
+  // Calling speak() in the same tick as cancel() can get silently dropped by
+  // Chrome; a short delay avoids that race.
+  setTimeout(next, 60);
 }
 function replayInstructions(){
   if(!state.replayAllowed && state.replaysUsed>=1) return;

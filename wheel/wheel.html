@@ -462,7 +462,7 @@ body{
 
       <div class="solve-row">
         <input id="solve-input" type="text" placeholder="Solve the puzzle…" />
-        <button class="btn btn-mint" id="solve-btn" onclick="attemptSolve()" disabled>✔ Solve</button>
+        <button class="btn btn-mint" id="solve-btn" onclick="handleSolveClick()" disabled>🙋 I Want To Solve It</button>
       </div>
 
       <div class="message" id="message"></div>
@@ -1026,6 +1026,7 @@ function startNewRound(){
   const sr = document.getElementById('spin-result');
   sr.textContent = '—';
   sr.className = '';
+  disarmSolve();
   stopTimer();
   renderPuzzle();
   renderAlphabet();
@@ -1047,6 +1048,7 @@ function resetGame(){
 
 function passTurn(){
   stopTimer();
+  disarmSolve();
   currentTeam = (currentTeam + 1) % numTeams;
   hasSpun = false;
   spinValue = null;
@@ -1230,13 +1232,43 @@ function handleLetter(letter){
 // ═══════════════════════════════════════════════════════════
 // SOLVE
 // ═══════════════════════════════════════════════════════════
-function attemptSolve(){
+let solveArmed = false;
+
+function handleSolveClick(){
   if(!puzzle.length || spinning) return;
+  if(!solveArmed){
+    armSolve();
+  } else {
+    attemptSolve();
+  }
+}
+
+function armSolve(){
+  solveArmed = true;
+  stopTimer();
+  document.getElementById('timer-wrap').style.display = 'none';
+  const btn = document.getElementById('solve-btn');
+  btn.textContent = '✔ Submit Answer';
+  showMessage('Timer paused — type the answer and submit!', 'info');
+  const input = document.getElementById('solve-input');
+  input.focus();
+}
+
+function disarmSolve(){
+  solveArmed = false;
+  const btn = document.getElementById('solve-btn');
+  btn.textContent = '🙋 I Want To Solve It';
+}
+
+function attemptSolve(){
+  if(!puzzle.length) return;
   const guess = document.getElementById('solve-input').value.toUpperCase().trim();
   if(!guess) return showMessage('Enter your guess first!', 'warn', 3000);
   if(guess === puzzle.join('')){
+    disarmSolve();
     handlePuzzleSolved();
   } else {
+    disarmSolve();
     playBuzz();
     flashColor('#ff5470');
     showMessage('Not quite — turn passes…', 'error', 3000);
@@ -1404,7 +1436,7 @@ updateDisplay();
 setLevel('A1');
 
 document.getElementById('solve-input').addEventListener('keydown', (e) => {
-  if(e.key === 'Enter') attemptSolve();
+  if(e.key === 'Enter') handleSolveClick();
 });
 
 document.addEventListener('click', () => { try{ getAudio(); }catch(e){} }, { once:true });

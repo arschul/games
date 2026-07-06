@@ -128,8 +128,26 @@
 <body class="flex items-center justify-center min-h-screen p-2 md:p-4">
 
     <button id="mute-btn" class="bg-gray-800/70 hover:bg-gray-700 text-yellow-300 rounded-full w-11 h-11 flex items-center justify-center text-xl shadow-lg">🔊</button>
+    <button id="change-mode-btn" class="hidden bg-gray-800/70 hover:bg-gray-700 text-yellow-300 rounded-full px-4 h-11 items-center justify-center text-sm font-bold shadow-lg" style="position:fixed; top:12px; right:64px; z-index:70;">Change Mode</button>
 
-    <div id="game-container" class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <!-- Mode Select Screen -->
+    <div id="mode-select-screen" class="fixed inset-0 z-50 flex items-center justify-center modal-bg">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-8 text-center max-w-lg mx-4 border-4 border-yellow-400">
+            <h1 class="text-3xl font-bold mb-2 text-yellow-400">Deal or No Deal</h1>
+            <p class="text-gray-300 mb-6">Choose a game mode:</p>
+            <div class="flex flex-col gap-4">
+                <button id="mode-classroom-button" class="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                    🎓 Classroom Prizes<br><span class="text-xs font-normal opacity-80">No homework, extra break, and other real rewards</span>
+                </button>
+                <button id="mode-money-button" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                    💰 Money Mode<br><span class="text-xs font-normal opacity-80">Classic $0.01 – $1,000,000 briefcase values</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-container" class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 hidden">
+
 
         <div id="prize-panel-left" class="lg:col-span-2 order-2 lg:order-1 bg-gray-900/50 p-3 rounded-lg shadow-lg flex flex-col justify-center items-center"></div>
 
@@ -244,6 +262,10 @@
             ];
             // Relative "value" for offer-math and sorting purposes only (never shown to students)
             const tierRank = prizeTiers.map((_, i) => i);
+            // Classic money-mode values, same 26-slot distribution shape as the original show
+            const moneyValues = [0.01, 1, 5, 10, 25, 50, 75, 100, 200, 300, 400, 500, 750, 1000, 5000, 10000, 25000, 50000, 75000, 100000, 200000, 300000, 400000, 500000, 750000, 1000000];
+            let currentMode = 'classroom'; // 'classroom' or 'money'
+            function formatMoney(v) { return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: v < 1 ? 2 : 0 }); }
             const casesToOpenPerRound = [6, 5, 4, 3, 2, 1, 1, 1, 1];
             const TOTAL_CASES = 26;
             const SWAP_OFFER_CHANCE = 0.35; // chance of a mystery swap offer instead of banker offer, rounds 2+
@@ -281,6 +303,10 @@
             const coinResult = document.getElementById('coin-result');
             const muteBtn = document.getElementById('mute-btn');
             const gameContainer = document.getElementById('game-container');
+            const modeSelectScreen = document.getElementById('mode-select-screen');
+            const modeClassroomButton = document.getElementById('mode-classroom-button');
+            const modeMoneyButton = document.getElementById('mode-money-button');
+            const changeModeBtn = document.getElementById('change-mode-btn');
 
             // --- GAME STATE ---
             let gameState = 'pick-case';
@@ -364,8 +390,8 @@
 
             function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
 
-            function tierIndexToLabel(idx) { return prizeTiers[idx].label; }
-            function tierIndexToClass(idx) { return prizeTiers[idx].tier === 'bad' ? 'bad' : (prizeTiers[idx].tier === 'great' ? 'good' : ''); }
+            function tierIndexToLabel(idx) { return currentMode === 'money' ? formatMoney(moneyValues[idx]) : prizeTiers[idx].label; }
+            function tierIndexToClass(idx) { return currentMode === 'money' ? '' : (prizeTiers[idx].tier === 'bad' ? 'bad' : (prizeTiers[idx].tier === 'great' ? 'good' : '')); }
 
             function initGame() {
                 gameState = 'pick-case';
@@ -777,7 +803,21 @@
 
             newGameButton.addEventListener('click', initGame);
 
-            initGame();
+            modeClassroomButton.addEventListener('click', () => startWithMode('classroom'));
+            modeMoneyButton.addEventListener('click', () => startWithMode('money'));
+            changeModeBtn.addEventListener('click', () => {
+                gameContainer.classList.add('hidden');
+                changeModeBtn.classList.add('hidden');
+                modeSelectScreen.classList.remove('hidden');
+            });
+
+            function startWithMode(mode) {
+                currentMode = mode;
+                modeSelectScreen.classList.add('hidden');
+                gameContainer.classList.remove('hidden');
+                changeModeBtn.classList.remove('hidden');
+                initGame();
+            }
         });
     </script>
 </body>

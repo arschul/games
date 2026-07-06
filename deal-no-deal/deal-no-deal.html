@@ -615,13 +615,15 @@
 
             function makeBankerOffer() {
                 const avgRank = averageRemainingRank(); // 0-25 scale
-                // Map the remaining average (whatever it is) onto the good/great band (16-24),
-                // then nudge it down a bit with some randomness so it reads as "slightly worse
-                // than what's actually left" instead of landing on the same tier every time.
                 const bandFloor = 16, bandCeil = 24;
                 const normalized = avgRank / 25; // 0-1
-                let offerTierIdx = Math.round(bandFloor + normalized * (bandCeil - bandFloor));
-                offerTierIdx -= (1 + Math.floor(Math.random() * 2)); // shave off 1-2 tiers, varies each offer
+                // Base offer tracks the remaining average, mapped onto the good/great band.
+                const base = bandFloor + normalized * (bandCeil - bandFloor);
+                // Real variance: random jitter of up to 3 tiers below base, plus round-based
+                // growth (later offers trend a little better, matching the show's escalation).
+                const roundBoost = Math.min(currentRound * 0.6, 3);
+                const jitter = Math.random() * 3.5;
+                let offerTierIdx = Math.round(base + roundBoost - jitter);
                 offerTierIdx = Math.max(bandFloor, Math.min(bandCeil, offerTierIdx));
                 offerAmount.textContent = tierIndexToLabel(offerTierIdx);
                 offerAmount.dataset.tierIdx = offerTierIdx;
@@ -648,11 +650,11 @@
                     const newTier = Math.max(0, Math.min(25, playerCase.tierIdx + shift));
                     coinResult.classList.remove('hidden');
                     if (win) {
-                        coinResult.textContent = `🎉 Heads! Your case is upgraded toward: "${tierIndexToLabel(newTier)}"`;
+                        coinResult.textContent = `🎉 Heads! Your case's value just got better...`;
                         coinResult.className = 'text-xl font-black mt-4 text-green-400';
                         sfxGoodReveal();
                     } else {
-                        coinResult.textContent = `😬 Tails! Your case drops toward: "${tierIndexToLabel(newTier)}"`;
+                        coinResult.textContent = `😬 Tails! Your case's value just got worse...`;
                         coinResult.className = 'text-xl font-black mt-4 text-red-400';
                         sfxBadReveal();
                     }

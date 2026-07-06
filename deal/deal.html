@@ -588,14 +588,15 @@
             }
 
             function makeBankerOffer() {
-                const avgRank = averageRemainingRank();
-                const offerPercentage = Math.min((currentRound + 1) * 0.1 + 0.25, 0.95);
-                // Start from a weighted average, then nudge down a notch so the banker's
-                // offer is always a slightly worse version of a good/great prize —
-                // never a punishment tier and never better than what's actually likely.
-                let offerTierIdx = Math.round(avgRank * offerPercentage + avgRank * (1 - offerPercentage) * 0.5);
-                offerTierIdx = offerTierIdx - 2; // slightly worse than the raw average
-                offerTierIdx = Math.max(16, Math.min(24, offerTierIdx)); // clamp to good/great range, never the jackpot
+                const avgRank = averageRemainingRank(); // 0-25 scale
+                // Map the remaining average (whatever it is) onto the good/great band (16-24),
+                // then nudge it down a bit with some randomness so it reads as "slightly worse
+                // than what's actually left" instead of landing on the same tier every time.
+                const bandFloor = 16, bandCeil = 24;
+                const normalized = avgRank / 25; // 0-1
+                let offerTierIdx = Math.round(bandFloor + normalized * (bandCeil - bandFloor));
+                offerTierIdx -= (1 + Math.floor(Math.random() * 2)); // shave off 1-2 tiers, varies each offer
+                offerTierIdx = Math.max(bandFloor, Math.min(bandCeil, offerTierIdx));
                 offerAmount.textContent = tierIndexToLabel(offerTierIdx);
                 offerAmount.dataset.tierIdx = offerTierIdx;
                 offerDisplay.classList.remove('hidden');

@@ -760,22 +760,22 @@ let wheelRotation = 0;
 
 // wheel segments (label, type, value)
 const WHEEL_SEGMENTS = [
-  {label:'300', type:'points', value:300, color:'#e8b04b'},
+  {label:'300',  type:'points',   value:300,  color:'#e8b04b'},
+  {label:'800',  type:'points',   value:800,  color:'#5fb8ff'},
+  {label:'500',  type:'points',   value:500,  color:'#ff6f61'},
   {label:'LOSE\nTURN', type:'lose', value:null, color:'#3a3260'},
-  {label:'500', type:'points', value:500, color:'#5fb8ff'},
-  {label:'700', type:'points', value:700, color:'#ff6f61'},
+  {label:'400',  type:'points',   value:400,  color:'#4fd8b0'},
+  {label:'900',  type:'points',   value:900,  color:'#b98cff'},
+  {label:'200',  type:'points',   value:200,  color:'#e8b04b'},
+  {label:'600',  type:'points',   value:600,  color:'#5fb8ff'},
+  {label:'700',  type:'points',   value:700,  color:'#ff6f61'},
   {label:'BANKRUPT', type:'bankrupt', value:null, color:'#ff5470'},
-  {label:'400', type:'points', value:400, color:'#4fd8b0'},
-  {label:'900', type:'points', value:900, color:'#b98cff'},
-  {label:'200', type:'points', value:200, color:'#e8b04b'},
-  {label:'600', type:'points', value:600, color:'#5fb8ff'},
-  {label:'LOSE\nTURN', type:'lose', value:null, color:'#3a3260'},
-  {label:'800', type:'points', value:800, color:'#ff6f61'},
-  {label:'1000', type:'points', value:1000, color:'#4fd8b0'},
-  {label:'300', type:'points', value:300, color:'#b98cff'},
-  {label:'500', type:'points', value:500, color:'#e8b04b'},
-  {label:'BANKRUPT', type:'bankrupt', value:null, color:'#ff5470'},
-  {label:'400', type:'points', value:400, color:'#5fb8ff'}
+  {label:'300',  type:'points',   value:300,  color:'#4fd8b0'},
+  {label:'1000', type:'points',   value:1000, color:'#b98cff'},
+  {label:'500',  type:'points',   value:500,  color:'#e8b04b'},
+  {label:'400',  type:'points',   value:400,  color:'#5fb8ff'},
+  {label:'600',  type:'points',   value:600,  color:'#ff6f61'},
+  {label:'800',  type:'points',   value:800,  color:'#4fd8b0'}
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -1306,13 +1306,24 @@ function spinWheel(){
   const targetIdx = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
   const anglePer = 360 / WHEEL_SEGMENTS.length;
   const targetMidAngle = targetIdx * anglePer + anglePer/2;
-  // wheel must rotate so target segment lands under pointer (top, i.e. 0deg / -90 offset already baked into build)
-  const spins = 5 + Math.floor(Math.random()*3); // full spins
-  const finalRotation = wheelRotation + spins*360 + (360 - targetMidAngle);
-  wheelRotation = finalRotation % 360;
+
+  // wheelRotation always holds the TRUE cumulative rotation applied so far
+  // (never reduced mod 360), so every spin continues forward from where the
+  // wheel visually is right now — never a weak/backwards jump.
+  // The segment whose mid-angle sits under the pointer (top, 0deg) after
+  // rotating by R is the one where (targetMidAngle + R) mod 360 == 0,
+  // i.e. R mod 360 == 360 - targetMidAngle (mod 360).
+  const currentMod = ((wheelRotation % 360) + 360) % 360;
+  let neededMod = (360 - targetMidAngle) % 360;
+  let deltaToTarget = neededMod - currentMod;
+  if (deltaToTarget <= 0) deltaToTarget += 360; // always move forward this cycle too
+
+  const fullSpins = 6 + Math.floor(Math.random() * 3); // 6-8 extra full rotations
+  const totalDelta = fullSpins * 360 + deltaToTarget;
+  wheelRotation += totalDelta;
 
   const wheelEl = document.getElementById('wheel-svg-wrap');
-  wheelEl.style.transform = `rotate(${finalRotation}deg)`;
+  wheelEl.style.transform = `rotate(${wheelRotation}deg)`;
 
   // tick sound during spin
   let tickCount = 0;

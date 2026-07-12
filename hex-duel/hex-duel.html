@@ -284,6 +284,55 @@
     box-shadow: 0 0 12px rgba(201,168,76,0.15);
   }
 
+  .resume-card {
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background: rgba(201,168,76,0.06);
+    box-shadow: 0 0 16px rgba(201,168,76,0.12);
+    text-align: center;
+  }
+  .resume-card.hidden { display: none; }
+  .resume-title {
+    font-family: 'Cinzel', serif;
+    color: var(--gold-light);
+    letter-spacing: 0.08em;
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+  }
+  .resume-sub {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    margin-bottom: 0.8rem;
+  }
+  .resume-actions { display: flex; gap: 0.5rem; }
+  .btn-resume, .btn-discard {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    transition: filter 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .btn-resume {
+    border: none;
+    background: var(--gold);
+    color: #1a1408;
+    font-weight: 600;
+  }
+  .btn-resume:hover { filter: brightness(1.12); }
+  .btn-discard {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+  }
+  .btn-discard:hover { border-color: #7a3b3b; color: #c98a8a; }
+
   .btn-start {
     width: 100%;
     padding: 1rem;
@@ -770,6 +819,15 @@
   </div>
 
   <div class="setup-panel">
+    <div id="resumeCard" class="resume-card hidden">
+      <div class="resume-title">⬡ A Battle Awaits</div>
+      <div class="resume-sub" id="resumeSub">An unfinished conquest was found.</div>
+      <div class="resume-actions">
+        <button class="btn-resume" id="resumeBtn">⚔ Resume Battle</button>
+        <button class="btn-discard" id="discardBtn">✕ Discard</button>
+      </div>
+    </div>
+
     <div class="setup-label">⬡ Warlords Enlisted</div>
     <div class="player-counter">
       <span class="player-counter-num" id="counterNum">0</span>
@@ -1060,10 +1118,128 @@ function startGame() {
   buildMap();
   buildPlayersBar();
   updatePlayersBar();
+  saveGame();
   setTimeout(() => showSpinner(null), 400);
 }
 
-// ── HONEYCOMB LAYOUT ───────────────────────────────────────────
+// ── SESSION PERSISTENCE (R3) ───────────────────────────────────
+// Survives an accidental refresh mid-class. We store the owner-by-hex array
+// and rebuild the board deterministically via the redraw path, plus enough
+// player/turn/duel state to resume exactly. Spin animation state is disposable
+// — a reload mid-spin just re-prompts SPIN.
+const SAVE_KEY = 'hexduel-state-v1';
+
+function saveGame() {
+  try {
+    if (!players.length || !hexes.length) return;
+    // Don't persist a finished game
+    const owners = hexes.map(h => h.playerId);
+    const aliveOwners = new Set(owners.map(o => o));
+    const state = {
+      v: 1,
+      setupPlayers,
+      realmSize,
+      duelStyle,
+      owners,                       // hex id -> player id
+      players: players.map(p => ({
+        id: p.id, name: p.name, color: p.color,
+        alive: p.alive, capitalHexId: p.capitalHexId,
+      })),
+      currentAttackerId,
+      lastTurnPlayerId,
+      // Serialize an in-progress duel (ids + lives + round); omit DOM/undo state
+      activeDuel: activeDuel ? {
+        playerAId: activeDuel.playerAId,
+        playerBId: activeDuel.playerBId,
+        hpA: activeDuel.hpA, hpB: activeDuel.hpB,
+        maxHpA: activeDuel.maxHpA, maxHpB: activeDuel.maxHpB,
+        round: activeDuel.round,
+      } : null,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch (e) { /* storage full or unavailable — non-fatal */ }
+}
+
+function clearSavedGame() {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+}
+
+function loadSavedGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || s.v !== 1 || !Array.isArray(s.owners) || !s.players) return null;
+    // A finished game (one owner on the board) isn't worth resuming
+    if (new Set(s.owners).size <= 1) { clearSavedGame(); return null; }
+    return s;
+  } catch (e) { return null; }
+}
+
+// Rebuild a live game from a saved state and jump into it
+function resumeGame(s) {
+  setupPlayers = s.setupPlayers || [];
+  realmSize = s.realmSize || 3;
+  duelStyle = s.duelStyle || 'balanced';
+  playerCount = s.players.length;
+
+  players = s.players.map(p => ({
+    id: p.id, name: p.name, color: p.color,
+    alive: p.alive, capitalHexId: p.capitalHexId,
+    hexIds: new Set(),
+  }));
+  // Rebuild hexIds from the owner array
+  s.owners.forEach((ownerId, hexId) => {
+    if (players[ownerId]) players[ownerId].hexIds.add(hexId);
+  });
+
+  currentAttackerId = s.currentAttackerId;
+  lastTurnPlayerId = s.lastTurnPlayerId;
+  activeDuel = null;
+  selected = [];
+  spinnerReady = false;
+  spinnerLanded = null;
+  spinnerLandedHexId = null;
+
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+
+  // Reflect toggles in the UI (so a later New Game shows the right defaults)
+  document.querySelectorAll('.realm-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.size, 10) === realmSize));
+  document.querySelectorAll('.duel-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.duel === duelStyle));
+
+  // Rebuild the board from the saved owner array (redraw path)
+  fitSvg();
+  _buildMapCore(false, s.owners);
+  buildPlayersBar();
+  updatePlayersBar();
+  refreshHexCountLabels();
+
+  // Resume an interrupted duel, or re-prompt the current attacker / spin
+  if (s.activeDuel && players[s.activeDuel.playerAId] && players[s.activeDuel.playerBId]) {
+    const d = s.activeDuel;
+    const hexA = [...players[d.playerAId].hexIds][0];
+    const hexB = [...players[d.playerBId].hexIds][0];
+    if (hexA !== undefined && hexB !== undefined) {
+      openDuel(hexA, hexB);
+      // Overwrite the freshly-computed lives with the saved mid-duel values
+      activeDuel.hpA = d.hpA; activeDuel.hpB = d.hpB;
+      activeDuel.maxHpA = d.maxHpA; activeDuel.maxHpB = d.maxHpB;
+      activeDuel.round = d.round;
+      refreshDuelModal();
+      if (d.round > 1) document.getElementById('cancelDuelBtn').classList.add('locked');
+    }
+  } else if (currentAttackerId !== null && players[currentAttackerId] && players[currentAttackerId].alive) {
+    highlightAttackerHexes(currentAttackerId);
+    setStatus(`⚔ ${players[currentAttackerId].name}'s turn — pick one of your hexes to attack from.`);
+  } else {
+    setTimeout(() => showSpinner(lastTurnPlayerId), 300);
+  }
+}
+
+
 // Cube coordinate directions
 const CUBE_DIRS = [
   [1,-1,0],[1,0,-1],[0,1,-1],[-1,1,0],[-1,0,1],[0,-1,1]
@@ -1518,6 +1694,7 @@ function confirmSpinnerLanding() {
   spinnerReady = false;
   setStatus(`⚔ ${landed.name}'s turn — pick one of your hexes to attack from.`);
   highlightAttackerHexes(currentAttackerId);
+  saveGame();
 }
 
 function showSpinner(excludePlayerId) {
@@ -1971,11 +2148,13 @@ function duelRound(winnerPlayerId, loserPlayerId) {
     const ownersOnBoard = new Set(hexes.map(h => h.playerId));
     if (ownersOnBoard.size === 1) {
       const lastId = [...ownersOnBoard][0];
+      clearSavedGame();
       closeDuelModal();
       setTimeout(() => showVictory(players[lastId]), 800);
       return;
     }
 
+    saveGame();
     // Auto end turn after short delay so result is visible
     document.getElementById('duelRoundBtns').style.display = 'none';
     document.getElementById('roundLabel').textContent = `⬡ ${winner.name} wins the duel! ⬡`;
@@ -1985,6 +2164,7 @@ function duelRound(winnerPlayerId, loserPlayerId) {
       closeDuelModal();
       lastTurnPlayerId = winner.id;
       currentAttackerId = null;
+      saveGame();
       showSpinner(winner.id);
     }, 1800);
     return;
@@ -1995,6 +2175,7 @@ function duelRound(winnerPlayerId, loserPlayerId) {
   setTimeout(sndStarLost, 200);
   refreshDuelModal();
   flashLostStar(loserSide);
+  saveGame();
 }
 
 function closeDuelModal() {
@@ -2025,6 +2206,7 @@ document.getElementById('undoBtn').addEventListener('click', () => {
   document.getElementById('cancelDuelBtn').classList.remove('locked');
   refreshDuelModal();
   playTone(330, 'sine', 0.15, 0.1, 0, 0.01, 440);
+  saveGame();
 });
 
 document.getElementById('cancelDuelBtn').addEventListener('click', () => {
@@ -2035,6 +2217,7 @@ document.getElementById('cancelDuelBtn').addEventListener('click', () => {
     highlightAttackerHexes(currentAttackerId);
     setStatus(`⚔ ${players[currentAttackerId].name}'s turn — pick one of your hexes to attack from.`);
   }
+  saveGame();
 });
 
 
@@ -2251,10 +2434,12 @@ document.getElementById('restartSameBtn').addEventListener('click', () => {
   buildMap();
   buildPlayersBar();
   updatePlayersBar();
+  saveGame();
   setTimeout(() => showSpinner(null), 400);
 });
 
 document.getElementById('restartNewBtn').addEventListener('click', () => {
+  clearSavedGame();
   document.getElementById('victory').classList.remove('visible');
   document.getElementById('game').classList.add('hidden');
   document.getElementById('setup').classList.remove('hidden');
@@ -2293,6 +2478,28 @@ window.addEventListener('resize', () => {
     }
   }
 });
+
+// ── RESUME CHECK ON BOOT (R3) ──────────────────────────────────
+// Runs last so SAVE_KEY and the persistence functions are already initialized.
+(function checkForSavedGame() {
+  const card = document.getElementById('resumeCard');
+  const saved = loadSavedGame();
+  if (!saved) { card.classList.add('hidden'); return; }
+  const aliveNames = saved.players.filter(p => p.alive).map(p => p.name);
+  document.getElementById('resumeSub').textContent =
+    `${aliveNames.length} warlord${aliveNames.length === 1 ? '' : 's'} still standing: ${aliveNames.join(', ')}.`;
+  card.classList.remove('hidden');
+
+  document.getElementById('resumeBtn').onclick = () => {
+    card.classList.add('hidden');
+    resumeGame(saved);
+  };
+  document.getElementById('discardBtn').onclick = () => {
+    clearSavedGame();
+    card.classList.add('hidden');
+    playTone(300, 'sine', 0.08, 0.08, 0, 0.01, 200);
+  };
+})();
 </script>
 </body>
 </html>

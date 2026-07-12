@@ -868,6 +868,13 @@ const DEFAULT_NAMES = [
   'Rose Viper','Jade Tiger','Solar Bear','Slate Ghost',
 ];
 
+// ── UTIL: escape user-provided names before any innerHTML use ──
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+  ));
+}
+
 // ── STATE ──────────────────────────────────────────────────────
 let playerCount = 4;
 let players = [];          // { id, name, color, hexIds: Set, alive }
@@ -922,7 +929,7 @@ function addPlayer(name) {
   pill.dataset.idx = setupPlayers.length - 1;
   pill.innerHTML = `
     <span style="width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color};flex-shrink:0;display:inline-block"></span>
-    <span>${name}</span>
+    <span>${escapeHtml(name)}</span>
     <button class="pill-remove" title="Remove">×</button>
   `;
   pill.querySelector('.pill-remove').addEventListener('click', () => removePlayer(pill));
@@ -938,8 +945,10 @@ function removePlayer(pill) {
   const idx = [...pillsArea.children].indexOf(pill);
   if (idx === -1) return;
   setupPlayers.splice(idx, 1);
-  pill.style.animation = 'pill-in 0.2s reverse forwards';
-  setTimeout(() => { pill.remove(); refreshSetupUI(); }, 180);
+  // Remove synchronously — a delayed removal lets a second click on another
+  // pill compute a DOM index that includes this ghost pill (wrong splice)
+  pill.remove();
+  refreshSetupUI();
   playTone(300, 'sine', 0.08, 0.08, 0, 0.01, 200);
 }
 
@@ -1225,7 +1234,7 @@ function buildPlayersBar() {
     chip.style.color = p.color;
     chip.innerHTML = `
       <div class="chip-dot" style="background:${p.color};"></div>
-      <span>${p.name}</span>
+      <span>${escapeHtml(p.name)}</span>
       <span class="hex-count-badge" id="chipcount-${p.id}">⬡1</span>
     `;
     bar.appendChild(chip);
@@ -1249,7 +1258,53 @@ function updatePlayersBar() {
 // ── SPINNER (on the map) ───────────────────────────────────────
 let spinnerInterval = null;
 let spinnerLanded = null;
+let spinnerLandedHexId = null;
 let spinnerReady = false;
+
+// Top-level (not closed over runSpin) so they survive a map redraw and can
+// be re-applied after resize — hex elements are recreated with the same ids.
+function clearSpinHL(hexId) {
+  if (hexId == null) return;
+  const g = document.getElementById(`hex-${hexId}`);
+  const border = document.getElementById(`hexborder-${hexId}`);
+  const fill = document.getElementById(`hexfill-${hexId}`);
+  if (g) { g.style.transform = 'scale(1)'; g.classList.remove('hex-spin-active','hex-spin-landed'); }
+  if (border) { border.setAttribute('stroke-width','2.5'); border.removeAttribute('stroke-dasharray'); border.setAttribute('filter','url(#glow)'); }
+  if (fill) fill.setAttribute('fill-opacity','0.18');
+}
+function setSpinHL(hexId) {
+  const g = document.getElementById(`hex-${hexId}`);
+  const border = document.getElementById(`hexborder-${hexId}`);
+  const fill = document.getElementById(`hexfill-${hexId}`);
+  if (g) { g.classList.add('hex-spin-active'); setTimeout(() => g && g.classList.remove('hex-spin-active'), 200); }
+  if (border) { border.setAttribute('stroke-width','5'); border.setAttribute('filter','url(#glow-strong)'); }
+  if (fill) fill.setAttribute('fill-opacity','0.5');
+}
+function setLandedHL(hexId) {
+  const g = document.getElementById(`hex-${hexId}`);
+  const border = document.getElementById(`hexborder-${hexId}`);
+  const fill = document.getElementById(`hexfill-${hexId}`);
+  if (g) g.classList.add('hex-spin-landed');
+  if (border) { border.setAttribute('stroke-width','6'); border.setAttribute('filter','url(#glow-strong)'); }
+  if (fill) fill.setAttribute('fill-opacity','0.55');
+}
+
+// Confirm the landed spin — called from onHexClick so it survives DOM
+// rebuilds (the old per-element {once:true} listener died on resize,
+// soft-locking the game).
+function confirmSpinnerLanding() {
+  const landed = spinnerLanded;
+  if (!landed) return;
+  clearSpinHL(spinnerLandedHexId);
+  document.getElementById('spinnerBanner').style.display = 'none';
+  currentAttackerId = landed.id;
+  lastTurnPlayerId = landed.id;
+  spinnerLanded = null;
+  spinnerLandedHexId = null;
+  spinnerReady = false;
+  setStatus(`⚔ ${landed.name}'s turn — pick one of your hexes to attack from.`);
+  highlightAttackerHexes(currentAttackerId);
+}
 
 function showSpinner(excludePlayerId) {
   const eligible = players.filter(p => p.alive && p.id !== excludePlayerId);
@@ -1286,43 +1341,23 @@ function runSpin(excludePlayerId) {
   }
   spinnerReady = false;
   spinnerLanded = null;
+  spinnerLandedHexId = null;
   clearTimeout(spinnerInterval);
   const candidateHexIds = eligible.map(p => [...p.hexIds][0]).filter(h => h !== undefined);
   if (candidateHexIds.length === 0) return;
   const finalPlayerIdx = Math.floor(Math.random() * eligible.length);
   const finalHexId = candidateHexIds[finalPlayerIdx];
-  const totalTicks = 20 + Math.floor(Math.random() * 14);
+  // Sync tick count so the final highlighted hex IS the chosen one —
+  // otherwise the landing glow visibly jumps to a different hex.
+  const baseTicks = 20 + Math.floor(Math.random() * 14);
+  const len = candidateHexIds.length;
+  const totalTicks = baseTicks + (((finalPlayerIdx + 1 - baseTicks) % len) + len) % len;
   let ticks = 0, idx = 0, tick = 80, currentHighlightHex = null;
   const banner = document.getElementById('spinnerBanner');
   const bannerText = document.getElementById('spinnerBannerText');
   banner.style.display = 'block';
   bannerText.textContent = '⬡ FATE DECIDES ⬡';
   bannerText.style.color = 'var(--gold)';
-  function clearSpinHL(hexId) {
-    if (hexId == null) return;
-    const g = document.getElementById(`hex-${hexId}`);
-    const border = document.getElementById(`hexborder-${hexId}`);
-    const fill = document.getElementById(`hexfill-${hexId}`);
-    if (g) { g.style.transform = 'scale(1)'; g.classList.remove('hex-spin-active','hex-spin-landed'); }
-    if (border) { border.setAttribute('stroke-width','2.5'); border.removeAttribute('stroke-dasharray'); border.setAttribute('filter','url(#glow)'); }
-    if (fill) fill.setAttribute('fill-opacity','0.18');
-  }
-  function setSpinHL(hexId) {
-    const g = document.getElementById(`hex-${hexId}`);
-    const border = document.getElementById(`hexborder-${hexId}`);
-    const fill = document.getElementById(`hexfill-${hexId}`);
-    if (g) { g.classList.add('hex-spin-active'); setTimeout(() => g && g.classList.remove('hex-spin-active'), 200); }
-    if (border) { border.setAttribute('stroke-width','5'); border.setAttribute('filter','url(#glow-strong)'); }
-    if (fill) fill.setAttribute('fill-opacity','0.5');
-  }
-  function setLandedHL(hexId) {
-    const g = document.getElementById(`hex-${hexId}`);
-    const border = document.getElementById(`hexborder-${hexId}`);
-    const fill = document.getElementById(`hexfill-${hexId}`);
-    if (g) g.classList.add('hex-spin-landed');
-    if (border) { border.setAttribute('stroke-width','6'); border.setAttribute('filter','url(#glow-strong)'); }
-    if (fill) fill.setAttribute('fill-opacity','0.55');
-  }
   function step() {
     clearSpinHL(currentHighlightHex);
     currentHighlightHex = candidateHexIds[idx % candidateHexIds.length];
@@ -1336,25 +1371,15 @@ function runSpin(excludePlayerId) {
     else if (remaining > 1) tick = 320;
     else tick = 480;
     if (ticks >= totalTicks) {
-      clearSpinHL(currentHighlightHex);
+      // Tick count is synced, so currentHighlightHex === finalHexId here
       setLandedHL(finalHexId);
       currentHighlightHex = finalHexId;
       spinnerLanded = eligible[finalPlayerIdx];
+      spinnerLandedHexId = finalHexId;
       spinnerReady = true;
-      const landed = spinnerLanded;
-      bannerText.innerHTML = `⚔ <span style="color:${landed.color}">${landed.name.toUpperCase()}</span> — tap their glowing hex to begin!`;
+      bannerText.innerHTML = `⚔ <span style="color:${spinnerLanded.color}">${escapeHtml(spinnerLanded.name.toUpperCase())}</span> — tap their glowing hex to begin!`;
       sndSpinnerLand();
-      const hexEl = document.getElementById(`hex-${finalHexId}`);
-      if (hexEl) hexEl.addEventListener('click', () => {
-        clearSpinHL(finalHexId);
-        banner.style.display = 'none';
-        currentAttackerId = landed.id;
-        lastTurnPlayerId = landed.id;
-        spinnerLanded = null;
-        spinnerReady = false;
-        setStatus(`⚔ ${landed.name}'s turn — pick one of your hexes to attack from.`);
-        highlightAttackerHexes(currentAttackerId);
-      }, { once: true });
+      // Confirmation is handled centrally in onHexClick (survives redraws)
       return;
     }
     spinnerInterval = setTimeout(step, tick);
@@ -1412,6 +1437,13 @@ function onHexHover(hexId, entering) {
 
 function onHexClick(hexId) {
   if (activeDuel) return; // ignore clicks during duel
+
+  // Spinner has landed — only tapping the glowing hex proceeds
+  if (spinnerReady) {
+    if (hexId === spinnerLandedHexId) confirmSpinnerLanding();
+    return;
+  }
+
   const hex = hexes[hexId];
   if (!hex) return;
   const player = players[hex.playerId];
@@ -1986,6 +2018,9 @@ document.getElementById('restartSameBtn').addEventListener('click', () => {
   lastTurnPlayerId = null;
   activeDuel = null;
   selected = [];
+  spinnerReady = false;
+  spinnerLanded = null;
+  spinnerLandedHexId = null;
   document.getElementById('spinnerBanner').style.display = 'none';
   buildMap();
   buildPlayersBar();
@@ -2022,6 +2057,13 @@ window.addEventListener('resize', () => {
     fitSvg();
     buildMapRedraw();
     buildPlayersBar();
+    updatePlayersBar();
+    // Redraw recreates every hex element — restore transient highlights
+    if (spinnerReady && spinnerLandedHexId !== null) {
+      setLandedHL(spinnerLandedHexId);
+    } else if (currentAttackerId !== null && !activeDuel) {
+      highlightAttackerHexes(currentAttackerId);
+    }
   }
 });
 </script>

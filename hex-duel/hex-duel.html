@@ -252,7 +252,8 @@
     color: var(--gold);
     margin-bottom: 0.6rem;
   }
-  .realm-options { display: flex; gap: 0.5rem; }
+  .realm-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .realm-options .realm-btn { min-width: calc(50% - 0.25rem); }
   .realm-btn, .duel-btn {
     flex: 1;
     padding: 0.55rem 0.3rem;
@@ -848,6 +849,7 @@
         <button class="realm-btn" data-size="1">Skirmish<span class="realm-sub">1 hex each · sudden death</span></button>
         <button class="realm-btn active" data-size="3">Standard<span class="realm-sub">3 hexes each</span></button>
         <button class="realm-btn" data-size="5">Epic<span class="realm-sub">5 hexes each</span></button>
+        <button class="realm-btn" data-size="chaos">Chaos<span class="realm-sub">3 scattered · 4+ players</span></button>
       </div>
     </div>
 
@@ -992,6 +994,7 @@ function escapeHtml(s) {
 
 // ── STATE ──────────────────────────────────────────────────────
 let realmSize = 3;         // hexes per player: 1 Skirmish, 3 Standard, 5 Epic
+let chaosMode = false;     // scattered non-adjacent hexes + local-capture duels
 let duelStyle = 'balanced'; // 'balanced' caps lives at 3, 'conquest' at 5
 let players = [];          // { id, name, color, hexIds: Set, alive }
 let hexes = [];            // { id, playerId, cx, cy, axial, el }
@@ -1018,13 +1021,16 @@ function refreshSetupUI() {
   const n = setupPlayers.length;
   counterNum.textContent = n;
 
+  const chaosBlocked = chaosMode && n > 0 && n < 4;
+
   // hint
-  if (n === 0) setupHint.textContent = 'Add 2–16 players to begin';
+  if (chaosBlocked) setupHint.textContent = 'Chaos mode needs at least 4 warlords';
+  else if (n === 0) setupHint.textContent = 'Add 2–16 players to begin';
   else if (n === 1) setupHint.textContent = 'Add at least one more player';
   else if (n === 16) setupHint.textContent = 'Maximum 16 players reached';
   else setupHint.textContent = `${n} player${n>1?'s':''} ready — add more or start!`;
 
-  startBtn.disabled = n < 2;
+  startBtn.disabled = n < 2 || chaosBlocked;
   addPlayerInput.disabled = n >= 16;
   addPlayerBtn.disabled   = n >= 16;
 }
@@ -1079,8 +1085,15 @@ document.querySelectorAll('.realm-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.realm-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    realmSize = parseInt(btn.dataset.size, 10) || 3;
+    if (btn.dataset.size === 'chaos') {
+      chaosMode = true;
+      realmSize = 3; // scattered hexes per player
+    } else {
+      chaosMode = false;
+      realmSize = parseInt(btn.dataset.size, 10) || 3;
+    }
     playTone(500, 'sine', 0.08, 0.08);
+    refreshSetupUI();
   });
 });
 
@@ -1137,6 +1150,7 @@ function saveGame() {
       v: 1,
       setupPlayers,
       realmSize,
+      chaosMode,
       duelStyle,
       owners,                       // hex id -> player id
       players: players.map(p => ({
@@ -1178,6 +1192,7 @@ function loadSavedGame() {
 function resumeGame(s) {
   setupPlayers = s.setupPlayers || [];
   realmSize = s.realmSize || 3;
+  chaosMode = !!s.chaosMode;
   duelStyle = s.duelStyle || 'balanced';
 
   players = s.players.map(p => ({
@@ -1202,8 +1217,12 @@ function resumeGame(s) {
   document.getElementById('game').classList.remove('hidden');
 
   // Reflect toggles in the UI (so a later New Game shows the right defaults)
-  document.querySelectorAll('.realm-btn').forEach(b =>
-    b.classList.toggle('active', parseInt(b.dataset.size, 10) === realmSize));
+  document.querySelectorAll('.realm-btn').forEach(b => {
+    const isActive = chaosMode
+      ? (b.dataset.size === 'chaos')
+      : (parseInt(b.dataset.size, 10) === realmSize);
+    b.classList.toggle('active', isActive);
+  });
   document.querySelectorAll('.duel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.duel === duelStyle));
 
@@ -1397,6 +1416,68 @@ function assignTerritories(cells, adj, nPlayers, perPlayer) {
   return owners;
 }
 
+// Chaos mode: give each player `perPlayer` hexes that are mutually NON-adjacent
+// (scattered across the board), so early adjacency between players is near-
+// random. Returns owners[] (hex id -> player id) with equal sizes. Requires
+// 4+ players — below that a packed honeycomb can't keep everyone apart.
+// Sets each player's capitalHexId to their lowest-id hex as the crown "banner".
+function assignScattered(cells, adj, nPlayers, perPlayer) {
+  const total = cells.length; // nPlayers * perPlayer
+  const selfConflicts = (owners, c) => {
+    let n = 0; for (const a of adj[c]) if (owners[a] === owners[c]) n++; return n;
+  };
+  const totalConflicts = owners => {
+    let n = 0; for (let c = 0; c < total; c++) n += selfConflicts(owners, c); return n / 2;
+  };
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  let best = null, bestConf = Infinity;
+  for (let attempt = 0; attempt < 40 && bestConf > 0; attempt++) {
+    const order = shuffle([...Array(total).keys()]);
+    const owners = new Array(total).fill(-1);
+    order.forEach((cell, idx) => { owners[cell] = idx % nPlayers; }); // equal sizes
+
+    // Repair: repeatedly resolve a self-adjacent cell via an improving owner swap
+    let iter = 0;
+    while (iter++ < total * 30) {
+      let conf = -1;
+      for (let c = 0; c < total; c++) if (selfConflicts(owners, c) > 0) { conf = c; break; }
+      if (conf === -1) break; // fully scattered
+      const before = totalConflicts(owners);
+      const cand = shuffle([...Array(total).keys()]);
+      let improved = false;
+      for (const c2 of cand) {
+        if (owners[c2] === owners[conf]) continue;
+        const o1 = owners[conf], o2 = owners[c2];
+        owners[conf] = o2; owners[c2] = o1;              // try swap
+        if (totalConflicts(owners) < before) { improved = true; break; }
+        owners[conf] = o1; owners[c2] = o2;              // revert
+      }
+      if (!improved) {                                    // random swap to escape
+        const c2 = cand.find(c => owners[c] !== owners[conf]);
+        const o1 = owners[conf], o2 = owners[c2];
+        owners[conf] = o2; owners[c2] = o1;
+      }
+    }
+    const conf = totalConflicts(owners);
+    if (conf < bestConf) { bestConf = conf; best = owners.slice(); }
+  }
+
+  // Banner hex per player = lowest owned id (crown/count shows there)
+  const firstOf = new Array(nPlayers).fill(-1);
+  best.forEach((owner, hexId) => { if (firstOf[owner] === -1) firstOf[owner] = hexId; });
+  players.forEach((pl, i) => { pl.capitalHexId = firstOf[i]; });
+  return best;
+}
+
+// Recompute a player's banner hex (crown/count anchor) after territory changes.
+// Used in Chaos mode where hexes come and go without a fixed capital.
+function recomputeBannerHex(player) {
+  let min = Infinity;
+  player.hexIds.forEach(h => { if (h < min) min = h; });
+  player.capitalHexId = (min === Infinity) ? null : min;
+}
+
 function buildMap() {
   fitSvg();
   buildMapFresh();
@@ -1482,7 +1563,9 @@ function _buildMapCore(freshGame, ownerSnapshot) {
 
   // Ownership: fresh games get seeded contiguous realms; redraws keep snapshot
   const owners = freshGame
-    ? assignTerritories(cells, adjacency, nPlayers, realmSize)
+    ? (chaosMode
+        ? assignScattered(cells, adjacency, nPlayers, realmSize)
+        : assignTerritories(cells, adjacency, nPlayers, realmSize))
     : ownerSnapshot;
 
   if (freshGame) {
@@ -2033,6 +2116,8 @@ function openDuel(hexIdA, hexIdB) {
   activeDuel = {
     playerAId: playerA.id,
     playerBId: playerB.id,
+    hexIdA,               // attacker's hex
+    hexIdB,               // defender's contested hex (Chaos capture anchor)
     hpA, hpB,
     maxHpA: hpA,
     maxHpB: hpB,
@@ -2104,6 +2189,7 @@ function flashLostStar(containerId) {
 
 function duelRound(winnerPlayerId, loserPlayerId) {
   const d = activeDuel;
+  if (!d || d.decided) return; // ignore rounds after the duel is settled
 
   // Save snapshot for undo
   d.lastSnapshot = { hpA: d.hpA, hpB: d.hpB, round: d.round, winnerPlayerId, loserPlayerId };
@@ -2123,25 +2209,63 @@ function duelRound(winnerPlayerId, loserPlayerId) {
   const loser  = players[loserPlayerId];
 
   if (loserHP <= 0) {
+    d.decided = true;
     sndElimination();
-    // Hide undo — can't undo elimination
+    // Hide undo — can't undo a capture
     document.getElementById('undoBtn').style.display = 'none';
 
-    // Transfer ALL loser hexes to winner
-    const loserHexIds = [...loser.hexIds];
-    loserHexIds.forEach(hid => {
-      hexes[hid].playerId = winnerPlayerId;
-      winner.hexIds.add(hid);
-      recolorHex(hid, winner);
-    });
-    loser.hexIds.clear();
-    loser.alive = false;
-    sndTerritoryTaken();
-
-    refreshHexCountLabels();
-    removeLoserConnections(loser.id);    updatePlayersBar();
-    spawnParticlesForPlayer(loser);
-    setStatus(`💀 ${loser.name} eliminated! ${winner.name} claims all their territory!`);
+    if (chaosMode) {
+      // Local capture: winner takes the contested hex plus the loser's OWN
+      // hexes touching it. The loser's hexes elsewhere are untouched, and they
+      // stay in the game unless this empties them entirely.
+      const anchor = (winnerPlayerId === d.playerAId) ? d.hexIdB : d.hexIdA;
+      const toCapture = new Set();
+      if (hexes[anchor] && hexes[anchor].playerId === loser.id) toCapture.add(anchor);
+      // include loser-owned hexes adjacent to the anchor (clusters formed mid-game)
+      if (hexes[anchor]) {
+        adjacency[anchor].forEach(a => { if (hexes[a].playerId === loser.id) toCapture.add(a); });
+      }
+      // Fallback: if the anchor somehow isn't the loser's, grab any one loser hex
+      // adjacent to the winner so a won duel always yields ground.
+      if (toCapture.size === 0) {
+        for (const wh of winner.hexIds) {
+          const hit = [...adjacency[wh]].find(a => hexes[a].playerId === loser.id);
+          if (hit !== undefined) { toCapture.add(hit); break; }
+        }
+      }
+      toCapture.forEach(hid => {
+        hexes[hid].playerId = winnerPlayerId;
+        winner.hexIds.add(hid);
+        loser.hexIds.delete(hid);
+        recolorHex(hid, winner);
+      });
+      recomputeBannerHex(winner);
+      recomputeBannerHex(loser);
+      if (loser.hexIds.size === 0) { loser.alive = false; spawnParticlesForPlayer(loser); }
+      sndTerritoryTaken();
+      refreshHexCountLabels();
+      updatePlayersBar();
+      setStatus(loser.alive
+        ? `⚔ ${winner.name} seizes ${toCapture.size} hex${toCapture.size === 1 ? '' : 'es'} from ${loser.name}!`
+        : `💀 ${loser.name} wiped out! ${winner.name} takes their last ground!`);
+    } else {
+      // Clustered modes: winning the duel eliminates the loser and transfers
+      // their entire contiguous realm.
+      const loserHexIds = [...loser.hexIds];
+      loserHexIds.forEach(hid => {
+        hexes[hid].playerId = winnerPlayerId;
+        winner.hexIds.add(hid);
+        recolorHex(hid, winner);
+      });
+      loser.hexIds.clear();
+      loser.alive = false;
+      sndTerritoryTaken();
+      refreshHexCountLabels();
+      removeLoserConnections(loser.id);
+      updatePlayersBar();
+      spawnParticlesForPlayer(loser);
+      setStatus(`💀 ${loser.name} eliminated! ${winner.name} claims all their territory!`);
+    }
 
     // Win condition
     const ownersOnBoard = new Set(hexes.map(h => h.playerId));

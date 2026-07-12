@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grammar Boom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#101322;
+  --panel:#1a1f33;
+  --panel-2:#232a45;
+  --line:#323b5e;
+  --cream:#f2ecdd;
+  --muted:#9aa3c0;
+  --gold:#e8b34b;
+  --gold-soft:rgba(232,179,75,.16);
+  --good:#51cf66;
+  --bad:#ff6b6b;
+  --t0:#ff6b6b; --t1:#4dabf7; --t2:#51cf66; --t3:#b197fc;
+  --radius:14px;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  font-size:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--ink);
+  color:var(--cream);
+  font-family:'DM Sans',sans-serif;
+  overflow-x:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font-family:inherit}
+
+/* ---------- shared ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  padding:.7rem 1.4rem;border-radius:999px;font-weight:700;font-size:1rem;
+  background:var(--panel-2);color:var(--cream);border:1px solid var(--line);
+  transition:transform .12s ease, background .15s ease, border-color .15s ease;
+}
+.btn:hover{transform:translateY(-2px);border-color:var(--gold)}
+.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn-gold{background:var(--gold);color:#221a08;border-color:var(--gold)}
+.btn-gold:hover{background:#f4c65f}
+.btn-good{background:var(--good);color:#0c2210;border-color:var(--good)}
+.btn-bad{background:var(--bad);color:#2b0d0d;border-color:var(--bad)}
+.btn-ghost{background:transparent}
+
+/* ---------- setup screen ---------- */
+.screen{min-height:100vh;display:none;flex-direction:column;align-items:center;padding:2rem 1.5rem}
+.screen.active{display:flex}
+#setup{justify-content:center;gap:2rem}
+.brand{text-align:center}
+.brand h1{
+  font-family:'Playfair Display',serif;font-weight:800;
+  font-size:clamp(2.6rem,7vw,4.6rem);letter-spacing:.01em;line-height:1;
+}
+.brand h1 .boom{color:var(--gold);position:relative;display:inline-block}
+.brand p{color:var(--muted);margin-top:.6rem;font-size:1.05rem}
+.setup-card{
+  width:min(680px,100%);background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:1.6rem;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:1.4rem;
+}
+.field-label{font-size:.8rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:700;margin-bottom:.55rem}
+.seg{display:flex;gap:.5rem;flex-wrap:wrap}
+.seg button{
+  flex:1;min-width:62px;padding:.65rem .5rem;border-radius:10px;
+  background:var(--panel-2);border:1px solid var(--line);font-weight:700;font-size:1.05rem;
+  transition:all .15s ease;color:var(--muted);
+}
+.seg button:hover{border-color:var(--gold);color:var(--cream)}
+.seg button.sel{background:var(--gold-soft);border-color:var(--gold);color:var(--gold)}
+.seg button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.team-inputs{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.team-input{display:flex;align-items:center;gap:.6rem;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:.55rem .8rem}
+.team-input .dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.team-input input{
+  flex:1;background:none;border:none;color:var(--cream);font-size:1rem;font-weight:500;min-width:0;
+}
+.team-input input:focus{outline:none}
+.team-input:focus-within{border-color:var(--gold)}
+#startBtn{align-self:center;font-size:1.15rem;padding:.85rem 2.6rem}
+
+/* ---------- game screen ---------- */
+#game{padding:1.2rem 1.5rem 2rem;gap:1rem}
+.topbar{
+  width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+}
+.topbar h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700}
+.topbar h2 span{color:var(--gold)}
+.topbar .meta{color:var(--muted);font-size:.9rem;font-weight:500}
+.topbar .actions{display:flex;gap:.5rem}
+.icon-btn{
+  width:40px;height:40px;border-radius:10px;background:var(--panel);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .15s;
+}
+.icon-btn:hover{border-color:var(--gold)}
+.icon-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.icon-btn.off{opacity:.45}
+
+.scoreboard{
+  width:100%;max-width:1200px;display:grid;gap:.7rem;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+}
+.team-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:.75rem 1rem;display:flex;align-items:center;gap:.8rem;position:relative;
+  transition:all .2s ease;overflow:hidden;
+}
+.team-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--tc);
+}
+.team-card.turn{
+  border-color:var(--tc);box-shadow:0 0 0 1px var(--tc), 0 6px 22px rgba(0,0,0,.4);
+  transform:translateY(-2px);
+}
+.team-card.turn::after{
+  content:'▲ turn';position:absolute;top:6px;right:10px;font-size:.62rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--tc);font-weight:700;
+}
+.team-card .tname{font-weight:700;font-size:1rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-card .tscore{
+  font-family:'Playfair Display',serif;font-weight:800;font-size:1.9rem;line-height:1;color:var(--tc);
+  min-width:2ch;text-align:right;transition:transform .2s;
+}
+.team-card .tscore.bump{animation:bump .45s ease}
+@keyframes bump{30%{transform:scale(1.35)}}
+.score-adjust{display:flex;flex-direction:column;gap:2px}
+.score-adjust button{
+  width:20px;height:16px;font-size:.7rem;line-height:1;color:var(--muted);border-radius:4px;
+}
+.score-adjust button:hover{color:var(--cream);background:var(--panel-2)}
+
+.grid{
+  width:100%;max-width:1200px;display:grid;gap:.8rem;flex:1;
+}
+.grid.c4{grid-template-columns:repeat(4,1fr)}
+.grid.c5{grid-template-columns:repeat(5,1fr)}
+.grid.c6{grid-template-columns:repeat(6,1fr)}
+.tile{
+  aspect-ratio:4/3;border-radius:var(--radius);background:var(--panel);
+  border:1px solid var(--line);position:relative;
+  font-family:'Playfair Display',serif;font-weight:800;
+  font-size:clamp(1.6rem,4vw,3rem);color:var(--cream);
+  transition:transform .15s ease, border-color .15s ease, background .15s ease;
+  display:flex;align-items:center;justify-content:center;
+}
+.tile:not(.used):hover{transform:translateY(-4px) scale(1.03);border-color:var(--gold);background:var(--panel-2)}
+.tile:not(.used):focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.tile.used{
+  background:#141827;color:#3c4568;cursor:default;border-color:#232a45;
+  font-size:clamp(1rem,2.5vw,1.6rem);
+}
+.tile .num{transition:opacity .2s}
+.tile.used .num{opacity:0}
+.tile .claim{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:700;gap:.15rem;opacity:0;
+}
+.tile.used .claim{opacity:1}
+.tile .claim .who{color:var(--cc,#3c4568);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tile .claim .what{font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--cc,#3c4568)}
+
+/* ---------- modal ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(8,10,20,.82);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;padding:1.5rem;z-index:50;
+}
+.overlay.open{display:flex}
+.modal{
+  width:min(860px,100%);background:var(--panel);border:1px solid var(--line);
+  border-radius:20px;box-shadow:var(--shadow);padding:2.2rem 2.4rem;
+  display:flex;flex-direction:column;gap:1.6rem;align-items:center;text-align:center;
+  animation:pop .25s ease;
+}
+@keyframes pop{from{transform:scale(.92);opacity:0}}
+.modal .qmeta{
+  display:flex;gap:.9rem;align-items:center;font-size:.85rem;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.12em;font-weight:700;
+}
+.modal .qmeta .team-chip{
+  padding:.25rem .8rem;border-radius:999px;border:1px solid var(--tc);color:var(--tc);
+}
+.modal .question{
+  font-family:'Playfair Display',serif;font-weight:700;
+  font-size:clamp(1.5rem,3.4vw,2.4rem);line-height:1.3;
+}
+.modal .answer{
+  font-size:clamp(1.2rem,2.6vw,1.7rem);color:var(--gold);font-weight:700;
+  border-top:1px dashed var(--line);padding-top:1.2rem;width:100%;
+  animation:pop .25s ease;
+}
+.modal .answer .tag{display:block;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:.4rem;font-weight:700}
+.modal .btnrow{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center}
+
+/* ---------- fate card (signature) ---------- */
+.fate-wrap{perspective:1200px;width:min(340px,80vw)}
+.fate{
+  position:relative;width:100%;aspect-ratio:3/4;transform-style:preserve-3d;
+  transition:transform .7s cubic-bezier(.2,.7,.2,1);
+}
+.fate.flipped{transform:rotateY(180deg)}
+.fate .face{
+  position:absolute;inset:0;border-radius:18px;backface-visibility:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;
+  border:1px solid var(--line);
+}
+.fate .back{
+  background:
+    radial-gradient(circle at 30% 25%, rgba(232,179,75,.18), transparent 55%),
+    var(--panel-2);
+}
+.fate .back .qmark{font-family:'Playfair Display',serif;font-size:5rem;font-weight:800;color:var(--gold)}
+.fate .back .hint{color:var(--muted);font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.fate .front{transform:rotateY(180deg);background:var(--panel-2)}
+.fate .front.f-good{background:radial-gradient(circle at 50% 30%, rgba(81,207,102,.25), transparent 60%), var(--panel-2);border-color:var(--good)}
+.fate .front.f-bad{background:radial-gradient(circle at 50% 30%, rgba(255,107,107,.25), transparent 60%), var(--panel-2);border-color:var(--bad)}
+.fate .front.f-wild{background:radial-gradient(circle at 50% 30%, rgba(232,179,75,.28), transparent 60%), var(--panel-2);border-color:var(--gold)}
+.fate .front .icon{font-size:4rem;line-height:1}
+.fate .front .fname{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800}
+.fate .front .fdesc{color:var(--muted);font-size:.95rem;padding:0 1.4rem}
+.burst{
+  position:absolute;inset:-40px;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle, rgba(232,179,75,.5), transparent 65%);
+}
+.burst.go{animation:burst .6s ease-out}
+@keyframes burst{0%{opacity:0;transform:scale(.4)}35%{opacity:1}100%{opacity:0;transform:scale(1.5)}}
+
+.target-pick{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center}
+.target-pick button{
+  padding:.7rem 1.4rem;border-radius:12px;background:var(--panel-2);
+  border:2px solid var(--tc);color:var(--tc);font-weight:700;font-size:1.05rem;
+  transition:transform .12s;
+}
+.target-pick button:hover{transform:translateY(-2px);background:var(--tc);color:var(--ink)}
+
+/* ---------- winner ---------- */
+#winner{justify-content:center;gap:1.6rem;text-align:center;position:relative}
+#winner h2{font-family:'Playfair Display',serif;font-size:clamp(2.4rem,6vw,4rem);font-weight:800}
+#winner h2 span{color:var(--gold)}
+.podium{display:flex;gap:1rem;align-items:flex-end;justify-content:center;flex-wrap:wrap}
+.podium .col{display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.podium .bar{
+  width:120px;border-radius:12px 12px 0 0;background:var(--panel);border:1px solid var(--tc);
+  border-bottom:none;display:flex;align-items:flex-start;justify-content:center;padding-top:.6rem;
+  font-family:'Playfair Display',serif;font-weight:800;font-size:1.6rem;color:var(--tc);
+}
+.podium .label{font-weight:700;color:var(--tc)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:5}
+
+@media (max-width:640px){
+  .grid.c5,.grid.c6{grid-template-columns:repeat(4,1fr)}
+  .modal{padding:1.6rem 1.2rem}
+  .team-inputs{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<section class="screen active" id="setup">
+  <div class="brand">
+    <h1>Grammar <span class="boom">Boom</span></h1>
+    <p>Pick a tile. Answer the question. Face your fate.</p>
+  </div>
+  <div class="setup-card">
+    <div>
+      <div class="field-label">CEFR level</div>
+      <div class="seg" id="levelSeg" role="radiogroup" aria-label="CEFR level">
+        <button data-v="A1">A1</button>
+        <button data-v="A2">A2</button>
+        <button data-v="B1" class="sel">B1</button>
+        <button data-v="B2">B2</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Board size</div>
+      <div class="seg" id="sizeSeg" role="radiogroup" aria-label="Board size">
+        <button data-v="16">16 tiles</button>
+        <button data-v="20" class="sel">20 tiles</button>
+        <button data-v="24">24 tiles</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Teams</div>
+      <div class="seg" id="teamSeg" role="radiogroup" aria-label="Number of teams" style="margin-bottom:.8rem">
+        <button data-v="2" class="sel">2</button>
+        <button data-v="3">3</button>
+        <button data-v="4">4</button>
+      </div>
+      <div class="team-inputs" id="teamInputs"></div>
+    </div>
+    <button class="btn btn-gold" id="startBtn">Start game</button>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<section class="screen" id="game">
+  <div class="topbar">
+    <h2>Grammar <span>Boom</span> <span class="meta" id="gameMeta"></span></h2>
+    <div class="actions">
+      <button class="icon-btn" id="soundBtn" title="Sound on/off" aria-label="Toggle sound">🔊</button>
+      <button class="icon-btn" id="restartBtn" title="New game" aria-label="New game">↺</button>
+    </div>
+  </div>
+  <div class="scoreboard" id="scoreboard"></div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<!-- ============ WINNER ============ -->
+<section class="screen" id="winner">
+  <h2 id="winnerTitle">Winner!</h2>
+  <div class="podium" id="podium"></div>
+  <div class="btnrow" style="display:flex;gap:.8rem">
+    <button class="btn btn-gold" id="againBtn">Play again</button>
+  </div>
+  <canvas id="confetti"></canvas>
+</section>
+
+<!-- ============ MODAL ============ -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<script>
+/* =========================================================
+   QUESTION BANK  —  {q, a} per CEFR level
+========================================================= */
+const BANK = {
+  A1: [
+    ["Complete: She ___ (go) to school every day.", "goes"],
+    ["Complete: I ___ from Brazil.", "am"],
+    ["Correct the mistake: “He have a dog.”", "He has a dog."],
+    ["Complete: ___ you like pizza?", "Do"],
+    ["Complete: There ___ two books on the table.", "are"],
+    ["Choose: I have (a / an) orange.", "an"],
+    ["Complete: This is my sister. ___ name is Ana.", "Her"],
+    ["Correct the mistake: “I no like coffee.”", "I don't like coffee."],
+    ["Complete: We ___ (not / be) at home now.", "aren't (are not)"],
+    ["What is the plural of “child”?", "children"],
+    ["Complete: He ___ (watch) TV every night.", "watches"],
+    ["Complete: ___ she play the guitar?", "Does"],
+    ["Complete: I get up ___ 7 o'clock.", "at"],
+    ["Complete: My birthday is ___ July.", "in"],
+    ["Correct the mistake: “She can to swim.”", "She can swim."],
+    ["Complete: ___ is your name?", "What"],
+    ["Choose: That is (a / an) umbrella.", "an"],
+    ["What is the plural of “person”?", "people"],
+    ["Complete: They ___ my friends.", "are"],
+    ["Complete: I ___ two brothers.", "have"],
+    ["Correct the mistake: “He is teacher.”", "He is a teacher."],
+    ["Complete: ___ old are you?", "How"],
+    ["Complete: The cat is ___ the box. (inside)", "in"],
+    ["Complete: We go to school ___ Monday.", "on"],
+    ["Complete: She ___ (study) English on Saturdays.", "studies"],
+    ["Complete: ___ are my keys? I can't find them.", "Where"],
+    ["Complete: I like apples, but I ___ like bananas.", "don't"],
+    ["Choose: That is Pedro's bike. The bike is (his / her).", "his"],
+    ["Complete: ___ there a supermarket near here?", "Is"],
+    ["Correct the mistake: “I am agree.”", "I agree."]
+  ],
+  A2: [
+    ["Complete: She ___ (visit) her grandma last weekend.", "visited"],
+    ["What is the past of “go”?", "went"],
+    ["Complete: I ___ (not / see) the film yesterday.", "didn't see"],
+    ["Complete: ___ you go to the party last night?", "Did"],
+    ["Complete: This test is ___ (easy) than the last one.", "easier"],
+    ["Complete: It's the ___ (good) pizza in town.", "best"],
+    ["Complete: Look at those clouds! It ___ rain.", "is going to"],
+    ["Complete: She ___ (study) right now.", "is studying"],
+    ["Complete: How ___ money do you have?", "much"],
+    ["Complete: How ___ apples are there?", "many"],
+    ["Complete: I ___ go to bed late. (frequency: 100%)", "always"],
+    ["Correct the mistake: “He plays soccer very good.”", "He plays soccer very well."],
+    ["Complete: You ___ wear a uniform at school. (obligation)", "have to / must"],
+    ["What is the past of “buy”?", "bought"],
+    ["Complete: We ___ (watch) a movie when the lights went out.", "were watching"],
+    ["Complete: My brother is ___ (tall) than me.", "taller"],
+    ["Choose: I'd like (some / any) water, please.", "some"],
+    ["Complete: There isn't ___ milk in the fridge.", "any"],
+    ["Complete: Tomorrow we ___ visit our cousins. (plan)", "are going to"],
+    ["Correct the mistake: “She didn't went to class.”", "She didn't go to class."],
+    ["Complete: This is the ___ (interesting) book I know.", "most interesting"],
+    ["What is the past of “eat”?", "ate"],
+    ["Complete: He ___ (do) his homework at the moment.", "is doing"],
+    ["Choose: I was tired, (so / because) I went to bed early.", "so"],
+    ["Complete: ___ were you yesterday? — At home.", "Where"],
+    ["Complete: She sings ___ (beautiful).", "beautifully"],
+    ["Complete: We ___ (not / have) class last Friday.", "didn't have"],
+    ["Correct the mistake: “I am more old than you.”", "I am older than you."],
+    ["Complete: Would you like ___ tea?", "some"],
+    ["What is the past of “make”?", "made"]
+  ],
+  B1: [
+    ["Complete: I ___ (live) here since 2020.", "have lived"],
+    ["Complete: She has ___ finished her homework. (a moment ago)", "just"],
+    ["Complete: If it rains, we ___ stay home.", "will"],
+    ["Complete: If I ___ (be) you, I would apologize.", "were"],
+    ["Complete: This house ___ (build) in 1950.", "was built"],
+    ["Complete: The man ___ lives next door is a doctor.", "who / that"],
+    ["Complete: I ___ to play the piano when I was a kid.", "used"],
+    ["Complete: He ___ be at work — his car is outside. (deduction, sure)", "must"],
+    ["Reported speech: “I'm tired.” → She said she ___ tired.", "was"],
+    ["Complete: I enjoy ___ (read) before bed.", "reading"],
+    ["Complete: He wants ___ (travel) next year.", "to travel"],
+    ["Complete: ___ you ever ___ (be) to Argentina?", "Have … been"],
+    ["Correct the mistake: “I have seen him yesterday.”", "I saw him yesterday."],
+    ["Complete: English ___ (speak) all over the world.", "is spoken"],
+    ["Complete: That's the restaurant ___ we had dinner.", "where"],
+    ["Complete: You ___ smoke here. It's forbidden.", "mustn't / can't"],
+    ["Complete: If you heat ice, it ___.", "melts"],
+    ["Complete: I haven't finished my essay ___.", "yet"],
+    ["Choose: She's lived here (for / since) ten years.", "for"],
+    ["Reported speech: “Where do you live?” → He asked me where I ___.", "lived"],
+    ["Complete: I'm interested ___ learning German.", "in"],
+    ["Complete: It ___ rain later — take an umbrella. (possibility)", "might / may / could"],
+    ["Correct the mistake: “I look forward to see you.”", "I look forward to seeing you."],
+    ["Complete: The book ___ I borrowed was great.", "which / that (or nothing)"],
+    ["Complete: If I had more time, I ___ learn to cook.", "would"],
+    ["Complete: Stop ___ (talk), please!", "talking"],
+    ["Complete: I can't come out — I've ___ spent all my money.", "already"],
+    ["Complete: My phone ___ (steal) last night.", "was stolen"],
+    ["Complete: He's the boy ___ dog ran away.", "whose"],
+    ["Complete: We decided ___ (stay) home.", "to stay"]
+  ],
+  B2: [
+    ["Complete: If I ___ (know), I would have told you.", "had known"],
+    ["Complete: I wish I ___ (have) more free time.", "had"],
+    ["Complete: She ___ her hair cut yesterday. (causative)", "had / got"],
+    ["Complete: By the time we arrived, the film ___ (start).", "had started"],
+    ["Complete: The report ___ (finish) by Friday. (future passive)", "will be finished"],
+    ["Complete: Never ___ I seen such a mess!", "have"],
+    ["Complete: He denied ___ (break) the window.", "breaking"],
+    ["Complete: If she had studied, she ___ (pass) the exam.", "would have passed"],
+    ["Complete: I'd rather you ___ (not / tell) anyone.", "didn't tell"],
+    ["Phrasal verb: to cancel = to call ___", "off"],
+    ["Complete: It's high time we ___ (leave).", "left"],
+    ["Complete: The meeting has ___ (postpone) twice already. (passive)", "been postponed"],
+    ["Complete: ___ having little money, they were happy.", "Despite / In spite of"],
+    ["Complete: He must ___ (forget) — he's never late. (past deduction)", "have forgotten"],
+    ["Complete: I wish you ___ stop interrupting me! (annoyance)", "would"],
+    ["Complete: She suggested ___ (go) to the beach.", "going"],
+    ["Complete: No sooner had we left ___ it started to rain.", "than"],
+    ["Phrasal verb: to tolerate = to put ___ with", "up"],
+    ["Complete: If I hadn't missed the bus, I ___ (be) on time.", "would have been"],
+    ["Complete: He is said ___ (be) very rich.", "to be"],
+    ["Complete: I regret ___ (tell) her my secret. (I told her)", "telling"],
+    ["Complete: You ___ have told me earlier! (criticism)", "should"],
+    ["Complete: Hardly ___ he arrived when the phone rang.", "had"],
+    ["Complete: We got our house ___ (paint) last month.", "painted"],
+    ["Complete: ___ he studied harder, he would have passed. (no “if”)", "Had"],
+    ["Phrasal verb: to invent a story = to make it ___", "up"],
+    ["Complete: She can't ___ (see) us — she wasn't there. (past deduction)", "have seen"],
+    ["Complete: I'm used to ___ (wake) up early.", "waking"],
+    ["Complete: The novel, ___ was published in 1984, is a classic.", "which"],
+    ["Complete: Not only ___ she sing, but she also dances.", "can"]
+  ]
+};
+
+/* =========================================================
+   FATES  —  what a tile is secretly worth
+========================================================= */
+const FATES = {
+  p10:  {kind:'points', pts:10, icon:'✦',  name:'+10 points', cls:'f-good', desc:'Solid work.'},
+  p15:  {kind:'points', pts:15, icon:'✦✦', name:'+15 points', cls:'f-good', desc:'Nice one.'},
+  p20:  {kind:'points', pts:20, icon:'★',  name:'+20 points', cls:'f-good', desc:'Big tile!'},
+  p25:  {kind:'points', pts:25, icon:'★★', name:'+25 points', cls:'f-good', desc:'Jackpot tile!'},
+  double:{kind:'double', icon:'✕2', name:'Double up!', cls:'f-wild', desc:'Your score is doubled.'},
+  boom: {kind:'boom',   icon:'💥', name:'Boom!', cls:'f-bad', desc:'You lose 15 points.'},
+  steal:{kind:'steal',  icon:'🕵️', name:'Steal 15', cls:'f-wild', desc:'Take 15 points from another team.'},
+  swap: {kind:'swap',   icon:'⇄',  name:'Score swap', cls:'f-wild', desc:'Swap scores with another team.'},
+  gift: {kind:'points', pts:30, icon:'🎁', name:'Gift! +30', cls:'f-good', desc:'A present from the grammar gods.'}
+};
+// weighted deck per 20 tiles, shuffled and trimmed to board size
+const FATE_DECK = ['p10','p10','p10','p15','p15','p15','p15','p20','p20','p20','p20','p25','p25','double','boom','boom','steal','steal','swap','gift'];
+
+const TEAM_COLORS = ['var(--t0)','var(--t1)','var(--t2)','var(--t3)'];
+const DEFAULT_NAMES = ['Red Team','Blue Team','Green Team','Purple Team'];
+const LS_KEY = 'grammarboom_setup';
+
+/* =========================================================
+   STATE
+========================================================= */
+let setup = {level:'B1', size:20, teamCount:2, names:[...DEFAULT_NAMES]};
+let state = null;   // {teams:[{name,color,score}], turn, tiles:[{q,a,fate,used,by,label}]}
+let soundOn = true;
+
+/* =========================================================
+   AUDIO  (Web Audio API, synthesized)
+========================================================= */
+let actx = null;
+function audio(){ if(!actx){ const AC = window.AudioContext || window.webkitAudioContext; actx = new AC(); } return actx; }
+function tone(freq, start, dur, type='sine', vol=.14){
+  if(!soundOn) return;
+  const ctx = audio();
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, ctx.currentTime + start);
+  g.gain.linearRampToValueAtTime(vol, ctx.currentTime + start + .015);
+  g.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + start + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur + .05);
+}
+const sfx = {
+  click(){ tone(520,0,.08,'triangle',.1); },
+  flip(){ tone(300,0,.12,'sine',.1); tone(600,.08,.15,'sine',.08); },
+  correct(){ tone(523,0,.15,'triangle'); tone(659,.12,.15,'triangle'); tone(784,.24,.3,'triangle'); },
+  wrong(){ tone(220,0,.25,'sawtooth',.09); tone(180,.12,.35,'sawtooth',.09); },
+  boom(){ tone(140,0,.4,'sawtooth',.16); tone(90,.1,.5,'sawtooth',.14); },
+  wild(){ tone(440,0,.1,'square',.08); tone(554,.1,.1,'square',.08); tone(659,.2,.1,'square',.08); tone(880,.3,.35,'square',.09); },
+  win(){ [523,659,784,1047,784,1047].forEach((f,i)=>tone(f,i*.16,.28,'triangle',.13)); }
+};
+
+/* =========================================================
+   HELPERS
+========================================================= */
+const $ = s => document.querySelector(s);
+function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $('#'+id).classList.add('active'); }
+
+/* =========================================================
+   SETUP SCREEN
+========================================================= */
+function initSeg(id, key, parse){
+  $('#'+id).addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel');
+    setup[key] = parse ? parse(b.dataset.v) : b.dataset.v;
+    if(key==='teamCount') renderTeamInputs();
+    sfx.click();
+  });
+}
+function renderTeamInputs(){
+  const wrap = $('#teamInputs'); wrap.innerHTML = '';
+  for(let i=0;i<setup.teamCount;i++){
+    const div = document.createElement('div');
+    div.className = 'team-input';
+    div.innerHTML = `<span class="dot" style="background:${TEAM_COLORS[i]}"></span>
+      <input type="text" maxlength="20" value="${setup.names[i]||DEFAULT_NAMES[i]}" aria-label="Team ${i+1} name">`;
+    div.querySelector('input').addEventListener('input', e=>{ setup.names[i] = e.target.value; });
+    wrap.appendChild(div);
+  }
+}
+function loadSetup(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(LS_KEY));
+    if(saved) setup = Object.assign(setup, saved);
+  }catch(e){}
+  // reflect in UI
+  [['levelSeg', setup.level], ['sizeSeg', String(setup.size)], ['teamSeg', String(setup.teamCount)]].forEach(([id,v])=>{
+    document.querySelectorAll('#'+id+' button').forEach(b=>b.classList.toggle('sel', b.dataset.v===v));
+  });
+  renderTeamInputs();
+}
+function saveSetup(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(setup)); }catch(e){} }
+
+initSeg('levelSeg','level');
+initSeg('sizeSeg','size', v=>parseInt(v,10));
+initSeg('teamSeg','teamCount', v=>parseInt(v,10));
+loadSetup();
+
+$('#startBtn').addEventListener('click', ()=>{ audio(); saveSetup(); startGame(); });
+
+/* =========================================================
+   GAME
+========================================================= */
+function startGame(){
+  const qs = shuffle(BANK[setup.level]).slice(0, setup.size);
+  // if the bank is smaller than the board (it isn't, but be safe), recycle
+  while(qs.length < setup.size) qs.push(BANK[setup.level][Math.floor(Math.random()*BANK[setup.level].length)]);
+  const fates = shuffle(FATE_DECK.concat(FATE_DECK)).slice(0, setup.size);
+  state = {
+    teams: Array.from({length: setup.teamCount}, (_,i)=>({
+      name: (setup.names[i]||DEFAULT_NAMES[i]).trim() || DEFAULT_NAMES[i],
+      color: TEAM_COLORS[i], score: 0
+    })),
+    turn: 0,
+    tiles: qs.map((qa,i)=>({ n:i+1, q:qa[0], a:qa[1], fate:fates[i], used:false, by:null, label:null }))
+  };
+  $('#gameMeta').textContent = `· ${setup.level} · ${setup.size} tiles`;
+  renderScoreboard();
+  renderGrid();
+  showScreen('game');
+}
+
+function renderScoreboard(){
+  const sb = $('#scoreboard'); sb.innerHTML = '';
+  state.teams.forEach((t,i)=>{
+    const card = document.createElement('div');
+    card.className = 'team-card' + (i===state.turn ? ' turn' : '');
+    card.style.setProperty('--tc', t.color);
+    card.innerHTML = `
+      <div class="tname">${escapeHtml(t.name)}</div>
+      <div class="score-adjust">
+        <button aria-label="Add 5 points to ${escapeHtml(t.name)}" data-adj="5" data-i="${i}">▲</button>
+        <button aria-label="Remove 5 points from ${escapeHtml(t.name)}" data-adj="-5" data-i="${i}">▼</button>
+      </div>
+      <div class="tscore" id="score-${i}">${t.score}</div>`;
+    sb.appendChild(card);
+  });
+  sb.onclick = e=>{
+    const b = e.target.closest('button[data-adj]'); if(!b) return;
+    const i = +b.dataset.i;
+    state.teams[i].score = Math.max(0, state.teams[i].score + (+b.dataset.adj));
+    updateScore(i);
+    sfx.click();
+  };
+}
+function updateScore(i){
+  const el = $('#score-'+i);
+  el.textContent = state.teams[i].score;
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+}
+function updateAllScores(){ state.teams.forEach((_,i)=>updateScore(i)); }
+
+function renderGrid(){
+  const g = $('#grid');
+  g.className = 'grid ' + (setup.size===16 ? 'c4' : setup.size===20 ? 'c5' : 'c6');
+  g.innerHTML = '';
+  state.tiles.forEach((t,i)=>{
+    const b = document.createElement('button');
+    b.className = 'tile' + (t.used ? ' used' : '');
+    b.dataset.i = i;
+    b.setAttribute('aria-label', t.used ? `Tile ${t.n}, used` : `Tile ${t.n}`);
+    b.innerHTML = `<span class="num">${t.n}</span>
+      <span class="claim" ${t.by!==null ? `style="--cc:${state.teams[t.by].color}"` : ''}>
+        ${t.label ? `<span class="who">${t.by!==null ? escapeHtml(state.teams[t.by].name) : ''}</span><span class="what">${t.label}</span>` : ''}
+      </span>`;
+    if(!t.used) b.addEventListener('click', ()=>openTile(i));
+    else b.disabled = true;
+    g.appendChild(b);
+  });
+}
+
+/* =========================================================
+   MODAL FLOW:  question → answer → fate card → (target) → done
+========================================================= */
+let activeTile = -1;
+
+function openTile(i){
+  activeTile = i;
+  sfx.click();
+  const t = state.tiles[i];
+  const team = state.teams[state.turn];
+  modalHtml(`
+    <div class="qmeta">
+      <span class="team-chip" style="--tc:${team.color}">${escapeHtml(team.name)}</span>
+      <span>Tile ${t.n} · ${setup.level}</span>
+    </div>
+    <div class="question">${escapeHtml(t.q)}</div>
+    <div class="btnrow">
+      <button class="btn btn-gold" id="revealBtn">Reveal answer</button>
+    </div>`);
+  $('#revealBtn').onclick = showAnswer;
+  openOverlay();
+}
+
+function showAnswer(){
+  sfx.flip();
+  const t = state.tiles[activeTile];
+  const team = state.teams[state.turn];
+  modalHtml(`
+    <div class="qmeta">
+      <span class="team-chip" style="--tc:${team.color}">${escapeHtml(team.name)}</span>
+      <span>Tile ${t.n} · ${setup.level}</span>
+    </div>
+    <div class="question">${escapeHtml(t.q)}</div>
+    <div class="answer"><span class="tag">Answer</span>${escapeHtml(t.a)}</div>
+    <div class="btnrow">
+      <button class="btn btn-good" id="okBtn">✓ Correct</button>
+      <button class="btn btn-bad" id="noBtn">✗ Incorrect</button>
+    </div>`);
+  $('#okBtn').onclick = ()=>judge(true);
+  $('#noBtn').onclick = ()=>judge(false);
+}
+
+function judge(correct){
+  const t = state.tiles[activeTile];
+  if(!correct){
+    sfx.wrong();
+    t.used = true; t.by = state.turn; t.label = '✗';
+    finishTile();
+    return;
+  }
+  sfx.correct();
+  showFate();
+}
+
+function showFate(){
+  const t = state.tiles[activeTile];
+  const fate = FATES[t.fate];
+  const team = state.teams[state.turn];
+  modalHtml(`
+    <div class="qmeta">
+      <span class="team-chip" style="--tc:${team.color}">${escapeHtml(team.name)}</span>
+      <span>Correct! Now… face your fate</span>
+    </div>
+    <div class="fate-wrap" style="position:relative">
+      <div class="burst" id="burst"></div>
+      <div class="fate" id="fateCard">
+        <div class="face back">
+          <div class="qmark">?</div>
+          <div class="hint">Tap to flip</div>
+        </div>
+        <div class="face front ${fate.cls}">
+          <div class="icon">${fate.icon}</div>
+          <div class="fname">${fate.name}</div>
+          <div class="fdesc">${fate.desc}</div>
+        </div>
+      </div>
+    </div>
+    <div class="btnrow" id="fateBtns" style="visibility:hidden">
+      <button class="btn btn-gold" id="applyBtn">Apply</button>
+    </div>`);
+  const card = $('#fateCard');
+  const flip = ()=>{
+    if(card.classList.contains('flipped')) return;
+    card.classList.add('flipped');
+    $('#burst').classList.add('go');
+    if(fate.kind==='boom') sfx.boom();
+    else if(fate.kind==='points') sfx.correct();
+    else sfx.wild();
+    setTimeout(()=>{ $('#fateBtns').style.visibility = 'visible'; }, 500);
+  };
+  card.addEventListener('click', flip);
+  card.setAttribute('tabindex','0');
+  card.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); flip(); } });
+  $('#applyBtn').onclick = ()=>applyFate(fate);
+}
+
+function applyFate(fate){
+  const me = state.turn;
+  const t = state.tiles[activeTile];
+  const others = state.teams.map((_,i)=>i).filter(i=>i!==me);
+
+  const done = (label)=>{
+    t.used = true; t.by = me; t.label = label;
+    updateAllScores();
+    finishTile();
+  };
+
+  switch(fate.kind){
+    case 'points':
+      state.teams[me].score += fate.pts;
+      done('+'+fate.pts);
+      break;
+    case 'double':
+      state.teams[me].score *= 2;
+      done('✕2');
+      break;
+    case 'boom':
+      state.teams[me].score = Math.max(0, state.teams[me].score - 15);
+      done('💥');
+      break;
+    case 'steal':
+      if(others.length===1){
+        transfer(others[0], me, 15); done('🕵️');
+      } else {
+        pickTarget('Steal 15 points from…', others, target=>{ transfer(target, me, 15); done('🕵️'); });
+      }
+      break;
+    case 'swap':
+      if(others.length===1){
+        swapScores(me, others[0]); done('⇄');
+      } else {
+        pickTarget('Swap scores with…', others, target=>{ swapScores(me, target); done('⇄'); });
+      }
+      break;
+  }
+}
+function transfer(from, to, amount){
+  const real = Math.min(amount, state.teams[from].score);
+  state.teams[from].score -= real;
+  state.teams[to].score += amount; // full steal value even if victim is broke — keeps it fun
+}
+function swapScores(a,b){
+  const tmp = state.teams[a].score;
+  state.teams[a].score = state.teams[b].score;
+  state.teams[b].score = tmp;
+}
+function pickTarget(title, options, cb){
+  const team = state.teams[state.turn];
+  modalHtml(`
+    <div class="qmeta"><span class="team-chip" style="--tc:${team.color}">${escapeHtml(team.name)}</span></div>
+    <div class="question" style="font-size:clamp(1.3rem,2.6vw,1.9rem)">${title}</div>
+    <div class="target-pick">
+      ${options.map(i=>`<button data-t="${i}" style="--tc:${state.teams[i].color}">${escapeHtml(state.teams[i].name)}<br><small>${state.teams[i].score} pts</small></button>`).join('')}
+    </div>`);
+  document.querySelectorAll('.target-pick button').forEach(b=>{
+    b.onclick = ()=>{ sfx.click(); cb(+b.dataset.t); };
+  });
+}
+
+function finishTile(){
+  closeOverlay();
+  state.turn = (state.turn + 1) % state.teams.length;
+  renderScoreboard();
+  renderGrid();
+  if(state.tiles.every(t=>t.used)) setTimeout(showWinner, 600);
+}
+
+/* =========================================================
+   MODAL PLUMBING
+========================================================= */
+function modalHtml(html){ $('#modal').innerHTML = html; }
+function openOverlay(){ $('#overlay').classList.add('open'); }
+function closeOverlay(){ $('#overlay').classList.remove('open'); }
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* =========================================================
+   WINNER
+========================================================= */
+function showWinner(){
+  const sorted = state.teams.map((t,i)=>({...t,i})).sort((a,b)=>b.score-a.score);
+  const top = sorted[0].score;
+  const champs = sorted.filter(t=>t.score===top);
+  $('#winnerTitle').innerHTML = champs.length>1
+    ? `It's a <span>tie</span>!`
+    : `<span>${escapeHtml(champs[0].name)}</span> wins!`;
+  const pod = $('#podium'); pod.innerHTML = '';
+  const maxH = 220, minH = 70;
+  const maxScore = Math.max(top, 1);
+  sorted.forEach(t=>{
+    const h = minH + (maxH-minH) * (t.score/maxScore);
+    const col = document.createElement('div');
+    col.className = 'col'; col.style.setProperty('--tc', t.color);
+    col.innerHTML = `<div class="bar" style="height:${h}px">${t.score}</div><div class="label">${escapeHtml(t.name)}</div>`;
+    pod.appendChild(col);
+  });
+  showScreen('winner');
+  sfx.win();
+  confetti();
+}
+
+$('#againBtn').addEventListener('click', ()=>{ stopConfetti(); showScreen('setup'); });
+$('#restartBtn').addEventListener('click', ()=>{
+  if(confirm('End this game and return to setup?')) showScreen('setup');
+});
+$('#soundBtn').addEventListener('click', function(){
+  soundOn = !soundOn;
+  this.textContent = soundOn ? '🔊' : '🔇';
+  this.classList.toggle('off', !soundOn);
+});
+
+/* =========================================================
+   CONFETTI
+========================================================= */
+let confettiRAF = null;
+function confetti(){
+  const cv = $('#confetti'), ctx = cv.getContext('2d');
+  cv.width = innerWidth; cv.height = innerHeight;
+  const colors = ['#e8b34b','#ff6b6b','#4dabf7','#51cf66','#b197fc','#f2ecdd'];
+  const parts = Array.from({length:140}, ()=>({
+    x: Math.random()*cv.width, y: -20 - Math.random()*cv.height*.5,
+    w: 6+Math.random()*7, h: 8+Math.random()*10,
+    vy: 1.6+Math.random()*2.6, vx: -1+Math.random()*2,
+    rot: Math.random()*Math.PI, vr: -.1+Math.random()*.2,
+    c: colors[Math.floor(Math.random()*colors.length)]
+  }));
+  let frames = 0;
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    parts.forEach(p=>{
+      p.y += p.vy; p.x += p.vx + Math.sin(p.y*.02); p.rot += p.vr;
+      if(p.y > cv.height + 20 && frames < 260){ p.y = -20; p.x = Math.random()*cv.width; }
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    });
+    frames++;
+    if(frames < 420) confettiRAF = requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,cv.width,cv.height);
+  }
+  draw();
+}
+function stopConfetti(){
+  if(confettiRAF) cancelAnimationFrame(confettiRAF);
+  const cv = $('#confetti');
+  cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+}
+
+/* Esc never closes mid-question by accident; only from fate-less states */
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && $('#overlay').classList.contains('open')){
+    // allow escape only before judging (question/answer stages keep tile unused)
+    if(!state.tiles[activeTile].used && !$('#fateCard')) closeOverlay();
+  }
+});
+</script>
+</body>
+</html>

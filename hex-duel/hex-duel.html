@@ -253,7 +253,7 @@
     margin-bottom: 0.6rem;
   }
   .realm-options { display: flex; gap: 0.5rem; }
-  .realm-btn {
+  .realm-btn, .duel-btn {
     flex: 1;
     padding: 0.55rem 0.3rem;
     background: transparent;
@@ -266,7 +266,7 @@
     letter-spacing: 0.06em;
     transition: border-color 0.2s, color 0.2s, background 0.2s, box-shadow 0.2s;
   }
-  .realm-btn .realm-sub {
+  .realm-btn .realm-sub, .duel-btn .realm-sub {
     display: block;
     font-family: 'IM Fell English', serif;
     font-style: italic;
@@ -276,8 +276,8 @@
     letter-spacing: 0;
     text-transform: none;
   }
-  .realm-btn:hover { border-color: var(--gold-dark); color: var(--text); }
-  .realm-btn.active {
+  .realm-btn:hover, .duel-btn:hover { border-color: var(--gold-dark); color: var(--text); }
+  .realm-btn.active, .duel-btn.active {
     border-color: var(--gold);
     color: var(--gold-light);
     background: rgba(201,168,76,0.08);
@@ -793,6 +793,14 @@
       </div>
     </div>
 
+    <div class="realm-row">
+      <div class="realm-label">⚔ Duel Length</div>
+      <div class="realm-options">
+        <button class="duel-btn active" data-duel="balanced">Balanced<span class="realm-sub">up to 3 lives · faster</span></button>
+        <button class="duel-btn" data-duel="conquest">Conquest<span class="realm-sub">up to 5 lives · epic</span></button>
+      </div>
+    </div>
+
     <div class="setup-hint" id="setupHint">Add 2–16 players to begin</div>
 
     <button class="btn-start" id="startBtn" disabled>⚔ Begin the Conquest ⚔</button>
@@ -927,6 +935,7 @@ function escapeHtml(s) {
 // ── STATE ──────────────────────────────────────────────────────
 let playerCount = 4;
 let realmSize = 3;         // hexes per player: 1 Skirmish, 3 Standard, 5 Epic
+let duelStyle = 'balanced'; // 'balanced' caps lives at 3, 'conquest' at 5
 let players = [];          // { id, name, color, hexIds: Set, alive }
 let hexes = [];            // { id, playerId, cx, cy, axial, el }
 let selected = [];         // up to 2 hex ids
@@ -1014,6 +1023,15 @@ document.querySelectorAll('.realm-btn').forEach(btn => {
     document.querySelectorAll('.realm-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     realmSize = parseInt(btn.dataset.size, 10) || 3;
+    playTone(500, 'sine', 0.08, 0.08);
+  });
+});
+
+document.querySelectorAll('.duel-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.duel-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    duelStyle = btn.dataset.duel || 'balanced';
     playTone(500, 'sine', 0.08, 0.08);
   });
 });
@@ -1794,11 +1812,16 @@ function clearReachable() {
 // 7-8   | 4
 // 9+    | 5
 function getHP(hexCount) {
-  if (hexCount >= 9) return 5;
-  if (hexCount >= 7) return 4;
-  if (hexCount >= 5) return 3;
-  if (hexCount >= 3) return 2;
-  return 1;
+  // Lives scale with empire size; duelStyle sets the ceiling.
+  // Balanced caps at 3 (≤5 rounds/duel, class-friendly); Conquest caps at 5.
+  const cap = duelStyle === 'conquest' ? 5 : 3;
+  let hp;
+  if (hexCount >= 9) hp = 5;
+  else if (hexCount >= 7) hp = 4;
+  else if (hexCount >= 5) hp = 3;
+  else if (hexCount >= 3) hp = 2;
+  else hp = 1;
+  return Math.min(hp, cap);
 }
 // keep getStars as alias for the header bar (same scale)
 function getStars(hexCount) { return getHP(hexCount); }
@@ -1822,8 +1845,14 @@ function openDuel(hexIdA, hexIdB) {
   const playerA = players[hexes[hexIdA].playerId];
   const playerB = players[hexes[hexIdB].playerId];
 
-  const hpA = getHP(playerA.hexIds.size);
-  const hpB = getHP(playerB.hexIds.size);
+  let hpA = getHP(playerA.hexIds.size);
+  let hpB = getHP(playerB.hexIds.size);
+
+  // Underdog rule: the side with fewer starting lives gets +1, never exceeding
+  // the opponent. Keeps large empires favoured but attackable, so a duel isn't
+  // hopeless for a small challenger. (No effect when lives are already equal.)
+  if (hpA < hpB) hpA = Math.min(hpA + 1, hpB);
+  else if (hpB < hpA) hpB = Math.min(hpB + 1, hpA);
 
   activeDuel = {
     playerAId: playerA.id,

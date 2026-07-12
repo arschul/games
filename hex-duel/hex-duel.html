@@ -991,7 +991,6 @@ function escapeHtml(s) {
 }
 
 // ── STATE ──────────────────────────────────────────────────────
-let playerCount = 4;
 let realmSize = 3;         // hexes per player: 1 Skirmish, 3 Standard, 5 Epic
 let duelStyle = 'balanced'; // 'balanced' caps lives at 3, 'conquest' at 5
 let players = [];          // { id, name, color, hexIds: Set, alive }
@@ -1100,7 +1099,6 @@ document.getElementById('startBtn').addEventListener('click', startGame);
 function startGame() {
   if (setupPlayers.length < 2) return;
   players = [];
-  playerCount = setupPlayers.length;
   setupPlayers.forEach((sp, i) => {
     players.push({
       id: i,
@@ -1181,7 +1179,6 @@ function resumeGame(s) {
   setupPlayers = s.setupPlayers || [];
   realmSize = s.realmSize || 3;
   duelStyle = s.duelStyle || 'balanced';
-  playerCount = s.players.length;
 
   players = s.players.map(p => ({
     id: p.id, name: p.name, color: p.color,
@@ -1429,8 +1426,10 @@ function _buildMapCore(freshGame, ownerSnapshot) {
 
   const W = svg.clientWidth || window.innerWidth;
   const H = svg.clientHeight || (window.innerHeight - 130);
-  const n = freshGame ? playerCount * realmSize
-                      : (ownerSnapshot ? ownerSnapshot.length : playerCount * realmSize);
+  // players.length is the single source of truth for the number of players.
+  const nPlayers = players.length;
+  const n = freshGame ? nPlayers * realmSize
+                      : (ownerSnapshot ? ownerSnapshot.length : nPlayers * realmSize);
 
   // Max ring radius actually used for n cells (cells within radius r = 1+3r(r+1))
   const R = Math.ceil((-1 + Math.sqrt(1 + (n - 1) * 4 / 3)) / 2);
@@ -1483,7 +1482,7 @@ function _buildMapCore(freshGame, ownerSnapshot) {
 
   // Ownership: fresh games get seeded contiguous realms; redraws keep snapshot
   const owners = freshGame
-    ? assignTerritories(cells, adjacency, playerCount, realmSize)
+    ? assignTerritories(cells, adjacency, nPlayers, realmSize)
     : ownerSnapshot;
 
   if (freshGame) {
@@ -1501,7 +1500,7 @@ function _buildMapCore(freshGame, ownerSnapshot) {
 
     const g = buildHexGroup(i, cx, cy, DRAW_SIZE, owner);
     hexLayer.appendChild(g);
-    hexes.push({ id: i, playerId: ownerId, cx, cy, size: DRAW_SIZE, axial: cells[i], el: g });
+    hexes.push({ id: i, playerId: ownerId, cx, cy, size: DRAW_SIZE, axial: cells[i] });
 
     if (freshGame) owner.hexIds.add(i);
     // on redraw, hexIds are already correct in players[] — no need to touch them
@@ -2271,7 +2270,7 @@ function sndSpinnerTick() {
 }
 
 // Spinner land — dramatic reveal
-function sndSpinnerLand(color) {
+function sndSpinnerLand() {
   playTone(330, 'sawtooth', 0.08, 0.15);
   playTone(440, 'sawtooth', 0.1,  0.15, 0.08);
   playTone(550, 'sawtooth', 0.15, 0.2,  0.16);
@@ -2422,7 +2421,6 @@ document.getElementById('restartSameBtn').addEventListener('click', () => {
   players = setupPlayers.map((sp, i) => ({
     id: i, name: sp.name, color: sp.color, hexIds: new Set(), alive: true, capitalHexId: null,
   }));
-  playerCount = players.length;
   currentAttackerId = null;
   lastTurnPlayerId = null;
   activeDuel = null;

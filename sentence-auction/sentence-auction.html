@@ -47,6 +47,31 @@
 
   h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
 
+  .mute-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    margin-left: auto;
+  }
+  .mute-btn:hover { border-color: var(--gold); }
+
+  .log-tag-grammar {
+    display: inline-block;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+    border: 1px solid var(--blue);
+    border-radius: 4px;
+    padding: 0.05rem 0.4rem;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+
   /* ─── CORRECTION PHASE ─── */
   .correction-panel {
     margin-top: 1rem;
@@ -793,6 +818,7 @@
     <h2>Sentence Auction</h2>
     <span class="round-info" id="round-label">Round 1 / 10</span>
     <span class="level-badge" id="level-label">A1</span>
+    <button class="mute-btn" id="mute-btn" title="Toggle sound (M)" aria-label="Toggle sound">🔊</button>
   </div>
 
   <div class="game-main">
@@ -801,7 +827,7 @@
     <div class="sentence-card">
       <div class="sentence-text" id="sentence-display">Loading...</div>
       <div class="vanish-badge" id="vanish-badge">👁 Sentence hidden — bid from memory!</div>
-      <div class="reveal-banner" id="reveal-banner"></div>
+      <div class="reveal-banner" id="reveal-banner" aria-live="assertive"></div>
       <div class="correction-panel" id="correction-panel" style="display:none">
         <div class="correction-prompt" id="correction-prompt">Can the team correct the sentence? Say it aloud!</div>
         <div class="correction-btns" id="correction-btns">
@@ -821,7 +847,7 @@
         </svg>
         <div class="countdown-num" id="countdown-num">10</div>
       </div>
-      <div class="bid-leader-text" id="bid-leader-text"></div>
+      <div class="bid-leader-text" id="bid-leader-text" aria-live="polite"></div>
       <div class="current-bid-amount" id="current-bid-display"></div>
     </div>
 
@@ -880,6 +906,7 @@ function esc(s) {
 }
 
 function playTone(opts) {
+  if (sfxMuted) return;
   // opts: { freq, type, duration, gain, fadeOut, delay }
   const ctx = getACtx();
   const osc = ctx.createOscillator();
@@ -897,6 +924,7 @@ function playTone(opts) {
 }
 
 function playNoise(duration, gain) {
+  if (sfxMuted) return;
   const ctx = getACtx();
   const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
   const data = buf.getChannelData(0);
@@ -910,6 +938,9 @@ function playNoise(duration, gain) {
   g.connect(ctx.destination);
   src.start();
 }
+
+let sfxMuted = false;
+try { sfxMuted = localStorage.getItem('sentence-auction-muted') === '1'; } catch (e) {}
 
 const SFX = {
   bid() {
@@ -991,34 +1022,64 @@ const SENTENCES = {
       "She speaks English very well.",
       "I usually walk to school.",
       "The sky is blue today.",
-      "My mother is a teacher."
+      "My mother is a teacher.",
+      "I get up at six o'clock every day.",
+      "She watches TV in the evening.",
+      "We are happy today.",
+      "My sister likes chocolate cake.",
+      "The dog sleeps on the sofa.",
+      "He works on Mondays and Tuesdays.",
+      "I can swim very well.",
+      "There is a park near the school.",
+      "They are students at this school.",
+      "She wears a red coat in winter.",
+      "We don't have classes on Sundays.",
+      "My grandmother lives in the city.",
+      "The bus stops in front of the bank.",
+      "I want a glass of water, please.",
+      "His birthday is in October."
     ],
     incorrect: [
-      { text: "She have a good friend in Canada.", fix: "She has a good friend in Canada." },
-      { text: "I has two sister.", fix: "I have two sisters." },
-      { text: "He go to school every days.", fix: "He goes to school every day." },
-      { text: "They lives in a big house.", fix: "They live in a big house." },
-      { text: "We eats dinner at six.", fix: "We eat dinner at six." },
-      { text: "My father work in an office.", fix: "My father works in an office." },
-      { text: "The cat is in the table.", fix: "The cat is on the table." },
-      { text: "I like the apples and the oranges.", fix: "I like apples and oranges." },
-      { text: "She have a long hair.", fix: "She has long hair." },
-      { text: "There is three windows in this room.", fix: "There are three windows in this room." },
-      { text: "He play football on Saturday.", fix: "He plays football on Saturdays." },
-      { text: "I am from the Brazil.", fix: "I am from Brazil." },
-      { text: "The book is in the shelf.", fix: "The book is on the shelf." },
-      { text: "We has a big dog.", fix: "We have a big dog." },
-      { text: "She drink coffee every morning.", fix: "She drinks coffee every morning." },
-      { text: "My name are Maria.", fix: "My name is Maria." },
-      { text: "The children is in the garden.", fix: "The children are in the garden." },
-      { text: "I go to the bed at ten.", fix: "I go to bed at ten." },
-      { text: "He are my best friend.", fix: "He is my best friend." },
-      { text: "There are a supermarket near my house.", fix: "There is a supermarket near my house." },
-      { text: "They has a new car.", fix: "They have a new car." },
-      { text: "She speak English very good.", fix: "She speaks English very well." },
-      { text: "I usually walks to school.", fix: "I usually walk to school." },
-      { text: "The sky are blue today.", fix: "The sky is blue today." },
-      { text: "My mother are a teacher.", fix: "My mother is a teacher." }
+      { text: "She have a good friend in Canada.", fix: "She has a good friend in Canada.", tag: "Subject–verb agreement" },
+      { text: "I has two sister.", fix: "I have two sisters.", tag: "Subject–verb agreement / plurals" },
+      { text: "He go to school every days.", fix: "He goes to school every day.", tag: "Third person -s / plurals" },
+      { text: "They lives in a big house.", fix: "They live in a big house.", tag: "Subject–verb agreement" },
+      { text: "We eats dinner at six.", fix: "We eat dinner at six.", tag: "Subject–verb agreement" },
+      { text: "My father work in an office.", fix: "My father works in an office.", tag: "Third person -s" },
+      { text: "The cat is in the table.", fix: "The cat is on the table.", tag: "Prepositions of place" },
+      { text: "I like the apples and the oranges.", fix: "I like apples and oranges.", tag: "Articles" },
+      { text: "She have a long hair.", fix: "She has long hair.", tag: "Have vs has / articles" },
+      { text: "There is three windows in this room.", fix: "There are three windows in this room.", tag: "There is / there are" },
+      { text: "He play football on Saturday.", fix: "He plays football on Saturdays.", tag: "Third person -s" },
+      { text: "I am from the Brazil.", fix: "I am from Brazil.", tag: "Articles with countries" },
+      { text: "The book is in the shelf.", fix: "The book is on the shelf.", tag: "Prepositions of place" },
+      { text: "We has a big dog.", fix: "We have a big dog.", tag: "Subject–verb agreement" },
+      { text: "She drink coffee every morning.", fix: "She drinks coffee every morning.", tag: "Third person -s" },
+      { text: "My name are Maria.", fix: "My name is Maria.", tag: "Verb to be" },
+      { text: "The children is in the garden.", fix: "The children are in the garden.", tag: "Verb to be / plurals" },
+      { text: "I go to the bed at ten.", fix: "I go to bed at ten.", tag: "Fixed expressions" },
+      { text: "He are my best friend.", fix: "He is my best friend.", tag: "Verb to be" },
+      { text: "There are a supermarket near my house.", fix: "There is a supermarket near my house.", tag: "There is / there are" },
+      { text: "They has a new car.", fix: "They have a new car.", tag: "Subject–verb agreement" },
+      { text: "She speak English very good.", fix: "She speaks English very well.", tag: "Adjective vs adverb" },
+      { text: "I usually walks to school.", fix: "I usually walk to school.", tag: "Subject–verb agreement" },
+      { text: "The sky are blue today.", fix: "The sky is blue today.", tag: "Verb to be" },
+      { text: "My mother are a teacher.", fix: "My mother is a teacher.", tag: "Verb to be" },
+      { text: "She don't like coffee.", fix: "She doesn't like coffee.", tag: "Present simple negative" },
+      { text: "I can to swim very well.", fix: "I can swim very well.", tag: "Modal verb + base form" },
+      { text: "There is two banks in this street.", fix: "There are two banks in this street.", tag: "There is / there are" },
+      { text: "He don't work on Sundays.", fix: "He doesn't work on Sundays.", tag: "Present simple negative" },
+      { text: "We is late for class.", fix: "We are late for class.", tag: "Verb to be" },
+      { text: "She wear a red coat in winter.", fix: "She wears a red coat in winter.", tag: "Third person -s" },
+      { text: "My grandmother live in the city.", fix: "My grandmother lives in the city.", tag: "Third person -s" },
+      { text: "I wants a glass of water.", fix: "I want a glass of water.", tag: "Subject–verb agreement" },
+      { text: "The bus stop in front of the bank.", fix: "The bus stops in front of the bank.", tag: "Third person -s" },
+      { text: "His birthday is on October.", fix: "His birthday is in October.", tag: "Prepositions of time" },
+      { text: "They is students at this school.", fix: "They are students at this school.", tag: "Verb to be" },
+      { text: "I am agree with you.", fix: "I agree with you.", tag: "Verb vs adjective" },
+      { text: "She is teacher.", fix: "She is a teacher.", tag: "Articles" },
+      { text: "I have 20 years old.", fix: "I am 20 years old.", tag: "Age with 'be'" },
+      { text: "He likes play video games.", fix: "He likes playing video games.", tag: "Verb + -ing" }
     ]
   },
 
@@ -1048,34 +1109,64 @@ const SENTENCES = {
       "He missed the bus this morning.",
       "They offered me a discount at the shop.",
       "We left the hotel early in the morning.",
-      "She looked happy when she heard the news."
+      "She looked happy when she heard the news.",
+      "I used to play the piano when I was a child.",
+      "If it rains tomorrow, we will stay at home.",
+      "She has lived here for five years.",
+      "He was cooking dinner when the phone rang.",
+      "You should see a doctor about that cough.",
+      "This restaurant is cheaper than the one near my office.",
+      "I'm going to start a new course in March.",
+      "We had a great time at the beach last summer.",
+      "She has to finish the project by Friday.",
+      "There isn't enough milk for breakfast.",
+      "He asked me where the station was.",
+      "I enjoy listening to music while I work.",
+      "They were watching a film when we arrived.",
+      "It's the most interesting book I have ever read.",
+      "We might go camping next weekend."
     ],
     incorrect: [
-      { text: "She was reading a book when I have called.", fix: "She was reading a book when I called." },
-      { text: "We went to the cinema last weekend and we have enjoyed it.", fix: "We went to the cinema last weekend and we enjoyed it." },
-      { text: "He has already finish his homework.", fix: "He has already finished his homework." },
-      { text: "I usually wake up before than my alarm.", fix: "I usually wake up before my alarm." },
-      { text: "They decided to staying at home.", fix: "They decided to stay at home." },
-      { text: "She can to speak three languages.", fix: "She can speak three languages." },
-      { text: "I buyed a new jacket yesterday.", fix: "I bought a new jacket yesterday." },
-      { text: "He doesn't likes spicy food.", fix: "He doesn't like spicy food." },
-      { text: "We are going visit my grandparents next week.", fix: "We are going to visit my grandparents next week." },
-      { text: "There was a lot of people at the concert.", fix: "There were a lot of people at the concert." },
-      { text: "She told me an interested story.", fix: "She told me an interesting story." },
-      { text: "I haven't seen that film already.", fix: "I haven't seen that film yet." },
-      { text: "He worked in a restaurant since two years.", fix: "He worked in a restaurant for two years." },
-      { text: "They always argues about the same things.", fix: "They always argue about the same things." },
-      { text: "She forgot bringing her umbrella.", fix: "She forgot to bring her umbrella." },
-      { text: "We need to leave in ten minutes ago.", fix: "We need to leave in ten minutes." },
-      { text: "I have met her at a party last month.", fix: "I met her at a party last month." },
-      { text: "He was very tired after the match because he trained hardly.", fix: "He was very tired after the match because he trained hard." },
-      { text: "They didn't enjoyed the weather in London.", fix: "They didn't enjoy the weather in London." },
-      { text: "She is more tall than her brother.", fix: "She is taller than her brother." },
-      { text: "I never have tried sushi before.", fix: "I have never tried sushi before." },
-      { text: "He missed the bus this morning because he has woken up late.", fix: "He missed the bus this morning because he woke up late." },
-      { text: "They offered to me a discount at the shop.", fix: "They offered me a discount at the shop." },
-      { text: "We left the hotel early in the morning of Saturday.", fix: "We left the hotel early on Saturday morning." },
-      { text: "She looked happily when she heard the news.", fix: "She looked happy when she heard the news." }
+      { text: "She was reading a book when I have called.", fix: "She was reading a book when I called.", tag: "Past simple vs present perfect" },
+      { text: "We went to the cinema last weekend and we have enjoyed it.", fix: "We went to the cinema last weekend and we enjoyed it.", tag: "Past simple vs present perfect" },
+      { text: "He has already finish his homework.", fix: "He has already finished his homework.", tag: "Present perfect form" },
+      { text: "I usually wake up before than my alarm.", fix: "I usually wake up before my alarm.", tag: "Comparatives / prepositions" },
+      { text: "They decided to staying at home.", fix: "They decided to stay at home.", tag: "Verb + infinitive" },
+      { text: "She can to speak three languages.", fix: "She can speak three languages.", tag: "Modal verb + base form" },
+      { text: "I buyed a new jacket yesterday.", fix: "I bought a new jacket yesterday.", tag: "Irregular past forms" },
+      { text: "He doesn't likes spicy food.", fix: "He doesn't like spicy food.", tag: "Auxiliary + base form" },
+      { text: "We are going visit my grandparents next week.", fix: "We are going to visit my grandparents next week.", tag: "Going to + infinitive" },
+      { text: "There was a lot of people at the concert.", fix: "There were a lot of people at the concert.", tag: "There was / there were" },
+      { text: "She told me an interested story.", fix: "She told me an interesting story.", tag: "-ed vs -ing adjectives" },
+      { text: "I haven't seen that film already.", fix: "I haven't seen that film yet.", tag: "Yet vs already" },
+      { text: "He worked in a restaurant since two years.", fix: "He worked in a restaurant for two years.", tag: "For vs since" },
+      { text: "They always argues about the same things.", fix: "They always argue about the same things.", tag: "Subject–verb agreement" },
+      { text: "She forgot bringing her umbrella.", fix: "She forgot to bring her umbrella.", tag: "Verb + infinitive" },
+      { text: "We need to leave in ten minutes ago.", fix: "We need to leave in ten minutes.", tag: "Time expressions" },
+      { text: "I have met her at a party last month.", fix: "I met her at a party last month.", tag: "Past simple vs present perfect" },
+      { text: "He was very tired after the match because he trained hardly.", fix: "He was very tired after the match because he trained hard.", tag: "Hard vs hardly" },
+      { text: "They didn't enjoyed the weather in London.", fix: "They didn't enjoy the weather in London.", tag: "Auxiliary + base form" },
+      { text: "She is more tall than her brother.", fix: "She is taller than her brother.", tag: "Comparatives" },
+      { text: "I never have tried sushi before.", fix: "I have never tried sushi before.", tag: "Adverb position" },
+      { text: "He missed the bus this morning because he has woken up late.", fix: "He missed the bus this morning because he woke up late.", tag: "Past simple vs present perfect" },
+      { text: "They offered to me a discount at the shop.", fix: "They offered me a discount at the shop.", tag: "Verb patterns (offer sb sth)" },
+      { text: "We left the hotel early in the morning of Saturday.", fix: "We left the hotel early on Saturday morning.", tag: "Time expressions" },
+      { text: "She looked happily when she heard the news.", fix: "She looked happy when she heard the news.", tag: "Adjective vs adverb" },
+      { text: "I use to play the piano when I was a child.", fix: "I used to play the piano when I was a child.", tag: "Used to" },
+      { text: "If it will rain tomorrow, we will stay at home.", fix: "If it rains tomorrow, we will stay at home.", tag: "First conditional" },
+      { text: "She has lived here since five years.", fix: "She has lived here for five years.", tag: "For vs since" },
+      { text: "He was cooking dinner when the phone rung.", fix: "He was cooking dinner when the phone rang.", tag: "Irregular past forms" },
+      { text: "You should to see a doctor about that cough.", fix: "You should see a doctor about that cough.", tag: "Modal verb + base form" },
+      { text: "This restaurant is more cheap than the one near my office.", fix: "This restaurant is cheaper than the one near my office.", tag: "Comparatives" },
+      { text: "I enjoy to listen to music while I work.", fix: "I enjoy listening to music while I work.", tag: "Verb + -ing" },
+      { text: "There isn't enough of milk for breakfast.", fix: "There isn't enough milk for breakfast.", tag: "Quantifiers" },
+      { text: "He asked me where was the station.", fix: "He asked me where the station was.", tag: "Indirect questions" },
+      { text: "They was watching a film when we arrived.", fix: "They were watching a film when we arrived.", tag: "Past continuous" },
+      { text: "It's the most interesting book I never read.", fix: "It's the most interesting book I have ever read.", tag: "Ever vs never" },
+      { text: "We might to go camping next weekend.", fix: "We might go camping next weekend.", tag: "Modal verb + base form" },
+      { text: "She must finish the project until Friday.", fix: "She must finish the project by Friday.", tag: "By vs until" },
+      { text: "I am boring in this class.", fix: "I am bored in this class.", tag: "-ed vs -ing adjectives" },
+      { text: "He is more old than his cousin.", fix: "He is older than his cousin.", tag: "Comparatives" }
     ]
   },
 
@@ -1105,34 +1196,64 @@ const SENTENCES = {
       "She spent an hour trying to fix the problem.",
       "They weren't able to find a solution in time.",
       "I had no idea she was planning to move abroad.",
-      "The news made everyone in the office very concerned."
+      "The news made everyone in the office very concerned.",
+      "If I were you, I would apologize immediately.",
+      "The house is being painted this week.",
+      "She asked whether I had finished the report.",
+      "I'd rather not discuss this in public.",
+      "Unless we leave now, we'll miss the train.",
+      "He denied breaking the window.",
+      "The film, which won several awards, was shot in Argentina.",
+      "You'd better take an umbrella with you.",
+      "I can't get used to driving on the left.",
+      "She made me feel welcome from the first day.",
+      "The report needs to be submitted by noon.",
+      "He apologized for arriving so late.",
+      "As soon as she gets home, she'll call you.",
+      "It took us two hours to find a parking space.",
+      "I'd prefer to stay in a small hotel rather than a resort."
     ],
     incorrect: [
-      { text: "By the time she arrived, the film already started.", fix: "By the time she arrived, the film had already started." },
-      { text: "I wish I studied harder for the exam.", fix: "I wish I had studied harder for the exam." },
-      { text: "He suggested to go for a walk after lunch.", fix: "He suggested going for a walk after lunch." },
-      { text: "She is used to wake up early since she started her new job.", fix: "She is used to waking up early since she started her new job." },
-      { text: "Despite of the rain, they enjoyed the festival.", fix: "Despite the rain, they enjoyed the festival." },
-      { text: "If I would have more time, I would learn a new language.", fix: "If I had more time, I would learn a new language." },
-      { text: "The manager asked us don't be late.", fix: "The manager asked us not to be late." },
-      { text: "She managed finishing the report before the deadline.", fix: "She managed to finish the report before the deadline." },
-      { text: "He seems to forgotten about our meeting.", fix: "He seems to have forgotten about our meeting." },
-      { text: "The book I lent you was wrote by a local author.", fix: "The book I lent you was written by a local author." },
-      { text: "We have been waiting for an hour when the train finally came.", fix: "We had been waiting for an hour when the train finally came." },
-      { text: "She would rather to stay in than go to the party.", fix: "She would rather stay in than go to the party." },
-      { text: "It is worth to take a map in case you get lost.", fix: "It is worth taking a map in case you get lost." },
-      { text: "He has been working on that project since three months.", fix: "He has been working on that project for three months." },
-      { text: "The meal was much more better than I had expected.", fix: "The meal was much better than I had expected." },
-      { text: "I'm looking forward to hear from you soon.", fix: "I'm looking forward to hearing from you soon." },
-      { text: "She admitted to make a mistake in the report.", fix: "She admitted making a mistake in the report." },
-      { text: "They kept to talk even though the film had started.", fix: "They kept talking even though the film had started." },
-      { text: "We should had left earlier to avoid the traffic.", fix: "We should have left earlier to avoid the traffic." },
-      { text: "He is known for be very reliable.", fix: "He is known for being very reliable." },
-      { text: "The presentation was good-prepared and clear structured.", fix: "The presentation was well-prepared and clearly structured." },
-      { text: "She spent an hour to try to fix the problem.", fix: "She spent an hour trying to fix the problem." },
-      { text: "They weren't able to find a solution in the time.", fix: "They weren't able to find a solution in time." },
-      { text: "I had no idea she was planning moving abroad.", fix: "I had no idea she was planning to move abroad." },
-      { text: "The news made everyone in the office very concerning.", fix: "The news made everyone in the office very concerned." }
+      { text: "By the time she arrived, the film already started.", fix: "By the time she arrived, the film had already started.", tag: "Past perfect" },
+      { text: "I wish I studied harder for the exam.", fix: "I wish I had studied harder for the exam.", tag: "Wish + past perfect" },
+      { text: "He suggested to go for a walk after lunch.", fix: "He suggested going for a walk after lunch.", tag: "Suggest + -ing" },
+      { text: "She is used to wake up early since she started her new job.", fix: "She is used to waking up early since she started her new job.", tag: "Be used to + -ing" },
+      { text: "Despite of the rain, they enjoyed the festival.", fix: "Despite the rain, they enjoyed the festival.", tag: "Despite / in spite of" },
+      { text: "If I would have more time, I would learn a new language.", fix: "If I had more time, I would learn a new language.", tag: "Second conditional" },
+      { text: "The manager asked us don't be late.", fix: "The manager asked us not to be late.", tag: "Reported requests" },
+      { text: "She managed finishing the report before the deadline.", fix: "She managed to finish the report before the deadline.", tag: "Manage + infinitive" },
+      { text: "He seems to forgotten about our meeting.", fix: "He seems to have forgotten about our meeting.", tag: "Seem + perfect infinitive" },
+      { text: "The book I lent you was wrote by a local author.", fix: "The book I lent you was written by a local author.", tag: "Passive voice" },
+      { text: "We have been waiting for an hour when the train finally came.", fix: "We had been waiting for an hour when the train finally came.", tag: "Past perfect continuous" },
+      { text: "She would rather to stay in than go to the party.", fix: "She would rather stay in than go to the party.", tag: "Would rather + base form" },
+      { text: "It is worth to take a map in case you get lost.", fix: "It is worth taking a map in case you get lost.", tag: "Worth + -ing" },
+      { text: "He has been working on that project since three months.", fix: "He has been working on that project for three months.", tag: "For vs since" },
+      { text: "The meal was much more better than I had expected.", fix: "The meal was much better than I had expected.", tag: "Comparatives" },
+      { text: "I'm looking forward to hear from you soon.", fix: "I'm looking forward to hearing from you soon.", tag: "Look forward to + -ing" },
+      { text: "She admitted to make a mistake in the report.", fix: "She admitted making a mistake in the report.", tag: "Admit + -ing" },
+      { text: "They kept to talk even though the film had started.", fix: "They kept talking even though the film had started.", tag: "Keep + -ing" },
+      { text: "We should had left earlier to avoid the traffic.", fix: "We should have left earlier to avoid the traffic.", tag: "Should have + participle" },
+      { text: "He is known for be very reliable.", fix: "He is known for being very reliable.", tag: "Preposition + -ing" },
+      { text: "The presentation was good-prepared and clear structured.", fix: "The presentation was well-prepared and clearly structured.", tag: "Adverb + participle" },
+      { text: "She spent an hour to try to fix the problem.", fix: "She spent an hour trying to fix the problem.", tag: "Spend + -ing" },
+      { text: "They weren't able to find a solution in the time.", fix: "They weren't able to find a solution in time.", tag: "In time vs on time" },
+      { text: "I had no idea she was planning moving abroad.", fix: "I had no idea she was planning to move abroad.", tag: "Plan + infinitive" },
+      { text: "The news made everyone in the office very concerning.", fix: "The news made everyone in the office very concerned.", tag: "-ed vs -ing adjectives" },
+      { text: "If I was you, I would apologize immediately.", fix: "If I were you, I would apologize immediately.", tag: "Second conditional (were)" },
+      { text: "The house is been painted this week.", fix: "The house is being painted this week.", tag: "Passive continuous" },
+      { text: "She asked whether had I finished the report.", fix: "She asked whether I had finished the report.", tag: "Indirect questions" },
+      { text: "I'd rather not to discuss this in public.", fix: "I'd rather not discuss this in public.", tag: "Would rather + base form" },
+      { text: "Unless we don't leave now, we'll miss the train.", fix: "Unless we leave now, we'll miss the train.", tag: "Unless" },
+      { text: "He denied to break the window.", fix: "He denied breaking the window.", tag: "Deny + -ing" },
+      { text: "You'd better to take an umbrella with you.", fix: "You'd better take an umbrella with you.", tag: "Had better + base form" },
+      { text: "I can't get used to drive on the left.", fix: "I can't get used to driving on the left.", tag: "Get used to + -ing" },
+      { text: "She made me to feel welcome from the first day.", fix: "She made me feel welcome from the first day.", tag: "Make + object + base form" },
+      { text: "The report needs to be submit by noon.", fix: "The report needs to be submitted by noon.", tag: "Passive infinitive" },
+      { text: "He apologized for arrive so late.", fix: "He apologized for arriving so late.", tag: "Preposition + -ing" },
+      { text: "As soon as she will get home, she'll call you.", fix: "As soon as she gets home, she'll call you.", tag: "Time clauses" },
+      { text: "It took us two hours finding a parking space.", fix: "It took us two hours to find a parking space.", tag: "Take + infinitive" },
+      { text: "I'd prefer staying in a small hotel rather than to stay in a resort.", fix: "I'd prefer to stay in a small hotel rather than a resort.", tag: "Prefer patterns" },
+      { text: "The film, that won several awards, was shot in Argentina.", fix: "The film, which won several awards, was shot in Argentina.", tag: "Relative clauses" }
     ]
   },
 
@@ -1162,34 +1283,64 @@ const SENTENCES = {
       "The results varied considerably depending on the conditions.",
       "He made it clear that he was unwilling to negotiate further.",
       "The initiative, though well-intentioned, proved difficult to implement.",
-      "She found the criticism hard to accept, even if it was justified."
+      "She found the criticism hard to accept, even if it was justified.",
+      "Rarely have I seen such a well-organized event.",
+      "The proposal is likely to face strong opposition in parliament.",
+      "Not only did she win the case, but she also set a legal precedent.",
+      "Were the funding to fall through, the project would be cancelled.",
+      "He denied having been informed of the changes.",
+      "Little did they know that the decision had already been made.",
+      "The sooner we address the issue, the easier it will be to resolve.",
+      "It is essential that every application be reviewed twice.",
+      "Having considered all the options, the board approved the merger.",
+      "Under no circumstances should confidential data be shared externally.",
+      "The report highlights a growing tendency to outsource key services.",
+      "Scarcely had the meeting begun when the fire alarm went off.",
+      "Whatever decision you make, we will support you.",
+      "The negotiations are said to have reached a critical stage.",
+      "But for her quick thinking, the situation could have been much worse."
     ],
     incorrect: [
-      { text: "Had she knew about the cancellation, she would have changed her plans.", fix: "Had she known about the cancellation, she would have changed her plans." },
-      { text: "The evidence suggests that the policy has had little effect in crime rates.", fix: "The evidence suggests that the policy has had little effect on crime rates." },
-      { text: "It was not until he retired that he fully appreciated his colleague's.", fix: "It was not until he retired that he fully appreciated his colleagues." },
-      { text: "The findings are consistent to what previous studies have shown.", fix: "The findings are consistent with what previous studies have shown." },
-      { text: "She tends to underestimate how much time do tasks actually take.", fix: "She tends to underestimate how much time tasks actually take." },
-      { text: "No sooner the announcement had been made than the share price dropped.", fix: "No sooner had the announcement been made than the share price dropped." },
-      { text: "He was reluctant to commit on a decision without more information.", fix: "He was reluctant to commit to a decision without more information." },
-      { text: "The extent to which social media influences teenagers remain debated.", fix: "The extent to which social media influences teenagers remains debated." },
-      { text: "She came across as highly competent at the interview.", fix: "She came across as highly competent during the interview." },
-      { text: "The regulation, which came into force last year, is yet to be tested.", fix: "The regulation, which came into force last year, has yet to be tested." },
-      { text: "He attributed his success largely for the support of his team.", fix: "He attributed his success largely to the support of his team." },
-      { text: "They struggled to reconcile their professional goals with personal commitments' demands.", fix: "They struggled to reconcile their professional goals with personal commitments." },
-      { text: "The data do not support the claim made in the original report.", fix: "The data does not support the claim made in the original report." },
-      { text: "She had mixed feelings about to accept the promotion.", fix: "She had mixed feelings about accepting the promotion." },
-      { text: "The article raised several points that are worth to consider.", fix: "The article raised several points that are worth considering." },
-      { text: "What stroke me most was how calmly she handled the situation.", fix: "What struck me most was how calmly she handled the situation." },
-      { text: "The project felt behind schedule due to unforeseen complications.", fix: "The project fell behind schedule due to unforeseen complications." },
-      { text: "He was hardly the most enthusiastic participator in the meeting.", fix: "He was hardly the most enthusiastic participant in the meeting." },
-      { text: "Providing to all parties agree, the contract can be signed this week.", fix: "Provided that all parties agree, the contract can be signed this week." },
-      { text: "The committee failed to reach a consensus about the proposed changes.", fix: "The committee failed to reach a consensus on the proposed changes." },
-      { text: "She spoke at length about the implications from the new legislation.", fix: "She spoke at length about the implications of the new legislation." },
-      { text: "The results varied considerably depending on the condition.", fix: "The results varied considerably depending on the conditions." },
-      { text: "He made it clear that he was unwillingly to negotiate further.", fix: "He made it clear that he was unwilling to negotiate further." },
-      { text: "The initiative, although well-intentioned, proved difficult to implement it.", fix: "The initiative, though well-intentioned, proved difficult to implement." },
-      { text: "She found the criticism hardly to accept, even if it was justified.", fix: "She found the criticism hard to accept, even if it was justified." }
+      { text: "Had she knew about the cancellation, she would have changed her plans.", fix: "Had she known about the cancellation, she would have changed her plans.", tag: "Inverted third conditional" },
+      { text: "The evidence suggests that the policy has had little effect in crime rates.", fix: "The evidence suggests that the policy has had little effect on crime rates.", tag: "Dependent prepositions" },
+      { text: "It was not until he retired that he fully appreciated his colleague's.", fix: "It was not until he retired that he fully appreciated his colleagues.", tag: "Apostrophes / plurals" },
+      { text: "The findings are consistent to what previous studies have shown.", fix: "The findings are consistent with what previous studies have shown.", tag: "Dependent prepositions" },
+      { text: "She tends to underestimate how much time do tasks actually take.", fix: "She tends to underestimate how much time tasks actually take.", tag: "Embedded questions" },
+      { text: "No sooner the announcement had been made than the share price dropped.", fix: "No sooner had the announcement been made than the share price dropped.", tag: "Inversion (no sooner)" },
+      { text: "He was reluctant to commit on a decision without more information.", fix: "He was reluctant to commit to a decision without more information.", tag: "Dependent prepositions" },
+      { text: "The extent to which social media influences teenagers remain debated.", fix: "The extent to which social media influences teenagers remains debated.", tag: "Subject–verb agreement" },
+      { text: "She came across as highly competent at the interview.", fix: "She came across as highly competent during the interview.", tag: "Prepositions" },
+      { text: "The regulation, which came into force last year, is yet to be tested.", fix: "The regulation, which came into force last year, has yet to be tested.", tag: "Have yet to" },
+      { text: "He attributed his success largely for the support of his team.", fix: "He attributed his success largely to the support of his team.", tag: "Attribute to" },
+      { text: "They struggled to reconcile their professional goals with personal commitments' demands.", fix: "They struggled to reconcile their professional goals with personal commitments.", tag: "Redundancy / possessives" },
+      { text: "The data do not support the claim made in the original report.", fix: "The data does not support the claim made in the original report.", tag: "Data: singular vs plural" },
+      { text: "She had mixed feelings about to accept the promotion.", fix: "She had mixed feelings about accepting the promotion.", tag: "Preposition + -ing" },
+      { text: "The article raised several points that are worth to consider.", fix: "The article raised several points that are worth considering.", tag: "Worth + -ing" },
+      { text: "What stroke me most was how calmly she handled the situation.", fix: "What struck me most was how calmly she handled the situation.", tag: "Irregular past forms" },
+      { text: "The project felt behind schedule due to unforeseen complications.", fix: "The project fell behind schedule due to unforeseen complications.", tag: "Fall vs feel" },
+      { text: "He was hardly the most enthusiastic participator in the meeting.", fix: "He was hardly the most enthusiastic participant in the meeting.", tag: "Word formation" },
+      { text: "Providing to all parties agree, the contract can be signed this week.", fix: "Provided that all parties agree, the contract can be signed this week.", tag: "Provided that" },
+      { text: "The committee failed to reach a consensus about the proposed changes.", fix: "The committee failed to reach a consensus on the proposed changes.", tag: "Dependent prepositions" },
+      { text: "She spoke at length about the implications from the new legislation.", fix: "She spoke at length about the implications of the new legislation.", tag: "Dependent prepositions" },
+      { text: "The results varied considerably depending on the condition.", fix: "The results varied considerably depending on the conditions.", tag: "Singular vs plural" },
+      { text: "He made it clear that he was unwillingly to negotiate further.", fix: "He made it clear that he was unwilling to negotiate further.", tag: "Adjective vs adverb" },
+      { text: "The initiative, although well-intentioned, proved difficult to implement it.", fix: "The initiative, though well-intentioned, proved difficult to implement.", tag: "Redundant object" },
+      { text: "She found the criticism hardly to accept, even if it was justified.", fix: "She found the criticism hard to accept, even if it was justified.", tag: "Hard vs hardly" },
+      { text: "Rarely I have seen such a well-organized event.", fix: "Rarely have I seen such a well-organized event.", tag: "Inversion (negative adverbials)" },
+      { text: "Not only she won the case, but she also set a legal precedent.", fix: "Not only did she win the case, but she also set a legal precedent.", tag: "Inversion (not only)" },
+      { text: "He denied having been informing of the changes.", fix: "He denied having been informed of the changes.", tag: "Perfect passive gerund" },
+      { text: "Little they knew that the decision had already been made.", fix: "Little did they know that the decision had already been made.", tag: "Inversion (little)" },
+      { text: "The sooner we address the issue, the easiest it will be to resolve.", fix: "The sooner we address the issue, the easier it will be to resolve.", tag: "Comparative correlatives" },
+      { text: "It is essential that every application is being reviewed twice.", fix: "It is essential that every application be reviewed twice.", tag: "Subjunctive" },
+      { text: "Having consider all the options, the board approved the merger.", fix: "Having considered all the options, the board approved the merger.", tag: "Perfect participle clauses" },
+      { text: "Under no circumstances confidential data should be shared externally.", fix: "Under no circumstances should confidential data be shared externally.", tag: "Inversion (negative adverbials)" },
+      { text: "The report highlights a growing tendency of outsource key services.", fix: "The report highlights a growing tendency to outsource key services.", tag: "Tendency + infinitive" },
+      { text: "Scarcely the meeting had begun when the fire alarm went off.", fix: "Scarcely had the meeting begun when the fire alarm went off.", tag: "Inversion (scarcely)" },
+      { text: "Whatever decision you will make, we will support you.", fix: "Whatever decision you make, we will support you.", tag: "Whatever clauses" },
+      { text: "The negotiations are said to reach a critical stage last week.", fix: "The negotiations are said to have reached a critical stage.", tag: "Passive reporting verbs" },
+      { text: "But for her quick thinking, the situation could be much worse yesterday.", fix: "But for her quick thinking, the situation could have been much worse.", tag: "But for + perfect conditional" },
+      { text: "The proposal is likely to facing strong opposition in parliament.", fix: "The proposal is likely to face strong opposition in parliament.", tag: "Likely + infinitive" },
+      { text: "Were the funding fall through, the project would be cancelled.", fix: "Were the funding to fall through, the project would be cancelled.", tag: "Inverted conditionals" }
     ]
   }
 };
@@ -1300,6 +1451,13 @@ function buildSetup() {
 }
 
 const PREFS_KEY = 'sentence-auction-prefs';
+const USED_KEY = 'sentence-auction-used';
+function loadUsed() {
+  try { return JSON.parse(localStorage.getItem(USED_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveUsed(u) {
+  try { localStorage.setItem(USED_KEY, JSON.stringify(u)); } catch (e) {}
+}
 function savePrefs() {
   try {
     const names = [];
@@ -1383,15 +1541,30 @@ function startGame() {
     });
   }
 
-  // Build sentence pool: 3-7 correct out of 10
-  const numCorrect = Math.floor(Math.random() * 5) + 3; // 3..7
-  const numWrong = 10 - numCorrect;
+  // Build sentence pool: ratio of correct scaled to round count
+  const numCorrect = Math.floor(state.totalRounds * 0.3) + Math.floor(Math.random() * (Math.floor(state.totalRounds * 0.5) - Math.floor(state.totalRounds * 0.3) + 1));
+  const numWrong = state.totalRounds - numCorrect;
   const pool = SENTENCES[state.level];
-  const correctPicked = shuffle([...pool.correct]).slice(0, numCorrect);
-  const wrongPicked   = shuffle([...pool.incorrect]).slice(0, numWrong);
+
+  // No-repeat: exclude sentences used in previous games (reset pool when exhausted)
+  const used = loadUsed();
+  const u = used[state.level] || { correct: [], incorrect: [] };
+
+  let corAvail = pool.correct.filter(s => !u.correct.includes(s));
+  if (corAvail.length < numCorrect) { u.correct = []; corAvail = [...pool.correct]; }
+  let incAvail = pool.incorrect.filter(s => !u.incorrect.includes(s.text));
+  if (incAvail.length < numWrong) { u.incorrect = []; incAvail = [...pool.incorrect]; }
+
+  const correctPicked = shuffle([...corAvail]).slice(0, numCorrect);
+  const wrongPicked   = shuffle([...incAvail]).slice(0, numWrong);
+
+  u.correct.push(...correctPicked);
+  u.incorrect.push(...wrongPicked.map(s => s.text));
+  used[state.level] = u;
+  saveUsed(used);
   const allSentences = shuffle([
     ...correctPicked.map(s => ({ text: s, correct: true, fix: null })),
-    ...wrongPicked.map(s => ({ text: s.text, correct: false, fix: s.fix }))
+    ...wrongPicked.map(s => ({ text: s.text, correct: false, fix: s.fix, tag: s.tag }))
   ]);
 
   state.sentences = allSentences;
@@ -1608,7 +1781,7 @@ function resolveAuction() {
   winner.sentences.push(record);
 
   // Log sentence
-  const logEntry = { text: sentence.text, correct: sentence.correct, fix: sentence.fix, winner: winner.name, fixed: false };
+  const logEntry = { text: sentence.text, correct: sentence.correct, fix: sentence.fix, tag: sentence.tag, winner: winner.name, fixed: false };
   state.sentenceLog.push(logEntry);
   state._lastRecord = record;
   state._lastLog = logEntry;
@@ -1625,7 +1798,7 @@ function resolveAuction() {
     document.getElementById('next-btn').style.display = '';
   } else {
     banner.className = 'reveal-banner incorrect';
-    banner.textContent = `✗ INCORRECT — ${winner.name} loses their bid of $${state.currentBid}`;
+    banner.textContent = `✗ INCORRECT — ${winner.name} loses their bid of $${state.currentBid}` + (sentence.tag ? ` · ${sentence.tag}` : '');
     setTimeout(() => SFX.incorrect(), 400);
     // Correction phase: team may fix the sentence aloud to recover half the bid
     document.getElementById('correction-panel').style.display = '';
@@ -1668,7 +1841,7 @@ function resolveCorrection(fixed) {
 
   const ans = document.getElementById('correction-answer');
   ans.style.display = '';
-  ans.innerHTML = `<span class="ca-label">${fixed ? '✓ Fixed — half the bid refunded' : 'Correct version'}</span>${esc(sentence.fix)}`;
+  ans.innerHTML = `<span class="ca-label">${fixed ? '✓ Fixed — half the bid refunded' : 'Correct version'}${sentence.tag ? ' · ' + esc(sentence.tag) : ''}</span>${esc(sentence.fix)}`;
 
   document.getElementById('next-btn').style.display = '';
 }
@@ -1687,7 +1860,7 @@ function skipSentence() {
   sEl.style.opacity = '';
   document.getElementById('vanish-badge').classList.remove('visible');
   const skippedSentence = state.sentences[state.currentRound];
-  state.sentenceLog.push({ text: skippedSentence.text, correct: skippedSentence.correct, fix: skippedSentence.fix, winner: null, fixed: false });
+  state.sentenceLog.push({ text: skippedSentence.text, correct: skippedSentence.correct, fix: skippedSentence.fix, tag: skippedSentence.tag, winner: null, fixed: false });
   SFX.skip();
   document.getElementById('bid-leader-text').textContent = 'No bids — sentence skipped';
   document.getElementById('skip-btn').style.display = 'none';
@@ -1806,13 +1979,16 @@ function showResults() {
 
       const winnerText = entry.winner === null ? 'no bids' : `won by ${esc(entry.winner)}`;
 
+      const tagHtml = (!entry.correct && entry.tag)
+        ? `<span class="log-tag-grammar">${esc(entry.tag)}</span>`
+        : '';
       const fixHtml = (!entry.correct && entry.fix)
         ? `<span class="log-fix" style="display:block;color:var(--green);font-size:0.85em;margin-top:0.2rem">→ ${esc(entry.fix)}</span>`
         : '';
 
       item.innerHTML = `
         <span class="log-tag ${tagClass}">${tagText}</span>
-        <span class="log-text">${esc(entry.text)}${fixHtml}</span>
+        <span class="log-text">${esc(entry.text)}${tagHtml}${fixHtml}</span>
         <span class="log-winner">${winnerText}</span>
       `;
       logEl.appendChild(item);
@@ -1891,6 +2067,57 @@ function shuffle(arr) {
 // EVENT LISTENERS
 // ═══════════════════════════════════════════════════════════════
 document.getElementById('skip-btn').addEventListener('click', skipSentence);
+
+const muteBtn = document.getElementById('mute-btn');
+function renderMute() { muteBtn.textContent = sfxMuted ? '🔇' : '🔊'; }
+muteBtn.addEventListener('click', () => {
+  sfxMuted = !sfxMuted;
+  try { localStorage.setItem('sentence-auction-muted', sfxMuted ? '1' : '0'); } catch (e) {}
+  renderMute();
+});
+renderMute();
+
+// ─── Keyboard shortcuts ───
+// 1–8 = bid for team, Space/Enter = next, S = skip, Y/N = correction, M = mute
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const gameActive = document.getElementById('game').classList.contains('active');
+  if (!gameActive) return;
+
+  const k = e.key.toLowerCase();
+
+  if (k >= '1' && k <= '8') {
+    const idx = parseInt(k) - 1;
+    if (idx < state.teams.length && state.auctionLive) onBid(idx);
+    e.preventDefault();
+    return;
+  }
+
+  if (k === ' ' || k === 'enter') {
+    const nextBtn = document.getElementById('next-btn');
+    if (nextBtn.style.display !== 'none') { nextBtn.click(); e.preventDefault(); }
+    return;
+  }
+
+  if (k === 's') {
+    const skipBtn = document.getElementById('skip-btn');
+    if (skipBtn.style.display !== 'none' && state.auctionLive && state.currentBidder === null) {
+      skipSentence(); e.preventDefault();
+    }
+    return;
+  }
+
+  if (k === 'y' || k === 'n') {
+    const panel = document.getElementById('correction-panel');
+    const btns = document.getElementById('correction-btns');
+    if (panel.style.display !== 'none' && btns.style.display !== 'none') {
+      resolveCorrection(k === 'y'); e.preventDefault();
+    }
+    return;
+  }
+
+  if (k === 'm') { muteBtn.click(); e.preventDefault(); }
+});
 document.getElementById('next-btn').addEventListener('click', nextSentence);
 document.getElementById('play-again-btn').addEventListener('click', () => showScreen('setup'));
 

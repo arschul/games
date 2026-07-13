@@ -865,41 +865,40 @@ select.form-input { cursor: pointer; }
             </div>
           </div>
 
-          <!-- Word reveal -->
-          <div class="word-reveal">
-            <div class="word-level-tag"><span class="badge badge-lavender" id="duel-level-badge">A1</span></div>
-            <div class="word-turn-label" id="duel-turn-label">It's Player 1's turn!</div>
-            <div class="word-text blurred" id="duel-word-display">loading</div>
-            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
-              <button class="btn btn-primary btn-sm" id="duel-hear-btn">🔊 Hear Word</button>
-              <button class="btn btn-mint btn-sm" id="duel-sentence-btn">💬 In a Sentence</button>
-              <button class="btn btn-outline btn-sm" id="duel-toggle-btn">👁️ Show Word</button>
+          <!-- Live duel controls: word reveal, input, submit -->
+          <div id="duel-live-panel">
+            <div class="word-reveal">
+              <div class="word-level-tag"><span class="badge badge-lavender" id="duel-level-badge">A1</span></div>
+              <div class="word-turn-label" id="duel-turn-label">It's Player 1's turn!</div>
+              <div class="word-text blurred" id="duel-word-display">loading</div>
+              <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
+                <button class="btn btn-primary btn-sm" id="duel-hear-btn">🔊 Hear Word</button>
+                <button class="btn btn-mint btn-sm" id="duel-sentence-btn">💬 In a Sentence</button>
+                <button class="btn btn-outline btn-sm" id="duel-toggle-btn">👁️ Show Word</button>
+              </div>
             </div>
+
+            <div class="spelling-wrap">
+              <input type="text" class="spelling-input" id="duel-input" placeholder="Type the word here…" autocomplete="off" autocorrect="off" spellcheck="false">
+            </div>
+
+            <div class="stats-row">
+              <div class="stat-chip"><span class="stat-icon">⏱️</span><span>Time:</span><span class="stat-value" id="duel-timer">00:00</span></div>
+              <div class="stat-chip"><span class="stat-icon">⌫</span><span>Edits:</span><span class="stat-value" id="duel-backspace">0</span></div>
+              <div class="stat-chip"><span class="stat-icon">🔁</span><span class="stat-value" id="duel-repeats">0</span></div>
+              <div class="stat-chip"><span class="stat-icon">💬</span><span class="stat-value" id="duel-sentences">0</span></div>
+            </div>
+
+            <button class="btn btn-primary btn-full btn-lg" id="duel-submit">✅ Submit</button>
           </div>
 
-          <!-- Input -->
-          <div class="spelling-wrap">
-            <input type="text" class="spelling-input" id="duel-input" placeholder="Type the word here…" autocomplete="off" autocorrect="off" spellcheck="false">
-          </div>
-
-          <div class="stats-row">
-            <div class="stat-chip"><span class="stat-icon">⏱️</span><span>Time:</span><span class="stat-value" id="duel-timer">00:00</span></div>
-            <div class="stat-chip"><span class="stat-icon">⌫</span><span>Edits:</span><span class="stat-value" id="duel-backspace">0</span></div>
-            <div class="stat-chip"><span class="stat-icon">🔁</span><span class="stat-value" id="duel-repeats">0</span></div>
-            <div class="stat-chip"><span class="stat-icon">💬</span><span class="stat-value" id="duel-sentences">0</span></div>
-          </div>
-
-          <button class="btn btn-primary btn-full btn-lg" id="duel-submit">✅ Submit</button>
-        </div>
-      </div>
-
-      <!-- Results -->
-      <div class="card hidden" id="duel-results-card" style="margin-top:20px;">
-        <div class="card-body">
-          <div id="duel-winner-banner" class="winner-banner"></div>
-          <div id="duel-results-body"></div>
-          <div style="margin-top:20px;display:flex;gap:12px;">
-            <button class="btn btn-mint btn-full" id="next-duel-btn">➡️ Next Duel</button>
+          <!-- Results: replaces the live panel, never shown alongside it -->
+          <div class="hidden" id="duel-results-card">
+            <div id="duel-winner-banner" class="winner-banner"></div>
+            <div id="duel-results-body"></div>
+            <div style="margin-top:20px;display:flex;gap:12px;">
+              <button class="btn btn-mint btn-full" id="next-duel-btn">➡️ Next Duel</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1633,10 +1632,14 @@ function startNextDuel() {
 
   G.currentDuel = { p1: match.p1, p2: match.p2, p1Word, p2Word, turn: 0, p1Result: null, p2Result: null, levelIdx: duelLevel };
 
-  // UI
-  document.getElementById('tab-duel').querySelector('#duel-results-card').classList.add('hidden');
-  document.getElementById('duel-submit').style.display = '';
-  document.getElementById('duel-input').style.display = '';
+  // UI — swap back to the live panel; results from the previous duel are gone
+  document.getElementById('duel-results-card').classList.add('hidden');
+  document.getElementById('duel-live-panel').classList.remove('hidden');
+  document.getElementById('duel-input').classList.remove('correct', 'incorrect');
+  document.getElementById('duel-winner-banner').innerHTML = '';
+  document.getElementById('duel-results-body').innerHTML = '';
+  document.getElementById('p1-card').className = 'player-card';
+  document.getElementById('p2-card').className = 'player-card';
 
   setActiveTab('duel');
   renderDuelUI();
@@ -1751,9 +1754,8 @@ function resolveDuel() {
       const w2 = getPairedWord(w1, d.levelIdx);
       d.p1Word = w1; d.p2Word = w2; d.turn = 0; d.p1Result = null; d.p2Result = null;
       document.getElementById('duel-results-card').classList.add('hidden');
+      document.getElementById('duel-live-panel').classList.remove('hidden');
       document.getElementById('duel-input').value = '';
-      document.getElementById('duel-input').style.display = '';
-      document.getElementById('duel-submit').style.display = '';
       startTimer('duel-timer');
       document.getElementById('duel-backspace').textContent = '0';
       renderDuelUI();
@@ -1812,8 +1814,7 @@ function showDuelResults(winner, loser, reason) {
 
   document.getElementById('p1-card').className = 'player-card' + (winner === d.p1 ? ' winner-card' : ' loser-card');
   document.getElementById('p2-card').className = 'player-card' + (winner === d.p2 ? ' winner-card' : ' loser-card');
-  document.getElementById('duel-input').style.display = 'none';
-  document.getElementById('duel-submit').style.display = 'none';
+  document.getElementById('duel-live-panel').classList.add('hidden');
 
   const banner = document.getElementById('duel-winner-banner');
   banner.innerHTML = `<h2>🎉 ${winner.emoji} ${winner.name} Wins!</h2>${reason ? `<p>${reason}</p>` : ''}`;

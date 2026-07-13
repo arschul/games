@@ -637,7 +637,7 @@ const triviaData = {
 
   mostPopularFruits: {
     label: "Most Popular Fruits Worldwide",
-    note: "Botanical classification — tomato counts",
+    note: "Botanical classification",
     aliases: {
       "cantaloupe":  ["melon", "rockmelon"],
       "peach":       ["peach nectarine"],

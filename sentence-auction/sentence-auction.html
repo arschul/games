@@ -47,6 +47,43 @@
 
   h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
 
+  /* ─── CORRECTION PHASE ─── */
+  .correction-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    align-items: center;
+  }
+  .correction-prompt {
+    color: var(--muted);
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+  }
+  .correction-btns { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
+  .ctrl-btn.correct-yes { border-color: var(--green); color: var(--green); }
+  .ctrl-btn.correct-no { border-color: var(--red); color: var(--red); }
+  .correction-answer {
+    font-size: 1.1rem;
+    color: var(--green);
+    text-align: center;
+    padding: 0.5rem 1rem;
+    border-top: 1px dashed var(--border);
+    width: 100%;
+  }
+  .correction-answer .ca-label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
   .screen { display: none; min-height: 100vh; }
   .screen.active { display: flex; flex-direction: column; }
 
@@ -690,6 +727,42 @@
       </div>
     </div>
 
+    <!-- Game Settings -->
+    <div class="setup-group">
+      <label>Starting Money</label>
+      <div class="option-row" id="money-opts">
+        <button class="opt-btn" data-val="500">$500</button>
+        <button class="opt-btn selected" data-val="1000">$1,000</button>
+        <button class="opt-btn" data-val="2000">$2,000</button>
+      </div>
+    </div>
+
+    <div class="setup-group">
+      <label>Bid Increment</label>
+      <div class="option-row" id="increment-opts">
+        <button class="opt-btn selected" data-val="50">$50</button>
+        <button class="opt-btn" data-val="100">$100</button>
+      </div>
+    </div>
+
+    <div class="setup-group">
+      <label>Rounds</label>
+      <div class="option-row" id="rounds-opts">
+        <button class="opt-btn" data-val="5">5</button>
+        <button class="opt-btn selected" data-val="10">10</button>
+        <button class="opt-btn" data-val="15">15</button>
+      </div>
+    </div>
+
+    <div class="setup-group">
+      <label>Bid Countdown</label>
+      <div class="option-row" id="countdown-opts">
+        <button class="opt-btn" data-val="5">5s</button>
+        <button class="opt-btn selected" data-val="10">10s</button>
+        <button class="opt-btn" data-val="15">15s</button>
+      </div>
+    </div>
+
     <!-- Vanish Mode -->
     <div class="setup-group">
       <label>Vanish Mode</label>
@@ -699,7 +772,12 @@
         </button>
         <span class="vanish-label" id="vanish-label">Off — sentence stays visible</span>
       </div>
-      <p class="vanish-hint">When ON, the sentence disappears after 3 seconds. Teams must bid from memory.</p>
+      <p class="vanish-hint">When ON, the sentence disappears after a delay. Teams must bid from memory.</p>
+      <div class="option-row" id="vanish-delay-opts" style="margin-top:0.6rem">
+        <button class="opt-btn selected" data-val="3">3s</button>
+        <button class="opt-btn" data-val="5">5s</button>
+        <button class="opt-btn" data-val="8">8s</button>
+      </div>
     </div>
 
     <button class="start-btn" id="start-btn">Start Auction</button>
@@ -724,6 +802,14 @@
       <div class="sentence-text" id="sentence-display">Loading...</div>
       <div class="vanish-badge" id="vanish-badge">👁 Sentence hidden — bid from memory!</div>
       <div class="reveal-banner" id="reveal-banner"></div>
+      <div class="correction-panel" id="correction-panel" style="display:none">
+        <div class="correction-prompt" id="correction-prompt">Can the team correct the sentence? Say it aloud!</div>
+        <div class="correction-btns" id="correction-btns">
+          <button class="ctrl-btn correct-yes" id="fix-yes-btn">✓ Corrected — refund half</button>
+          <button class="ctrl-btn correct-no" id="fix-no-btn">✗ Not corrected</button>
+        </div>
+        <div class="correction-answer" id="correction-answer" style="display:none"></div>
+      </div>
     </div>
 
     <!-- Bid countdown -->
@@ -785,7 +871,12 @@ const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let _actx = null;
 function getACtx() {
   if (!_actx) _actx = new AudioCtx();
+  if (_actx.state === 'suspended') _actx.resume();
   return _actx;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function playTone(opts) {
@@ -903,31 +994,31 @@ const SENTENCES = {
       "My mother is a teacher."
     ],
     incorrect: [
-      "She have a good friend in Canada.",
-      "I has two sister.",
-      "He go to school every days.",
-      "They lives in a big house.",
-      "We eats dinner at six.",
-      "My father work in an office.",
-      "The cat is in the table.",
-      "I like the apples and the oranges.",
-      "She have a long hair.",
-      "There is three windows in this room.",
-      "He play football on Saturday.",
-      "I am from the Brazil.",
-      "The book is in the shelf.",
-      "We has a big dog.",
-      "She drink coffee every morning.",
-      "My name are Maria.",
-      "The children is in the garden.",
-      "I go to the bed at ten.",
-      "He are my best friend.",
-      "There are a supermarket near my house.",
-      "They has a new car.",
-      "She speak English very good.",
-      "I usually walks to school.",
-      "The sky are blue today.",
-      "My mother are a teacher."
+      { text: "She have a good friend in Canada.", fix: "She has a good friend in Canada." },
+      { text: "I has two sister.", fix: "I have two sisters." },
+      { text: "He go to school every days.", fix: "He goes to school every day." },
+      { text: "They lives in a big house.", fix: "They live in a big house." },
+      { text: "We eats dinner at six.", fix: "We eat dinner at six." },
+      { text: "My father work in an office.", fix: "My father works in an office." },
+      { text: "The cat is in the table.", fix: "The cat is on the table." },
+      { text: "I like the apples and the oranges.", fix: "I like apples and oranges." },
+      { text: "She have a long hair.", fix: "She has long hair." },
+      { text: "There is three windows in this room.", fix: "There are three windows in this room." },
+      { text: "He play football on Saturday.", fix: "He plays football on Saturdays." },
+      { text: "I am from the Brazil.", fix: "I am from Brazil." },
+      { text: "The book is in the shelf.", fix: "The book is on the shelf." },
+      { text: "We has a big dog.", fix: "We have a big dog." },
+      { text: "She drink coffee every morning.", fix: "She drinks coffee every morning." },
+      { text: "My name are Maria.", fix: "My name is Maria." },
+      { text: "The children is in the garden.", fix: "The children are in the garden." },
+      { text: "I go to the bed at ten.", fix: "I go to bed at ten." },
+      { text: "He are my best friend.", fix: "He is my best friend." },
+      { text: "There are a supermarket near my house.", fix: "There is a supermarket near my house." },
+      { text: "They has a new car.", fix: "They have a new car." },
+      { text: "She speak English very good.", fix: "She speaks English very well." },
+      { text: "I usually walks to school.", fix: "I usually walk to school." },
+      { text: "The sky are blue today.", fix: "The sky is blue today." },
+      { text: "My mother are a teacher.", fix: "My mother is a teacher." }
     ]
   },
 
@@ -960,31 +1051,31 @@ const SENTENCES = {
       "She looked happy when she heard the news."
     ],
     incorrect: [
-      "She was reading a book when I have called.",
-      "We went to the cinema last weekend and we have enjoyed it.",
-      "He has already finish his homework.",
-      "I usually wake up before than my alarm.",
-      "They decided to staying at home.",
-      "She can to speak three languages.",
-      "I buyed a new jacket yesterday.",
-      "He doesn't likes spicy food.",
-      "We are going visit my grandparents next week.",
-      "There was a lot of people at the concert.",
-      "She told me an interested story.",
-      "I haven't seen that film already.",
-      "He worked in a restaurant since two years.",
-      "They always argues about the same things.",
-      "She forgot bringing her umbrella.",
-      "We need to leave in ten minutes ago.",
-      "I have met her at a party last month.",
-      "He was very tired after the match because he trained hardly.",
-      "They didn't enjoyed the weather in London.",
-      "She is more tall than her brother.",
-      "I never have tried sushi before.",
-      "He missed the bus this morning because he has woken up late.",
-      "They offered to me a discount at the shop.",
-      "We left the hotel early in the morning of Saturday.",
-      "She looked happily when she heard the news."
+      { text: "She was reading a book when I have called.", fix: "She was reading a book when I called." },
+      { text: "We went to the cinema last weekend and we have enjoyed it.", fix: "We went to the cinema last weekend and we enjoyed it." },
+      { text: "He has already finish his homework.", fix: "He has already finished his homework." },
+      { text: "I usually wake up before than my alarm.", fix: "I usually wake up before my alarm." },
+      { text: "They decided to staying at home.", fix: "They decided to stay at home." },
+      { text: "She can to speak three languages.", fix: "She can speak three languages." },
+      { text: "I buyed a new jacket yesterday.", fix: "I bought a new jacket yesterday." },
+      { text: "He doesn't likes spicy food.", fix: "He doesn't like spicy food." },
+      { text: "We are going visit my grandparents next week.", fix: "We are going to visit my grandparents next week." },
+      { text: "There was a lot of people at the concert.", fix: "There were a lot of people at the concert." },
+      { text: "She told me an interested story.", fix: "She told me an interesting story." },
+      { text: "I haven't seen that film already.", fix: "I haven't seen that film yet." },
+      { text: "He worked in a restaurant since two years.", fix: "He worked in a restaurant for two years." },
+      { text: "They always argues about the same things.", fix: "They always argue about the same things." },
+      { text: "She forgot bringing her umbrella.", fix: "She forgot to bring her umbrella." },
+      { text: "We need to leave in ten minutes ago.", fix: "We need to leave in ten minutes." },
+      { text: "I have met her at a party last month.", fix: "I met her at a party last month." },
+      { text: "He was very tired after the match because he trained hardly.", fix: "He was very tired after the match because he trained hard." },
+      { text: "They didn't enjoyed the weather in London.", fix: "They didn't enjoy the weather in London." },
+      { text: "She is more tall than her brother.", fix: "She is taller than her brother." },
+      { text: "I never have tried sushi before.", fix: "I have never tried sushi before." },
+      { text: "He missed the bus this morning because he has woken up late.", fix: "He missed the bus this morning because he woke up late." },
+      { text: "They offered to me a discount at the shop.", fix: "They offered me a discount at the shop." },
+      { text: "We left the hotel early in the morning of Saturday.", fix: "We left the hotel early on Saturday morning." },
+      { text: "She looked happily when she heard the news.", fix: "She looked happy when she heard the news." }
     ]
   },
 
@@ -1017,31 +1108,31 @@ const SENTENCES = {
       "The news made everyone in the office very concerned."
     ],
     incorrect: [
-      "By the time she arrived, the film already started.",
-      "I wish I studied harder for the exam.",
-      "He suggested to go for a walk after lunch.",
-      "She is used to wake up early since she started her new job.",
-      "Despite of the rain, they enjoyed the festival.",
-      "If I would have more time, I would learn a new language.",
-      "The manager asked us don't be late.",
-      "She managed finishing the report before the deadline.",
-      "He seems to forgotten about our meeting.",
-      "The book I lent you was wrote by a local author.",
-      "We have been waiting for an hour when the train finally came.",
-      "She would rather to stay in than go to the party.",
-      "It is worth to take a map in case you get lost.",
-      "He has been working on that project since three months.",
-      "The meal was much more better than I had expected.",
-      "I'm looking forward to hear from you soon.",
-      "She admitted to make a mistake in the report.",
-      "They kept to talk even though the film had started.",
-      "We should had left earlier to avoid the traffic.",
-      "He is known for be very reliable.",
-      "The presentation was good-prepared and clear structured.",
-      "She spent an hour to try to fix the problem.",
-      "They weren't able to find a solution in the time.",
-      "I had no idea she was planning moving abroad.",
-      "The news made everyone in the office very concerning."
+      { text: "By the time she arrived, the film already started.", fix: "By the time she arrived, the film had already started." },
+      { text: "I wish I studied harder for the exam.", fix: "I wish I had studied harder for the exam." },
+      { text: "He suggested to go for a walk after lunch.", fix: "He suggested going for a walk after lunch." },
+      { text: "She is used to wake up early since she started her new job.", fix: "She is used to waking up early since she started her new job." },
+      { text: "Despite of the rain, they enjoyed the festival.", fix: "Despite the rain, they enjoyed the festival." },
+      { text: "If I would have more time, I would learn a new language.", fix: "If I had more time, I would learn a new language." },
+      { text: "The manager asked us don't be late.", fix: "The manager asked us not to be late." },
+      { text: "She managed finishing the report before the deadline.", fix: "She managed to finish the report before the deadline." },
+      { text: "He seems to forgotten about our meeting.", fix: "He seems to have forgotten about our meeting." },
+      { text: "The book I lent you was wrote by a local author.", fix: "The book I lent you was written by a local author." },
+      { text: "We have been waiting for an hour when the train finally came.", fix: "We had been waiting for an hour when the train finally came." },
+      { text: "She would rather to stay in than go to the party.", fix: "She would rather stay in than go to the party." },
+      { text: "It is worth to take a map in case you get lost.", fix: "It is worth taking a map in case you get lost." },
+      { text: "He has been working on that project since three months.", fix: "He has been working on that project for three months." },
+      { text: "The meal was much more better than I had expected.", fix: "The meal was much better than I had expected." },
+      { text: "I'm looking forward to hear from you soon.", fix: "I'm looking forward to hearing from you soon." },
+      { text: "She admitted to make a mistake in the report.", fix: "She admitted making a mistake in the report." },
+      { text: "They kept to talk even though the film had started.", fix: "They kept talking even though the film had started." },
+      { text: "We should had left earlier to avoid the traffic.", fix: "We should have left earlier to avoid the traffic." },
+      { text: "He is known for be very reliable.", fix: "He is known for being very reliable." },
+      { text: "The presentation was good-prepared and clear structured.", fix: "The presentation was well-prepared and clearly structured." },
+      { text: "She spent an hour to try to fix the problem.", fix: "She spent an hour trying to fix the problem." },
+      { text: "They weren't able to find a solution in the time.", fix: "They weren't able to find a solution in time." },
+      { text: "I had no idea she was planning moving abroad.", fix: "I had no idea she was planning to move abroad." },
+      { text: "The news made everyone in the office very concerning.", fix: "The news made everyone in the office very concerned." }
     ]
   },
 
@@ -1074,31 +1165,31 @@ const SENTENCES = {
       "She found the criticism hard to accept, even if it was justified."
     ],
     incorrect: [
-      "Had she knew about the cancellation, she would have changed her plans.",
-      "The evidence suggests that the policy has had little effect in crime rates.",
-      "It was not until he retired that he fully appreciated his colleague's.",
-      "The findings are consistent to what previous studies have shown.",
-      "She tends to underestimate how much time do tasks actually take.",
-      "No sooner the announcement had been made than the share price dropped.",
-      "He was reluctant to commit on a decision without more information.",
-      "The extent to which social media influences teenagers remain debated.",
-      "She came across as highly competent at the interview.",
-      "The regulation, which came into force last year, is yet to be tested.",
-      "He attributed his success largely for the support of his team.",
-      "They struggled to reconcile their professional goals with personal commitments' demands.",
-      "The data do not support the claim made in the original report.",
-      "She had mixed feelings about to accept the promotion.",
-      "The article raised several points that are worth to consider.",
-      "What stroke me most was how calmly she handled the situation.",
-      "The project felt behind schedule due to unforeseen complications.",
-      "He was hardly the most enthusiastic participator in the meeting.",
-      "Providing to all parties agree, the contract can be signed this week.",
-      "The committee failed to reach a consensus about the proposed changes.",
-      "She spoke at length about the implications from the new legislation.",
-      "The results varied considerably depending on the condition.",
-      "He made it clear that he was unwillingly to negotiate further.",
-      "The initiative, although well-intentioned, proved difficult to implement it.",
-      "She found the criticism hardly to accept, even if it was justified."
+      { text: "Had she knew about the cancellation, she would have changed her plans.", fix: "Had she known about the cancellation, she would have changed her plans." },
+      { text: "The evidence suggests that the policy has had little effect in crime rates.", fix: "The evidence suggests that the policy has had little effect on crime rates." },
+      { text: "It was not until he retired that he fully appreciated his colleague's.", fix: "It was not until he retired that he fully appreciated his colleagues." },
+      { text: "The findings are consistent to what previous studies have shown.", fix: "The findings are consistent with what previous studies have shown." },
+      { text: "She tends to underestimate how much time do tasks actually take.", fix: "She tends to underestimate how much time tasks actually take." },
+      { text: "No sooner the announcement had been made than the share price dropped.", fix: "No sooner had the announcement been made than the share price dropped." },
+      { text: "He was reluctant to commit on a decision without more information.", fix: "He was reluctant to commit to a decision without more information." },
+      { text: "The extent to which social media influences teenagers remain debated.", fix: "The extent to which social media influences teenagers remains debated." },
+      { text: "She came across as highly competent at the interview.", fix: "She came across as highly competent during the interview." },
+      { text: "The regulation, which came into force last year, is yet to be tested.", fix: "The regulation, which came into force last year, has yet to be tested." },
+      { text: "He attributed his success largely for the support of his team.", fix: "He attributed his success largely to the support of his team." },
+      { text: "They struggled to reconcile their professional goals with personal commitments' demands.", fix: "They struggled to reconcile their professional goals with personal commitments." },
+      { text: "The data do not support the claim made in the original report.", fix: "The data does not support the claim made in the original report." },
+      { text: "She had mixed feelings about to accept the promotion.", fix: "She had mixed feelings about accepting the promotion." },
+      { text: "The article raised several points that are worth to consider.", fix: "The article raised several points that are worth considering." },
+      { text: "What stroke me most was how calmly she handled the situation.", fix: "What struck me most was how calmly she handled the situation." },
+      { text: "The project felt behind schedule due to unforeseen complications.", fix: "The project fell behind schedule due to unforeseen complications." },
+      { text: "He was hardly the most enthusiastic participator in the meeting.", fix: "He was hardly the most enthusiastic participant in the meeting." },
+      { text: "Providing to all parties agree, the contract can be signed this week.", fix: "Provided that all parties agree, the contract can be signed this week." },
+      { text: "The committee failed to reach a consensus about the proposed changes.", fix: "The committee failed to reach a consensus on the proposed changes." },
+      { text: "She spoke at length about the implications from the new legislation.", fix: "She spoke at length about the implications of the new legislation." },
+      { text: "The results varied considerably depending on the condition.", fix: "The results varied considerably depending on the conditions." },
+      { text: "He made it clear that he was unwillingly to negotiate further.", fix: "He made it clear that he was unwilling to negotiate further." },
+      { text: "The initiative, although well-intentioned, proved difficult to implement it.", fix: "The initiative, though well-intentioned, proved difficult to implement." },
+      { text: "She found the criticism hardly to accept, even if it was justified.", fix: "She found the criticism hard to accept, even if it was justified." }
     ]
   }
 };
@@ -1122,6 +1213,10 @@ let state = {
   numTeams: 3,
   level: 'A1',
   vanishMode: false,
+  startMoney: 1000,
+  bidIncrement: 50,
+  countdownSecs: 10,
+  vanishDelay: 3,
   teams: [],
   sentences: [],
   currentRound: 0,
@@ -1150,6 +1245,7 @@ function buildSetup() {
       btn.classList.add('selected');
       state.numTeams = parseInt(btn.dataset.val);
       buildNameInputs();
+      savePrefs();
     });
   });
 
@@ -1159,8 +1255,31 @@ function buildSetup() {
       document.getElementById('level-opts').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       state.level = btn.dataset.val;
+      savePrefs();
     });
   });
+
+  // Generic option groups
+  const optGroups = [
+    ['money-opts', 'startMoney', parseInt],
+    ['increment-opts', 'bidIncrement', parseInt],
+    ['rounds-opts', 'totalRounds', parseInt],
+    ['countdown-opts', 'countdownSecs', parseInt],
+    ['vanish-delay-opts', 'vanishDelay', parseInt]
+  ];
+  optGroups.forEach(([id, key, cast]) => {
+    const grp = document.getElementById(id);
+    grp.querySelectorAll('.opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        grp.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        state[key] = cast(btn.dataset.val);
+        savePrefs();
+      });
+    });
+  });
+
+  loadPrefs();
 
   // Vanish mode toggle
   const vanishToggle = document.getElementById('vanish-toggle');
@@ -1169,13 +1288,60 @@ function buildSetup() {
     state.vanishMode = !state.vanishMode;
     vanishToggle.dataset.on = state.vanishMode;
     vanishLabel.textContent = state.vanishMode
-      ? 'On — sentence vanishes after 3 seconds'
+      ? 'On — sentence vanishes after ' + state.vanishDelay + ' seconds'
       : 'Off — sentence stays visible';
+    savePrefs();
   });
 
   // Start
   document.getElementById('start-btn').addEventListener('click', startGame);
 
+  buildNameInputs();
+}
+
+const PREFS_KEY = 'sentence-auction-prefs';
+function savePrefs() {
+  try {
+    const names = [];
+    for (let i = 0; i < state.numTeams; i++) {
+      const el = document.getElementById(`team-name-${i}`);
+      if (el) names.push(el.value);
+    }
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      numTeams: state.numTeams, level: state.level, vanishMode: state.vanishMode,
+      startMoney: state.startMoney, bidIncrement: state.bidIncrement,
+      totalRounds: state.totalRounds, countdownSecs: state.countdownSecs,
+      vanishDelay: state.vanishDelay, names
+    }));
+  } catch (e) {}
+}
+
+function loadPrefs() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(PREFS_KEY)); } catch (e) {}
+  if (!p) return;
+  ['numTeams','level','vanishMode','startMoney','bidIncrement','totalRounds','countdownSecs','vanishDelay']
+    .forEach(k => { if (p[k] !== undefined) state[k] = p[k]; });
+  state._savedNames = p.names || [];
+
+  // Reflect in UI
+  const setSel = (groupId, val) => {
+    const grp = document.getElementById(groupId);
+    if (!grp) return;
+    grp.querySelectorAll('.opt-btn').forEach(b => b.classList.toggle('selected', b.dataset.val == val));
+  };
+  setSel('team-count-opts', state.numTeams);
+  setSel('level-opts', state.level);
+  setSel('money-opts', state.startMoney);
+  setSel('increment-opts', state.bidIncrement);
+  setSel('rounds-opts', state.totalRounds);
+  setSel('countdown-opts', state.countdownSecs);
+  setSel('vanish-delay-opts', state.vanishDelay);
+  const vt = document.getElementById('vanish-toggle');
+  vt.dataset.on = state.vanishMode;
+  document.getElementById('vanish-label').textContent = state.vanishMode
+    ? 'On — sentence vanishes after ' + state.vanishDelay + ' seconds'
+    : 'Off — sentence stays visible';
   buildNameInputs();
 }
 
@@ -1191,8 +1357,9 @@ function buildNameInputs() {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = TEAM_NAMES_DEFAULT[i];
-    input.value = TEAM_NAMES_DEFAULT[i];
+    input.value = (state._savedNames && state._savedNames[i]) || TEAM_NAMES_DEFAULT[i];
     input.id = `team-name-${i}`;
+    input.addEventListener('change', savePrefs);
     row.appendChild(dot);
     row.appendChild(input);
     container.appendChild(row);
@@ -1211,7 +1378,7 @@ function startGame() {
       id: i,
       name: nameInput.value.trim() || TEAM_NAMES_DEFAULT[i],
       color: TEAM_COLORS[i],
-      money: 1000,
+      money: state.startMoney,
       sentences: [] // {correct: bool, bid: number}
     });
   }
@@ -1223,8 +1390,8 @@ function startGame() {
   const correctPicked = shuffle([...pool.correct]).slice(0, numCorrect);
   const wrongPicked   = shuffle([...pool.incorrect]).slice(0, numWrong);
   const allSentences = shuffle([
-    ...correctPicked.map(s => ({ text: s, correct: true })),
-    ...wrongPicked.map(s => ({ text: s, correct: false }))
+    ...correctPicked.map(s => ({ text: s, correct: true, fix: null })),
+    ...wrongPicked.map(s => ({ text: s.text, correct: false, fix: s.fix }))
   ]);
 
   state.sentences = allSentences;
@@ -1254,13 +1421,13 @@ function buildTeamGrid() {
 
     card.innerHTML = `
       <div class="team-top">
-        <span class="team-name-label" style="color:${team.color}">${team.name}</span>
-        <span class="team-money" id="money-${team.id}" style="color:${team.color}">$1,000</span>
+        <span class="team-name-label" style="color:${team.color}">${esc(team.name)}</span>
+        <span class="team-money" id="money-${team.id}" style="color:${team.color}">$${team.money.toLocaleString()}</span>
       </div>
       <button class="bid-btn" id="bid-btn-${team.id}"
         style="border-color:${team.color};color:${team.color}"
         data-team="${team.id}">
-        BID $100
+        BID $${state.bidIncrement * 2}
       </button>
       <div class="team-sentences" id="chips-${team.id}"></div>
     `;
@@ -1293,8 +1460,16 @@ function loadRound() {
   document.getElementById('bid-leader-text').textContent = 'No bids yet — press BID to start!';
   document.getElementById('current-bid-display').textContent = '';
 
-  document.getElementById('skip-btn').style.display = '';
-  document.getElementById('next-btn').style.display = 'none';
+  const skipBtn = document.getElementById('skip-btn');
+  skipBtn.style.display = '';
+  skipBtn.textContent = 'Skip Sentence';
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.style.display = 'none';
+  nextBtn.textContent = 'Next Sentence →';
+
+  document.getElementById('correction-panel').style.display = 'none';
+  document.getElementById('correction-answer').style.display = 'none';
+  document.getElementById('correction-btns').style.display = '';
 
   // Vanish mode
   const sentenceEl = document.getElementById('sentence-display');
@@ -1313,7 +1488,7 @@ function loadRound() {
         sentenceEl.classList.add('vanished');
         vanishBadge.classList.add('visible');
       }, 600);
-    }, 3000);
+    }, state.vanishDelay * 1000);
   }
 
   SFX.newRound();
@@ -1322,16 +1497,13 @@ function loadRound() {
 
 function onBid(teamId) {
   if (!state.auctionLive) return;
+  if (state.currentBidder === teamId) return; // no self-outbidding
   const team = state.teams[teamId];
   const newBid = state.currentBid === 0
-    ? 100
-    : state.currentBid + 50;
+    ? state.bidIncrement * 2
+    : state.currentBid + state.bidIncrement;
 
   if (team.money < newBid) return; // can't afford
-  if (state.currentBidder === teamId && state.currentBid > 0) {
-    // Outbid yourself by $50 more? Only if someone else is also in.
-    // For simplicity: re-pressing resets the timer and bumps bid
-  }
 
   state.currentBid = newBid;
   state.currentBidder = teamId;
@@ -1342,7 +1514,7 @@ function onBid(teamId) {
 
   // Update leader display
   document.getElementById('bid-leader-text').innerHTML =
-    `<span class="bid-leader-name" style="color:${team.color}">${team.name}</span> is leading`;
+    `<span class="bid-leader-name" style="color:${team.color}">${esc(team.name)}</span> is leading`;
   document.getElementById('current-bid-display').textContent = `$${state.currentBid}`;
 
   // Highlight card
@@ -1361,11 +1533,11 @@ function onBid(teamId) {
 
 function startBidCountdown() {
   clearBidTimer();
-  state.bidCountdown = 10;
-  updateRing(10);
+  state.bidCountdown = state.countdownSecs;
+  updateRing(state.bidCountdown);
 
   document.getElementById('countdown-ring').style.display = 'block';
-  document.getElementById('countdown-num').textContent = '10';
+  document.getElementById('countdown-num').textContent = state.bidCountdown;
 
   state.bidTimer = setInterval(() => {
     state.bidCountdown--;
@@ -1384,7 +1556,7 @@ function startBidCountdown() {
 function updateRing(val) {
   const circumference = 251.2;
   const fill = document.getElementById('ring-fill');
-  fill.style.strokeDashoffset = circumference - (circumference * val / 10);
+  fill.style.strokeDashoffset = circumference - (circumference * val / state.countdownSecs);
 }
 
 function clearBidTimer() {
@@ -1395,13 +1567,14 @@ function clearBidTimer() {
 }
 
 function updateBidButtons() {
-  const nextBid = state.currentBid === 0 ? 100 : state.currentBid + 50;
+  const nextBid = state.currentBid === 0 ? state.bidIncrement * 2 : state.currentBid + state.bidIncrement;
   state.teams.forEach(team => {
     const btn = document.getElementById(`bid-btn-${team.id}`);
     if (!btn) return;
     const canAfford = team.money >= nextBid;
-    btn.disabled = !state.auctionLive || !canAfford;
-    btn.textContent = `BID $${nextBid}`;
+    const isLeader = state.currentBidder === team.id;
+    btn.disabled = !state.auctionLive || !canAfford || isLeader;
+    btn.textContent = isLeader ? 'LEADING' : `BID $${nextBid}`;
   });
 
   // Check if nobody can bid
@@ -1431,10 +1604,15 @@ function resolveAuction() {
   // Deduct bid
   winner.money -= state.currentBid;
   // Record sentence
-  winner.sentences.push({ correct: sentence.correct, bid: state.currentBid });
+  const record = { correct: sentence.correct, bid: state.currentBid, fixed: false, refund: 0 };
+  winner.sentences.push(record);
 
   // Log sentence
-  state.sentenceLog.push({ text: sentence.text, correct: sentence.correct, winner: winner.name });
+  const logEntry = { text: sentence.text, correct: sentence.correct, fix: sentence.fix, winner: winner.name, fixed: false };
+  state.sentenceLog.push(logEntry);
+  state._lastRecord = record;
+  state._lastLog = logEntry;
+  state._lastWinner = winner;
 
   // Reveal + sounds
   SFX.win();
@@ -1442,12 +1620,19 @@ function resolveAuction() {
   banner.style.display = 'block';
   if (sentence.correct) {
     banner.className = 'reveal-banner correct';
-    banner.textContent = `✓ CORRECT — ${winner.name} wins $${Math.round(state.currentBid * 1.5)} at the end`;
+    banner.textContent = `✓ CORRECT — ${winner.name} wins $${state.currentBid * 2} at the end`;
     setTimeout(() => SFX.correct(), 400);
+    document.getElementById('next-btn').style.display = '';
   } else {
     banner.className = 'reveal-banner incorrect';
     banner.textContent = `✗ INCORRECT — ${winner.name} loses their bid of $${state.currentBid}`;
     setTimeout(() => SFX.incorrect(), 400);
+    // Correction phase: team may fix the sentence aloud to recover half the bid
+    document.getElementById('correction-panel').style.display = '';
+    document.getElementById('correction-prompt').textContent =
+      `${winner.name}: correct the sentence aloud to win back $${Math.round(state.currentBid / 2)}!`;
+    document.getElementById('correction-btns').style.display = '';
+    document.getElementById('correction-answer').style.display = 'none';
   }
 
   // Update money display (bid already deducted; bonus at end)
@@ -1456,18 +1641,53 @@ function resolveAuction() {
 
   document.getElementById('bid-leader-text').textContent = `${winner.name} wins this sentence`;
   document.getElementById('skip-btn').style.display = 'none';
-  document.getElementById('next-btn').style.display = '';
 
   document.getElementById(`team-card-${winner.id}`).classList.add('winner-flash');
 }
+
+function resolveCorrection(fixed) {
+  const record = state._lastRecord;
+  const logEntry = state._lastLog;
+  const winner = state._lastWinner;
+  const sentence = state.sentences[state.currentRound];
+
+  document.getElementById('correction-btns').style.display = 'none';
+
+  if (fixed) {
+    const refund = Math.round(record.bid / 2);
+    winner.money += refund;
+    record.fixed = true;
+    record.refund = refund;
+    logEntry.fixed = true;
+    updateMoneyDisplay();
+    updateChips();
+    SFX.correct();
+  } else {
+    SFX.skip();
+  }
+
+  const ans = document.getElementById('correction-answer');
+  ans.style.display = '';
+  ans.innerHTML = `<span class="ca-label">${fixed ? '✓ Fixed — half the bid refunded' : 'Correct version'}</span>${esc(sentence.fix)}`;
+
+  document.getElementById('next-btn').style.display = '';
+}
+
+document.getElementById('fix-yes-btn').addEventListener('click', () => resolveCorrection(true));
+document.getElementById('fix-no-btn').addEventListener('click', () => resolveCorrection(false));
 
 function skipSentence() {
   if (state.currentBidder !== null) return; // bid in progress
   clearBidTimer();
   if (state.vanishTimer) { clearTimeout(state.vanishTimer); state.vanishTimer = null; }
   state.auctionLive = false;
+  // Restore sentence if vanished so the class can review it
+  const sEl = document.getElementById('sentence-display');
+  sEl.classList.remove('vanishing', 'vanished');
+  sEl.style.opacity = '';
+  document.getElementById('vanish-badge').classList.remove('visible');
   const skippedSentence = state.sentences[state.currentRound];
-  state.sentenceLog.push({ text: skippedSentence.text, correct: skippedSentence.correct, winner: null });
+  state.sentenceLog.push({ text: skippedSentence.text, correct: skippedSentence.correct, fix: skippedSentence.fix, winner: null, fixed: false });
   SFX.skip();
   document.getElementById('bid-leader-text').textContent = 'No bids — sentence skipped';
   document.getElementById('skip-btn').style.display = 'none';
@@ -1485,9 +1705,15 @@ function nextSentence() {
 }
 
 function endGameEarly() {
+  state.auctionLive = false;
+  clearBidTimer();
+  if (state.vanishTimer) { clearTimeout(state.vanishTimer); state.vanishTimer = null; }
   document.getElementById('bid-leader-text').textContent = 'No team can afford to bid — game over!';
-  document.getElementById('skip-btn').textContent = 'See Results';
-  document.getElementById('skip-btn').onclick = showResults;
+  document.getElementById('skip-btn').style.display = 'none';
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.style.display = '';
+  nextBtn.textContent = 'See Results →';
+  state.currentRound = state.totalRounds - 1; // nextSentence() → showResults()
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1509,7 +1735,7 @@ function updateChips() {
       const chip = document.createElement('div');
       chip.className = `sentence-chip ${s.correct ? 'correct' : 'incorrect'}`;
       chip.textContent = s.correct ? '✓' : '✗';
-      chip.title = s.correct ? `Correct (+$${Math.round(s.bid * 1.5)})` : `Wrong (-$${s.bid})`;
+      chip.title = s.correct ? `Correct (+$${s.bid * 2})` : (s.fixed ? `Wrong but fixed (-$${s.bid - s.refund})` : `Wrong (-$${s.bid})`);
       container.appendChild(chip);
     });
   });
@@ -1525,7 +1751,7 @@ function showResults() {
   state.teams.forEach(t => {
     let bonus = 0;
     t.sentences.forEach(s => {
-      if (s.correct) bonus += Math.round(s.bid * 1.5);
+      if (s.correct) bonus += s.bid * 2;
     });
     t.finalScore = t.money + bonus;
     t.correctCount = t.sentences.filter(s => s.correct).length;
@@ -1542,7 +1768,7 @@ function showResults() {
 
   document.getElementById('winner-box').innerHTML = `
     <div class="winner-label">🏆 Winner</div>
-    <div class="winner-name" style="color:${winner.color}">${winner.name}</div>
+    <div class="winner-name" style="color:${winner.color}">${esc(winner.name)}</div>
     <div style="color:var(--muted);font-size:0.9rem;margin-top:0.3rem">Final Score: <span style="color:var(--gold);font-family:'DM Mono',monospace">$${winner.finalScore.toLocaleString()}</span></div>
   `;
 
@@ -1553,11 +1779,11 @@ function showResults() {
     tr.className = i === 0 ? 'rank-1' : '';
     tr.innerHTML = `
       <td class="rank-cell">#${i + 1}</td>
-      <td class="name-cell" style="color:${t.color}">${t.name}</td>
+      <td class="name-cell" style="color:${t.color}">${esc(t.name)}</td>
       <td>${t.totalSentences}</td>
       <td style="color:var(--green)">${t.correctCount}</td>
       <td style="color:var(--red)">${t.wrongCount}</td>
-      <td class="final-cell" style="color:${t.finalScore >= 1000 ? 'var(--green)' : 'var(--red)'}">$${t.finalScore.toLocaleString()}</td>
+      <td class="final-cell" style="color:${t.finalScore >= state.startMoney ? 'var(--green)' : 'var(--red)'}">$${t.finalScore.toLocaleString()}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -1576,13 +1802,17 @@ function showResults() {
       item.className = 'sentence-log-item';
 
       const tagClass = entry.winner === null ? 'skipped' : (entry.correct ? 'correct' : 'incorrect');
-      const tagText = entry.winner === null ? 'Skipped' : (entry.correct ? '✓ Correct' : '✗ Incorrect');
+      const tagText = entry.winner === null ? 'Skipped' : (entry.correct ? '✓ Correct' : (entry.fixed ? '✗ → fixed' : '✗ Incorrect'));
 
-      const winnerText = entry.winner === null ? 'no bids' : `won by ${entry.winner}`;
+      const winnerText = entry.winner === null ? 'no bids' : `won by ${esc(entry.winner)}`;
+
+      const fixHtml = (!entry.correct && entry.fix)
+        ? `<span class="log-fix" style="display:block;color:var(--green);font-size:0.85em;margin-top:0.2rem">→ ${esc(entry.fix)}</span>`
+        : '';
 
       item.innerHTML = `
         <span class="log-tag ${tagClass}">${tagText}</span>
-        <span class="log-text">${entry.text}</span>
+        <span class="log-text">${esc(entry.text)}${fixHtml}</span>
         <span class="log-winner">${winnerText}</span>
       `;
       logEl.appendChild(item);

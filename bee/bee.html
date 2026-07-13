@@ -734,6 +734,23 @@ select.form-input { cursor: pointer; }
           </div>
         </div>
 
+        <div class="form-group" id="tts-settings-group">
+          <label class="form-label">🔊 Voice &amp; Speech</label>
+          <div class="config-row">
+            <select id="tts-voice" class="form-input"></select>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input type="range" id="tts-rate" min="0.5" max="1.2" step="0.05" value="0.8" style="flex:1;accent-color:var(--honey);">
+              <span id="tts-rate-val" style="font-weight:800;min-width:48px;color:var(--honey-dark);">0.80×</span>
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:700;font-size:0.9rem;cursor:pointer;">
+            <input type="checkbox" id="tts-autospeak" style="width:18px;height:18px;accent-color:var(--honey);"> Auto-speak word when a turn begins
+          </label>
+          <div id="tts-unavailable" class="hidden" style="margin-top:10px;padding:10px 14px;border-radius:10px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);font-size:0.85rem;font-weight:700;">
+            ⚠️ Text-to-speech is not available in this browser. The game will use the Show Word fallback.
+          </div>
+        </div>
+
         <label class="form-label">✏️ Player Names</label>
         <div class="player-grid" id="player-inputs"></div>
 
@@ -770,7 +787,11 @@ select.form-input { cursor: pointer; }
               <div class="word-level-tag" id="seeding-level-badge"></div>
               <div class="word-turn-label" id="seeding-turn-label"></div>
               <div class="seeding-word blurred" id="seeding-word-display">???</div>
-              <button class="btn btn-outline btn-sm" id="seeding-toggle-btn" style="margin-top:16px;">👁️ Show Word</button>
+              <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+                <button class="btn btn-primary btn-sm" id="seeding-hear-btn">🔊 Hear Word</button>
+                <button class="btn btn-mint btn-sm" id="seeding-sentence-btn">💬 In a Sentence</button>
+                <button class="btn btn-outline btn-sm" id="seeding-toggle-btn">👁️ Show Word</button>
+              </div>
             </div>
 
             <div class="spelling-wrap">
@@ -780,6 +801,8 @@ select.form-input { cursor: pointer; }
             <div class="stats-row">
               <div class="stat-chip"><span class="stat-icon">⏱️</span><span>Time:</span><span class="stat-value" id="seeding-timer">00:00</span></div>
               <div class="stat-chip"><span class="stat-icon">⌫</span><span>Edits:</span><span class="stat-value" id="seeding-backspace">0</span></div>
+              <div class="stat-chip"><span class="stat-icon">🔁</span><span class="stat-value" id="seeding-repeats">0</span></div>
+              <div class="stat-chip"><span class="stat-icon">💬</span><span class="stat-value" id="seeding-sentences">0</span></div>
             </div>
 
             <button class="btn btn-primary btn-full" id="seeding-submit">✅ Submit Spelling</button>
@@ -847,7 +870,11 @@ select.form-input { cursor: pointer; }
             <div class="word-level-tag"><span class="badge badge-lavender" id="duel-level-badge">A1</span></div>
             <div class="word-turn-label" id="duel-turn-label">It's Player 1's turn!</div>
             <div class="word-text blurred" id="duel-word-display">loading</div>
-            <button class="btn btn-outline btn-sm" id="duel-toggle-btn" style="margin-top:14px;">👁️ Show Word</button>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
+              <button class="btn btn-primary btn-sm" id="duel-hear-btn">🔊 Hear Word</button>
+              <button class="btn btn-mint btn-sm" id="duel-sentence-btn">💬 In a Sentence</button>
+              <button class="btn btn-outline btn-sm" id="duel-toggle-btn">👁️ Show Word</button>
+            </div>
           </div>
 
           <!-- Input -->
@@ -858,6 +885,8 @@ select.form-input { cursor: pointer; }
           <div class="stats-row">
             <div class="stat-chip"><span class="stat-icon">⏱️</span><span>Time:</span><span class="stat-value" id="duel-timer">00:00</span></div>
             <div class="stat-chip"><span class="stat-icon">⌫</span><span>Edits:</span><span class="stat-value" id="duel-backspace">0</span></div>
+            <div class="stat-chip"><span class="stat-icon">🔁</span><span class="stat-value" id="duel-repeats">0</span></div>
+            <div class="stat-chip"><span class="stat-icon">💬</span><span class="stat-value" id="duel-sentences">0</span></div>
           </div>
 
           <button class="btn btn-primary btn-full btn-lg" id="duel-submit">✅ Submit</button>
@@ -924,6 +953,7 @@ select.form-input { cursor: pointer; }
                   <th>Correct</th>
                   <th>Avg Time</th>
                   <th>Avg Edits</th>
+                  <th>Avg 🔁</th>
                 </tr>
               </thead>
               <tbody id="player-stats-body"></tbody>
@@ -961,11 +991,13 @@ select.form-input { cursor: pointer; }
 <script>
 // ==================== WORD BANKS ====================
 const WORD_BANKS = {
-  A1: ["cat","dog","house","car","book","pen","desk","chair","table","door","window","light","bed","lamp","sofa","phone","bag","box","key","cup","plate","fork","spoon","knife","glass","water","juice","milk","bread","apple","banana","orange","grape","lemon","egg","rice","meat","fish","soup","salad","cheese","butter","sugar","salt","pepper","tea","coffee","cake","cookie","pie","baby","child","man","woman","boy","girl","friend","family","father","mother","sister","brother","son","daughter","hello","goodbye","please","thank","sorry","yes","no","what","where","when","why","who","how","big","small","tall","short","long","new","old","good","bad","hot","cold","happy","sad","angry","tired","hungry","thirsty","sick","well","walk","run","jump","swim","fly","eat","drink","sleep","read","write","talk","sing","dance","play","work","study","go","come","see","hear","smell","taste","touch","one","two","three","four","five","six","seven","eight","nine","ten","twenty","thirty","forty","fifty","first","second","third","today","tomorrow","yesterday","morning","afternoon","evening","night","winter","spring","summer","autumn","monday","tuesday","wednesday","thursday","friday","saturday","sunday","red","blue","green","yellow","black","white","brown","pink","purple","gray","gold","silver","color","animal","plant","tree","flower","grass","sun","moon","star","sky","cloud","rain","snow","wind","weather","town","city","country","street","road","park","shop","bank","school","hospital","police","station","train","bus","bike","taxi","ship","boat","plane","money","clothes","shirt","pants","dress","skirt","jacket","coat","shoes","socks","hat"],
-  A2: ["address","airport","amazing","beautiful","because","bedroom","believe","birthday","building","calendar","camera","channel","chicken","chocolate","cinema","computer","cousin","daughter","dictionary","difficult","doctor","everybody","excuse","expensive","favorite","football","future","garden","glasses","goodbye","grammar","grandmother","guitar","holiday","homework","hospital","important","interesting","kitchen","language","listen","magazine","market","morning","museum","newspaper","notebook","nothing","opposite","parents","perfect","person","photograph","picture","practice","prepare","question","remember","restaurant","sandwich","science","sentence","shopping","somebody","something","sometimes","station","student","teacher","telephone","television","ticket","together","tonight","travel","university","vegetable","village","weather","weekend","welcome","yesterday","absolute","accurate","adventure","agreement","ambulance","anywhere","apartment","attractive","backwards","breakfast","business","calculate","careful","celebrate","community","condition","confident","connection","convenient","conversation","direction","education","effective","electrical","especially","everywhere","excellent","exercise","experience","explanation","fantastic","forbidden","foreign","frequently","furniture","generous","gentleman","government","happiness","headache","historical","honestly","however","illness","imaginary","immediately","information","instrument","intelligent","international","invitation","knowledge","laughing","leisure","literature","management","marathon","material","mathematics","medication","motorcycle","mountain","musician","necessary","neighbourhood","nervous","opportunity","organization","participant","passenger","peacefully","permission","personally","photographer","pleasure","population","possibility","powerful","prescription","professional","protection","reasonable","recognise","recommend","refrigerator","relationship","remarkable","responsible","romantic","satisfied","secretary","selection","serious","sincerely","specialise","spectacular","successful","suggestion","surprise","swimming","temperature","terrible","thousand","unbelievable","uncomfortable","unforgettable","unhealthy","unnecessary","unusual","valuable","volunteer","wonderful"],
-  B1: ["abolish","accomplish","acknowledge","adolescence","advantage","agriculture","anxious","apologize","appreciation","approximately","architecture","artificial","atmosphere","attendance","authority","campaign","celebration","challenge","characteristic","civilization","community","complicated","concentration","conference","consequence","conservative","contribution","convenience","cooperation","correspondent","creativity","curiosity","dedication","demonstrate","dependable","depression","determination","development","disadvantage","discipline","dissatisfied","distribute","embarrassment","employment","enthusiasm","environment","establishment","exaggerate","excitement","experiment","explanation","exploration","fortunately","frequently","generosity","government","guarantee","hospitality","imagination","immediately","impression","improvement","independence","individual","information","ingredients","innovation","insufficient","intelligent","interfere","international","introduction","investment","investigation","involvement","irresponsible","judgment","knowledge","leadership","literature","management","memorize","necessary","negotiation","occasionally","organization","particularly","perfection","permission","personality","phenomenon","philosophy","popularity","possibility","preparation","presentation","preservation","professional","protection","psychology","recognize","recommendation","relationship","reliable","responsible","satisfaction","significant","similarity","sincerely","society","solution","sophisticated","specialist","spectacular","substance","successful","superstition","surroundings","technology","temperature","tradition","unfortunate","unforgettable","university","unnecessary","unusual","valuable","variation","variety","volunteer","willingness","wonderful","accommodate","achievement","aggression","analysis","announcement","anxiety","application","appreciation","arrangement","assistance","association","assumption","availability","awareness","biography","broadcast","cancellation","capability","celebrity","championship","chemistry","coincidence","commitment","communication","competition","complaint","concentration","confidence","connection","consequence","consistency","construction","contribution","convenience","cooperation","curiosity","democracy","demonstration","departure","difficulty","disappointment","distinction","diversity","efficiency","embarrassment","emergency","enthusiasm","environment","evidence","examination","existence","flexibility","foundation","frustration","generosity","improvement","initiative","insurance","intelligence","interaction","investigation","involvement","lifestyle","limitation","membership","motivation","obligation","occupation","opportunity","organization","patience","performance","personality","population","potential","preparation","presentation","privacy","production","profession","progress","promotion","protection","psychology","reaction","recommendation","reduction","reflection","regulation","relationship","relaxation","reputation","research","restriction","satisfaction","scientific","significance","spontaneous","substance","sustainability","technology","tendency","transformation","understanding","unemployment","unexpected","universal","variation","violence","voluntary","weakness","wisdom","worthwhile"],
-  B2: ["abandonment","accomplishment","acknowledgment","allegation","ambiguous","anonymous","apparently","appropriate","bureaucracy","cancellation","capability","coincidence","commitment","compensation","comprehension","controversial","coordination","credibility","deception","democracy","destination","determination","dissatisfaction","domination","emergence","enforcement","enthusiastic","evolutionary","expectation","exploitation","fluctuation","fundamental","guarantee","implementation","inconvenience","incorporation","independently","infrastructure","inspirational","institution","insufficient","intercultural","interpretation","investigation","irresponsible","justification","knowledgeable","manipulation","methodology","misconception","motivation","negotiation","obligation","participation","perception","persistence","phenomenon","philosophy","preoccupation","professionalism","psychological","qualification","rationality","realization","recollection","recommendation","responsibility","significance","sophistication","spontaneous","strategic","substantially","sustainability","sympathy","transformation","uncertainty","unconventional","underestimated","unpredictable","unrealistic","unwillingness","vulnerability","withdrawal","worthwhile","confrontation","considerably","discrimination","distinction","elimination","enhancement","establishment","exploitation","flexibility","formulation","generalization","globalization","hospitalization","idealization","identification","imagination","inappropriate","individualism","industrialization","inevitably","interpretation","investigation","justification","liberalization","manipulation","marginalization","maximization","minimization","modernization","multiplication","negotiation","normalization","optimization","organization","participation","perpetuation","polarization","popularization","prioritization","privatization","rationalization","realization","rehabilitation","reinforcement","reorganization","representation","responsibility","revitalization","stabilization","standardization","transformation","urbanization","visualization"]
+  A1: ["cat","dog","house","car","book","pen","desk","chair","table","door","window","light","bed","lamp","sofa","phone","bag","box","key","cup","plate","fork","spoon","knife","glass","water","juice","milk","bread","apple","banana","orange","grape","lemon","egg","rice","meat","fish","soup","salad","cheese","butter","sugar","salt","pepper","tea","coffee","cake","cookie","pie","baby","child","man","woman","boy","girl","friend","family","father","mother","sister","brother","son","daughter","hello","goodbye","please","thank","sorry","yes","no","what","where","when","why","who","how","big","small","tall","short","long","new","old","good","bad","hot","cold","happy","sad","angry","tired","hungry","thirsty","sick","well","walk","run","jump","swim","fly","eat","drink","sleep","write","talk","sing","dance","play","work","study","go","come","see","hear","smell","taste","touch","one","two","three","four","five","six","seven","eight","nine","ten","twenty","thirty","forty","fifty","first","third","today","tomorrow","yesterday","morning","afternoon","evening","night","winter","spring","summer","autumn","monday","tuesday","wednesday","thursday","friday","saturday","sunday","red","blue","green","yellow","black","white","brown","pink","purple","gray","gold","silver","color","animal","plant","tree","flower","grass","sun","moon","star","sky","cloud","rain","snow","weather","town","city","country","street","road","park","shop","bank","school","hospital","police","station","train","bus","bike","taxi","ship","boat","plane","money","clothes","shirt","pants","dress","skirt","jacket","coat","shoes","socks","hat"],
+  A2: ["address","airport","amazing","beautiful","because","bedroom","believe","birthday","building","calendar","camera","channel","chicken","chocolate","cinema","computer","cousin","dictionary","difficult","doctor","everybody","excuse","expensive","favorite","football","future","garden","glasses","grammar","grandmother","guitar","holiday","homework","important","interesting","kitchen","language","listen","magazine","market","museum","newspaper","notebook","nothing","opposite","parents","perfect","person","photograph","picture","practice","prepare","question","remember","restaurant","sandwich","science","sentence","shopping","somebody","something","sometimes","student","teacher","telephone","television","ticket","together","tonight","travel","university","vegetable","village","weekend","welcome","absolute","accurate","adventure","agreement","ambulance","anywhere","apartment","attractive","backwards","breakfast","business","calculate","careful","celebrate","community","condition","confident","connection","convenient","conversation","direction","education","effective","electrical","especially","everywhere","excellent","exercise","experience","explanation","fantastic","forbidden","foreign","frequently","furniture","generous","gentleman","government","happiness","headache","historical","honestly","however","illness","imaginary","immediately","information","instrument","intelligent","international","invitation","knowledge","laughing","leisure","literature","management","marathon","material","mathematics","medication","motorcycle","mountain","musician","necessary","neighbourhood","nervous","opportunity","organization","participant","passenger","peacefully","permission","personally","photographer","pleasure","population","possibility","powerful","prescription","professional","protection","reasonable","recognise","recommend","refrigerator","relationship","remarkable","responsible","romantic","satisfied","secretary","selection","serious","sincerely","specialise","spectacular","successful","suggestion","surprise","swimming","temperature","terrible","thousand","unbelievable","uncomfortable","unforgettable","unhealthy","unnecessary","unusual","valuable","volunteer","wonderful"],
+  B1: ["abolish","accomplish","acknowledge","adolescence","advantage","agriculture","anxious","apologize","appreciation","approximately","architecture","artificial","atmosphere","attendance","authority","campaign","celebration","challenge","characteristic","civilization","complicated","concentration","conference","consequence","conservative","contribution","convenience","cooperation","correspondent","creativity","curiosity","dedication","demonstrate","dependable","depression","determination","development","disadvantage","discipline","dissatisfied","distribute","embarrassment","employment","enthusiasm","environment","establishment","exaggerate","excitement","experiment","exploration","fortunately","generosity","guarantee","hospitality","imagination","impression","improvement","independence","individual","ingredients","innovation","insufficient","interfere","introduction","investment","investigation","involvement","irresponsible","judgment","leadership","memorize","negotiation","occasionally","particularly","perfection","personality","phenomenon","philosophy","popularity","preparation","presentation","preservation","psychology","recognize","recommendation","reliable","satisfaction","significant","similarity","society","solution","sophisticated","specialist","substance","superstition","surroundings","technology","tradition","unfortunate","variation","variety","willingness","accommodate","achievement","aggression","analysis","announcement","anxiety","application","arrangement","assistance","association","assumption","availability","awareness","biography","broadcast","cancellation","capability","celebrity","championship","chemistry","coincidence","commitment","communication","competition","complaint","confidence","consistency","construction","democracy","demonstration","departure","difficulty","disappointment","distinction","diversity","efficiency","emergency","evidence","examination","existence","flexibility","foundation","frustration","initiative","insurance","intelligence","interaction","lifestyle","limitation","membership","motivation","obligation","occupation","patience","performance","potential","privacy","production","profession","progress","promotion","reaction","reduction","reflection","regulation","relaxation","reputation","research","restriction","scientific","significance","spontaneous","sustainability","tendency","transformation","understanding","unemployment","unexpected","universal","violence","voluntary","weakness","wisdom","worthwhile"],
+  B2: ["abandonment","accomplishment","acknowledgment","allegation","ambiguous","anonymous","apparently","appropriate","bureaucracy","compensation","comprehension","controversial","coordination","credibility","deception","destination","dissatisfaction","domination","emergence","enforcement","enthusiastic","evolutionary","expectation","exploitation","fluctuation","fundamental","implementation","inconvenience","incorporation","independently","infrastructure","inspirational","institution","intercultural","interpretation","justification","knowledgeable","manipulation","methodology","misconception","participation","perception","persistence","preoccupation","professionalism","psychological","qualification","rationality","realization","recollection","responsibility","sophistication","strategic","substantially","sympathy","uncertainty","unconventional","underestimated","unpredictable","unrealistic","unwillingness","vulnerability","withdrawal","confrontation","considerably","discrimination","elimination","enhancement","formulation","generalization","globalization","hospitalization","idealization","identification","inappropriate","individualism","industrialization","inevitably","liberalization","marginalization","maximization","minimization","modernization","multiplication","normalization","optimization","perpetuation","polarization","popularization","prioritization","privatization","rationalization","rehabilitation","reinforcement","reorganization","representation","revitalization","stabilization","standardization","urbanization","visualization"]
 };
+
+const SENTENCES = {"cat": "The cat is sleeping on the bed.", "dog": "My dog likes to play in the garden.", "house": "They live in a big house near the park.", "car": "My father drives a blue car.", "book": "She is reading a book about animals.", "pen": "Can I borrow your pen, please?", "desk": "My computer is on the desk.", "chair": "Please sit on this chair.", "table": "The food is on the table.", "door": "Please close the door when you leave.", "window": "Open the window, it is hot in here.", "light": "Turn off the light before you sleep.", "bed": "I go to bed at ten every night.", "lamp": "There is a small lamp next to my bed.", "sofa": "We watch TV on the sofa.", "phone": "My phone is ringing, wait a moment.", "bag": "Her school bag is very heavy.", "box": "There are old photos in this box.", "key": "I cannot find my key anywhere.", "cup": "Would you like a cup of tea?", "plate": "Put the sandwich on a plate.", "fork": "In Brazil, we eat pizza with a fork.", "spoon": "You need a spoon for the soup.", "knife": "Be careful, that knife is very sharp.", "glass": "He drank a glass of orange juice.", "water": "Drink a lot of water every day.", "juice": "I like apple juice for breakfast.", "milk": "The baby drinks milk in the morning.", "bread": "We buy fresh bread at the bakery.", "apple": "She eats an apple every afternoon.", "banana": "The monkey is eating a banana.", "orange": "This orange is very sweet.", "grape": "There is one grape left in the bowl.", "lemon": "Add some lemon to your water.", "egg": "I had an egg for breakfast today.", "rice": "In Brazil, we eat rice and beans every day.", "meat": "My uncle does not eat meat.", "fish": "We had fish for dinner last night.", "soup": "This soup is too hot to eat now.", "salad": "She made a salad with tomatoes.", "cheese": "I love cheese on my sandwich.", "butter": "Put some butter on the toast.", "sugar": "How much sugar do you want in your coffee?", "salt": "Can you pass the salt, please?", "pepper": "This dish needs a little more pepper.", "tea": "My grandmother drinks tea every evening.", "coffee": "He drinks coffee every morning before work.", "cake": "We made a chocolate cake for the party.", "cookie": "Can I have one more cookie?", "pie": "My aunt makes a delicious apple pie.", "baby": "The baby is sleeping in the next room.", "child": "Every child in the class got a prize.", "man": "That man is my English teacher.", "woman": "The woman in the red dress is my aunt.", "boy": "The boy is playing with his ball.", "girl": "The girl next door plays the piano.", "friend": "Maria is my best friend.", "family": "My family has lunch together on Sundays.", "father": "My father works at a bank.", "mother": "His mother is a doctor.", "sister": "My sister is two years older than me.", "brother": "Her brother plays football very well.", "son": "Their son is learning to ride a bike.", "daughter": "Their daughter is five years old.", "hello": "Say hello to your parents for me.", "goodbye": "We said goodbye at the airport.", "please": "Can you help me, please?", "thank": "Always thank people when they help you.", "sorry": "I am sorry, I am late.", "yes": "She said yes to the party invitation.", "no": "There is no milk in the fridge.", "what": "I do not know what time it is.", "where": "Do you know where my keys are?", "when": "Tell me when you are ready.", "why": "I do not understand why he is angry.", "who": "Do you know who that man is?", "how": "Can you show me how to do it?", "big": "They have a big dog in the yard.", "small": "This shirt is too small for me.", "tall": "My brother is very tall.", "short": "The movie was quite short.", "long": "It was a long trip by bus.", "new": "I bought a new phone last week.", "old": "This is a very old building.", "good": "That was a really good movie.", "bad": "The weather was bad all weekend.", "hot": "It is very hot in the summer here.", "cold": "The water in the pool is too cold.", "happy": "She looks very happy today.", "sad": "He was sad when his team lost.", "angry": "The teacher was angry about the noise.", "tired": "I am tired after the long day.", "hungry": "The children are hungry after school.", "thirsty": "I am thirsty, can I have some water?", "sick": "He stayed home because he was sick.", "well": "I hope you feel well soon.", "walk": "We walk to school every day.", "run": "They run in the park every morning.", "jump": "The children love to jump on the bed.", "swim": "I learned to swim when I was six.", "fly": "Birds fly south in the winter.", "eat": "We usually eat dinner at seven.", "drink": "You should drink more water.", "sleep": "I sleep eight hours every night.", "write": "Please write your name on the paper.", "talk": "We talk on the phone every day.", "sing": "She loves to sing in the shower.", "dance": "They dance at every party.", "play": "The kids play in the garden after school.", "work": "My parents work from Monday to Friday.", "study": "I study English twice a week.", "go": "We go to the beach every January.", "come": "Can you come to my birthday party?", "see": "I can see the mountains from my window.", "hear": "Did you hear that strange noise?", "smell": "I can smell fresh bread from the bakery.", "taste": "This soup has a wonderful taste.", "touch": "Do not touch the hot pan.", "one": "There is only one cookie left.", "two": "I have two brothers and a sister.", "three": "The class starts in three minutes.", "four": "There are four chairs at the table.", "five": "She wakes up at five in the morning.", "six": "My little cousin is six years old.", "seven": "The store opens at seven.", "eight": "We had dinner at eight last night.", "nine": "The meeting starts at nine.", "ten": "Count from one to ten in English.", "twenty": "The book costs twenty dollars.", "thirty": "My mother is thirty years old... she says.", "forty": "There are forty students in the school choir.", "fifty": "My grandfather is fifty years old.", "first": "January is the first month of the year.", "third": "Our classroom is on the third floor.", "today": "It is very sunny today.", "tomorrow": "We have a test tomorrow morning.", "yesterday": "I saw your brother at the mall yesterday.", "morning": "I drink coffee every morning.", "afternoon": "We have English class in the afternoon.", "evening": "They watch TV in the evening.", "night": "The stars are beautiful at night.", "winter": "It gets cold here in the winter.", "spring": "The flowers open in the spring.", "summer": "We travel to the beach every summer.", "autumn": "The leaves fall from the trees in autumn.", "monday": "School starts again on Monday.", "tuesday": "We have music class on Tuesday.", "wednesday": "The test is on Wednesday.", "thursday": "They play football every Thursday.", "friday": "We watch movies on Friday night.", "saturday": "I visit my grandparents on Saturday.", "sunday": "We have a big lunch on Sunday.", "red": "She is wearing a red dress.", "blue": "The sky is blue and clear today.", "green": "The grass is green after the rain.", "yellow": "The school bus is yellow.", "black": "He has a black cat named Shadow.", "white": "The walls in my room are white.", "brown": "My dog has brown eyes.", "pink": "Her favorite color is pink.", "purple": "She painted her room purple.", "gray": "The sky is gray, it may rain.", "gold": "The winner gets a gold medal.", "silver": "My mother has a silver ring.", "color": "What is your favorite color?", "animal": "The elephant is my favorite animal.", "plant": "Water the plant twice a week.", "tree": "There is a big tree in our garden.", "flower": "He gave her a beautiful flower.", "grass": "The children are sitting on the grass.", "sun": "The sun is very strong at noon.", "moon": "The moon is full tonight.", "star": "I saw a shooting star last night.", "sky": "There are no clouds in the sky.", "cloud": "That cloud looks like a rabbit.", "rain": "Take an umbrella, it may rain later.", "snow": "It never snows here, so I have never seen snow.", "weather": "The weather is perfect for a picnic.", "town": "They live in a small town near the mountains.", "city": "Curitiba is a big city in Brazil.", "country": "Brazil is a beautiful country.", "street": "Our school is on this street.", "road": "The road to the farm is very long.", "park": "We fly kites in the park.", "shop": "The shop closes at six.", "bank": "My mother works at a bank downtown.", "school": "Our school has a big library.", "hospital": "The hospital is next to the police station.", "police": "The police helped us find the lost dog.", "station": "The train leaves from the central station.", "train": "We took the train to the coast.", "bus": "I take the bus to school every day.", "bike": "He rides his bike to work.", "taxi": "We took a taxi from the airport.", "ship": "The ship sailed across the ocean.", "boat": "They went fishing in a small boat.", "plane": "The plane lands at three in the afternoon.", "money": "I am saving money for a new bike.", "clothes": "She packed her clothes in the suitcase.", "shirt": "He is wearing a white shirt.", "pants": "These pants are too long for me.", "dress": "She bought a new dress for the party.", "skirt": "The girl is wearing a blue skirt.", "jacket": "Take your jacket, it is cold outside.", "coat": "He hung his coat behind the door.", "shoes": "My new shoes are very comfortable.", "socks": "I need to buy new socks.", "hat": "She wears a hat at the beach.", "address": "Write your name and address on the form.", "airport": "We arrived at the airport two hours early.", "amazing": "The view from the top was amazing.", "beautiful": "What a beautiful day for a walk!", "because": "I stayed home because it was raining.", "bedroom": "My bedroom has a big window.", "believe": "I believe she is telling the truth.", "birthday": "We had a cake for her birthday.", "building": "That tall building is a hotel.", "calendar": "Mark the date on your calendar.", "camera": "He took photos with his new camera.", "channel": "Change the channel, this show is boring.", "chicken": "We had grilled chicken for lunch.", "chocolate": "She gave me a box of chocolate.", "cinema": "Let's go to the cinema on Friday.", "computer": "I do my homework on the computer.", "cousin": "My cousin lives in another city.", "dictionary": "Look up the word in the dictionary.", "difficult": "The last question was really difficult.", "doctor": "You should see a doctor about that cough.", "everybody": "The teacher asked everybody to sit down.", "excuse": "Excuse me, is this seat free?", "expensive": "That restaurant is too expensive for us.", "favorite": "Pizza is my favorite food.", "football": "The boys play football after school.", "future": "Nobody knows what the future will bring.", "garden": "My grandmother grows tomatoes in her garden.", "glasses": "I need my glasses to read the menu.", "grammar": "We studied grammar in class today.", "grandmother": "My grandmother tells wonderful stories.", "guitar": "He plays the guitar in a band.", "holiday": "We are planning a holiday in July.", "homework": "Finish your homework before dinner.", "important": "It is important to arrive on time.", "interesting": "The museum was more interesting than I expected.", "kitchen": "Mom is cooking dinner in the kitchen.", "language": "English is the most studied language in the world.", "listen": "Please listen carefully to the instructions.", "magazine": "She was reading a fashion magazine.", "market": "We buy fruit at the street market.", "museum": "The museum has paintings from many countries.", "newspaper": "My dad reads the newspaper at breakfast.", "notebook": "Copy the exercise into your notebook.", "nothing": "There is nothing good on TV tonight.", "opposite": "Hot is the opposite of cold.", "parents": "My parents met at university.", "perfect": "The weather was perfect for the picnic.", "person": "She is the kindest person I know.", "photograph": "This photograph was taken in 1990.", "picture": "He drew a picture of his family.", "practice": "You need practice to play well.", "prepare": "We need to prepare for the test.", "question": "Raise your hand if you have a question.", "remember": "Do you remember our first class together?", "restaurant": "We had dinner at an Italian restaurant.", "sandwich": "I made a cheese sandwich for lunch.", "science": "Biology is my favorite science subject.", "sentence": "Write a complete sentence for each answer.", "shopping": "We went shopping at the mall on Saturday.", "somebody": "Somebody left their umbrella in the classroom.", "something": "There is something strange about that house.", "sometimes": "We sometimes have class outside.", "student": "Every student must bring a notebook.", "teacher": "Our teacher explains things very clearly.", "telephone": "The telephone rang three times.", "television": "They watched television after dinner.", "ticket": "I bought a ticket for the concert.", "together": "We studied together for the exam.", "tonight": "There is a full moon tonight.", "travel": "She wants to travel around the world.", "university": "My sister studies medicine at the university.", "vegetable": "The carrot is my favorite vegetable.", "village": "His grandparents live in a small village.", "weekend": "What are your plans for the weekend?", "welcome": "They gave us a warm welcome.", "absolute": "The party was an absolute success.", "accurate": "Make sure your answers are accurate.", "adventure": "The camping trip was a real adventure.", "agreement": "The two teams reached an agreement.", "ambulance": "The ambulance arrived in five minutes.", "anywhere": "I cannot find my keys anywhere.", "apartment": "They moved to a new apartment downtown.", "attractive": "The offer sounds very attractive.", "backwards": "Can you say the alphabet backwards?", "breakfast": "We had eggs and toast for breakfast.", "business": "Her mother runs a small business.", "calculate": "Can you calculate the total cost?", "careful": "Be careful when you cross the street.", "celebrate": "We will celebrate the victory with pizza.", "community": "The whole community helped clean the park.", "condition": "The old bike is still in good condition.", "confident": "She feels confident about the exam.", "connection": "The internet connection is very slow today.", "convenient": "Online shopping is very convenient.", "conversation": "We had a long conversation about music.", "direction": "We walked in the wrong direction.", "education": "A good education opens many doors.", "effective": "This is an effective way to learn vocabulary.", "electrical": "There was an electrical problem in the building.", "especially": "I love fruit, especially mangoes.", "everywhere": "There were flowers everywhere in the garden.", "excellent": "Your test results were excellent.", "exercise": "Regular exercise keeps you healthy.", "experience": "Working abroad was a great experience.", "explanation": "The teacher gave a clear explanation.", "fantastic": "The concert last night was fantastic.", "forbidden": "Smoking is forbidden in the hospital.", "foreign": "She speaks three foreign languages.", "frequently": "He frequently forgets his homework.", "furniture": "They bought new furniture for the living room.", "generous": "It was very generous of you to help.", "gentleman": "The old gentleman opened the door for us.", "government": "The government built a new school here.", "happiness": "Money cannot buy happiness.", "headache": "I have a terrible headache today.", "historical": "We visited a historical church in the city center.", "honestly": "Tell me honestly what you think.", "however": "The test was hard; however, everyone passed.", "illness": "He missed a week of school because of illness.", "imaginary": "The little girl has an imaginary friend.", "immediately": "Call me immediately when you arrive.", "information": "You can find more information on the website.", "instrument": "The violin is a difficult instrument to learn.", "intelligent": "Dolphins are very intelligent animals.", "international": "She works for an international company.", "invitation": "Did you get an invitation to the wedding?", "knowledge": "Reading builds your knowledge of the world.", "laughing": "The children were laughing at the clown.", "leisure": "What do you do in your leisure time?", "literature": "We are studying Brazilian literature this year.", "management": "The hotel is under new management.", "marathon": "My uncle ran a marathon last year.", "material": "This jacket is made of waterproof material.", "mathematics": "She teaches mathematics at a high school.", "medication": "Take the medication twice a day.", "motorcycle": "He rides his motorcycle to work.", "mountain": "We climbed the mountain in four hours.", "musician": "The street musician played beautifully.", "necessary": "It is necessary to book a table in advance.", "neighbourhood": "Our neighbourhood is quiet and safe.", "nervous": "I always get nervous before a test.", "opportunity": "This job is a great opportunity for you.", "organization": "She works for a charity organization.", "participant": "Each participant received a medal.", "passenger": "The last passenger got on the bus.", "peacefully": "The baby slept peacefully all night.", "permission": "You need permission to leave early.", "personally": "I personally prefer tea to coffee.", "photographer": "The photographer took pictures of the wedding.", "pleasure": "It was a pleasure to meet you.", "population": "The population of the city is growing fast.", "possibility": "There is a possibility of rain tomorrow.", "powerful": "The new car has a powerful engine.", "prescription": "The doctor wrote a prescription for antibiotics.", "professional": "She is a professional dancer.", "protection": "Sunscreen gives protection from the sun.", "reasonable": "The prices at that shop are reasonable.", "recognise": "I did not recognise you with short hair!", "recommend": "Can you recommend a good restaurant?", "refrigerator": "Put the milk back in the refrigerator.", "relationship": "They have a very good relationship.", "remarkable": "Her progress in English has been remarkable.", "responsible": "You are responsible for your own homework.", "romantic": "They had a romantic dinner by the sea.", "satisfied": "The customer was satisfied with the service.", "secretary": "The secretary answered all the phone calls.", "selection": "The shop has a wide selection of shoes.", "serious": "This is a serious problem, not a joke.", "sincerely": "I sincerely hope you feel better soon.", "specialise": "Some doctors specialise in children's health.", "spectacular": "The fireworks were absolutely spectacular.", "successful": "The bake sale was very successful.", "suggestion": "That is a great suggestion, thank you.", "surprise": "The party was a complete surprise for her.", "swimming": "We go swimming every Saturday morning.", "temperature": "The temperature dropped quickly at night.", "terrible": "The traffic was terrible this morning.", "thousand": "More than a thousand people came to the show.", "unbelievable": "The end of the movie was unbelievable.", "uncomfortable": "These new shoes are really uncomfortable.", "unforgettable": "Our trip to the mountains was unforgettable.", "unhealthy": "Eating fast food every day is unhealthy.", "unnecessary": "Bringing two umbrellas was unnecessary.", "unusual": "It is unusual for him to be late.", "valuable": "This old painting is very valuable.", "volunteer": "She works as a volunteer at the animal shelter.", "wonderful": "We had a wonderful time at the beach.", "abolish": "The new law will abolish the old tax.", "accomplish": "You can accomplish anything with hard work.", "acknowledge": "He refused to acknowledge his mistake.", "adolescence": "Adolescence can be a confusing time.", "advantage": "Speaking two languages is a big advantage.", "agriculture": "The region's economy depends on agriculture.", "anxious": "She was anxious about the job interview.", "apologize": "You should apologize for arriving late.", "appreciation": "They sent a card to show their appreciation.", "approximately": "The trip takes approximately three hours.", "architecture": "The city is famous for its modern architecture.", "artificial": "The cake contains no artificial flavors.", "atmosphere": "The restaurant has a cozy atmosphere.", "attendance": "Attendance at the meeting is required.", "authority": "The teacher has authority over the classroom.", "campaign": "The school started a recycling campaign.", "celebration": "The whole town joined the celebration.", "challenge": "Learning Mandarin is a real challenge.", "characteristic": "Patience is an important characteristic for teachers.", "civilization": "The museum displays objects from an ancient civilization.", "complicated": "The instructions were too complicated to follow.", "concentration": "Chess requires deep concentration.", "conference": "She presented her research at a conference.", "consequence": "Every action has a consequence.", "conservative": "His grandfather has very conservative opinions.", "contribution": "She made an important contribution to the project.", "convenience": "The hotel offers every modern convenience.", "cooperation": "The project succeeded thanks to good cooperation.", "correspondent": "The war correspondent reported from the capital.", "creativity": "Art class encourages creativity.", "curiosity": "Her curiosity led her to study science.", "dedication": "His dedication to the team is impressive.", "demonstrate": "Let me demonstrate how the machine works.", "dependable": "You can trust her; she is very dependable.", "depression": "The economy entered a deep depression.", "determination": "With enough determination, she finished the race.", "development": "The development of the vaccine took years.", "disadvantage": "Being short can be a disadvantage in basketball.", "discipline": "Learning an instrument takes discipline.", "dissatisfied": "The customers were dissatisfied with the service.", "distribute": "Volunteers will distribute food to families.", "embarrassment": "He turned red with embarrassment.", "employment": "The factory provides employment for hundreds of people.", "enthusiasm": "The students showed great enthusiasm for the project.", "environment": "We must protect the environment for future generations.", "establishment": "The establishment of the school took two years.", "exaggerate": "Don't exaggerate; the fish was not that big.", "excitement": "The children could not hide their excitement.", "experiment": "The experiment proved the theory correct.", "exploration": "Space exploration fascinates many young people.", "fortunately": "Fortunately, nobody was hurt in the accident.", "generosity": "Her generosity helped build the new library.", "guarantee": "The watch comes with a two-year guarantee.", "hospitality": "Thank you for your warm hospitality.", "imagination": "Good writers have a rich imagination.", "impression": "He made a great impression at the interview.", "improvement": "There has been a clear improvement in your writing.", "independence": "Brazil declared its independence in 1822.", "individual": "Each individual has different learning needs.", "ingredients": "Mix all the ingredients in a large bowl.", "innovation": "The company is known for constant innovation.", "insufficient": "The evidence was insufficient to prove the case.", "interfere": "Please don't interfere in their argument.", "introduction": "The book's introduction explains the main ideas.", "investment": "Education is the best investment you can make.", "investigation": "The police opened an investigation into the robbery.", "involvement": "Parental involvement improves student results.", "irresponsible": "Leaving the dog in the car was irresponsible.", "judgment": "Trust your own judgment when making decisions.", "leadership": "The team improved under her leadership.", "memorize": "Actors have to memorize long scripts.", "negotiation": "After months of negotiation, they signed the contract.", "occasionally": "We occasionally eat out on weekends.", "particularly": "I particularly enjoyed the last chapter.", "perfection": "The chef demands perfection in every dish.", "personality": "She has a warm and friendly personality.", "phenomenon": "The aurora is a natural phenomenon.", "philosophy": "He studied philosophy at university.", "popularity": "The singer's popularity grew after the tour.", "preparation": "Good preparation is the key to passing exams.", "presentation": "Her presentation lasted twenty minutes.", "preservation": "The park exists for the preservation of wildlife.", "psychology": "She is studying psychology to become a therapist.", "recognize": "I didn't recognize him with the beard.", "recommendation": "The professor wrote a letter of recommendation.", "reliable": "This old car is surprisingly reliable.", "satisfaction": "He smiled with satisfaction at the finished work.", "significant": "There was a significant increase in sales.", "similarity": "The similarity between the twins is striking.", "society": "Technology has transformed modern society.", "solution": "We finally found a solution to the problem.", "sophisticated": "The software uses sophisticated algorithms.", "specialist": "She saw a specialist about her back pain.", "substance": "The scientists identified an unknown substance.", "superstition": "Breaking a mirror brings bad luck, according to superstition.", "surroundings": "The cabin's peaceful surroundings helped him relax.", "technology": "Modern technology changes very quickly.", "tradition": "Eating panettone at Christmas is a family tradition.", "unfortunate": "It was an unfortunate misunderstanding.", "variation": "There is a lot of variation in regional accents.", "variety": "The market offers a wide variety of fruits.", "willingness": "Her willingness to help impressed everyone.", "accommodate": "The hotel can accommodate up to 200 guests.", "achievement": "Graduating from college was her proudest achievement.", "aggression": "The dog showed no signs of aggression.", "analysis": "The report includes a detailed analysis of the data.", "announcement": "The principal made an important announcement.", "anxiety": "Deep breathing can reduce anxiety.", "application": "She submitted her application before the deadline.", "arrangement": "We made an arrangement to meet at noon.", "assistance": "The tourists asked for assistance at the desk.", "association": "He joined the neighborhood association.", "assumption": "Your assumption turned out to be wrong.", "availability": "Check the availability of tickets online.", "awareness": "The campaign raised awareness about recycling.", "biography": "She wrote a biography of a famous scientist.", "broadcast": "The game will broadcast live at eight.", "cancellation": "The storm caused the cancellation of the flight.", "capability": "The new phone has impressive camera capability.", "celebrity": "The celebrity arrived surrounded by photographers.", "championship": "Our team won the state championship.", "chemistry": "We did an experiment in chemistry class.", "coincidence": "Meeting you here is a happy coincidence.", "commitment": "Marriage is a lifelong commitment.", "communication": "Good communication prevents misunderstandings.", "competition": "She entered a national spelling competition.", "complaint": "The manager responded to the customer's complaint.", "confidence": "Practice will give you more confidence.", "consistency": "Consistency is essential when training a puppy.", "construction": "The construction of the bridge took five years.", "democracy": "In a democracy, every vote counts.", "demonstration": "Thousands joined the peaceful demonstration.", "departure": "Our departure was delayed by two hours.", "difficulty": "He has difficulty pronouncing that sound.", "disappointment": "Losing the final was a huge disappointment.", "distinction": "She graduated with distinction.", "diversity": "The city is proud of its cultural diversity.", "efficiency": "The new system improved the office's efficiency.", "emergency": "In an emergency, call this number.", "evidence": "The detective found new evidence at the scene.", "examination": "The final examination covers all twelve units.", "existence": "Scientists debate the existence of life on Mars.", "flexibility": "Yoga improves strength and flexibility.", "foundation": "Trust is the foundation of any friendship.", "frustration": "He expressed his frustration with the slow internet.", "initiative": "She showed initiative by starting the project herself.", "insurance": "Travel insurance covered the lost luggage.", "intelligence": "The test measures different types of intelligence.", "interaction": "The class encourages interaction between students.", "lifestyle": "Moving to the countryside changed their lifestyle.", "limitation": "Every method has some limitation.", "membership": "Gym membership costs fifty dollars a month.", "motivation": "Clear goals increase your motivation to study.", "obligation": "Paying taxes is a legal obligation.", "occupation": "Please state your name and occupation.", "patience": "Teaching young children requires patience.", "performance": "The band gave an unforgettable performance.", "potential": "The coach saw great potential in the young player.", "privacy": "Everyone deserves privacy in their own home.", "production": "The factory increased its production last year.", "profession": "Nursing is a demanding profession.", "progress": "You have made real progress this semester.", "promotion": "She earned a promotion after two years.", "reaction": "His reaction to the news surprised everyone.", "reduction": "The store announced a reduction in prices.", "reflection": "She saw her reflection in the shop window.", "regulation": "The new regulation limits parking downtown.", "relaxation": "Music is her favorite form of relaxation.", "reputation": "The restaurant has a reputation for great desserts.", "research": "Her research focuses on renewable energy.", "restriction": "There is a restriction on luggage weight.", "scientific": "The article was published in a scientific journal.", "significance": "The discovery has great historical significance.", "spontaneous": "The crowd broke into spontaneous applause.", "sustainability": "The company invests in environmental sustainability.", "tendency": "He has a tendency to leave things unfinished.", "transformation": "The city underwent a complete transformation.", "understanding": "A good teacher shows understanding and patience.", "unemployment": "Unemployment fell to its lowest level in years.", "unexpected": "The ending of the film was completely unexpected.", "universal": "Music is often called a universal language.", "violence": "The film contains scenes of violence.", "voluntary": "Participation in the survey is voluntary.", "weakness": "Chocolate is my greatest weakness.", "wisdom": "With age comes wisdom.", "worthwhile": "Volunteering is a worthwhile way to spend time.", "abandonment": "The abandonment of the old factory left the town without jobs.", "accomplishment": "Finishing the marathon was a remarkable accomplishment.", "acknowledgment": "She received an acknowledgment of her complaint within days.", "allegation": "The politician denied every allegation against him.", "ambiguous": "The contract's wording was deliberately ambiguous.", "anonymous": "An anonymous donor paid for the new library wing.", "apparently": "Apparently, the meeting has been moved to Thursday.", "appropriate": "Jeans are not appropriate for a formal wedding.", "bureaucracy": "Endless bureaucracy delayed the building permit for months.", "compensation": "The airline offered compensation for the cancelled flight.", "comprehension": "The test measures reading comprehension.", "controversial": "The referee made a controversial decision in the final minute.", "coordination": "The rescue required careful coordination between teams.", "credibility": "The scandal damaged the newspaper's credibility.", "deception": "The scheme was built on deception from the start.", "destination": "After twenty hours of travel, we reached our destination.", "dissatisfaction": "Employees expressed dissatisfaction with the new policy.", "domination": "The team's domination of the league lasted a decade.", "emergence": "The emergence of new technologies reshaped the industry.", "enforcement": "Strict enforcement of the speed limit reduced accidents.", "enthusiastic": "The crowd gave the band an enthusiastic reception.", "evolutionary": "The biologist studies evolutionary changes in birds.", "expectation": "The film exceeded every expectation.", "exploitation": "The report exposed the exploitation of factory workers.", "fluctuation": "Investors worry about fluctuation in currency values.", "fundamental": "Trust is fundamental to any successful partnership.", "implementation": "The implementation of the new system begins next month.", "inconvenience": "We apologize for any inconvenience caused by the delay.", "incorporation": "The incorporation of student feedback improved the course.", "independently": "She learned to solve problems independently.", "infrastructure": "The country invested heavily in transport infrastructure.", "inspirational": "The coach gave an inspirational speech before the match.", "institution": "The university is the oldest institution in the region.", "intercultural": "Studying abroad develops intercultural skills.", "interpretation": "Each critic offered a different interpretation of the poem.", "justification": "There is no justification for such rude behavior.", "knowledgeable": "The guide was extremely knowledgeable about local history.", "manipulation": "The documentary examined media manipulation of public opinion.", "methodology": "The study's methodology was questioned by other researchers.", "misconception": "It is a common misconception that bats are blind.", "participation": "Class participation counts toward your final grade.", "perception": "Advertising shapes our perception of products.", "persistence": "Her persistence finally paid off after years of effort.", "preoccupation": "His preoccupation with work strained the marriage.", "professionalism": "The staff handled the crisis with great professionalism.", "psychological": "Losing the job had a psychological impact on him.", "qualification": "A teaching qualification is required for this position.", "rationality": "Economics assumes rationality in consumer behavior.", "realization": "She came to the realization that she needed a change.", "recollection": "He had no recollection of the accident.", "responsibility": "With freedom comes responsibility.", "sophistication": "The wine impressed critics with its sophistication.", "strategic": "The company made a strategic decision to expand abroad.", "substantially": "Prices have risen substantially since last year.", "sympathy": "We sent flowers to express our sympathy.", "uncertainty": "Economic uncertainty made investors cautious.", "unconventional": "Her unconventional teaching methods produced great results.", "underestimated": "They underestimated the difficulty of the climb.", "unpredictable": "Mountain weather is notoriously unpredictable.", "unrealistic": "Expecting fluency in a month is unrealistic.", "unwillingness": "His unwillingness to compromise ended the talks.", "vulnerability": "The hackers exploited a vulnerability in the software.", "withdrawal": "The bank charges a fee for each withdrawal.", "confrontation": "The manager avoided a direct confrontation with the staff.", "considerably": "The new route is considerably faster.", "discrimination": "The law prohibits discrimination in the workplace.", "elimination": "The team faced elimination in the first round.", "enhancement": "The update brings a significant enhancement to battery life.", "formulation": "The scientists worked on a new formulation of the drug.", "generalization": "That statement is an unfair generalization about teenagers.", "globalization": "Globalization has connected markets around the world.", "hospitalization": "The injury required immediate hospitalization.", "idealization": "The novel avoids any idealization of village life.", "identification": "Please carry identification at all times.", "inappropriate": "His joke was completely inappropriate for the occasion.", "individualism": "American culture is often associated with individualism.", "industrialization": "Rapid industrialization transformed the region in the 1950s.", "inevitably": "Rushing the project will inevitably lead to mistakes.", "liberalization": "The liberalization of trade opened new markets.", "marginalization": "The policy contributed to the marginalization of small farmers.", "maximization": "The firm focuses on the maximization of shareholder value.", "minimization": "Careful planning allows the minimization of waste.", "modernization": "The modernization of the railway cost billions.", "multiplication": "Third graders are learning multiplication tables.", "normalization": "Both countries announced the normalization of relations.", "optimization": "The engineers worked on the optimization of fuel consumption.", "perpetuation": "Stereotypes contribute to the perpetuation of prejudice.", "polarization": "Social media has increased political polarization.", "popularization": "Television led to the popularization of the sport.", "prioritization": "Good time management starts with the prioritization of tasks.", "privatization": "The privatization of the airline sparked protests.", "rationalization": "His excuse sounded like a rationalization, not a reason.", "rehabilitation": "The clinic specializes in the rehabilitation of athletes.", "reinforcement": "Positive reinforcement works better than punishment.", "reorganization": "The company announced a major reorganization of its departments.", "representation": "The painting is a faithful representation of the harbor.", "revitalization": "The revitalization of the old port attracted new businesses.", "stabilization": "The medication led to the stabilization of her condition.", "standardization": "The standardization of parts reduced production costs.", "urbanization": "Rapid urbanization put pressure on public services.", "visualization": "Athletes use visualization to prepare for competition."};
 
 const LEVEL_ORDER = ['A1','A2','B1','B2'];
 const PLAYER_EMOJIS = ['🐝','🌟','🦋','🐸','🦊','🐼','🦁','🐯','🐨','🐙','🦄','🐉','🦅','🦚','🦜','🐬'];
@@ -994,6 +1026,9 @@ let G = {
   timerStarted: false,
   timerStart: 0,
   backspaceCount: 0,
+  repeatCount: 0,
+  sentenceCount: 0,
+  hasHeard: false,
   // Phase
   phase: 'start', // start | seeding | bracket | champion
   // Stats
@@ -1053,6 +1088,17 @@ function getWord(levelIdx) {
   return word.toLowerCase();
 }
 
+// Pick a fair partner word: same length preferred, always distinct from `word`.
+function getPairedWord(word, levelIdx) {
+  const bank = WORD_BANKS[LEVEL_ORDER[levelIdx]];
+  let pool = bank.filter(w => w.length === word.length && w !== word && !G.usedWords.has(w));
+  if (!pool.length) pool = bank.filter(w => w !== word && !G.usedWords.has(w));
+  if (!pool.length) pool = bank.filter(w => w !== word);
+  const w2 = pool[Math.floor(Math.random() * pool.length)];
+  G.usedWords.add(w2);
+  return w2;
+}
+
 function calcScore(submitted, correct, time, backspace) {
   const dist = levenshtein(submitted, correct);
   let score = (correct.length - dist) * 10;
@@ -1063,7 +1109,7 @@ function calcScore(submitted, correct, time, backspace) {
 }
 
 function ensureStat(id) {
-  if (!G.playerStats[id]) G.playerStats[id] = { wins: 0, losses: 0, correct: 0, totalAttempts: 0, totalTime: 0, totalBackspaces: 0 };
+  if (!G.playerStats[id]) G.playerStats[id] = { wins: 0, losses: 0, correct: 0, totalAttempts: 0, totalTime: 0, totalBackspaces: 0, totalRepeats: 0, totalSentences: 0 };
 }
 
 // ==================== TOAST ====================
@@ -1095,23 +1141,186 @@ function playBeep(freq, type, duration) {
 function playCorrect() { playBeep(880, 'sine', 0.3); setTimeout(() => playBeep(1100, 'sine', 0.2), 120); }
 function playWrong() { playBeep(200, 'triangle', 0.4); }
 
+// ==================== TTS ====================
+const TTS = {
+  supported: 'speechSynthesis' in window,
+  voices: [],
+  settings: { voiceURI: '', rate: 0.8, autospeak: false },
+  init() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('bee_settings'));
+      if (saved && typeof saved === 'object') Object.assign(this.settings, saved);
+    } catch(e) {}
+    if (!this.supported) { updateTTSAvailabilityUI(); return; }
+    const load = () => {
+      this.voices = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+      populateVoicePicker();
+      updateTTSAvailabilityUI();
+    };
+    load();
+    if (typeof speechSynthesis.onvoiceschanged !== 'undefined') speechSynthesis.onvoiceschanged = load;
+  },
+  save() { try { localStorage.setItem('bee_settings', JSON.stringify(this.settings)); } catch(e) {} },
+  active() { return this.supported && this.voices.length > 0; },
+  pickVoice() {
+    if (!this.voices.length) return null;
+    const byURI = this.voices.find(v => v.voiceURI === this.settings.voiceURI);
+    if (byURI) return byURI;
+    return this.voices.find(v => v.lang.startsWith('en-US') && v.localService) ||
+           this.voices.find(v => v.lang.startsWith('en-US')) ||
+           this.voices.find(v => v.localService) ||
+           this.voices[0];
+  },
+  speak(text, onend) {
+    if (!this.active()) { if (onend) onend(); return; }
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = this.pickVoice();
+    if (v) u.voice = v;
+    u.rate = this.settings.rate;
+    u.pitch = 1;
+    let done = false;
+    const finish = () => { if (!done) { done = true; if (onend) onend(); } };
+    u.onend = finish;
+    u.onerror = finish;
+    speechSynthesis.speak(u);
+  },
+  speakWord(word, onend) { this.speak(word, onend); },
+  speakSentence(word, onend) {
+    const s = SENTENCES[word];
+    this.speak(s ? `${word}. ${s} ${word}.` : word, onend);
+  }
+};
+
+function updateTTSAvailabilityUI() {
+  const warn = document.getElementById('tts-unavailable');
+  const group = document.getElementById('tts-settings-group');
+  const off = !TTS.supported || (TTS.supported && !TTS.voices.length);
+  if (warn) warn.classList.toggle('hidden', !off);
+  if (group) {
+    document.getElementById('tts-voice').disabled = off;
+    document.getElementById('tts-rate').disabled = off;
+    document.getElementById('tts-autospeak').disabled = off;
+  }
+}
+
+function populateVoicePicker() {
+  const sel = document.getElementById('tts-voice');
+  if (!sel) return;
+  sel.innerHTML = '';
+  if (!TTS.voices.length) {
+    sel.innerHTML = '<option>No English voices found</option>';
+    return;
+  }
+  TTS.voices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.voiceURI;
+    opt.textContent = `${v.name} (${v.lang})${v.localService ? '' : ' ☁️'}`;
+    sel.appendChild(opt);
+  });
+  const picked = TTS.pickVoice();
+  if (picked) sel.value = picked.voiceURI;
+}
+
+function currentAttemptWord(prefix) {
+  if (prefix === 'seeding') return G.seedingWord;
+  const d = G.currentDuel;
+  return d ? (d.turn === 0 ? d.p1Word : d.p2Word) : '';
+}
+
+function hearWord(prefix) {
+  const word = currentAttemptWord(prefix);
+  if (!word) return;
+  if (G.hasHeard) {
+    G.repeatCount++;
+    document.getElementById(prefix + '-repeats').textContent = G.repeatCount;
+    TTS.speakWord(word);
+  } else {
+    G.hasHeard = true;
+    document.getElementById(prefix + '-hear-btn').textContent = '🔁 Hear Again';
+    TTS.speakWord(word, () => startTimerNow(prefix + '-timer'));
+  }
+}
+
+function hearSentence(prefix) {
+  const word = currentAttemptWord(prefix);
+  if (!word) return;
+  G.sentenceCount++;
+  document.getElementById(prefix + '-sentences').textContent = G.sentenceCount;
+  if (!G.hasHeard) {
+    G.hasHeard = true;
+    document.getElementById(prefix + '-hear-btn').textContent = '🔁 Hear Again';
+    TTS.speakSentence(word, () => startTimerNow(prefix + '-timer'));
+  } else {
+    TTS.speakSentence(word);
+  }
+}
+
+function syncTTSUI(prefix) {
+  const on = TTS.active();
+  document.getElementById(prefix + '-hear-btn').style.display = on ? '' : 'none';
+  document.getElementById(prefix + '-sentence-btn').style.display = on ? '' : 'none';
+  document.getElementById(prefix + '-hear-btn').textContent = '🔊 Hear Word';
+}
+
+function maybeAutoSpeak(prefix) {
+  if (!TTS.settings.autospeak || !TTS.active()) return;
+  setTimeout(() => {
+    if (!G.hasHeard) {
+      G.hasHeard = true;
+      document.getElementById(prefix + '-hear-btn').textContent = '🔁 Hear Again';
+      TTS.speakWord(currentAttemptWord(prefix), () => startTimerNow(prefix + '-timer'));
+    }
+  }, 450);
+}
+
+function wireShowToggle(prefix, displayElId) {
+  const btn = document.getElementById(prefix + '-toggle-btn');
+  const w = document.getElementById(displayElId);
+  let pending = null;
+  btn.addEventListener('click', () => {
+    if (!w.classList.contains('blurred')) {
+      w.classList.add('blurred');
+      btn.textContent = '👁️ Show Word';
+      return;
+    }
+    if (TTS.active() && pending === null) {
+      btn.textContent = '⚠️ Really show?';
+      pending = setTimeout(() => { pending = null; btn.textContent = '👁️ Show Word'; }, 3000);
+      return;
+    }
+    if (pending) { clearTimeout(pending); pending = null; }
+    w.classList.remove('blurred');
+    btn.textContent = '🙈 Hide Word';
+  });
+}
+
 // ==================== TIMER ====================
 function startTimer(displayId) {
   G.timerStarted = false;
   G.timerStart = 0;
   G.backspaceCount = 0;
+  G.repeatCount = 0;
+  G.sentenceCount = 0;
+  G.hasHeard = false;
   clearInterval(G.timerInterval);
   document.getElementById(displayId).textContent = '00:00';
+  const p = displayId.split('-')[0];
+  const rEl = document.getElementById(p + '-repeats'); if (rEl) rEl.textContent = '0';
+  const sEl = document.getElementById(p + '-sentences'); if (sEl) sEl.textContent = '0';
+}
+
+function startTimerNow(timerId) {
+  if (G.timerStarted) return;
+  G.timerStarted = true;
+  G.timerStart = Date.now();
+  G.timerInterval = setInterval(() => {
+    document.getElementById(timerId).textContent = formatTime(Date.now() - G.timerStart);
+  }, 100);
 }
 
 function onKeyForTimer(e, timerId, backspaceId) {
-  if (!G.timerStarted) {
-    G.timerStarted = true;
-    G.timerStart = Date.now();
-    G.timerInterval = setInterval(() => {
-      document.getElementById(timerId).textContent = formatTime(Date.now() - G.timerStart);
-    }, 100);
-  }
+  startTimerNow(timerId);
   if (e.key === 'Backspace' || e.key === 'Delete') {
     G.backspaceCount++;
     document.getElementById(backspaceId).textContent = G.backspaceCount;
@@ -1146,6 +1355,32 @@ function renderPlayerInputs() {
 document.getElementById('player-count').addEventListener('input', renderPlayerInputs);
 document.getElementById('start-button').addEventListener('click', startTournament);
 renderPlayerInputs();
+
+// TTS boot + settings wiring
+TTS.init();
+(function initTTSControls() {
+  const rate = document.getElementById('tts-rate');
+  const rateVal = document.getElementById('tts-rate-val');
+  rate.value = TTS.settings.rate;
+  rateVal.textContent = Number(TTS.settings.rate).toFixed(2) + '×';
+  rate.addEventListener('input', () => {
+    TTS.settings.rate = parseFloat(rate.value);
+    rateVal.textContent = TTS.settings.rate.toFixed(2) + '×';
+    TTS.save();
+  });
+  const voice = document.getElementById('tts-voice');
+  voice.addEventListener('change', () => {
+    TTS.settings.voiceURI = voice.value;
+    TTS.save();
+    TTS.speakWord('hello');
+  });
+  const auto = document.getElementById('tts-autospeak');
+  auto.checked = !!TTS.settings.autospeak;
+  auto.addEventListener('change', () => {
+    TTS.settings.autospeak = auto.checked;
+    TTS.save();
+  });
+})();
 
 function startTournament() {
   initAudio();
@@ -1222,14 +1457,13 @@ function nextSeedingTurn() {
   document.getElementById('seeding-input').focus();
   startTimer('seeding-timer');
   document.getElementById('seeding-backspace').textContent = '0';
+  syncTTSUI('seeding');
+  maybeAutoSpeak('seeding');
 }
 
-document.getElementById('seeding-toggle-btn').addEventListener('click', () => {
-  const w = document.getElementById('seeding-word-display');
-  const btn = document.getElementById('seeding-toggle-btn');
-  w.classList.toggle('blurred');
-  btn.textContent = w.classList.contains('blurred') ? '👁️ Show Word' : '🙈 Hide Word';
-});
+wireShowToggle('seeding', 'seeding-word-display');
+document.getElementById('seeding-hear-btn').addEventListener('click', () => hearWord('seeding'));
+document.getElementById('seeding-sentence-btn').addEventListener('click', () => hearSentence('seeding'));
 
 document.getElementById('seeding-input').addEventListener('keydown', e => {
   onKeyForTimer(e, 'seeding-timer', 'seeding-backspace');
@@ -1240,6 +1474,7 @@ document.getElementById('seeding-submit').addEventListener('click', submitSeedin
 function submitSeeding() {
   const submitted = document.getElementById('seeding-input').value.trim().toLowerCase();
   if (!submitted) return;
+  if (TTS.supported) speechSynthesis.cancel();
   clearInterval(G.timerInterval);
   const elapsed = getElapsed();
   const player = G.seedingQueue[G.seedingIdx];
@@ -1247,8 +1482,13 @@ function submitSeeding() {
   res.player = player;
   res.time = elapsed;
   res.backspace = G.backspaceCount;
+  res.repeats = G.repeatCount;
+  res.sentences = G.sentenceCount;
   res.submitted = submitted;
   res.word = G.seedingWord;
+  ensureStat(player.id);
+  G.playerStats[player.id].totalRepeats += G.repeatCount;
+  G.playerStats[player.id].totalSentences += G.sentenceCount;
 
   if (res.correct) playCorrect(); else playWrong();
 
@@ -1379,7 +1619,8 @@ function updateRoundBadge() {
   };
   const n = G.bracketRounds[G.currentRound]?.length * 2;
   const label = G.isThirdPlaceDuel ? '🥉 3rd Place' : (labels[n] || `Round ${G.currentRound + 1}`);
-  document.getElementById('round-badge').textContent = label;
+  const lvl = LEVEL_ORDER[Math.min(G.maxLevelIdx, G.currentRound)];
+  document.getElementById('round-badge').textContent = `${label} · ${lvl}`;
 }
 
 function startNextDuel() {
@@ -1389,15 +1630,11 @@ function startNextDuel() {
     return;
   }
   const match = round[G.currentMatchIdx];
-  const p1Word = getWord(0); // Start at A1; difficulty escalates on tie
-  // Same-length word for p2
-  const bank = WORD_BANKS[LEVEL_ORDER[0]];
-  const sameLen = bank.filter(w => w.length === p1Word.length && !G.usedWords.has(w));
-  let p2Word;
-  if (sameLen.length) { p2Word = sameLen[Math.floor(Math.random() * sameLen.length)]; G.usedWords.add(p2Word); }
-  else { p2Word = p1Word; }
+  const duelLevel = Math.min(G.maxLevelIdx, G.currentRound); // rounds escalate difficulty
+  const p1Word = getWord(duelLevel);
+  const p2Word = getPairedWord(p1Word, duelLevel);
 
-  G.currentDuel = { p1: match.p1, p2: match.p2, p1Word, p2Word, turn: 0, p1Result: null, p2Result: null, levelIdx: 0 };
+  G.currentDuel = { p1: match.p1, p2: match.p2, p1Word, p2Word, turn: 0, p1Result: null, p2Result: null, levelIdx: duelLevel };
 
   // UI
   document.getElementById('tab-duel').querySelector('#duel-results-card').classList.add('hidden');
@@ -1430,14 +1667,13 @@ function renderDuelUI() {
   document.getElementById('duel-word-display').textContent = word;
   document.getElementById('duel-word-display').classList.add('blurred');
   document.getElementById('duel-toggle-btn').textContent = '👁️ Show Word';
+  syncTTSUI('duel');
+  maybeAutoSpeak('duel');
 }
 
-document.getElementById('duel-toggle-btn').addEventListener('click', () => {
-  const w = document.getElementById('duel-word-display');
-  const btn = document.getElementById('duel-toggle-btn');
-  w.classList.toggle('blurred');
-  btn.textContent = w.classList.contains('blurred') ? '👁️ Show Word' : '🙈 Hide Word';
-});
+wireShowToggle('duel', 'duel-word-display');
+document.getElementById('duel-hear-btn').addEventListener('click', () => hearWord('duel'));
+document.getElementById('duel-sentence-btn').addEventListener('click', () => hearSentence('duel'));
 
 document.getElementById('duel-input').addEventListener('keydown', e => {
   onKeyForTimer(e, 'duel-timer', 'duel-backspace');
@@ -1448,6 +1684,7 @@ document.getElementById('duel-submit').addEventListener('click', submitDuel);
 function submitDuel() {
   const submitted = document.getElementById('duel-input').value.trim().toLowerCase();
   if (!submitted) return;
+  if (TTS.supported) speechSynthesis.cancel();
   clearInterval(G.timerInterval);
   const elapsed = getElapsed();
   const d = G.currentDuel;
@@ -1458,6 +1695,8 @@ function submitDuel() {
   res.player = player;
   res.time = elapsed;
   res.backspace = G.backspaceCount;
+  res.repeats = G.repeatCount;
+  res.sentences = G.sentenceCount;
   res.submitted = submitted;
   res.word = correct;
 
@@ -1465,6 +1704,8 @@ function submitDuel() {
   G.playerStats[player.id].totalAttempts++;
   G.playerStats[player.id].totalTime += elapsed;
   G.playerStats[player.id].totalBackspaces += G.backspaceCount;
+  G.playerStats[player.id].totalRepeats += G.repeatCount;
+  G.playerStats[player.id].totalSentences += G.sentenceCount;
   if (res.correct) { G.playerStats[player.id].correct++; playCorrect(); showToast(`✅ Correct! "${correct}"`, 'correct'); }
   else { playWrong(); showToast(`❌ "${submitted}" — correct: "${correct}"`, 'wrong'); }
 
@@ -1510,11 +1751,7 @@ function resolveDuel() {
       // Tiebreak: next level word
       d.levelIdx++;
       const w1 = getWord(d.levelIdx);
-      const bank2 = WORD_BANKS[LEVEL_ORDER[d.levelIdx]];
-      const sl = bank2.filter(w => w.length === w1.length && !G.usedWords.has(w));
-      let w2;
-      if (sl.length) { w2 = sl[Math.floor(Math.random() * sl.length)]; G.usedWords.add(w2); }
-      else w2 = w1;
+      const w2 = getPairedWord(w1, d.levelIdx);
       d.p1Word = w1; d.p2Word = w2; d.turn = 0; d.p1Result = null; d.p2Result = null;
       document.getElementById('duel-results-card').classList.add('hidden');
       document.getElementById('duel-input').value = '';
@@ -1594,7 +1831,7 @@ function showDuelResults(winner, loser, reason) {
           ${!r.correct ? `<span style="color:var(--text-soft);"> → correct: "${r.word}"</span>` : ''}
         </div>
         <div style="font-size:0.8rem;color:var(--text-soft);text-align:right;">
-          ⏱ ${formatTime(r.time)} · ⌫ ${r.backspace} · dist: ${r.dist}
+          ⏱ ${formatTime(r.time)} · ⌫ ${r.backspace} · 🔁 ${r.repeats || 0} · 💬 ${r.sentences || 0} · dist: ${r.dist}
         </div>
       </div>
     </div>`).join('');
@@ -1777,6 +2014,7 @@ function updateStats() {
     const s = G.playerStats[p.id] || {};
     const avgTime = s.totalAttempts ? formatTime(Math.round(s.totalTime / s.totalAttempts)) : '—';
     const avgBS = s.totalAttempts ? (s.totalBackspaces / s.totalAttempts).toFixed(1) : '—';
+    const avgRep = s.totalAttempts ? ((s.totalRepeats || 0) / s.totalAttempts).toFixed(1) : '—';
     const correctPct = s.totalAttempts ? Math.round(s.correct / s.totalAttempts * 100) : 0;
     return `<tr>
       <td>${p.emoji} <strong>${p.name}</strong></td>
@@ -1785,6 +2023,7 @@ function updateStats() {
       <td>${correctPct}%</td>
       <td>${avgTime}</td>
       <td>${avgBS}</td>
+      <td>${avgRep}</td>
     </tr>`;
   }).join('');
 }

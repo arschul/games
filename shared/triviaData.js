@@ -38,6 +38,7 @@ const triviaData = {
 
   highestGrossingMovies: {
     label: "Highest-Grossing Movies of All Time",
+    note: "Sequels count separately",
     aliases: {
       "avengers endgame":       ["endgame", "avengers end game"],
       "spider-man no way home": ["no way home", "spiderman no way home"],
@@ -329,6 +330,7 @@ const triviaData = {
 
   topTouristDestinations: {
     label: "Top Tourist Destinations",
+    note: "Countries",
     aliases: {
       "united states":  ["us", "usa", "america"],
       "united kingdom": ["uk", "britain", "england"],
@@ -430,6 +432,7 @@ const triviaData = {
 
   mostCommonDogBreeds: {
     label: "Most Common Dog Breeds",
+    note: "US registrations",
     aliases: {
       "french bulldog":         ["frenchie", "french bull"],
       "labrador retriever":     ["labrador", "lab"],
@@ -634,6 +637,7 @@ const triviaData = {
 
   mostPopularFruits: {
     label: "Most Popular Fruits Worldwide",
+    note: "Botanical classification — tomato counts",
     aliases: {
       "cantaloupe":  ["melon", "rockmelon"],
       "peach":       ["peach nectarine"],
@@ -665,6 +669,7 @@ const triviaData = {
 
   countriesMostBeer: {
     label: "Countries Consuming Most Beer",
+    note: "Per capita",
     aliases: {
       "czech republic": ["czechia", "czech"],
       "united states":  ["us", "usa", "america"],
@@ -725,6 +730,7 @@ const triviaData = {
 
   highestGrossingSuperheroMovies: {
     label: "Highest-Grossing Superhero Movies",
+    note: "Sequels count separately",
     aliases: {
       "avengers endgame":           ["endgame"],
       "avengers infinity war":      ["infinity war"],
@@ -816,6 +822,7 @@ const triviaData = {
 
   mostPopularAnimatedMovies: {
     label: "Highest-Grossing Animated Movies",
+    note: "Sequels count separately",
     aliases: {
       "frozen":             ["frozen 1"],
       "frozen 2":           ["frozen ii"],
@@ -1142,6 +1149,7 @@ const triviaData = {
 
   mostWatchedSportsWorldwide: {
     label: "Most Watched Sports Worldwide",
+    note: "By global viewership",
     aliases: {
       "football":           ["soccer", "association football"],
       "cricket":            ["test cricket"],

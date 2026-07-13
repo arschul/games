@@ -644,6 +644,51 @@
   .ts-4 { color: #c05ae0; }
   .ts-5 { color: #e07a5a; }
 
+  /* Did-you-mean prompt */
+  .did-you-mean {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    animation: popIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .dym-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .dym-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .dym-chip {
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 2px solid var(--accent);
+    background: rgba(240,192,64,0.08);
+    color: var(--accent);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .dym-chip:hover { background: var(--accent); color: #000; }
+  .dym-chip.dym-none {
+    border-color: var(--border);
+    background: transparent;
+    color: var(--muted);
+  }
+  .dym-chip.dym-none:hover { border-color: var(--accent2); color: var(--accent2); background: transparent; }
+
   /* Feedback toast */
   .toast {
     position: fixed;
@@ -749,6 +794,10 @@
   </div>
 
   <div class="input-area">
+    <div class="did-you-mean" id="didYouMean" style="display:none">
+      <span class="dym-label">Did you mean…</span>
+      <div class="dym-chips" id="dymChips"></div>
+    </div>
     <div class="answer-input-wrap">
       <input type="text" id="answerInput" placeholder="Type your answer…" autocomplete="off" autocorrect="off" spellcheck="false">
       <button class="pass-btn" id="passBtn">PASS</button>
@@ -826,6 +875,7 @@ function playStart() {
 // ══════════════════════════════════════════
 function normalize(s) {
   return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // fold accents: são → sao
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -840,53 +890,53 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
-function matchesAnswer(input, answerName) {
+// Sequel/variant tokens: if the answer has one of these and the input doesn't,
+// the input is ambiguous even when it's a listed alias ("toy story" → "Toy Story 4")
+const SEQUEL_TOKEN = /^(\d+|ii|iii|iv|v|vi|z)$/;
+function hasSequelToken(ansNorm, inpNorm) {
+  const inpWords = new Set(inpNorm.split(' '));
+  return ansNorm.split(' ').some(w => !inpWords.has(w) && SEQUEL_TOKEN.test(w));
+}
+
+// Does the input appear as a whole word/phrase inside the answer?
+function wordContains(ansNorm, inpNorm) {
+  return (' ' + ansNorm + ' ').includes(' ' + inpNorm + ' ');
+}
+
+function getCategoryAliases() {
+  return (triviaData[currentCategory] && triviaData[currentCategory].aliases) || {};
+}
+
+// Classify how the input relates to one answer:
+// 'typo'    — whole-string near-miss, safe to auto-accept ("brazl" → "Brazil")
+// 'partial' — incomplete answer, needs confirmation ("toy story" → "Toy Story 4")
+// null      — no match
+function classifyMatch(input, answerName) {
   const inp = normalize(input);
   const ans = normalize(answerName);
-  if (!inp) return false;
+  if (!inp || ans === inp) return null; // exact handled separately in checkInput
 
-  // Check aliases (exact only)
-  const categoryAliases = (triviaData[currentCategory] && triviaData[currentCategory].aliases) || {};
-  const aliasKey = Object.keys(categoryAliases).find(k => normalize(k) === ans);
-  if (aliasKey) {
-    for (const alt of categoryAliases[aliasKey]) {
-      if (normalize(alt) === inp) return true;
-    }
+  // Typo: full-string closeness
+  const lenDiff = Math.abs(inp.length - ans.length);
+  if (lenDiff <= 3) {
+    const maxDist = inp.length <= 4 ? 0 : inp.length <= 10 ? 1 : 2;
+    if (levenshtein(inp, ans) <= maxDist) return 'typo';
   }
 
-  // Exact match
-  if (ans === inp) return true;
+  // Partial: input is a whole word/phrase inside the answer ("lion king" in "the lion king")
+  if (inp.length >= 4 && wordContains(ans, inp)) return 'partial';
 
-  // Before fuzzy: check if input exactly matches ANY other answer in the category.
-  // If so, refuse fuzzy — the player typed something real but wrong.
-  const exactMatchExists = currentAnswers.some(a => normalize(a.name) === inp);
-  if (exactMatchExists) return false;
+  // Partial: strong substring (≥80% of the answer's length — "austri" → "austria")
+  if (ans.includes(inp) && inp.length >= 4 && inp.length >= ans.length * 0.8) return 'partial';
 
-  // Also check if input exactly matches any alias of any other answer
-  const aliasMatchExists = Object.keys(categoryAliases).some(k =>
-    normalize(k) !== ans &&
-    categoryAliases[k].some(alt => normalize(alt) === inp)
-  );
-  if (aliasMatchExists) return false;
-
-  // Substring: input must be at least 80% the length of the answer to avoid "austria" matching "australia"
-  if (ans.includes(inp) && inp.length >= 4 && inp.length >= ans.length * 0.8) return true;
-
-  // Word-level: only for inputs that are a significant unique word
+  // Partial: fuzzy match against one significant word of the answer
   const words = ans.split(' ').filter(w => w.length > 3);
   for (const word of words) {
-    if (word === inp) return true;
-    if (inp.length >= 6 && levenshtein(inp, word) <= 1) return true;
-    if (inp.length >= 8 && levenshtein(inp, word) <= 2) return true;
+    if (inp.length >= 6 && levenshtein(inp, word) <= 1) return 'partial';
+    if (inp.length >= 8 && levenshtein(inp, word) <= 2) return 'partial';
   }
 
-  // Full string fuzzy — only if length difference is small AND input doesn't closely resemble another answer
-  const lenDiff = Math.abs(inp.length - ans.length);
-  if (lenDiff > 3) return false;
-  const maxDist = inp.length <= 5 ? 0 : inp.length <= 7 ? 1 : inp.length <= 10 ? 1 : 2;
-  if (levenshtein(inp, ans) <= maxDist) return true;
-
-  return false;
+  return null;
 }
 
 // ══════════════════════════════════════════
@@ -1006,6 +1056,7 @@ function pickCategory() {
 }
 
 function startRound() {
+  hideDidYouMean();
   currentRound++;
   currentCategory = pickCategory();
   usedCategories.push(currentCategory);
@@ -1104,22 +1155,33 @@ function updateGuessCounter() {
 const circumference = 2 * Math.PI * 22;
 document.querySelector('.progress-ring').style.strokeDasharray = circumference;
 
+function timerTick() {
+  timeLeft--;
+  updateTimerUI();
+  if (timeLeft <= 5 && timeLeft > 0) playTick();
+  if (timeLeft <= 0) {
+    clearInterval(timerInterval);
+    gameRunning = false;
+    playTimerEnd();
+    onTimerEnd();
+  }
+}
+
 function startTimer() {
   clearInterval(timerInterval);
   timeLeft = timerSeconds;
   updateTimerUI();
   gameRunning = true;
-  timerInterval = setInterval(() => {
-    timeLeft--;
-    updateTimerUI();
-    if (timeLeft <= 5 && timeLeft > 0) playTick();
-    if (timeLeft <= 0) {
-      clearInterval(timerInterval);
-      gameRunning = false;
-      playTimerEnd();
-      onTimerEnd();
-    }
-  }, 1000);
+  timerInterval = setInterval(timerTick, 1000);
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+}
+
+function resumeTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(timerTick, 1000);
 }
 
 function updateTimerUI() {
@@ -1153,40 +1215,129 @@ document.getElementById('answerInput').addEventListener('keydown', e => {
 document.getElementById('passBtn').addEventListener('click', passTurn);
 
 function checkInput() {
-  if (!gameRunning) return;
+  if (!gameRunning || awaitingChoice) return;
   const input = document.getElementById('answerInput');
   const val = input.value.trim();
   if (!val) return;
+  const inpNorm = normalize(val);
+  if (!inpNorm) return;
 
-  // Check for a match among unrevealed answers
-  for (let i = 0; i < currentAnswers.length; i++) {
-    if (!revealed[i] && matchesAnswer(val, currentAnswers[i].name)) {
-      // Correct — points = 21 minus rank (#1 = 20 pts, #20 = 1 pt)
-      const rank = currentAnswers[i].rank;
-      const pts = 21 - rank;
-      scores[currentTeamIdx] += pts;
-      revealCellForTeam(i, currentTeamIdx);
-      input.value = '';
-      flashInput(true);
-      showToast(`+${pts} pts — #${rank} ${currentAnswers[i].name}`, true);
-      updateScoreStrip();
-      playCorrect();
+  // 1. Exact name match — accept, or flag if already revealed
+  const exactIdx = currentAnswers.findIndex(a => normalize(a.name) === inpNorm);
+  if (exactIdx !== -1) {
+    if (revealed[exactIdx]) { rejectGuess(`Already on the board — guess lost!`); }
+    else acceptAnswer(exactIdx);
+    return;
+  }
 
-      // Use one guess, then pass to other team
-      guessesLeft[currentTeamIdx]--;
-      advanceTurn();
+  // 2. Alias match — accept only if unambiguous, otherwise confirm
+  const aliases = getCategoryAliases();
+  const aliasKey = Object.keys(aliases).find(k => aliases[k].some(alt => normalize(alt) === inpNorm));
+  if (aliasKey) {
+    const targetNorm = normalize(aliasKey);
+    const targetIdx = currentAnswers.findIndex(a => normalize(a.name) === targetNorm);
+    if (targetIdx !== -1) {
+      if (revealed[targetIdx]) { rejectGuess(`Already on the board — guess lost!`); return; }
+      // Siblings: other unrevealed answers that also contain the input as a whole word/phrase
+      const siblings = [];
+      currentAnswers.forEach((a, i) => {
+        if (i !== targetIdx && !revealed[i] && wordContains(normalize(a.name), inpNorm)) siblings.push(i);
+      });
+      if (siblings.length || hasSequelToken(targetNorm, inpNorm)) {
+        showDidYouMean([targetIdx, ...siblings]);
+      } else {
+        acceptAnswer(targetIdx);
+      }
       return;
     }
   }
 
-  // Wrong answer — no points, guess lost
+  // 3. Fuzzy: classify against every unrevealed answer
+  const typo = [], partial = [];
+  for (let i = 0; i < currentAnswers.length; i++) {
+    if (revealed[i]) continue;
+    const c = classifyMatch(val, currentAnswers[i].name);
+    if (c === 'typo') typo.push(i);
+    else if (c === 'partial') partial.push(i);
+  }
+
+  // Single clean typo with no competing partials → auto-accept
+  if (typo.length === 1 && partial.length === 0 && !hasSequelToken(normalize(currentAnswers[typo[0]].name), inpNorm)) {
+    acceptAnswer(typo[0]);
+    return;
+  }
+
+  const candidates = [...typo, ...partial.filter(i => !typo.includes(i))];
+  if (candidates.length) {
+    showDidYouMean(candidates);
+    return;
+  }
+
+  // 4. No match — wrong answer, guess lost
+  rejectGuess(`Not on the board — guess lost!`);
+}
+
+function acceptAnswer(i) {
+  hideDidYouMean();
+  const input = document.getElementById('answerInput');
+  const rank = currentAnswers[i].rank;
+  const pts = 21 - rank;
+  scores[currentTeamIdx] += pts;
+  revealCellForTeam(i, currentTeamIdx);
+  input.value = '';
+  flashInput(true);
+  showToast(`+${pts} pts — #${rank} ${currentAnswers[i].name}`, true);
+  updateScoreStrip();
+  playCorrect();
+
+  guessesLeft[currentTeamIdx]--;
+  advanceTurn();
+}
+
+function rejectGuess(msg) {
+  const input = document.getElementById('answerInput');
   input.value = '';
   flashInput(false);
-  showToast(`Not on the board — guess lost!`, false);
+  showToast(msg, false);
   playWrong();
 
   guessesLeft[currentTeamIdx]--;
   advanceTurn();
+}
+
+// ── Did-you-mean prompt ──
+let awaitingChoice = false;
+
+function showDidYouMean(indices) {
+  awaitingChoice = true;
+  pauseTimer();
+  const input = document.getElementById('answerInput');
+  input.disabled = true;
+  const chips = document.getElementById('dymChips');
+  chips.innerHTML = '';
+  indices.forEach(i => {
+    const chip = document.createElement('button');
+    chip.className = 'dym-chip';
+    chip.textContent = currentAnswers[i].name;
+    chip.addEventListener('click', () => acceptAnswer(i));
+    chips.appendChild(chip);
+  });
+  const none = document.createElement('button');
+  none.className = 'dym-chip dym-none';
+  none.textContent = '✕ None of these';
+  none.addEventListener('click', () => {
+    hideDidYouMean();
+    resumeTimer();
+    input.focus();
+  });
+  chips.appendChild(none);
+  document.getElementById('didYouMean').style.display = 'flex';
+}
+
+function hideDidYouMean() {
+  awaitingChoice = false;
+  document.getElementById('didYouMean').style.display = 'none';
+  document.getElementById('answerInput').disabled = false;
 }
 
 function advanceTurn() {
@@ -1217,7 +1368,7 @@ function advanceTurn() {
 }
 
 function passTurn() {
-  if (!gameRunning) return;
+  if (!gameRunning || awaitingChoice) return;
   guessesLeft[currentTeamIdx]--;
   showToast(`Pass — guess skipped`, false);
   advanceTurn();

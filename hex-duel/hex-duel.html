@@ -2070,6 +2070,18 @@ function clearReachable() {
 // 5-6   | 3
 // 7-8   | 4
 // 9+    | 5
+// Chaos duel lives = size of the local group actually at stake: the frontier
+// hex plus the owner's hexes immediately adjacent to it (exactly the set that
+// would be captured on a loss). Capped by duel style, floor 1. This is why
+// attacking an isolated hex is always a 1-life duel, regardless of what the
+// defender owns elsewhere on the board.
+function chaosDuelLives(hexId, ownerId) {
+  let group = 1; // the frontier hex itself
+  adjacency[hexId].forEach(a => { if (hexes[a].playerId === ownerId) group++; });
+  const cap = duelStyle === 'conquest' ? 5 : 3;
+  return Math.max(1, Math.min(group, cap));
+}
+
 function getHP(hexCount) {
   // Lives scale with empire size; duelStyle sets the ceiling.
   // Balanced caps at 3 (≤5 rounds/duel, class-friendly); Conquest caps at 5.
@@ -2104,8 +2116,20 @@ function openDuel(hexIdA, hexIdB) {
   const playerA = players[hexes[hexIdA].playerId];
   const playerB = players[hexes[hexIdB].playerId];
 
-  let hpA = getHP(playerA.hexIds.size);
-  let hpB = getHP(playerB.hexIds.size);
+  // Lives = the stakes of THIS duel.
+  //  • Clustered modes: a loss transfers the whole realm, so lives scale with
+  //    the player's total hex count (getHP curve).
+  //  • Chaos: a loss only captures the contested hex + the loser's hexes
+  //    touching it, so lives = the size of that local group (capped by style).
+  //    Attacking an isolated hex is 1 life no matter what they own elsewhere.
+  let hpA, hpB;
+  if (chaosMode) {
+    hpA = chaosDuelLives(hexIdA, playerA.id);
+    hpB = chaosDuelLives(hexIdB, playerB.id);
+  } else {
+    hpA = getHP(playerA.hexIds.size);
+    hpB = getHP(playerB.hexIds.size);
+  }
 
   // Underdog rule: the side with fewer starting lives gets +1, never exceeding
   // the opponent. Keeps large empires favoured but attackable, so a duel isn't

@@ -744,7 +744,7 @@
 
   <div class="answers-grid" id="answersGrid"></div>
 
-  <div id="roundEndBar" style="display:none" class="round-end-bar">
+  <div id="roundEndBar" class="round-end-bar">
     <div class="round-end-scores" id="roundEndScores"></div>
   </div>
 
@@ -763,7 +763,7 @@
      END SCREEN
 ══════════════════════════════════════════ -->
 <div id="screen-end" class="screen">
-  <div class="winner-label">🏆 Winner — lowest score</div>
+  <div class="winner-label">🏆 Winner — highest score</div>
   <div class="winner-name" id="winnerName">—</div>
   <table class="scores-table" id="finalScoresTable"></table>
   <button class="play-again-btn" id="playAgainBtn">PLAY AGAIN</button>
@@ -895,7 +895,7 @@ function matchesAnswer(input, answerName) {
 const TEAM_COLORS = ['#f0c040','#e05a5a','#4cdb8a','#5aade0','#c05ae0','#e07a5a'];
 
 let teams = [];
-let scores = [];          // cumulative golf-style scores (lower = better)
+let scores = [];          // cumulative scores (higher = better)
 let totalRounds = 5;
 let timerSeconds = 45;
 let currentRound = 0;
@@ -1136,9 +1136,7 @@ function updateTimerUI() {
 function onTimerEnd() {
   const input = document.getElementById('answerInput');
   input.value = '';
-  scores[currentTeamIdx] += 20;
-  updateScoreStrip();
-  showToast(`+20 pts penalty — time's up!`, false);
+  showToast(`Time's up — guess lost!`, false);
   playWrong();
   guessesLeft[currentTeamIdx]--;
   advanceTurn();
@@ -1163,13 +1161,14 @@ function checkInput() {
   // Check for a match among unrevealed answers
   for (let i = 0; i < currentAnswers.length; i++) {
     if (!revealed[i] && matchesAnswer(val, currentAnswers[i].name)) {
-      // Correct
-      const pts = currentAnswers[i].rank;
+      // Correct — points = 21 minus rank (#1 = 20 pts, #20 = 1 pt)
+      const rank = currentAnswers[i].rank;
+      const pts = 21 - rank;
       scores[currentTeamIdx] += pts;
       revealCellForTeam(i, currentTeamIdx);
       input.value = '';
       flashInput(true);
-      showToast(`+${pts} pts — #${pts} ${currentAnswers[i].name}`, true);
+      showToast(`+${pts} pts — #${rank} ${currentAnswers[i].name}`, true);
       updateScoreStrip();
       playCorrect();
 
@@ -1180,12 +1179,10 @@ function checkInput() {
     }
   }
 
-  // Wrong answer — 20pt penalty
-  scores[currentTeamIdx] += 20;
+  // Wrong answer — no points, guess lost
   input.value = '';
   flashInput(false);
-  showToast(`+20 pts penalty!`, false);
-  updateScoreStrip();
+  showToast(`Not on the board — guess lost!`, false);
   playWrong();
 
   guessesLeft[currentTeamIdx]--;
@@ -1221,7 +1218,8 @@ function advanceTurn() {
 
 function passTurn() {
   if (!gameRunning) return;
-  guessesLeft[currentTeamIdx] = 0;
+  guessesLeft[currentTeamIdx]--;
+  showToast(`Pass — guess skipped`, false);
   advanceTurn();
 }
 
@@ -1278,15 +1276,15 @@ document.getElementById('revealBtn').addEventListener('click', () => {
 function endRound() {
   playRoundEnd();
 
-  // Next round starts with the player who has MORE points (losing in golf scoring)
-  const maxScore = Math.max(...scores);
-  let loser = scores.indexOf(maxScore);
-  firstTeamThisRound = loser;
-  currentTeamIdx = loser;
+  // Next round starts with the trailing team (lowest score gets first shot)
+  const minScore = Math.min(...scores);
+  let trailing = scores.indexOf(minScore);
+  firstTeamThisRound = trailing;
+  currentTeamIdx = trailing;
 
-  // Build bottom bar scores
+  // Build bottom bar scores — highest first
   const sorted = teams.map((t, i) => ({name: t, score: scores[i], color: TEAM_COLORS[i]}))
-                       .sort((a, b) => a.score - b.score);
+                       .sort((a, b) => b.score - a.score);
   document.getElementById('roundEndScores').innerHTML = sorted.map((t, i) =>
     `<div class="re-score-item">
       <div class="re-dot" style="background:${t.color}"></div>
@@ -1314,15 +1312,15 @@ document.getElementById('nextRoundBtn').addEventListener('click', () => {
 
 // ── End screen ──
 function showEndScreen() {
-  // Sort ascending — lowest score wins
+  // Sort descending — highest score wins
   const sorted = teams.map((t, i) => ({name: t, score: scores[i], color: TEAM_COLORS[i]}))
-                       .sort((a, b) => a.score - b.score);
+                       .sort((a, b) => b.score - a.score);
   document.getElementById('winnerName').textContent = sorted[0].name;
   document.getElementById('winnerName').style.color = sorted[0].color;
 
   const table = document.getElementById('finalScoresTable');
   table.innerHTML = `
-    <tr style="opacity:0.4"><td colspan="2" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;padding-bottom:4px">FINAL SCORES (lower wins)</td></tr>
+    <tr style="opacity:0.4"><td colspan="2" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;padding-bottom:4px">FINAL SCORES (higher wins)</td></tr>
     ${sorted.map((t, i) =>
       `<tr><td style="color:${t.color}">${i === 0 ? '🏆 ' : ''}${t.name}</td><td style="color:${t.color};font-family:'Bebas Neue',sans-serif;font-size:28px;text-align:right">${t.score}</td></tr>`
     ).join('')}

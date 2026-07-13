@@ -2070,16 +2070,27 @@ function clearReachable() {
 // 5-6   | 3
 // 7-8   | 4
 // 9+    | 5
-// Chaos duel lives = size of the local group actually at stake: the frontier
-// hex plus the owner's hexes immediately adjacent to it (exactly the set that
-// would be captured on a loss). Capped by duel style, floor 1. This is why
-// attacking an isolated hex is always a 1-life duel, regardless of what the
-// defender owns elsewhere on the board.
+// The connected group of same-owner hexes reachable from `hexId` (flood-fill
+// over adjacency). This is the "local stronghold" at a position: a won duel
+// captures all of it, and only genuinely disconnected hexes elsewhere survive.
+function localCluster(hexId, ownerId) {
+  const seen = new Set([hexId]);
+  const stack = [hexId];
+  while (stack.length) {
+    const c = stack.pop();
+    adjacency[c].forEach(a => {
+      if (!seen.has(a) && hexes[a].playerId === ownerId) { seen.add(a); stack.push(a); }
+    });
+  }
+  return seen;
+}
+
+// Chaos duel lives = size of the connected local cluster actually at stake
+// (exactly the set captured on a loss), capped by duel style, floor 1. So an
+// isolated hex is a 1-life duel regardless of what the defender owns elsewhere.
 function chaosDuelLives(hexId, ownerId) {
-  let group = 1; // the frontier hex itself
-  adjacency[hexId].forEach(a => { if (hexes[a].playerId === ownerId) group++; });
   const cap = duelStyle === 'conquest' ? 5 : 3;
-  return Math.max(1, Math.min(group, cap));
+  return Math.max(1, Math.min(localCluster(hexId, ownerId).size, cap));
 }
 
 function getHP(hexCount) {
@@ -2239,22 +2250,20 @@ function duelRound(winnerPlayerId, loserPlayerId) {
     document.getElementById('undoBtn').style.display = 'none';
 
     if (chaosMode) {
-      // Local capture: winner takes the contested hex plus the loser's OWN
-      // hexes touching it. The loser's hexes elsewhere are untouched, and they
-      // stay in the game unless this empties them entirely.
+      // Local capture: winner takes the entire connected cluster of loser hexes
+      // containing the contested hex. Only the loser's genuinely disconnected
+      // hexes elsewhere survive; they stay in the game unless this empties them.
       const anchor = (winnerPlayerId === d.playerAId) ? d.hexIdB : d.hexIdA;
-      const toCapture = new Set();
-      if (hexes[anchor] && hexes[anchor].playerId === loser.id) toCapture.add(anchor);
-      // include loser-owned hexes adjacent to the anchor (clusters formed mid-game)
-      if (hexes[anchor]) {
-        adjacency[anchor].forEach(a => { if (hexes[a].playerId === loser.id) toCapture.add(a); });
+      let toCapture = new Set();
+      if (hexes[anchor] && hexes[anchor].playerId === loser.id) {
+        toCapture = localCluster(anchor, loser.id);
       }
-      // Fallback: if the anchor somehow isn't the loser's, grab any one loser hex
-      // adjacent to the winner so a won duel always yields ground.
+      // Fallback: if the anchor somehow isn't the loser's, grab the loser cluster
+      // touching the winner so a won duel always yields ground.
       if (toCapture.size === 0) {
         for (const wh of winner.hexIds) {
           const hit = [...adjacency[wh]].find(a => hexes[a].playerId === loser.id);
-          if (hit !== undefined) { toCapture.add(hit); break; }
+          if (hit !== undefined) { toCapture = localCluster(hit, loser.id); break; }
         }
       }
       toCapture.forEach(hid => {

@@ -902,7 +902,7 @@ const triviaData = {
   mostWatchedYouTubeChannels: {
     label: "Most Subscribed YouTube Channels",
     aliases: {
-      "mr beast":           ["mrbeast"],
+      "mrbeast":            ["mr beast", "beast"],
       "t-series":           ["tseries", "t series"],
       "cocomelon":          ["coco melon"],
       "set india":          ["set"],
@@ -942,7 +942,6 @@ const triviaData = {
     aliases: {
       "united states":              ["us", "usa", "america"],
       "democratic republic of congo": ["drc", "congo", "dr congo"],
-      "united kingdom":             ["uk", "britain", "england"],
     },
     items: [
       { rank: 1,  name: "India",               detail: "1.44B people" },

@@ -501,7 +501,8 @@ let teamNames=[], scores=[];
 let usedIdx=new Set();
 let cur=null, guesses=[], curTeam=0;
 let timerInterval=null, timeLeft=0;
-let roundNum=0, roundRunning=false;
+let roundNum=0, questionNum=0, roundRunning=false;
+function totalQuestions(){ return roundsTotal*numTeams; }
 let firstRoundTeam=0; // rotates each round
 let eliminatedThisRound=new Set();
 const CIRC=207.3;
@@ -559,7 +560,7 @@ document.getElementById('startBtn').addEventListener('click',()=>{
   });
   if(!teamNames.length) teamNames=['YOU'];
   scores=Array(numTeams).fill(0);
-  roundNum=0; usedIdx.clear(); firstRoundTeam=0;
+  roundNum=0; questionNum=0; usedIdx.clear(); firstRoundTeam=0;
   switchScreen('gameScreen');
   nextRound();
 });
@@ -575,13 +576,16 @@ function pickRecord(){
 }
 
 function nextRound(){
-  if(roundNum>=roundsTotal){showFinal();return;}
+  if(questionNum>=totalQuestions()){showFinal();return;}
   cur=pickRecord();
   if(!cur){showFinal();return;}
-  roundNum++; guesses=[]; curTeam=firstRoundTeam; roundRunning=true; eliminatedThisRound=new Set();
+  questionNum++;
+  roundNum=Math.ceil(questionNum/numTeams);
+  const qInRound=((questionNum-1)%numTeams)+1;
+  guesses=[]; curTeam=firstRoundTeam; roundRunning=true; eliminatedThisRound=new Set();
   firstRoundTeam=(firstRoundTeam+1)%numTeams;
 
-  document.getElementById('gRound').textContent=`${roundNum}/${roundsTotal}`;
+  document.getElementById('gRound').textContent=`${roundNum}/${roundsTotal} · Q ${qInRound}/${numTeams}`;
   document.getElementById('qCat').textContent=cur.cat;
   document.getElementById('qTitle').textContent=cur.q;
   document.getElementById('qAsk').textContent='→ '+cur.ask;
@@ -720,8 +724,8 @@ function showBadCall(callerTeam, lastGuess, onContinue, isTimeout=false){
   document.getElementById('vTitle').textContent='ELIMINATED!';
   document.getElementById('vTitle').className='verdict-title bad';
   document.getElementById('vSub').textContent= isTimeout
-    ? `${teamNames[callerTeam]} ran out of time! They're OUT for this round.`
-    : `${teamNames[callerTeam]} called NO WAY — but ${lastGuess.val} is still under the answer! They're OUT for this round.`;
+    ? `${teamNames[callerTeam]} ran out of time! They're OUT for this question.`
+    : `${teamNames[callerTeam]} called NO WAY — but ${lastGuess.val} is still under the answer! They're OUT for this question.`;
   document.getElementById('varBox').style.display='none';
   document.getElementById('vPts').innerHTML=`
     <div class="vp-row">
@@ -731,7 +735,7 @@ function showBadCall(callerTeam, lastGuess, onContinue, isTimeout=false){
         <div class="vp-note" style="color:var(--red)">💀 ELIMINATED</div>
       </div>
     </div>`;
-  document.getElementById('btnContinue').textContent='CONTINUE ROUND →';
+  document.getElementById('btnContinue').textContent='CONTINUE →';
   document.getElementById('btnContinue').onclick=()=>{
     document.getElementById('verdictOverlay').classList.remove('show');
     document.getElementById('varBox').style.display='';
@@ -784,11 +788,11 @@ function scoreAndShow(event){
   } else {
     // noway_wrong_ends_round already handled above
     document.getElementById('vIcon').textContent='💀';
-    document.getElementById('vTitle').textContent='ROUND OVER!';
+    document.getElementById('vTitle').textContent='QUESTION OVER!';
     document.getElementById('vTitle').className='verdict-title bad';
     const survivorName=event.survivor>=0?teamNames[event.survivor]:'Nobody';
     document.getElementById('vSub').textContent=
-      `${teamNames[event.eliminatedCaller]} was eliminated — ${survivorName} wins the round!`;
+      `${teamNames[event.eliminatedCaller]} was eliminated — ${survivorName} takes the point!`;
     if(event.survivor>=0) SFX.roundWin();
   }
 
@@ -818,7 +822,7 @@ function scoreAndShow(event){
     if(ti===bustedTeam) tags+='<div class="vp-note" style="color:var(--red)">WENT OVER ↑</div>';
     if(event.type==='noway_correct'&&ti===event.callerTeam) tags+='<div class="vp-note" style="color:var(--green)">🚨 CALLED IT</div>';
     if((event.type==='noway_wrong_ends_round')&&ti===event.eliminatedCaller) tags+='<div class="vp-note" style="color:var(--red)">💀 ELIMINATED</div>';
-    if((event.type==='noway_wrong_ends_round')&&ti===event.survivor) tags+='<div class="vp-note" style="color:var(--green)">🏆 ROUND WINNER</div>';
+    if((event.type==='noway_wrong_ends_round')&&ti===event.survivor) tags+='<div class="vp-note" style="color:var(--green)">🏆 SURVIVOR</div>';
     if(eliminatedThisRound.has(ti)&&ti!==event.eliminatedCaller) tags+='<div class="vp-note" style="color:var(--red)">💀 ELIMINATED</div>';
     if(ti===bonusTeam) tags+='<div class="vp-note" style="color:#ffd233">★ CLOSEST</div>';
 
@@ -835,12 +839,12 @@ function scoreAndShow(event){
       </div>`;
   });
 
-  const isLast=roundNum>=roundsTotal;
-  document.getElementById('btnContinue').textContent=isLast?'SEE FINAL SCORES →':'NEXT ROUND →';
+  const isLast=questionNum>=totalQuestions();
+  document.getElementById('btnContinue').textContent=isLast?'SEE FINAL SCORES →':'NEXT QUESTION →';
   document.getElementById('btnContinue').onclick=()=>{
     document.getElementById('verdictOverlay').classList.remove('show');
     renderScores();
-    if(roundNum>=roundsTotal) showFinal(); else nextRound();
+    if(questionNum>=totalQuestions()) showFinal(); else nextRound();
   };
   document.getElementById('verdictOverlay').classList.add('show');
 }
@@ -849,20 +853,22 @@ function scoreAndShow(event){
 document.getElementById('btnSkip').addEventListener('click',()=>{
   if(!roundRunning) return;
   clearInterval(timerInterval); roundRunning=false;
+  // Roll back the counter so a replacement question is drawn with the same lead team
+  questionNum--;
+  firstRoundTeam=(firstRoundTeam-1+numTeams)%numTeams;
   document.getElementById('vIcon').textContent='⏭️';
   document.getElementById('vTitle').textContent='SKIPPED';
   document.getElementById('vTitle').className='verdict-title neutral';
-  document.getElementById('vSub').textContent='No points awarded this round';
+  document.getElementById('vSub').textContent='No points awarded — a replacement question is coming up';
   document.getElementById('varBox').style.display='';
   document.getElementById('vAnswer').textContent=cur.ans;
   document.getElementById('vUnit').textContent=cur.unit;
   document.getElementById('vPts').innerHTML='';
-  const isLastSkip=roundNum>=roundsTotal;
-  document.getElementById('btnContinue').textContent=isLastSkip?'SEE FINAL SCORES →':'NEXT ROUND →';
+  document.getElementById('btnContinue').textContent='NEXT QUESTION →';
   document.getElementById('btnContinue').onclick=()=>{
     document.getElementById('verdictOverlay').classList.remove('show');
     renderScores();
-    if(roundNum>=roundsTotal) showFinal(); else nextRound();
+    nextRound();
   };
   document.getElementById('verdictOverlay').classList.add('show');
 });

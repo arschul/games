@@ -484,6 +484,61 @@ h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
 }
 .all-teams-table tr:first-child td { color: var(--accent); font-weight: 700; }
 
+/* ── Feature batch: timer, sound, steal, hints, results extras ── */
+.timer-badge {
+  font-family: 'DM Mono'; font-size: 15px;
+  padding: 6px 12px; border-radius: 8px;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  color: var(--text);
+}
+.timer-badge.urgent { color: var(--spelling); border-color: var(--spelling); }
+.snd-toggle {
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 14px;
+}
+.snd-toggle:hover { border-color: var(--accent); }
+.cfg-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+.word:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.steal-row { display: none; gap: 10px; margin: 12px 0 4px; }
+.feedback-panel.offer .steal-row { display: flex; }
+.feedback-panel.offer #points-breakdown,
+.feedback-panel.offer #corrected-label,
+.feedback-panel.offer #corrected-sentence,
+.feedback-panel.offer #expl-line { display: none; }
+.steal-btn, .reveal-btn {
+  flex: 1; padding: 13px; border-radius: 10px; border: none;
+  font-family: 'Bebas Neue', sans-serif; font-size: 19px;
+  letter-spacing: .07em; cursor: pointer;
+  transition: opacity .2s, transform .1s;
+}
+.steal-btn { background: var(--word-order); color: #0d0f14; }
+.reveal-btn { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+.steal-btn:hover, .reveal-btn:hover { opacity: .88; transform: translateY(-1px); }
+
+.results-extra { margin: 22px 0; text-align: left; }
+.results-extra h3 { font-size: 20px; color: var(--accent); margin-bottom: 10px; }
+.team-stat-row { margin-bottom: 12px; }
+.team-stat-row .tsr-name { font-weight: 700; margin-bottom: 4px; }
+.type-chip {
+  display: inline-block; font-size: 12px; font-family: 'DM Mono';
+  padding: 4px 9px; border-radius: 7px;
+  background: var(--surface2); border-left: 3px solid var(--border);
+  margin: 3px 6px 3px 0;
+}
+.review-item {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 10px;
+}
+.review-orig { color: var(--muted); text-decoration: line-through; font-size: 14px; margin-bottom: 4px; }
+.review-fix { font-size: 16px; margin-bottom: 4px; }
+.review-fix .fix { font-weight: 700; color: var(--accent); }
+.review-fix .fix.spelling    { color: var(--spelling); }
+.review-fix .fix.word-form   { color: var(--word-form); }
+.review-fix .fix.verb-tense  { color: var(--verb-tense); }
+.review-fix .fix.word-order  { color: var(--word-order); }
+.review-expl { font-size: 13px; color: var(--muted); }
+
 </style>
 </head>
 <body>
@@ -507,6 +562,7 @@ h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
         <button class="pill" data-level="B1">B1</button>
         <button class="pill" data-level="B2">B2</button>
       </div>
+      <p class="cfg-hint">Tap more than one to mix levels</p>
     </div>
 
     <!-- Rounds -->
@@ -529,8 +585,26 @@ h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
       </div>
     </div>
 
-    <!-- Placeholder for alignment -->
-    <div class="card" style="background:transparent;border-color:transparent;"></div>
+    <!-- Turn timer -->
+    <div class="card">
+      <h3>Turn Timer</h3>
+      <div class="pill-group" id="timer-pills">
+        <button class="pill selected" data-timer="0">Off</button>
+        <button class="pill" data-timer="30">30s</button>
+        <button class="pill" data-timer="60">60s</button>
+        <button class="pill" data-timer="90">90s</button>
+      </div>
+    </div>
+
+    <!-- Error sentence ratio -->
+    <div class="card">
+      <h3>Error Sentences</h3>
+      <div class="pill-group" id="ratio-pills">
+        <button class="pill" data-ratio="50">50%</button>
+        <button class="pill selected" data-ratio="70">70%</button>
+        <button class="pill" data-ratio="100">100%</button>
+      </div>
+    </div>
 
     <!-- Team names -->
     <div class="card teams-section">
@@ -549,6 +623,8 @@ h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
   <div class="game-header">
     <div class="round-badge">Round <span id="round-num">1</span> / <span id="round-total">5</span></div>
     <div class="level-badge" id="level-display">A1</div>
+    <div class="timer-badge" id="timer-badge" style="display:none">60s</div>
+    <button class="snd-toggle" id="snd-toggle" title="Toggle sound">🔊</button>
   </div>
 
   <!-- Scoreboard -->
@@ -601,8 +677,12 @@ h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
   <div class="feedback-panel" id="feedback-panel">
     <h3>Result</h3>
     <div class="points-awarded" id="points-awarded"></div>
+    <div class="steal-row" id="steal-row">
+      <button class="steal-btn" id="steal-btn">STEAL</button>
+      <button class="reveal-btn" id="reveal-btn">REVEAL ANSWER</button>
+    </div>
     <div class="points-breakdown" id="points-breakdown"></div>
-    <div style="margin-top:14px;font-size:13px;color:var(--muted);margin-bottom:6px;">CORRECTED SENTENCE:</div>
+    <div id="corrected-label" style="margin-top:14px;font-size:13px;color:var(--muted);margin-bottom:6px;">CORRECTED SENTENCE:</div>
     <div class="corrected-sentence" id="corrected-sentence"></div>
     <div class="expl-line" id="expl-line"></div>
   </div>
@@ -622,7 +702,10 @@ h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
       <tbody id="results-tbody"></tbody>
     </table>
 
-    <button class="play-again-btn" onclick="location.reload()">PLAY AGAIN</button>
+    <div class="results-extra" id="type-stats"></div>
+    <div class="results-extra" id="review-list"></div>
+
+    <button class="play-again-btn" onclick="resetGame()">PLAY AGAIN</button>
   </div>
 </div>
 
@@ -1259,94 +1342,223 @@ function buildPool(level) {
   return [...errorSents, ...correctSents];
 }
 
-// Build a shuffled queue of n sentences guaranteeing 40–100% are error sentences.
-function buildQueue(level, n) {
-  const pool = buildPool(level);
+// ═══════════════════════════════════════════════════════════════
+// QUEUE — stratified by error type, fixed error ratio,
+// cross-game repeat avoidance (localStorage)
+// ═══════════════════════════════════════════════════════════════
+
+const USED_KEY = 'mh-used-sentences';
+const CFG_KEY  = 'mh-config';
+
+function loadUsed() {
+  try { return new Set(JSON.parse(localStorage.getItem(USED_KEY) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function saveUsed(used) {
+  try { localStorage.setItem(USED_KEY, JSON.stringify([...used].slice(-400))); }
+  catch (e) {}
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// levels: array of level codes; ratioPct: % of sentences with errors.
+function buildQueue(levels, n, ratioPct) {
+  const pool = levels.flatMap(l => buildPool(l));
   const errorPool   = pool.filter(s => !s.correct);
   const correctPool = pool.filter(s => s.correct);
 
-  // Clamp: at least 40% errors, at most 100%
-  const minErrors = Math.ceil(n * 0.4);
-  const maxErrors = n;
-  // Pick a random count between min and max, but never ALL correct
-  const numErrors  = minErrors + Math.floor(Math.random() * (maxErrors - minErrors + 1));
+  const numErrors  = Math.min(n, Math.max(1, Math.round(n * ratioPct / 100)));
   const numCorrect = n - numErrors;
 
-  // Shuffle helpers
-  const shuffle = arr => {
-    const a = [...arr]; 
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
+  const used = loadUsed();
+  const preferFresh = arr => {
+    const fresh = arr.filter(s => !used.has(s.s));
+    return fresh.length ? fresh : arr;   // pool exhausted → allow repeats
   };
 
-  // Pick without repetition, cycling if needed
-  const pick = (src, count) => {
-    const shuffled = shuffle(src);
-    const result = [];
-    while (result.length < count) {
-      result.push(...shuffled.slice(0, count - result.length));
-    }
-    return result.slice(0, count);
-  };
+  // Stratify error picks across types so a short game isn't all spelling.
+  const byType = {};
+  errorPool.forEach(s => {
+    const t = s.errors[0].t;
+    (byType[t] = byType[t] || []).push(s);
+  });
+  const types = shuffle(Object.keys(byType));
+  const buckets = {};
+  types.forEach(t => buckets[t] = shuffle(preferFresh(byType[t])));
 
-  const chosen = [
-    ...pick(errorPool, numErrors),
-    ...pick(correctPool, numCorrect),
-  ];
-  return shuffle(chosen);
+  const chosenErr = [];
+  let ti = 0, guard = 0;
+  while (chosenErr.length < numErrors && guard++ < 2000) {
+    const t = types[ti % types.length]; ti++;
+    if (buckets[t].length === 0) buckets[t] = shuffle(byType[t]);  // refill
+    if (buckets[t].length) chosenErr.push(buckets[t].pop());
+  }
+
+  const chosenCor = [];
+  let corStock = shuffle(preferFresh(correctPool));
+  while (chosenCor.length < numCorrect) {
+    if (!corStock.length) corStock = shuffle(correctPool);
+    chosenCor.push(corStock.pop());
+  }
+
+  const all = [...chosenErr, ...chosenCor];
+  all.forEach(s => used.add(s.s));
+  saveUsed(used);
+  return shuffle(all);
 }
 
 const SENTENCES = resolveIndices(SENTENCES_RAW);
 
 // ═══════════════════════════════════════════════════════════════
+// SOUND ENGINE (Web Audio, synthesized)
+// ═══════════════════════════════════════════════════════════════
+const Snd = {
+  ctx: null,
+  muted: (function(){ try { return localStorage.getItem('mh-muted') === '1'; } catch(e){ return false; } })(),
+  ac() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  tone(f, d, type, t0, g) {
+    if (this.muted) return;
+    try {
+      const c = this.ac(), o = c.createOscillator(), gn = c.createGain();
+      o.type = type || 'sine'; o.frequency.value = f;
+      const start = c.currentTime + (t0 || 0);
+      gn.gain.setValueAtTime(g || 0.15, start);
+      gn.gain.exponentialRampToValueAtTime(0.001, start + d);
+      o.connect(gn); gn.connect(c.destination);
+      o.start(start); o.stop(start + d);
+    } catch (e) {}
+  },
+  click()   { this.tone(880, .05, 'square', 0, .04); },
+  correct() { this.tone(523, .12); this.tone(659, .12, 'sine', .1); this.tone(784, .22, 'sine', .2); },
+  partial() { this.tone(440, .14); this.tone(554, .2, 'sine', .12); },
+  wrong()   { this.tone(180, .22, 'sawtooth', 0, .1); this.tone(140, .3, 'sawtooth', .12, .1); },
+  steal()   { this.tone(659, .1, 'square', 0, .09); this.tone(880, .16, 'square', .1, .09); },
+  tick()    { this.tone(1200, .04, 'square', 0, .04); },
+  fanfare() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, .26, 'sine', i * .13)); },
+};
+
+// ═══════════════════════════════════════════════════════════════
 // GAME STATE
 // ═══════════════════════════════════════════════════════════════
 let state = {
-  level: 'A1',
+  levels: ['A1'],
   roundsPerTeam: 5,
   numTeams: 2,
   teams: [],
   scores: [],
   currentTeamIdx: 0,
-  currentRound: 1,   // global round counter (each team plays once = 1 turn each = 1 cycle)
-  totalRounds: 0,    // roundsPerTeam * numTeams
+  totalRounds: 0,
   turnsPlayed: 0,
   sentenceQueue: [],
   currentSentence: null,
   selectedLabel: null,
-  taggedWords: {},  // wordIdx -> {type, ...}
+  taggedWords: {},
   woFirstWord: null,
-  submitted: false,
   correctChecked: false,
+  phase: 'answer',      // 'answer' | 'stealOffer' | 'steal' | 'revealed'
+  firstResult: null,
+  stealTeamIdx: null,
+  records: [],
+  emptyArm: false,
 };
 
-// ─── Start screen logic ───────────────────────────────────────
+const answering = () => state.phase === 'answer' || state.phase === 'steal';
 
-let cfgLevel = 'A1';
+// ─── Config (persisted) ───────────────────────────────────────
+
+const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2'];
+let cfgLevels = new Set(['A1']);
 let cfgRounds = 5;
 let cfgNumTeams = 2;
+let cfgTimer = 0;
+let cfgRatio = 70;
+let savedNames = [];
+
+function loadConfig() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CFG_KEY));
+    if (!c) return;
+    if (Array.isArray(c.levels) && c.levels.length) cfgLevels = new Set(c.levels.filter(l => LEVEL_ORDER.includes(l)));
+    if (cfgLevels.size === 0) cfgLevels = new Set(['A1']);
+    if (c.rounds >= 1 && c.rounds <= 20) cfgRounds = c.rounds;
+    if (c.teams >= 1 && c.teams <= 4) cfgNumTeams = c.teams;
+    if ([0, 30, 60, 90].includes(c.timer)) cfgTimer = c.timer;
+    if ([50, 70, 100].includes(c.ratio)) cfgRatio = c.ratio;
+    if (Array.isArray(c.names)) savedNames = c.names;
+  } catch (e) {}
+}
+function saveConfig(names) {
+  try {
+    localStorage.setItem(CFG_KEY, JSON.stringify({
+      levels: [...cfgLevels], rounds: cfgRounds, teams: cfgNumTeams,
+      timer: cfgTimer, ratio: cfgRatio, names: names,
+    }));
+  } catch (e) {}
+}
+function applyConfigToUI() {
+  document.querySelectorAll('#level-pills .pill').forEach(x =>
+    x.classList.toggle('selected', cfgLevels.has(x.dataset.level)));
+  document.querySelectorAll('#timer-pills .pill').forEach(x =>
+    x.classList.toggle('selected', parseInt(x.dataset.timer) === cfgTimer));
+  document.querySelectorAll('#ratio-pills .pill').forEach(x =>
+    x.classList.toggle('selected', parseInt(x.dataset.ratio) === cfgRatio));
+  updateRoundsDisplay();
+  updateTeamsDisplay();
+}
+
+// ─── Start screen controls ────────────────────────────────────
 
 document.querySelectorAll('#level-pills .pill').forEach(p => {
   p.addEventListener('click', () => {
-    document.querySelectorAll('#level-pills .pill').forEach(x => x.classList.remove('selected'));
+    const lv = p.dataset.level;
+    if (cfgLevels.has(lv)) {
+      if (cfgLevels.size > 1) { cfgLevels.delete(lv); p.classList.remove('selected'); }
+    } else {
+      cfgLevels.add(lv); p.classList.add('selected');
+    }
+    Snd.click();
+  });
+});
+
+document.querySelectorAll('#timer-pills .pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#timer-pills .pill').forEach(x => x.classList.remove('selected'));
     p.classList.add('selected');
-    cfgLevel = p.dataset.level;
+    cfgTimer = parseInt(p.dataset.timer);
+    Snd.click();
+  });
+});
+
+document.querySelectorAll('#ratio-pills .pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#ratio-pills .pill').forEach(x => x.classList.remove('selected'));
+    p.classList.add('selected');
+    cfgRatio = parseInt(p.dataset.ratio);
+    Snd.click();
   });
 });
 
 function updateRoundsDisplay() { document.getElementById('rounds-display').textContent = cfgRounds; }
-document.getElementById('rounds-down').addEventListener('click', () => { if (cfgRounds > 1) { cfgRounds--; updateRoundsDisplay(); } });
-document.getElementById('rounds-up').addEventListener('click', () => { if (cfgRounds < 20) { cfgRounds++; updateRoundsDisplay(); } });
+document.getElementById('rounds-down').addEventListener('click', () => { if (cfgRounds > 1) { cfgRounds--; updateRoundsDisplay(); Snd.click(); } });
+document.getElementById('rounds-up').addEventListener('click', () => { if (cfgRounds < 20) { cfgRounds++; updateRoundsDisplay(); Snd.click(); } });
 
 function updateTeamsDisplay() {
   document.getElementById('teams-display').textContent = cfgNumTeams;
   renderTeamInputs();
 }
-document.getElementById('teams-down').addEventListener('click', () => { if (cfgNumTeams > 1) { cfgNumTeams--; updateTeamsDisplay(); } });
-document.getElementById('teams-up').addEventListener('click', () => { if (cfgNumTeams < 4) { cfgNumTeams++; updateTeamsDisplay(); } });
+document.getElementById('teams-down').addEventListener('click', () => { if (cfgNumTeams > 1) { cfgNumTeams--; updateTeamsDisplay(); Snd.click(); } });
+document.getElementById('teams-up').addEventListener('click', () => { if (cfgNumTeams < 4) { cfgNumTeams++; updateTeamsDisplay(); Snd.click(); } });
 
 function renderTeamInputs() {
   const container = document.getElementById('team-inputs');
@@ -1355,30 +1567,35 @@ function renderTeamInputs() {
   for (let i = 0; i < cfgNumTeams; i++) {
     const wrap = document.createElement('div');
     wrap.className = 'team-input-wrap';
-    wrap.innerHTML = `<label>Team ${i+1}</label><input type="text" placeholder="Team ${i+1}" value="${existing[i] || ''}">`;
+    const val = existing[i] || savedNames[i] || '';
+    wrap.innerHTML = `<label>Team ${i+1}</label><input type="text" placeholder="Team ${i+1}" value="${val.replace(/"/g,'&quot;')}">`;
     container.appendChild(wrap);
   }
 }
-renderTeamInputs();
+
+loadConfig();
+applyConfigToUI();
 
 document.getElementById('start-btn').addEventListener('click', () => {
   const inputs = document.querySelectorAll('#team-inputs input');
   const names = [...inputs].map((inp, i) => inp.value.trim() || `Team ${i+1}`);
+  saveConfig([...inputs].map(i => i.value.trim()));
 
-  state.level = cfgLevel;
+  state.levels = LEVEL_ORDER.filter(l => cfgLevels.has(l));
   state.roundsPerTeam = cfgRounds;
   state.numTeams = cfgNumTeams;
   state.teams = names;
   state.scores = new Array(cfgNumTeams).fill(0);
   state.currentTeamIdx = 0;
-  state.currentRound = 1;
   state.totalRounds = cfgRounds * cfgNumTeams;
   state.turnsPlayed = 0;
-  state.sentenceQueue = buildQueue(cfgLevel, state.totalRounds);
+  state.records = [];
+  state.sentenceQueue = buildQueue(state.levels, state.totalRounds, cfgRatio);
 
   document.getElementById('round-total').textContent = cfgRounds;
-  document.getElementById('level-display').textContent = cfgLevel;
+  document.getElementById('level-display').textContent = state.levels.join('+');
 
+  Snd.click();
   showScreen('game');
   buildScoreboard();
   nextTurn();
@@ -1389,6 +1606,11 @@ document.getElementById('start-btn').addEventListener('click', () => {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
+}
+
+function resetGame() {
+  stopTimer();
+  showScreen('start');
 }
 
 // ─── Scoreboard ───────────────────────────────────────────────
@@ -1410,44 +1632,77 @@ function refreshScoreboard() {
   });
 }
 
+// ─── Turn timer ───────────────────────────────────────────────
+
+let timerId = null, timerLeft = 0;
+
+function updateTimerBadge() {
+  const el = document.getElementById('timer-badge');
+  el.textContent = timerLeft + 's';
+  el.classList.toggle('urgent', timerLeft <= 5);
+}
+function startTimer() {
+  stopTimer();
+  const el = document.getElementById('timer-badge');
+  if (!cfgTimer) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  timerLeft = cfgTimer;
+  updateTimerBadge();
+  timerId = setInterval(() => {
+    timerLeft--;
+    updateTimerBadge();
+    if (timerLeft <= 5 && timerLeft > 0) Snd.tick();
+    if (timerLeft <= 0) {
+      stopTimer();
+      if (answering()) {
+        state.emptyArm = true;   // bypass empty-answer guard
+        document.getElementById('submit-btn').click();
+      }
+    }
+  }, 1000);
+}
+function stopTimer() {
+  if (timerId) { clearInterval(timerId); timerId = null; }
+}
+
 // ─── Next turn ───────────────────────────────────────────────
 
 function nextTurn() {
-  // Check game over
   if (state.turnsPlayed >= state.totalRounds) {
     showResults();
     return;
   }
 
-  // Pick round number for display (how many times this team has played)
-  const teamTurnsPlayed = Math.floor(state.turnsPlayed / state.numTeams) + 1;
   const globalCycle = Math.floor(state.turnsPlayed / state.numTeams) + 1;
   document.getElementById('round-num').textContent = globalCycle;
 
-  // Reset UI
+  // Reset state + UI
+  state.phase = 'answer';
+  state.firstResult = null;
+  state.stealTeamIdx = null;
   state.selectedLabel = null;
   state.taggedWords = {};
   state.woFirstWord = null;
-  state.submitted = false;
   state.correctChecked = false;
+  state.emptyArm = false;
+
   const correctCb = document.getElementById('correct-checkbox');
-  if (correctCb) { correctCb.checked = false; correctCb.disabled = false; }
+  correctCb.checked = false; correctCb.disabled = false;
   document.getElementById('correct-check-wrap').classList.remove('disabled');
 
   document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('feedback-panel').classList.remove('visible');
+  const fp = document.getElementById('feedback-panel');
+  fp.classList.remove('visible', 'offer');
   document.getElementById('next-btn').style.display = 'none';
-  document.getElementById('submit-btn').style.display = '';
-  document.getElementById('submit-btn').disabled = false;
+  const sb = document.getElementById('submit-btn');
+  sb.style.display = ''; sb.disabled = false; sb.textContent = 'SUBMIT ANSWER';
 
-  // Current team
   document.getElementById('current-team-name').textContent = state.teams[state.currentTeamIdx];
   refreshScoreboard();
 
-  // Pick sentence from pre-planned queue
-  state.currentSentence = state.sentenceQueue[state.turnsPlayed] || buildQueue(state.level, 1)[0];
-
+  state.currentSentence = state.sentenceQueue[state.turnsPlayed] || buildQueue(state.levels, 1, cfgRatio)[0];
   renderSentence();
+  startTimer();
 }
 
 // ─── Render sentence ─────────────────────────────────────────
@@ -1469,8 +1724,17 @@ function renderSentence() {
     const span = document.createElement('span');
     span.className = 'word';
     span.dataset.idx = i;
+    span.setAttribute('role', 'button');
+    span.tabIndex = 0;
     span.innerHTML = tok.word + (tok.punct ? `<span class="punct">${tok.punct}</span>` : '');
     span.addEventListener('click', () => onWordClick(i, span));
+    span.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        onWordClick(i, span);
+      }
+    });
     box.appendChild(span);
   });
 }
@@ -1479,7 +1743,8 @@ function renderSentence() {
 
 document.querySelectorAll('.label-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (state.submitted) return;
+    if (!answering()) return;
+    Snd.click();
     const t = btn.dataset.type;
     if (state.selectedLabel === t) {
       state.selectedLabel = null;
@@ -1501,10 +1766,10 @@ document.querySelectorAll('.label-btn').forEach(btn => {
 // ─── Correct checkbox ─────────────────────────────────────────
 
 document.getElementById('correct-checkbox').addEventListener('change', function() {
-  if (state.submitted) return;
+  if (!answering()) return;
+  Snd.click();
   state.correctChecked = this.checked;
   if (this.checked) {
-    // Clear all word tags and deselect labels
     Object.keys(state.taggedWords).forEach(k => untagWord(parseInt(k)));
     state.taggedWords = {};
     state.woFirstWord = null;
@@ -1514,10 +1779,10 @@ document.getElementById('correct-checkbox').addEventListener('change', function(
 });
 
 function onWordClick(idx, span) {
-  if (state.submitted) return;
+  if (!answering()) return;
   if (!state.selectedLabel) return;
+  Snd.click();
 
-  // Tagging a word means "there IS a mistake" — uncheck CORRECT
   if (state.correctChecked) {
     state.correctChecked = false;
     document.getElementById('correct-checkbox').checked = false;
@@ -1527,7 +1792,6 @@ function onWordClick(idx, span) {
 
   if (type === 'word-order') {
     if (state.woFirstWord === null) {
-      // If already tagged as word-order, untag
       if (state.taggedWords[idx] && state.taggedWords[idx].type === 'word-order') {
         untagWord(idx);
         return;
@@ -1540,7 +1804,6 @@ function onWordClick(idx, span) {
         state.woFirstWord = null;
         return;
       }
-      // Second word
       tagWord(idx, 'word-order', 'wo-second');
       state.taggedWords[idx] = { type: 'word-order', pair: state.woFirstWord };
       state.taggedWords[state.woFirstWord] = { type: 'word-order', pair: idx };
@@ -1549,13 +1812,10 @@ function onWordClick(idx, span) {
     return;
   }
 
-  // Toggle: if already tagged with same type, remove
   if (state.taggedWords[idx] && state.taggedWords[idx].type === type) {
     untagWord(idx);
     return;
   }
-
-  // Tag with current type (overwrite)
   tagWord(idx, type);
 }
 
@@ -1573,173 +1833,270 @@ function untagWord(idx) {
   delete state.taggedWords[idx];
 }
 
-// ─── Submit ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// EVALUATION
+// opts: { eligible: Set of stealable error objects | null,
+//         multiplier: score scale (0.5 for steals),
+//         isSteal: prefix breakdown lines }
+// ═══════════════════════════════════════════════════════════════
 
-document.getElementById('submit-btn').addEventListener('click', () => {
-  if (state.submitted) return;
-  state.submitted = true;
-
-  const sentence = state.currentSentence;
+function evaluateAnswer(sentence, playerTags, correctChecked, opts = {}) {
+  const mult = opts.multiplier || 1;
+  const eligible = opts.eligible || null;
+  const pre = opts.isSteal ? 'STEAL ' : '';
   const errors = sentence.errors;
   const numErrors = errors.length;
-  const isCorrectSentence = sentence.correct === true;
+  let points = 0;
+  const breakdown = [];
+  const perError = [];
 
-  let pointsEarned = 0;
-  let breakdown = [];
+  // ── Correct sentence ──
+  if (sentence.correct === true) {
+    const tagged = Object.keys(playerTags).length;
+    if (correctChecked && tagged === 0) {
+      points = Math.round(100 * mult);
+      breakdown.push(pre + '✓ Correctly identified as error-free: +' + points);
+    } else if (!correctChecked && tagged === 0) {
+      breakdown.push(pre + '✗ No answer given (the sentence was correct): +0');
+    } else {
+      breakdown.push(pre + `✗ Marked ${tagged} word(s) as errors on a correct sentence: +0`);
+    }
+    return { points, breakdown, perError };
+  }
 
-  // ── CORRECT SENTENCE BRANCH ──────────────────────────────────
-  if (isCorrectSentence) {
-    if (state.correctChecked && Object.keys(state.taggedWords).length === 0) {
-      // Team correctly identified no mistakes
-      pointsEarned = 100;
-      breakdown.push('✓ Correctly identified as error-free: +100');
-      // Flash the whole sentence green
+  // ── Error sentence ──
+  if (correctChecked) {
+    breakdown.push(pre + '✗ Marked as correct but sentence has mistakes: +0');
+    errors.forEach(err => perError.push({ err, credit: 0 }));
+    return { points, breakdown, perError };
+  }
+
+  errors.forEach(err => {
+    const maxPerError = numErrors === 1 ? 100 : 50;
+    if (eligible && !eligible.has(err)) { perError.push({ err, credit: 1 }); return; }
+
+    const award = (frac, msg) => {
+      const add = Math.round(maxPerError * frac * mult);
+      points += add;
+      breakdown.push(pre + msg + ': +' + add);
+      perError.push({ err, credit: frac });
+    };
+    const miss = msg => {
+      breakdown.push(pre + msg + ': +0');
+      perError.push({ err, credit: 0 });
+    };
+
+    if (err.t === 'word-order') {
+      const firstWO  = playerTags[err.i]  === 'word-order';
+      const secondWO = playerTags[err.i2] === 'word-order';
+      const firstOther  = playerTags[err.i]  && !firstWO;
+      const secondOther = playerTags[err.i2] && !secondWO;
+      if (firstWO && secondWO)            award(1,   `✓ Word order (${getWordText(err.i)} / ${getWordText(err.i2)})`);
+      else if (firstWO || secondWO)       award(0.5, '~ Word order partially identified');
+      else if (firstOther && secondOther) award(0.4, '~ Right words, wrong label (it was Word Order)');
+      else if (firstOther || secondOther) award(0.2, '~ One word found, wrong label (it was Word Order)');
+      else                                miss('✗ Missed word order mistake');
+    } else if (err.i2 !== undefined) {
+      const matches = tag => tag === err.t || (err.alt && tag === err.alt);
+      const tag1 = playerTags[err.i], tag2 = playerTags[err.i2];
+      const c1 = matches(tag1), c2 = matches(tag2);
+      const w1 = tag1 && !c1, w2 = tag2 && !c2;
+      if (c1 && c2)                       award(1,   `✓ ${labelName(err.t)} on "${getWordText(err.i)} + ${getWordText(err.i2)}"`);
+      else if (c1 || c2)                  award(0.6, `~ ${labelName(err.t)}: only "${c1 ? getWordText(err.i) : getWordText(err.i2)}" tagged (this mistake needs both words)`);
+      else if ((w1 && tag2) || (tag1 && w2)) award(0.3, '~ Right words, wrong label');
+      else if (w1 || w2)                  award(0.2, '~ One word found, wrong label');
+      else                                miss(`✗ Missed ${labelName(err.t)} on "${getWordText(err.i)} ${getWordText(err.i2)}"`);
+    } else {
+      const pTag = playerTags[err.i];
+      if (pTag === err.t || (err.alt && pTag === err.alt)) award(1, `✓ ${labelName(err.t)} on "${getWordText(err.i)}"`);
+      else if (pTag) award(0.5, `~ Right word, wrong label ("${getWordText(err.i)}" tagged as ${labelName(pTag)})`);
+      else miss(`✗ Missed ${labelName(err.t)} on "${getWordText(err.i)}"`);
+    }
+  });
+
+  // False-positive penalty (never on words that belong to any error)
+  const correctWordIdxs = new Set();
+  errors.forEach(e => { correctWordIdxs.add(e.i); if (e.i2 !== undefined) correctWordIdxs.add(e.i2); });
+  let wrongTags = 0;
+  Object.keys(playerTags).forEach(k => {
+    if (!correctWordIdxs.has(parseInt(k))) wrongTags++;
+  });
+  if (wrongTags > 0) {
+    const penalty = Math.round(wrongTags * 10 * mult);
+    points = Math.max(0, points - penalty);
+    breakdown.push(pre + `✗ ${wrongTags} incorrect word(s) tagged: -${penalty}`);
+  }
+
+  return { points: Math.max(0, points), breakdown, perError };
+}
+
+function currentPlayerTags() {
+  const tags = {};
+  Object.entries(state.taggedWords).forEach(([k, v]) => { tags[parseInt(k)] = v.type; });
+  return tags;
+}
+
+// ─── Submit / steal / reveal flow ────────────────────────────
+
+document.getElementById('submit-btn').addEventListener('click', () => {
+  if (!answering()) return;
+
+  // Empty-answer guard: require a second tap to submit nothing
+  const empty = Object.keys(state.taggedWords).length === 0 && !state.correctChecked;
+  const sb = document.getElementById('submit-btn');
+  if (empty && !state.emptyArm) {
+    state.emptyArm = true;
+    sb.textContent = 'TAP AGAIN — EMPTY ANSWER';
+    setTimeout(() => {
+      if (state.emptyArm && answering()) {
+        state.emptyArm = false;
+        sb.textContent = state.phase === 'steal' ? 'SUBMIT STEAL' : 'SUBMIT ANSWER';
+      }
+    }, 2500);
+    return;
+  }
+  state.emptyArm = false;
+  stopTimer();
+
+  const sentence = state.currentSentence;
+  const tags = currentPlayerTags();
+
+  if (state.phase === 'answer') {
+    const res = evaluateAnswer(sentence, tags, state.correctChecked);
+    state.firstResult = res;
+    state.scores[state.currentTeamIdx] += res.points;
+    state.turnsPlayed++;
+    refreshScoreboard();
+
+    const stealable = state.numTeams > 1 && (
+      (sentence.correct === true && res.points < 100) ||
+      (sentence.correct !== true && res.perError.some(p => p.credit < 1))
+    );
+
+    if (stealable) {
+      state.phase = 'stealOffer';
+      const nextTeam = state.teams[(state.currentTeamIdx + 1) % state.numTeams];
+      document.getElementById('points-awarded').textContent = `+${res.points} pts — steal available!`;
+      document.getElementById('steal-btn').textContent = `STEAL → ${nextTeam}`;
+      const fp = document.getElementById('feedback-panel');
+      fp.classList.add('visible', 'offer');
+      sb.style.display = 'none';
+      Snd.click();
+    } else {
+      fullReveal(null);
+    }
+  } else if (state.phase === 'steal') {
+    const eligible = new Set(state.firstResult.perError.filter(p => p.credit < 1).map(p => p.err));
+    const res2 = evaluateAnswer(sentence, tags, state.correctChecked,
+      { eligible, multiplier: 0.5, isSteal: true });
+    state.scores[state.stealTeamIdx] += res2.points;
+    fullReveal(res2);
+  }
+});
+
+document.getElementById('steal-btn').addEventListener('click', () => {
+  if (state.phase !== 'stealOffer') return;
+  state.phase = 'steal';
+  state.stealTeamIdx = (state.currentTeamIdx + 1) % state.numTeams;
+
+  // Fresh attempt: clear the first team's tags
+  Object.keys(state.taggedWords).forEach(k => untagWord(parseInt(k)));
+  state.taggedWords = {};
+  state.woFirstWord = null;
+  state.selectedLabel = null;
+  state.correctChecked = false;
+  document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('selected'));
+  const cb = document.getElementById('correct-checkbox');
+  cb.checked = false; cb.disabled = false;
+  document.getElementById('correct-check-wrap').classList.remove('disabled');
+
+  document.getElementById('feedback-panel').classList.remove('visible', 'offer');
+  document.getElementById('current-team-name').textContent =
+    state.teams[state.stealTeamIdx] + ' — STEAL (half points)';
+  const sb = document.getElementById('submit-btn');
+  sb.style.display = ''; sb.disabled = false; sb.textContent = 'SUBMIT STEAL';
+
+  Snd.steal();
+  startTimer();
+});
+
+document.getElementById('reveal-btn').addEventListener('click', () => {
+  if (state.phase !== 'stealOffer') return;
+  fullReveal(null);
+});
+
+function fullReveal(stealRes) {
+  state.phase = 'revealed';
+  stopTimer();
+
+  const sentence = state.currentSentence;
+  const fr = state.firstResult;
+  const totalA = fr.points;
+  const totalS = stealRes ? stealRes.points : 0;
+
+  const fp = document.getElementById('feedback-panel');
+  fp.classList.remove('offer');
+  fp.classList.add('visible');
+
+  let ptsText = `+${totalA} pts`;
+  if (stealRes) ptsText += `  ·  steal +${totalS} for ${state.teams[state.stealTeamIdx]}`;
+  document.getElementById('points-awarded').textContent = ptsText;
+  const allBreak = [...fr.breakdown, ...(stealRes ? stealRes.breakdown : [])];
+  document.getElementById('points-breakdown').textContent = allBreak.join('  |  ');
+
+  // Word-level visuals vs whatever tags are on screen (steal team's if stolen)
+  const tagsNow = currentPlayerTags();
+  if (sentence.correct === true) {
+    const gotIt = totalA >= 100 || totalS > 0;
+    const n = Object.keys(tagsNow).length;
+    if (gotIt && n === 0) {
       document.querySelectorAll('.word').forEach(w => w.classList.add('correct-tag'));
-    } else if (!state.correctChecked && Object.keys(state.taggedWords).length === 0) {
-      // Team submitted nothing — neither checkbox nor tags
-      pointsEarned = 0;
-      breakdown.push('✗ No answer given (the sentence was correct): +0');
+    } else if (n === 0) {
       document.querySelectorAll('.word').forEach(w => w.classList.add('no-answer'));
     } else {
-      // Team tagged words on a correct sentence — all wrong
-      pointsEarned = 0;
-      const numWrong = Object.keys(state.taggedWords).length;
-      breakdown.push(`✗ Marked ${numWrong} word(s) as errors on a correct sentence: +0`);
-      Object.keys(state.taggedWords).forEach(k => {
+      Object.keys(tagsNow).forEach(k => {
         const sp = document.querySelector(`.word[data-idx="${k}"]`);
         if (sp) sp.classList.add('wrong-tag');
       });
     }
-
-  // ── ERROR SENTENCE BRANCH ────────────────────────────────────
   } else {
-    if (state.correctChecked) {
-      // Team said "correct" but sentence has errors — 0 pts, reveal mistakes
-      pointsEarned = 0;
-      breakdown.push('✗ Marked as correct but sentence has mistakes: +0');
-    } else {
-      const playerTags = {};
-      Object.entries(state.taggedWords).forEach(([k, v]) => { playerTags[parseInt(k)] = v.type; });
-
-      errors.forEach(err => {
-        const maxPerError = numErrors === 1 ? 100 : 50;
-
-        if (err.t === 'word-order') {
-          const firstTagged = playerTags[err.i] === 'word-order';
-          const secondTagged = playerTags[err.i2] === 'word-order';
-          const firstOther = playerTags[err.i] && !firstTagged;
-          const secondOther = playerTags[err.i2] && !secondTagged;
-          if (firstTagged && secondTagged) {
-            pointsEarned += maxPerError;
-            breakdown.push(`✓ Word order (${getWordText(err.i)} / ${getWordText(err.i2)}): +${maxPerError}`);
-          } else if (firstTagged || secondTagged) {
-            const partial = Math.round(maxPerError * 0.5);
-            pointsEarned += partial;
-            breakdown.push(`~ Word order partially identified: +${partial}`);
-          } else if (firstOther && secondOther) {
-            const partial = Math.round(maxPerError * 0.4);
-            pointsEarned += partial;
-            breakdown.push(`~ Right words, wrong label (it was Word Order): +${partial}`);
-          } else if (firstOther || secondOther) {
-            const partial = Math.round(maxPerError * 0.2);
-            pointsEarned += partial;
-            breakdown.push(`~ One word found, wrong label (it was Word Order): +${partial}`);
-          } else {
-            breakdown.push(`✗ Missed word order mistake: +0`);
-          }
-        } else if (err.i2 !== undefined) {
-          const matches = tag => tag === err.t || (err.alt && tag === err.alt);
-          const tag1 = playerTags[err.i];
-          const tag2 = playerTags[err.i2];
-          const correct1 = matches(tag1);
-          const correct2 = matches(tag2);
-          const wrong1 = tag1 && !correct1;
-          const wrong2 = tag2 && !correct2;
-          const tagged1 = !!tag1;
-          const tagged2 = !!tag2;
-          if (correct1 && correct2) {
-            pointsEarned += maxPerError;
-            breakdown.push(`✓ ${labelName(err.t)} on "${getWordText(err.i)} + ${getWordText(err.i2)}": +${maxPerError}`);
-          } else if (correct1 || correct2) {
-            const partial = Math.round(maxPerError * 0.6);
-            pointsEarned += partial;
-            const which = correct1 ? getWordText(err.i) : getWordText(err.i2);
-            breakdown.push(`~ ${labelName(err.t)}: only "${which}" tagged (this mistake needs both words): +${partial}`);
-          } else if ((wrong1 && tagged2) || (tagged1 && wrong2)) {
-            const partial = Math.round(maxPerError * 0.3);
-            pointsEarned += partial;
-            breakdown.push(`~ Right words, wrong label: +${partial}`);
-          } else if (wrong1 || wrong2) {
-            const partial = Math.round(maxPerError * 0.2);
-            pointsEarned += partial;
-            breakdown.push(`~ One word found, wrong label: +${partial}`);
-          } else {
-            breakdown.push(`✗ Missed ${labelName(err.t)} on "${getWordText(err.i)} ${getWordText(err.i2)}": +0`);
-          }
-        } else {
-          const pTag = playerTags[err.i];
-          if (pTag === err.t || (err.alt && pTag === err.alt)) {
-            pointsEarned += maxPerError;
-            breakdown.push(`✓ ${labelName(err.t)} on "${getWordText(err.i)}": +${maxPerError}`);
-          } else if (pTag) {
-            const partial = Math.round(maxPerError * 0.5);
-            pointsEarned += partial;
-            breakdown.push(`~ Right word, wrong label ("${getWordText(err.i)}" tagged as ${labelName(pTag)}): +${partial}`);
-          } else {
-            breakdown.push(`✗ Missed ${labelName(err.t)} on "${getWordText(err.i)}": +0`);
-          }
-        }
-      });
-
-      // Penalty for false positives
-      const correctWordIdxs = new Set();
-      errors.forEach(e => { correctWordIdxs.add(e.i); if (e.i2 !== undefined) correctWordIdxs.add(e.i2); });
-      let wrongTags = 0;
-      Object.keys(playerTags).forEach(k => {
-        if (!correctWordIdxs.has(parseInt(k))) wrongTags++;
-      });
-      if (wrongTags > 0) {
-        const penalty = wrongTags * 10;
-        pointsEarned = Math.max(0, pointsEarned - penalty);
-        breakdown.push(`✗ ${wrongTags} incorrect word(s) tagged: -${penalty}`);
-      }
-    }
-
-    // Show word-level feedback for error sentences
-    const playerTags2 = {};
-    Object.entries(state.taggedWords).forEach(([k, v]) => { playerTags2[parseInt(k)] = v.type; });
-    showWordFeedback(errors, playerTags2);
+    showWordFeedback(sentence.errors, tagsNow);
   }
 
-  pointsEarned = Math.max(0, pointsEarned);
-  state.scores[state.currentTeamIdx] += pointsEarned;
-
-  // Feedback panel
-  document.getElementById('points-awarded').textContent = `+${pointsEarned} pts`;
-  document.getElementById('points-breakdown').textContent = breakdown.join('  |  ');
-  document.getElementById('corrected-sentence').innerHTML = isCorrectSentence
+  document.getElementById('corrected-sentence').innerHTML = sentence.correct === true
     ? `<span style="color:var(--word-order)">✓ ${sentence.s}</span>`
     : buildCorrectedHTML(sentence);
 
   const explEl = document.getElementById('expl-line');
-  if (!isCorrectSentence && sentence.expl) {
+  if (sentence.correct !== true && sentence.expl) {
     explEl.textContent = '💡 ' + sentence.expl;
     explEl.classList.add('visible');
   } else {
     explEl.classList.remove('visible');
   }
 
-  document.getElementById('feedback-panel').classList.add('visible');
   document.getElementById('submit-btn').style.display = 'none';
   document.getElementById('next-btn').style.display = 'block';
-
-  // Disable checkbox after submit
   document.getElementById('correct-checkbox').disabled = true;
   document.getElementById('correct-check-wrap').classList.add('disabled');
 
+  const total = totalA + totalS;
+  if (total >= 100) Snd.correct();
+  else if (total > 0) Snd.partial();
+  else Snd.wrong();
+
+  state.records.push({
+    teamIdx: state.currentTeamIdx,
+    sentence,
+    pointsA: totalA,
+    stealTeamIdx: stealRes ? state.stealTeamIdx : null,
+    pointsSteal: totalS,
+    perError: fr.perError,
+    correct: sentence.correct === true,
+  });
+
   refreshScoreboard();
-  state.turnsPlayed++;
-});
+}
 
 function getWordText(idx) {
   const span = document.querySelector(`.word[data-idx="${idx}"]`);
@@ -1862,15 +2219,52 @@ function buildCorrectedHTML(sentence) {
 // ─── Next button ─────────────────────────────────────────────
 
 document.getElementById('next-btn').addEventListener('click', () => {
-  // Move to next team
   state.currentTeamIdx = (state.currentTeamIdx + 1) % state.numTeams;
   nextTurn();
 });
 
+// ─── Keyboard shortcuts ───────────────────────────────────────
+// 1–4 = labels · C = correct checkbox · Enter = submit / reveal / next
+
+document.addEventListener('keydown', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (!document.getElementById('screen-game').classList.contains('active')) return;
+
+  if (e.key >= '1' && e.key <= '4') {
+    const btns = [...document.querySelectorAll('.label-btn')];
+    if (btns[parseInt(e.key) - 1]) btns[parseInt(e.key) - 1].click();
+  } else if (e.key === 'c' || e.key === 'C') {
+    const cb = document.getElementById('correct-checkbox');
+    if (!cb.disabled && answering()) {
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event('change'));
+    }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (state.phase === 'stealOffer') document.getElementById('reveal-btn').click();
+    else if (state.phase === 'revealed') document.getElementById('next-btn').click();
+    else document.getElementById('submit-btn').click();
+  }
+});
+
+// ─── Sound toggle ─────────────────────────────────────────────
+
+const sndBtn = document.getElementById('snd-toggle');
+function refreshSndBtn() { sndBtn.textContent = Snd.muted ? '🔇' : '🔊'; }
+sndBtn.addEventListener('click', () => {
+  Snd.muted = !Snd.muted;
+  try { localStorage.setItem('mh-muted', Snd.muted ? '1' : '0'); } catch (e) {}
+  refreshSndBtn();
+  if (!Snd.muted) Snd.click();
+});
+refreshSndBtn();
+
 // ─── Results screen ───────────────────────────────────────────
 
 function showResults() {
+  stopTimer();
   showScreen('results');
+  Snd.fanfare();
 
   const ranked = state.teams.map((name, i) => ({ name, score: state.scores[i] }))
     .sort((a, b) => b.score - a.score);
@@ -1883,7 +2277,6 @@ function showResults() {
   order.forEach(rank => {
     if (!ranked[rank]) return;
     const { name, score } = ranked[rank];
-    const heightPct = [100, 75, 55][rank] || 55;
     const barH = Math.max(60, Math.round((score / maxScore) * 140));
     const item = document.createElement('div');
     item.className = 'podium-item';
@@ -1901,7 +2294,58 @@ function showResults() {
   tbody.innerHTML = ranked.map((r, i) => `
     <tr><td>${i + 1}</td><td>${r.name}</td><td>${r.score}</td></tr>
   `).join('');
+
+  // ── Accuracy by mistake type (first attempts only) ──
+  const TYPE_COLORS = {
+    'spelling': 'var(--spelling)', 'word-form': 'var(--word-form)',
+    'verb-tense': 'var(--verb-tense)', 'word-order': 'var(--word-order)',
+  };
+  const stats = state.teams.map(() => ({}));
+  state.records.forEach(r => {
+    if (r.correct) return;
+    const maxPer = r.sentence.errors.length === 1 ? 100 : 50;
+    r.perError.forEach(pe => {
+      const s = stats[r.teamIdx];
+      const t = pe.err.t;
+      s[t] = s[t] || { earned: 0, max: 0 };
+      s[t].max += maxPer;
+      s[t].earned += pe.credit * maxPer;
+    });
+  });
+  const statsEl = document.getElementById('type-stats');
+  const rows = state.teams.map((name, i) => {
+    const s = stats[i];
+    const chips = Object.keys(TYPE_COLORS)
+      .filter(t => s[t])
+      .map(t => {
+        const pct = Math.round(100 * s[t].earned / s[t].max);
+        return `<span class="type-chip" style="border-left-color:${TYPE_COLORS[t]}">${labelName(t)} ${pct}%</span>`;
+      }).join('');
+    return chips ? `<div class="team-stat-row"><div class="tsr-name">${name}</div>${chips}</div>` : '';
+  }).join('');
+  statsEl.innerHTML = rows ? `<h3>Accuracy by Mistake Type</h3>${rows}` : '';
+
+  // ── Review list: error sentences nobody fully solved ──
+  const seen = new Set();
+  const reviewItems = [];
+  state.records.forEach(r => {
+    if (r.correct) return;
+    if (r.pointsA >= 100) return;
+    if (seen.has(r.sentence.s)) return;
+    seen.add(r.sentence.s);
+    reviewItems.push(r.sentence);
+  });
+  const reviewEl = document.getElementById('review-list');
+  reviewEl.innerHTML = reviewItems.length
+    ? `<h3>Review These Sentences</h3>` + reviewItems.map(s => `
+        <div class="review-item">
+          <div class="review-orig">${s.s}</div>
+          <div class="review-fix">${buildCorrectedHTML(s)}</div>
+          <div class="review-expl">💡 ${s.expl}</div>
+        </div>`).join('')
+    : '';
 }
+
 </script>
 </body>
 </html>

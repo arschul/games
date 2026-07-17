@@ -136,7 +136,9 @@
   .gs-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
   .gs-name{font-size:1rem;font-weight:600;}
   .gs-btns{display:flex;gap:.35rem;}
-  .gs-btn{width:44px;height:40px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;font-weight:700;cursor:pointer;transition:all .12s;}
+  .gs-btn{width:48px;height:44px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;font-weight:700;cursor:pointer;transition:all .12s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.05;padding:0;}
+  .gs-pts{font-size:.6rem;font-weight:600;opacity:.5;}
+  .gs-btn.sel .gs-pts{opacity:.75;}
   .gs-btn:hover{background:var(--bg3);}
   .gs-btn.sel{background:var(--accent2);color:#1a1a1a;border-color:var(--accent2);}
   .gs-btn.disabled{opacity:.3;cursor:not-allowed;pointer-events:none;}
@@ -312,7 +314,7 @@
 <div id="guess-screen" class="screen">
   <div class="mid-card">
     <div class="mc-title">Before the reveal…</div>
-    <div class="mc-sub">How many did they get right? Correct guess = +3 pts!</div>
+    <div class="mc-sub">How many did they get right? Rarer results pay more — 0 or 1 is the safe call.</div>
     <div class="active-band" id="active-band"></div>
     <div class="gs-board-preview" id="gs-board-preview">
       <div class="gs-board-label">Their answer</div>
@@ -556,6 +558,17 @@ const COLORS=['#e94560','#f5a623','#2ecc71','#3498db','#9b59b6','#1abc9c'];
 // would be noise. Refresh this if you do a sweep of the volatile figures.
 const DATA_ASOF='Apr 2026';
 const asOfOf=d=>d&&d.vol?(d.asOf||DATA_ASOF):null;
+
+// ── SCORING ──
+// For a random ordering, "how many land right" is the fixed-point distribution:
+// 0 -> 36.7%, 1 -> 37.5%, 2 -> 16.7%, 3 -> 8.3%, 5 -> 0.8% (4 is impossible).
+// A flat +3 meant "always guess 1" paid 1.12 pts/turn for ignoring the board, so
+// payouts now scale with how hard the call is. Shown on the buttons.
+const GUESS_PTS={0:2,1:2,2:3,3:4,4:4,5:5};
+const PTS_PER_ITEM=2;
+const PERFECT_BONUS=3;
+const SPEED_BONUS=2;
+const SPEED_MIN_CORRECT=3;   // no bonus for slamming in a wrong board fast
 
 const TOPICS=[
   {k:'animals',label:'🐾 Animals'},
@@ -954,7 +967,7 @@ function goGuess(){
   others.forEach(t=>{
     const ti=S.teams.indexOf(t);S.guesses[ti]=null;
     const row=document.createElement('div');row.className='gs-row';
-    const btns=opts.map(n=>`<button class="gs-btn" data-ti="${ti}" data-n="${n}">${n}</button>`).join('');
+    const btns=opts.map(n=>`<button class="gs-btn" data-ti="${ti}" data-n="${n}">${n}<span class="gs-pts">+${GUESS_PTS[n]}</span></button>`).join('');
     row.innerHTML=`<div class="gs-team"><div class="gs-dot" style="background:${t.color}"></div><span class="gs-name">${t.name}</span></div><div class="gs-btns">${btns}</div>`;
     gr.appendChild(row);
   });
@@ -991,34 +1004,41 @@ function goReveal(){
     return{pos,ci,ti,ok};
   });
   S.lastCorrect=cnt;
-  S.teams[S.teamIdx].score+=cnt*2;
+
+  const base=cnt*PTS_PER_ITEM;
+  const perfect=cnt===5?PERFECT_BONUS:0;
+  const fast=(cnt>=SPEED_MIN_CORRECT && S.timeLeft>S.timerSecs/2)?SPEED_BONUS:0;
+  const total=base+perfect+fast;
+  S.teams[S.teamIdx].score+=total;
 
   const list=document.getElementById('rv-list');list.innerHTML='';
   const ax=cat.axis||['LOWEST','HIGHEST'];
   // pos is the ascending index (0 = low end), so rank = 5 - pos.
   const posLabels=[`5th (${ax[0]})`,`4th`,`3rd`,`2nd`,`1st (${ax[1]})`];
-  const revResults=[...results].reverse(); // show highest first
+  const rows=[...results].reverse(); // top of the list = 1st = high end
 
   // Pre-build all rows as "pending"
-  revResults.forEach((r,idx)=>{
+  rows.forEach((r,idx)=>{
     const row=document.createElement('div');row.className='rv-row pending';
     row.id=`rv-row-${idx}`;
-    const lbl=posLabels[r.pos];
-    row.innerHTML=`<span class="rv-pos">${lbl}</span><span class="rv-ico">?</span><span class="rv-name" style="color:var(--muted)">…</span>`;
+    row.innerHTML=`<span class="rv-pos">${posLabels[r.pos]}</span><span class="rv-ico">?</span><span class="rv-name" style="color:var(--muted)">…</span>`;
     list.appendChild(row);
   });
 
   soundRevealStart();
 
-  // Reveal one by one
-  let i=0;
+  // Reveal from the bottom of the list upward, so the 1st-place slot lands last.
+  let i=rows.length-1;
   function revealNext(){
-    if(i>=revResults.length){
-      // All revealed — show summary
+    if(i<0){
       setTimeout(()=>{
         document.getElementById('big-score').style.display='';
         document.getElementById('big-score').innerHTML=`<span>${cnt}</span>/5`;
-        document.getElementById('big-score-sub').textContent=`items correct for ${S.teams[S.teamIdx].name} (+${cnt*2} pts)`;
+        const bits=[`${base} pts`];
+        if(perfect)bits.push(`+${perfect} perfect`);
+        if(fast)bits.push(`+${fast} speed`);
+        document.getElementById('big-score-sub').textContent=
+          `${S.teams[S.teamIdx].name}: ${bits.join(' ')}${bits.length>1?` = ${total}`:''}`;
 
         const grs=document.getElementById('gr-section');grs.innerHTML='';
         const others=S.teams.filter((_,j)=>j!==S.teamIdx);
@@ -1026,37 +1046,30 @@ function goReveal(){
           const ttl=document.createElement('div');ttl.className='gr-title';ttl.textContent='Guess results';grs.appendChild(ttl);
           others.forEach(t=>{
             const ti=S.teams.indexOf(t);const g=S.guesses[ti];const hit=g===cnt;
-            if(hit)S.teams[ti].score+=3;
+            const pts=hit?GUESS_PTS[cnt]:0;
+            if(hit)S.teams[ti].score+=pts;
             const row=document.createElement('div');row.className='gr-row';
-            row.innerHTML=`<div class="gr-dot" style="background:${t.color}"></div><span class="gr-name">${t.name}</span><span class="gr-guess">${g!==null&&g!==undefined?`guessed ${g}`:'no guess'}</span><span class="gr-pts ${hit?'hit':'miss'}">${hit?'+3 pts':'+0'}</span>`;
+            row.innerHTML=`<div class="gr-dot" style="background:${t.color}"></div><span class="gr-name">${t.name}</span><span class="gr-guess">${g!==null&&g!==undefined?`guessed ${g}`:'no guess'}</span><span class="gr-pts ${hit?'hit':'miss'}">${hit?`+${pts} pts`:'+0'}</span>`;
             grs.appendChild(row);
           });
-          document.getElementById('gr-section').style.display='';
+          grs.style.display='';
         }
         document.getElementById('rv-next-btn').classList.remove('hidden');
-        if(cnt===5) launchConfetti();
+        if(cnt===5) launchConfetti();   // perfect board only
       }, 400);
       return;
     }
 
-    const r=revResults[i];
+    const r=rows[i];
     const row=document.getElementById(`rv-row-${i}`);
-    const lbl=posLabels[r.pos];
 
-    // Animate in
     setTimeout(()=>{
       const val=cat.vals?cat.vals[cat.ans[r.pos]]:null;
       const valBadge=val?`<span class="rv-val">${val}</span>`:'';
       row.className='rv-row '+(r.ok?'ok':'no')+' visible';
-      row.innerHTML=`<span class="rv-pos">${lbl}</span><span class="rv-ico">${r.ok?'✓':'✗'}</span><span class="rv-name">${r.ti||'—'}</span>${!r.ok?`<span class="rv-fix">→ ${r.ci}</span>`:''}${valBadge}`;
-      if(r.ok){
-        soundFanfare();
-        if(r.pos===4) setTimeout(launchConfetti, 200); // last item correct = confetti
-      } else {
-        soundBuzz();
-      }
-
-      i++;
+      row.innerHTML=`<span class="rv-pos">${posLabels[r.pos]}</span><span class="rv-ico">${r.ok?'✓':'✗'}</span><span class="rv-name">${r.ti||'—'}</span>${!r.ok?`<span class="rv-fix">→ ${r.ci}</span>`:''}${valBadge}`;
+      if(r.ok)soundFanfare(); else soundBuzz();
+      i--;
       setTimeout(revealNext, 1000);
     }, 200);
   }

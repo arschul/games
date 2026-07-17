@@ -56,7 +56,8 @@
   .game-main{display:flex;flex:1;overflow:hidden;}
   .tray{width:220px;flex-shrink:0;padding:1rem .75rem;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;}
   .tray-lbl{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:0 .3rem .4rem;border-bottom:1px solid var(--border);margin-bottom:.3rem;}
-  .piece{padding:.75rem .85rem;border-radius:10px;cursor:grab;user-select:none;font-size:.95rem;font-weight:600;border:1px solid rgba(255,255,255,.15);transition:transform .1s,opacity .1s;text-align:center;line-height:1.35;}
+  .piece{padding:.75rem .85rem;border-radius:10px;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;font-size:.95rem;font-weight:600;border:1px solid rgba(255,255,255,.15);transition:transform .1s,opacity .1s;text-align:center;line-height:1.35;}
+  .piece.sel{outline:2px solid #fff;outline-offset:1px;transform:scale(1.03);}
   .piece:active{cursor:grabbing;transform:scale(1.04);}
   .piece.dragging{opacity:.3;}
   .piece.placed{opacity:.4;cursor:not-allowed;font-style:italic;background:rgba(255,255,255,.04)!important;border-color:transparent!important;color:var(--muted)!important;}
@@ -66,12 +67,15 @@
   .axis-lbl{font-size:.7rem;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:1px;}
   .axis-line{width:2px;flex:1;background:linear-gradient(to top,rgba(255,255,255,.1),rgba(255,255,255,.3));border-radius:1px;margin:4px 0;}
   .board{display:flex;flex-direction:column;gap:6px;}
-  .board-row{width:var(--bw);height:72px;background:var(--bg2);border:1.5px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;position:relative;transition:background .1s,border-color .1s;}
+  .board-row{width:var(--bw);height:72px;background:var(--bg2);border:1.5px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;position:relative;transition:background .1s,border-color .1s;touch-action:none;}
   .board-row.filled{border-style:solid;}
   .board-row.hover{background:rgba(233,69,96,.15);border-color:var(--accent);}
   .rnum{position:absolute;left:12px;font-size:.75rem;color:var(--muted);}
-  .bpiece{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:1rem;font-weight:700;cursor:grab;padding:0 3rem;text-align:center;line-height:1.35;}
+  .bpiece{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:1rem;font-weight:700;cursor:grab;padding:0 3rem;text-align:center;line-height:1.35;user-select:none;-webkit-user-select:none;touch-action:none;}
   .bpiece:active{cursor:grabbing;}
+  .bpiece.sel{outline:2px solid #fff;outline-offset:-3px;}
+  .board.selecting .board-row{cursor:pointer;}
+  .board.selecting .board-row:not(.filled){border-color:var(--accent);background:rgba(233,69,96,.07);}
   .rhint{font-size:.8rem;color:var(--muted);position:absolute;right:12px;}
   .board-hint{font-size:.8rem;color:var(--muted);margin-top:.6rem;text-align:center;}
   .action-bar{display:flex;gap:.75rem;padding:1rem 1.5rem;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;}
@@ -198,7 +202,7 @@
       </div>
     </div>
     <div class="setup-section">
-      <div class="setup-label">Number of Rounds</div>
+      <div class="setup-label">Number of Rounds <span id="rnd-hint" style="text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400;"></span></div>
       <div class="row-btns" id="rnd-btns">
         <button class="rnd-btn" data-r="1">1</button>
         <button class="rnd-btn" data-r="2">2</button>
@@ -240,7 +244,7 @@
           </div>
           <div class="board" id="board"></div>
         </div>
-        <div class="board-hint">Drag items from the tray into any row &bull; Drag to rearrange</div>
+        <div class="board-hint">Drag an item into a row &bull; or tap an item, then tap a row</div>
       </div>
     </div>
     <div class="action-bar">
@@ -491,11 +495,12 @@ const DB=[
 const COLORS=['#e94560','#f5a623','#2ecc71','#3498db','#9b59b6','#1abc9c'];
 
 const S={
-  teams:[],timerSecs:120,roundsPlayed:0,teamIdx:0,maxRounds:3,
+  teams:[],timerSecs:120,turnsPlayed:0,teamIdx:0,maxRounds:3,
   cat:null,usedCats:new Set(),
   board:Array(5).fill(null),
   interval:null,timeLeft:0,
   dragItem:null,dragSrc:null,
+  selItem:null,selSrc:null,
   guesses:{},lastCorrect:0
 };
 
@@ -514,8 +519,12 @@ document.getElementById('cnt-btns').addEventListener('click',e=>{
   const b=e.target.closest('[data-n]');if(!b)return;
   nTeams=+b.dataset.n;
   document.querySelectorAll('.cnt-btn').forEach(x=>x.classList.toggle('sel',x.dataset.n==nTeams));
-  buildNameInputs();
+  buildNameInputs();updateRndHint();
 });
+function updateRndHint(){
+  const h=document.getElementById('rnd-hint');
+  h.textContent=`— each team plays ${maxRounds}× (${maxRounds*nTeams} turns total)`;
+}
 document.getElementById('tim-btns').addEventListener('click',e=>{
   const b=e.target.closest('[data-t]');if(!b)return;
   tSecs=+b.dataset.t;
@@ -525,6 +534,7 @@ document.getElementById('rnd-btns').addEventListener('click',e=>{
   const b=e.target.closest('[data-r]');if(!b)return;
   maxRounds=+b.dataset.r;
   document.querySelectorAll('.rnd-btn').forEach(x=>x.classList.toggle('sel',x===b));
+  updateRndHint();
 });
 function buildNameInputs(){
   const g=document.getElementById('names-grid');g.innerHTML='';
@@ -535,7 +545,7 @@ function buildNameInputs(){
     g.appendChild(d);
   }
 }
-buildNameInputs();
+buildNameInputs();updateRndHint();
 document.getElementById('start-btn').addEventListener('click',()=>{
   AC.resume();
   const defs=['Alpha','Beta','Gamma','Delta','Epsilon','Zeta'];
@@ -544,7 +554,7 @@ document.getElementById('start-btn').addEventListener('click',()=>{
     const inp=document.getElementById(`ti-${i}`);
     S.teams.push({name:inp.value.trim()||`Team ${defs[i]}`,score:0,color:COLORS[i]});
   }
-  S.timerSecs=tSecs;S.roundsPlayed=0;S.teamIdx=0;S.usedCats=new Set();S.maxRounds=maxRounds;
+  S.timerSecs=tSecs;S.turnsPlayed=0;S.teamIdx=0;S.usedCats=new Set();S.maxRounds=maxRounds;
   startRound();
 });
 
@@ -557,13 +567,14 @@ function pickCat(){
 }
 function startRound(){
   S.cat=pickCat();S.board=Array(5).fill(null);S.timeLeft=S.timerSecs;S.guesses={};
+  S.selItem=null;S.selSrc=null;
   show('game');
   const t=S.teams[S.teamIdx];
   const tn=document.getElementById('turn-name');tn.textContent=t.name;tn.style.color=t.color;
   document.getElementById('cat-pill').textContent=S.cat.cat;
   // Update axis labels from category
   const axisLabels=document.querySelectorAll('.axis-lbl');
-  const ax=S.cat.axis||['HIGHEST','LOWEST'];
+  const ax=S.cat.axis||['LOWEST','HIGHEST'];
   axisLabels[0].textContent=ax[1]; // top = high end
   axisLabels[1].textContent=ax[0]; // bottom = low end
   renderBar();renderTray();renderBoard();startTimer();
@@ -583,65 +594,121 @@ function renderTray(){
   S.cat.items.forEach(item=>{
     const placed=S.board.includes(item);
     const d=document.createElement('div');
-    d.className='piece'+(placed?' placed':'');
+    d.className='piece'+(placed?' placed':'')+(S.selItem===item&&S.selSrc==='tray'?' sel':'');
     if(!placed){d.style.background=S.teams[S.teamIdx].color+'22';d.style.borderColor=S.teams[S.teamIdx].color+'66';}
     d.textContent=item;
-    if(!placed)d.addEventListener('mousedown',e=>startDrag(e,item,'tray'));
+    if(!placed)d.addEventListener('pointerdown',e=>startDrag(e,item,'tray'));
     tray.appendChild(d);
   });
 }
 function renderBoard(){
   const board=document.getElementById('board');board.innerHTML='';
+  board.classList.toggle('selecting',S.selItem!==null);
   const col=S.teams[S.teamIdx].color;
+  const ax=S.cat.axis||['LOWEST','HIGHEST'];
   for(let r=0;r<5;r++){
     const row=document.createElement('div');
     row.className='board-row'+(S.board[r]?' filled':'');
     row.dataset.row=r;
-    const rn=document.createElement('span');rn.className='rnum';rn.textContent=5-r;row.appendChild(rn);
+    // Rank 1 = top = high end of the axis
+    const rn=document.createElement('span');rn.className='rnum';rn.textContent=r+1;row.appendChild(rn);
     if(S.board[r]){
-      const bp=document.createElement('div');bp.className='bpiece';
+      const item=S.board[r];
+      const bp=document.createElement('div');
+      bp.className='bpiece'+(S.selItem===item&&S.selSrc===r?' sel':'');
       bp.style.background=col+'2e';bp.style.border=`1px solid ${col}77`;
-      bp.textContent=S.board[r];
-      bp.addEventListener('mousedown',e=>startDrag(e,S.board[r],r));
+      bp.textContent=item;
+      bp.addEventListener('pointerdown',e=>{
+        // If another piece is already selected, tapping this row swaps it in.
+        if(S.selItem!==null&&S.selItem!==item){
+          placeAt(r,S.selItem,S.selSrc);clearSel();soundDrop();
+          e.stopPropagation();e.preventDefault();return;
+        }
+        e.stopPropagation();
+        startDrag(e,item,r);
+      });
       row.appendChild(bp);
     }else{
       const rh=document.createElement('span');rh.className='rhint';
-      const ax=S.cat.axis||['HIGHEST','LOWEST'];
       rh.textContent=r===0?ax[1]:r===4?ax[0]:'';row.appendChild(rh);
     }
+    row.addEventListener('pointerdown',()=>{
+      if(S.selItem===null)return;
+      placeAt(r,S.selItem,S.selSrc);clearSel();soundDrop();
+    });
     row.addEventListener('mouseenter',()=>{if(S.dragItem!==null)row.classList.add('hover');});
     row.addEventListener('mouseleave',()=>row.classList.remove('hover'));
     board.appendChild(row);
   }
 }
+function clearSel(){S.selItem=null;S.selSrc=null;renderTray();renderBoard();}
+function toggleSel(item,src){
+  if(S.selItem===item&&S.selSrc===src){S.selItem=null;S.selSrc=null;}
+  else{S.selItem=item;S.selSrc=src;}
+  renderTray();renderBoard();
+}
 
 // ── DRAG ──
 const ghost=document.getElementById('ghost');
+const DRAG_THRESHOLD=8; // px before a tap becomes a drag
 function startDrag(e,item,src){
-  e.preventDefault();S.dragItem=item;S.dragSrc=src;
-  ghost.style.display='block';ghost.style.background=S.teams[S.teamIdx].color;ghost.textContent=item;
-  ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';
-  const mv=ev=>{ghost.style.left=ev.clientX+'px';ghost.style.top=ev.clientY+'px';};
-  const up=ev=>{
-    ghost.style.display='none';
-    const el=document.elementFromPoint(ev.clientX,ev.clientY);
-    const rEl=el?el.closest('[data-row]'):null;
-    if(rEl){drop(+rEl.dataset.row);soundDrop();}
-    document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
-    S.dragItem=null;S.dragSrc=null;
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  e.preventDefault();
+  const sx=e.clientX,sy=e.clientY;
+  let moved=false;
+  S.dragItem=null;S.dragSrc=null;
+
+  const rowUnder=(x,y)=>{
+    const el=document.elementFromPoint(x,y);
+    return el?el.closest('[data-row]'):null;
   };
-  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  const clearHover=()=>document.querySelectorAll('.board-row.hover').forEach(x=>x.classList.remove('hover'));
+
+  const mv=ev=>{
+    if(!moved){
+      if(Math.hypot(ev.clientX-sx,ev.clientY-sy)<DRAG_THRESHOLD)return;
+      moved=true;
+      S.dragItem=item;S.dragSrc=src;
+      ghost.style.display='block';
+      ghost.style.background=S.teams[S.teamIdx].color;
+      ghost.textContent=item;
+    }
+    ghost.style.left=ev.clientX+'px';ghost.style.top=ev.clientY+'px';
+    const rEl=rowUnder(ev.clientX,ev.clientY);
+    clearHover();
+    if(rEl)rEl.classList.add('hover');
+  };
+  const up=ev=>{
+    document.removeEventListener('pointermove',mv);
+    document.removeEventListener('pointerup',up);
+    document.removeEventListener('pointercancel',up);
+    ghost.style.display='none';
+    clearHover();
+    if(!moved){ toggleSel(item,src); S.dragItem=null;S.dragSrc=null; return; }
+    const rEl=rowUnder(ev.clientX,ev.clientY);
+    if(rEl){placeAt(+rEl.dataset.row,S.dragItem,S.dragSrc);soundDrop();}
+    S.dragItem=null;S.dragSrc=null;
+    if(S.selItem!==null)clearSel();
+  };
+  document.addEventListener('pointermove',mv);
+  document.addEventListener('pointerup',up);
+  document.addEventListener('pointercancel',up);
 }
-function drop(ri){
-  if(S.dragItem===null)return;
+function placeAt(ri,item,src){
+  if(item==null)return;
+  if(src===ri)return;
   const displaced=S.board[ri];
-  if(typeof S.dragSrc==='number')S.board[S.dragSrc]=null;
-  if(displaced&&typeof S.dragSrc==='number')S.board[S.dragSrc]=displaced;
-  S.board[ri]=S.dragItem;
+  if(typeof src==='number')S.board[src]=null;
+  if(displaced&&typeof src==='number')S.board[src]=displaced;
+  S.board[ri]=item;
   renderTray();renderBoard();
 }
-document.getElementById('clear-btn').addEventListener('click',()=>{S.board=Array(5).fill(null);renderTray();renderBoard();});
-document.getElementById('submit-btn').addEventListener('click',()=>{clearInterval(S.interval);goGuess();});
+document.getElementById('clear-btn').addEventListener('click',()=>{S.board=Array(5).fill(null);S.selItem=null;S.selSrc=null;renderTray();renderBoard();});
+document.getElementById('submit-btn').addEventListener('click',()=>{
+  const empty=S.board.filter(x=>!x).length;
+  if(empty>0&&!confirm(`${empty} row${empty>1?'s are':' is'} still empty — they'll count as wrong. Submit anyway?`))return;
+  clearInterval(S.interval);goGuess();
+});
 
 // ── TIMER ──
 function startTimer(){
@@ -668,7 +735,7 @@ function goGuess(){
   // Render board preview (highest→lowest)
   const gbr=document.getElementById('gs-board-rows');gbr.innerHTML='';
   const ax=S.cat.axis||['LOWEST','HIGHEST'];
-  const posLabels=[`5th (${ax[1]})`,`4th`,`3rd`,`2nd`,`1st (${ax[0]})`];
+  const posLabels=[`1st (${ax[1]})`,`2nd`,`3rd`,`4th`,`5th (${ax[0]})`];
   for(let r=0;r<5;r++){
     const item=S.board[r];
     const row=document.createElement('div');
@@ -682,21 +749,25 @@ function goGuess(){
   const others=S.teams.filter((_,i)=>i!==S.teamIdx);
   if(!others.length){gr.innerHTML='<p style="color:var(--muted);font-size:.95rem;text-align:center;">Solo play — no guessing!</p>';return;}
 
+  // With a full board, exactly 4 correct is impossible (the 5th is forced).
+  // With empty rows it IS possible, so offer 4 in that case.
+  const full=S.board.every(Boolean);
+  const opts=full?[0,1,2,3,5]:[0,1,2,3,4,5];
+
   others.forEach(t=>{
     const ti=S.teams.indexOf(t);S.guesses[ti]=null;
     const row=document.createElement('div');row.className='gs-row';
-    // 0-4 possible correct (can't select 4 since if 4 correct → 5th is automatic)
-    const btns=[0,1,2,3,5].map(n=>`<button class="gs-btn" data-ti="${ti}" data-n="${n}">${n}</button>`).join('');
+    const btns=opts.map(n=>`<button class="gs-btn" data-ti="${ti}" data-n="${n}">${n}</button>`).join('');
     row.innerHTML=`<div class="gs-team"><div class="gs-dot" style="background:${t.color}"></div><span class="gs-name">${t.name}</span></div><div class="gs-btns">${btns}</div>`;
     gr.appendChild(row);
   });
-
-  gr.addEventListener('click',e=>{
-    const b=e.target.closest('.gs-btn');if(!b)return;
-    const ti=+b.dataset.ti,n=+b.dataset.n;S.guesses[ti]=n;
-    gr.querySelectorAll(`[data-ti="${ti}"]`).forEach(x=>x.classList.toggle('sel',+x.dataset.n===n));
-  });
 }
+// Registered once — was previously re-added on every round.
+document.getElementById('gs-rows').addEventListener('click',e=>{
+  const b=e.target.closest('.gs-btn');if(!b)return;
+  const ti=+b.dataset.ti,n=+b.dataset.n;S.guesses[ti]=n;
+  e.currentTarget.querySelectorAll(`[data-ti="${ti}"]`).forEach(x=>x.classList.toggle('sel',+x.dataset.n===n));
+});
 document.getElementById('gs-reveal-btn').addEventListener('click',goReveal);
 document.getElementById('gs-skip').addEventListener('click',goReveal);
 
@@ -723,7 +794,8 @@ function goReveal(){
 
   const list=document.getElementById('rv-list');list.innerHTML='';
   const ax=cat.axis||['LOWEST','HIGHEST'];
-  const posLabels=[`1st (${ax[0]})`,`2nd`,`3rd`,`4th`,`5th (${ax[1]})`];
+  // pos is the ascending index (0 = low end), so rank = 5 - pos.
+  const posLabels=[`5th (${ax[0]})`,`4th`,`3rd`,`2nd`,`1st (${ax[1]})`];
   const revResults=[...results].reverse(); // show highest first
 
   // Pre-build all rows as "pending"
@@ -791,13 +863,17 @@ function goReveal(){
   setTimeout(revealNext, 500);
 }
 
-document.getElementById('rv-next-btn').addEventListener('click',()=>{S.roundsPlayed++;showScores();});
+document.getElementById('rv-next-btn').addEventListener('click',()=>{S.turnsPlayed++;showScores();});
 
 // ── SCORES ──
 function showScores(){
   show('scores');
-  const isFinal=S.maxRounds&&S.roundsPlayed>=S.maxRounds;
-  document.getElementById('sc-sub').textContent=`Round ${S.roundsPlayed} of ${S.maxRounds||'∞'}`;
+  const nT=S.teams.length;
+  const totalTurns=S.maxRounds*nT;
+  const isFinal=S.turnsPlayed>=totalTurns;
+  const roundNo=Math.min(Math.ceil(S.turnsPlayed/nT),S.maxRounds);
+  document.getElementById('sc-sub').textContent=
+    `Round ${roundNo} of ${S.maxRounds} • Turn ${S.turnsPlayed} of ${totalTurns}`;
   const sorted=[...S.teams].sort((a,b)=>b.score-a.score);
   const lb=document.getElementById('leaderboard');lb.innerHTML='';
   sorted.forEach((t,i)=>{
@@ -808,13 +884,8 @@ function showScores(){
   });
   const nb=document.getElementById('next-btn');
   if(isFinal){nb.textContent='🏆 Game Over — New Game';nb.onclick=()=>{clearInterval(S.interval);show('setup');};}
-  else{nb.textContent='Next Round →';nb.onclick=()=>{S.teamIdx=(S.teamIdx+1)%S.teams.length;startRound();};}
+  else{nb.textContent='Next Turn →';nb.onclick=()=>{S.teamIdx=(S.teamIdx+1)%nT;startRound();};}
 }
-document.getElementById('next-btn').addEventListener('click',()=>{
-  const nextRound=S.roundsPlayed+1;
-  if(S.maxRounds&&nextRound>S.maxRounds){show('setup');return;}
-  S.teamIdx=(S.teamIdx+1)%S.teams.length;startRound();
-});
 document.getElementById('end-btn').addEventListener('click',()=>{clearInterval(S.interval);show('setup');});
 </script>
 </body>

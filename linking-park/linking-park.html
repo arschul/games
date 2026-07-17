@@ -61,7 +61,29 @@ h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
 #gameScreen.active{display:flex;}
 
 /* ===== THEME TOGGLE ===== */
-#themeToggle{position:fixed;top:14px;right:14px;z-index:1000;background:var(--surface);border:1.5px solid var(--border);border-radius:50px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text);backdrop-filter:blur(8px);}
+#themeToggle,#soundToggle{position:fixed;top:14px;z-index:1000;background:var(--surface);border:1.5px solid var(--border);border-radius:50px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text);backdrop-filter:blur(8px);}
+#themeToggle{right:14px;}
+#soundToggle{right:76px;}
+.pause-btn{background:var(--surface2);border:2px solid var(--border);color:var(--text);border-radius:10px;padding:5px 13px;font-size:19px;cursor:pointer;line-height:1;transition:all 0.2s;}
+.pause-btn:hover{border-color:var(--accent);}
+.pause-btn.paused{border-color:var(--accent2);background:rgba(200,168,75,0.2);animation:pulse 1s infinite;}
+.seen-row{display:flex;align-items:center;gap:10px;margin:4px 0 14px;flex-wrap:wrap;}
+.seen-row span{font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.3px;}
+.seen-row button{background:var(--surface2);border:1.5px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 10px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;cursor:pointer;}
+.seen-row button:hover{border-color:var(--wrong);color:var(--wrong);}
+@media(max-width:700px){
+  .paragraph-text{font-size:17px;line-height:2.6;}
+  .drop-slot{min-width:106px;height:38px;font-size:13.5px;}
+  .paragraph-card{padding:16px 16px;}
+  .wordbank-card{padding:14px 14px;}
+  .word-chip{padding:9px 14px;font-size:14px;}
+  .game-body{padding:12px;gap:12px;}
+  .game-header{padding:9px 10px;gap:8px;}
+  .timer-display{font-size:22px;padding:4px 10px;min-width:64px;}
+  .current-team-badge{font-size:18px;padding:4px 10px;}
+  .btn-action{padding:9px 13px;font-size:15px;}
+  #soundToggle{right:66px;}
+}
 
 /* ===== LOGO ===== */
 .logo{text-align:center;}
@@ -127,7 +149,10 @@ h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
 .word-chip.dragging{opacity:0.35;}
 .word-chip.used{opacity:0.25;cursor:default;pointer-events:none;text-decoration:line-through;}
 
-#dragGhost{position:fixed;pointer-events:none;z-index:9999;background:var(--accent);color:#fff;border-radius:8px;padding:8px 16px;font-weight:700;font-size:15px;font-family:'Nunito',sans-serif;white-space:nowrap;transform:translate(-50%,-50%);display:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.word-chip.selected{border-color:var(--accent2);background:var(--accent2);color:#1a2e0a;transform:translateY(-2px);box-shadow:0 4px 14px rgba(200,168,75,0.45);}
+.drop-slot.selected{border-color:var(--accent2);border-style:solid;background:rgba(200,168,75,0.25);}
+.drop-slot.target-hint{border-color:var(--accent2);animation:hintPulse 1.2s infinite;}
+@keyframes hintPulse{0%,100%{box-shadow:0 0 0 0 rgba(200,168,75,0)}50%{box-shadow:0 0 0 5px rgba(200,168,75,0.25)}}
 
 /* ===== ACTIONS ===== */
 .game-actions{display:flex;gap:10px;flex-wrap:wrap;}
@@ -276,15 +301,15 @@ h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
 </svg>
 </div>
 
-<div id="dragGhost"></div>
 <button id="themeToggle">☀️</button>
+<button id="soundToggle">🔊</button>
 
 <!-- START SCREEN -->
 <div id="startScreen" class="screen active">
   <div class="logo">
     <h1>LINKING<br>PARK</h1>
     <div class="sub">TRANSITION WORD GAME</div>
-    <div class="tagline">Drag the right connectors into the gaps</div>
+    <div class="tagline">Tap or drag the right connectors into the gaps</div>
   </div>
   <div class="setup-card">
     <div class="setup-row">
@@ -305,12 +330,12 @@ h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
       </div>
     </div>
     <div class="setup-row">
-      <label>Rounds</label>
+      <label>Rounds per Team</label>
       <div class="btn-group" id="roundsGroup">
+        <div class="btn-opt" data-val="1">1</div>
+        <div class="btn-opt selected" data-val="2">2</div>
         <div class="btn-opt" data-val="3">3</div>
-        <div class="btn-opt selected" data-val="5">5</div>
-        <div class="btn-opt" data-val="8">8</div>
-        <div class="btn-opt" data-val="10">10</div>
+        <div class="btn-opt" data-val="4">4</div>
       </div>
     </div>
     <div class="setup-row">
@@ -336,6 +361,7 @@ h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
         </div>
       </div>
     </div>
+    <div class="seen-row"><span id="seenInfo"></span><button id="resetSeenBtn" title="Forget which texts this class has already seen">RESET SEEN</button></div>
     <button class="btn-start" id="startBtn">🌿 START GAME</button>
   </div>
 </div>
@@ -348,19 +374,21 @@ h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
     <div class="level-badge" id="headerLevel">A1</div>
     <div class="scoreboard-mini" id="scoreboardMini"></div>
     <div class="timer-display" id="timerDisplay">2:00</div>
+    <button class="pause-btn" id="pauseBtn" title="Pause timer">⏸</button>
   </div>
   <div class="game-body">
     <div class="paragraph-card">
       <div class="topic-label" id="topicLabel">Topic</div>
-      <h3>Drag words from the bank into any gap — swap freely</h3>
+      <h3>Tap a word, then tap a gap — or drag. Swap freely.</h3>
       <div class="paragraph-text" id="paragraphText"></div>
     </div>
     <div class="wordbank-card">
-      <h3>Word Bank — drag to any slot, drop back here to remove</h3>
+      <h3>Word Bank — tap here to return a picked-up word</h3>
       <div class="words-container" id="wordsContainer"></div>
     </div>
     <div class="game-actions">
       <button class="btn-action" id="clearBtn">CLEAR ALL</button>
+      <button class="btn-action" id="swapBtn" title="Replace this text with a fresh one">↻ SWAP TEXT</button>
       <button class="btn-action primary" id="submitBtn">SUBMIT ANSWERS</button>
     </div>
   </div>
@@ -400,764 +428,758 @@ h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;}
 // PARAGRAPH DATA
 // RULES:
 // - answers[i] = ALL accepted strings for slot i (lowercase, comma included if sentence-initial)
-// - First item = bank representative displayed on chip
-// - altNote[i] = teacher note for reveal (null = skip)
-// - Slots ALWAYS sentence-initial → no mid-sentence also/too
-// - Contrast connectors include: however, / nevertheless, / by contrast, / on the other hand,
-// - Cause-result include: therefore, / as a result, / consequently, / so
-// - Addition include: in addition, / furthermore, / moreover, / also,
-// - Example include: for example, / for instance,
+// - Bank chip = a RANDOM accepted alternative each round (not always answers[0])
+// - Slots ALWAYS sentence-initial -> no mid-sentence also/too
+// - "by contrast," ONLY in gaps that compare two distinct entities, never same-subject concession
+// - Decoys are generated per-round from categories the paragraph does NOT use (see buildBankWords)
 // ===========================
 const PARAGRAPHS = {
 A1:[
-  { text:["I wake up at seven.", "___", "I have a shower.", "___", "I eat breakfast.", "___", "I go to school."],
-    answers:[["first"],["then","next,","after that,"],["finally"]],
-    altNote:[null,"'then', 'next,' or 'after that,' all work",null], topic:"Morning routine" },
-  { text:["My sister is tall and funny.", "I like her.", "___", "she can be annoying sometimes."],
-    answers:[["but","however,","still,"]],
-    altNote:["'but', 'however,' or 'still,' all work"], topic:"My sister" },
-  { text:["I like dogs.", "___", "I like cats.", "___", "I don't like spiders."],
-    answers:[["and","also,"],["but","however,"]],
-    altNote:["'and' or 'also,' both work","'but' or 'however,' both work"], topic:"Animals" },
-  { text:["It is cold today.", "___", "wear a jacket.", "___", "don't forget your umbrella."],
-    answers:[["so","therefore,"],["also,","and"]],
-    altNote:[null,"'also,' or 'and' both work"], topic:"Weather" },
-  { text:["She studies very hard.", "___", "she always gets good grades.", "Her friends study a lot.", "___", "they do well in school."],
-    answers:[["so","therefore,"],["also,","as a result,"]],
-    altNote:[null,"'also,' or 'as a result,' both work"], topic:"Study habits" },
-  { text:["He is my best friend.", "___", "we play soccer together.", "___", "we do homework together."],
-    answers:[["and"],["also,","in addition,"]],
-    altNote:[null,"'also,' or 'in addition,' both work"], topic:"Best friend" },
-  { text:["First, I open my book.", "___", "I read the title.", "___", "I start reading."],
-    answers:[["then","next,","after that,"],["finally"]],
-    altNote:["'then', 'next,' or 'after that,' all work",null], topic:"Reading" },
-  { text:["The movie is long.", "___", "it is very good.", "I really enjoyed it."],
-    answers:[["but","however,","still,"]],
-    altNote:["'but', 'however,' or 'still,' all work"], topic:"A movie" },
-  { text:["I want to travel.", "___", "I need money first.", "___", "I will save every week."],
-    answers:[["but","however,"],["so","therefore,"]],
-    altNote:[null,null], topic:"Travel plans" },
-  { text:["She is a great singer.", "___", "she plays the guitar.", "___", "she teaches music at school."],
-    answers:[["also,","and"],["in addition,","furthermore,"]],
-    altNote:["'also,' or 'and' both work","'in addition,' or 'furthermore,' both work"], topic:"Music" },
-  { text:["We were tired.", "___", "we kept walking.", "___", "we found a bench and sat down."],
-    answers:[["but","however,","still,"],["finally","eventually,"]],
-    altNote:["'but', 'however,' or 'still,' all work","'finally' or 'eventually,' both work"], topic:"Walking" },
-  { text:["It was raining.", "___", "we went outside.", "We got wet.", "___", "we had a lot of fun."],
-    answers:[["but","still,"],["however,","nevertheless,"]],
-    altNote:["'but' or 'still,' both work","'however,' or 'nevertheless,' both work"], topic:"Rain" },
-  { text:["He likes pizza.", "___", "he loves pasta.", "___", "he doesn't like vegetables at all."],
-    answers:[["and","also,"],["but","however,"]],
-    altNote:["'and' or 'also,' both work","'but' or 'however,' both work"], topic:"Food" },
-  { text:["The test was hard.", "___", "I studied a lot.", "___", "I passed."],
-    answers:[["but","however,"],["finally","in the end,"]],
-    altNote:[null,"'finally' or 'in the end,' both work"], topic:"Test" },
-  { text:["She woke up late.", "___", "she missed the bus.", "___", "a friend gave her a lift."],
-    answers:[["so","therefore,"],["luckily,","fortunately,"]],
-    altNote:[null,"'luckily,' or 'fortunately,' both work"], topic:"Late morning" },
-  { text:["I opened the window.", "___", "some fresh air came in.", "It felt great.", "___", "I did it again the next day."],
-    answers:[["so","therefore,"],["so","as a result,"]],
-    altNote:[null,"'so' or 'as a result,' both work"], topic:"Fresh air" },
-  { text:["I am hungry.", "___", "I will eat lunch now.", "___", "I will drink some water."],
-    answers:[["so","therefore,"],["also,","and"]],
-    altNote:[null,"'also,' or 'and' both work"], topic:"Lunchtime" },
-  { text:["My room was messy.", "___", "I cleaned it.", "___", "it looked much better."],
-    answers:[["so","therefore,"],["finally","afterwards,"]],
-    altNote:[null,"'finally' or 'afterwards,' both work"], topic:"Tidying up" },
-  { text:["The dog was hungry.", "___", "it ate all its food.", "___", "it fell asleep."],
-    answers:[["so","therefore,"],["then","afterwards,"]],
-    altNote:[null,"'then' or 'afterwards,' both work"], topic:"The dog" },
-  { text:["I like football.", "___", "I play every Saturday.", "My brother plays.", "___", "we often practise together."],
-    answers:[["so","therefore,"],["also,","in fact,"]],
-    altNote:[null,"'also,' or 'in fact,' both work"], topic:"Football" },
-  { text:["She was nervous.", "___", "she took a deep breath.", "___", "she walked on stage."],
-    answers:[["so","therefore,"],["then","finally"]],
-    altNote:[null,"'then' or 'finally' both work"], topic:"On stage" },
-  { text:["The soup was hot.", "___", "I waited a few minutes.", "___", "I ate it slowly."],
-    answers:[["so","therefore,"],["then","finally"]],
-    altNote:[null,"'then' or 'finally' both work"], topic:"Eating soup" },
-  { text:["My phone was broken.", "___", "I couldn't call anyone.", "___", "I bought a new one."],
-    answers:[["so","therefore,"],["finally","eventually,"]],
-    altNote:[null,"'finally' or 'eventually,' both work"], topic:"Broken phone" },
-  { text:["The lesson was boring.", "___", "the students fell asleep.", "The teacher noticed.", "___", "she told a joke."],
-    answers:[["so","therefore,"],["so","therefore,"]],
-    altNote:[null,null], topic:"Boring lesson" },
-  { text:["It was my birthday.", "___", "my friends gave me presents.", "___", "we had cake together."],
-    answers:[["so","therefore,"],["then","finally"]],
-    altNote:[null,"'then' or 'finally' both work"], topic:"Birthday" },
-  { text:["The baby was crying.", "___", "the mother picked it up.", "___", "the baby stopped crying."],
-    answers:[["so","therefore,"],["finally","then"]],
-    altNote:[null,"'finally' or 'then' both work"], topic:"The baby" },
-  { text:["I forgot my homework.", "___", "the teacher was angry.", "___", "I apologised."],
-    answers:[["so","therefore,"],["so","therefore,"]],
-    altNote:[null,null], topic:"Forgot homework" },
-  { text:["The bus was late.", "___", "I had to wait.", "___", "I arrived at school late."],
-    answers:[["so","therefore,"],["so","therefore,"]],
-    altNote:[null,null], topic:"Late bus" },
-  { text:["She is good at drawing.", "___", "she draws every day.", "___", "she wants to be an artist."],
-    answers:[["so","therefore,"],["in fact,","actually,"]],
-    altNote:[null,"'in fact,' or 'actually,' both work"], topic:"Drawing" },
-  { text:["I was thirsty.", "___", "I drank a glass of water.", "___", "I felt much better."],
-    answers:[["so","therefore,"],["then","afterwards,"]],
-    altNote:[null,"'then' or 'afterwards,' both work"], topic:"Thirsty" },
+ {"text":["I wake up at seven.","___","I have a shower.","___","I eat breakfast.","___","I go to school."],"answers":[["first"],["then","next,","after that,"],["finally"]],"topic":"Morning routine"},
+ {"text":["My sister is tall and funny.","I like her.","___","she can be annoying sometimes."],"answers":[["but","however,","still,"]],"topic":"My sister"},
+ {"text":["I like dogs.","___","I like cats.","___","I don't like spiders."],"answers":[["and","also,"],["but","however,"]],"topic":"Animals"},
+ {"text":["It is cold today.","___","wear a jacket.","___","don't forget your umbrella."],"answers":[["so","therefore,"],["also,","and"]],"topic":"Weather"},
+ {"text":["She studies very hard.","___","she always gets good grades.","Her friends study a lot.","___","they do well in school."],"answers":[["so","therefore,"],["also,","as a result,"]],"topic":"Study habits"},
+ {"text":["He is my best friend.","___","we play soccer together.","___","we do homework together."],"answers":[["and"],["also,","in addition,"]],"topic":"Best friend"},
+ {"text":["First, I open my book.","___","I read the title.","___","I start reading."],"answers":[["then","next,","after that,"],["finally"]],"topic":"Reading"},
+ {"text":["The movie is long.","___","it is very good.","I really enjoyed it."],"answers":[["but","however,","still,"]],"topic":"A movie"},
+ {"text":["I want to travel.","___","I need money first.","___","I will save every week."],"answers":[["but","however,"],["so","therefore,"]],"topic":"Travel plans"},
+ {"text":["She is a great singer.","___","she plays the guitar.","___","she teaches music at school."],"answers":[["also,","and"],["in addition,","furthermore,"]],"topic":"Music"},
+ {"text":["We were tired.","___","we kept walking.","___","we found a bench and sat down."],"answers":[["but","however,","still,"],["finally","eventually,"]],"topic":"Walking"},
+ {"text":["It was raining.","___","we went outside.","We got wet.","___","we had a lot of fun."],"answers":[["but","still,"],["however,","nevertheless,"]],"topic":"Rain"},
+ {"text":["He likes pizza.","___","he loves pasta.","___","he doesn't like vegetables at all."],"answers":[["and","also,"],["but","however,"]],"topic":"Food"},
+ {"text":["The test was hard.","___","I studied a lot.","___","I passed."],"answers":[["but","however,"],["finally","in the end,"]],"topic":"Test"},
+ {"text":["She woke up late.","___","she missed the bus.","___","a friend gave her a lift."],"answers":[["so","therefore,"],["luckily,","fortunately,"]],"topic":"Late morning"},
+ {"text":["I opened the window.","___","some fresh air came in.","It felt great.","___","I did it again the next day."],"answers":[["so","therefore,"],["so","as a result,"]],"topic":"Fresh air"},
+ {"text":["I am hungry.","___","I will eat lunch now.","___","I will drink some water."],"answers":[["so","therefore,"],["also,","and"]],"topic":"Lunchtime"},
+ {"text":["My room was messy.","___","I cleaned it.","___","it looked much better."],"answers":[["so","therefore,"],["finally","afterwards,"]],"topic":"Tidying up"},
+ {"text":["The dog was hungry.","___","it ate all its food.","___","it fell asleep."],"answers":[["so","therefore,"],["then","afterwards,"]],"topic":"The dog"},
+ {"text":["I like football.","___","I play every Saturday.","My brother plays.","___","we often practise together."],"answers":[["so","therefore,"],["also,","in fact,"]],"topic":"Football"},
+ {"text":["She was nervous.","___","she took a deep breath.","___","she walked on stage."],"answers":[["so","therefore,"],["then","finally"]],"topic":"On stage"},
+ {"text":["The soup was hot.","___","I waited a few minutes.","___","I ate it slowly."],"answers":[["so","therefore,"],["then","finally"]],"topic":"Eating soup"},
+ {"text":["My phone was broken.","___","I couldn't call anyone.","___","I bought a new one."],"answers":[["so","therefore,"],["finally","eventually,"]],"topic":"Broken phone"},
+ {"text":["The lesson was boring.","___","the students fell asleep.","The teacher noticed.","___","she told a joke."],"answers":[["so","therefore,"],["so","therefore,"]],"topic":"Boring lesson"},
+ {"text":["It was my birthday.","___","my friends gave me presents.","___","we had cake together."],"answers":[["so","therefore,"],["then","finally"]],"topic":"Birthday"},
+ {"text":["The baby was crying.","___","the mother picked it up.","___","the baby stopped crying."],"answers":[["so","therefore,"],["finally","then"]],"topic":"The baby"},
+ {"text":["I forgot my homework.","___","the teacher was angry.","___","I apologised."],"answers":[["so","therefore,"],["so","therefore,"]],"topic":"Forgot homework"},
+ {"text":["The bus was late.","___","I had to wait.","___","I arrived at school late."],"answers":[["so","therefore,"],["so","therefore,"]],"topic":"Late bus"},
+ {"text":["She is good at drawing.","___","she draws every day.","___","she wants to be an artist."],"answers":[["so","therefore,"],["in fact,","actually,"]],"topic":"Drawing"},
+ {"text":["I was thirsty.","___","I drank a glass of water.","___","I felt much better."],"answers":[["so","therefore,"],["then","afterwards,"]],"topic":"Thirsty"},
+ {"text":["I love sports.","___","I play volleyball and tennis.","___","my brother doesn't like sports."],"answers":[["for example,","for instance,"],["but","however,"]],"topic":"Sports I play"},
+ {"text":["My city is big.","___","it has many parks.","___","the traffic is bad."],"answers":[["also,","and","in addition,"],["but","however,"]],"topic":"My city"},
+ {"text":["On Saturdays I clean my room.","___","I visit my grandmother.","___","we watch a film together."],"answers":[["then","next,","after that,"],["finally","after that,"]],"topic":"Saturdays"},
+ {"text":["I like Italian food.","___","I love pizza and pasta.","My mother makes pizza at home.","___","it is delicious."],"answers":[["for example,","for instance,"],["and"]],"topic":"Italian food"},
+ {"text":["My teacher is very kind.","___","she is funny.","___","her classes are never boring."],"answers":[["also,","in addition,","and"],["so","therefore,"]],"topic":"My teacher"},
+ {"text":["Today is very hot.","I want to play outside.","___","my mother says it is too hot.","___","I play video games at home."],"answers":[["but","however,"],["so"]],"topic":"A hot day"}
 ],
 A2:[
-  { text:["Social media is popular.", "___", "it can be addictive.", "___", "some people spend hours online every day."],
-    answers:[["however,","but","by contrast,","on the other hand,"],["for example,","for instance,"]],
-    altNote:["'however,', 'but', 'by contrast,' or 'on the other hand,' all work","'for example,' or 'for instance,' both work"], topic:"Social media" },
-  { text:["Exercise is important.", "___", "many people don't do enough.", "___", "they watch TV instead."],
-    answers:[["however,","but","by contrast,"],["instead,","rather,"]],
-    altNote:["'however,', 'but' or 'by contrast,' all work",null], topic:"Exercise" },
-  { text:["She wanted a new phone.", "___", "it was too expensive.", "___", "she saved money for three months."],
-    answers:[["however,","but","by contrast,"],["therefore,","so","as a result,"]],
-    altNote:["'however,', 'but' or 'by contrast,' all work","'therefore,', 'so' or 'as a result,' all work"], topic:"Saving money" },
-  { text:["Learning English takes time.", "___", "with practice, you improve.", "___", "you can watch films and speak with native speakers."],
-    answers:[["however,","but","on the other hand,"],["for example,","for instance,"]],
-    altNote:["'however,', 'but' or 'on the other hand,' all work","'for example,' or 'for instance,' both work"], topic:"Learning English" },
-  { text:["The restaurant was full.", "___", "we waited twenty minutes.", "___", "we got a great table."],
-    answers:[["so","therefore,"],["finally,","eventually,","in the end,"]],
-    altNote:[null,"'finally,', 'eventually,' or 'in the end,' all work"], topic:"Restaurant" },
-  { text:["He plays basketball and football.", "___", "he is on two school teams."],
-    answers:[["in fact,","actually,","as a result,"]],
-    altNote:["'in fact,', 'actually,' or 'as a result,' all work"], topic:"Sports" },
-  { text:["The weather was bad.", "___", "we stayed inside.", "We played board games.", "___", "we had a great time."],
-    answers:[["so","therefore,"],["in the end,","finally,"]],
-    altNote:[null,"'in the end,' or 'finally,' both work"], topic:"Bad weather day" },
-  { text:["Travelling is expensive.", "___", "you can save money by planning ahead.", "___", "book flights early."],
-    answers:[["however,","but","on the other hand,"],["for example,","for instance,"]],
-    altNote:["'however,', 'but' or 'on the other hand,' all work","'for example,' or 'for instance,' both work"], topic:"Travel tips" },
-  { text:["She is very creative.", "___", "she draws beautiful pictures.", "___", "she writes short stories."],
-    answers:[["for example,","for instance,"],["in addition,","furthermore,","also,"]],
-    altNote:["'for example,' or 'for instance,' both work","'in addition,', 'furthermore,' or 'also,' all work"], topic:"Creativity" },
-  { text:["The exam was the next day.", "___", "we studied all night.", "___", "we were exhausted."],
-    answers:[["so","therefore,"],["as a result,","consequently,","therefore,"]],
-    altNote:[null,"'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Studying" },
-  { text:["The city is beautiful.", "___", "it is very expensive to live there.", "___", "many young people move away."],
-    answers:[["however,","but","by contrast,","on the other hand,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'however,', 'but', 'by contrast,' or 'on the other hand,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"City life" },
-  { text:["Vegetarian food is healthy.", "___", "it is better for the environment.", "___", "more people are trying it."],
-    answers:[["in addition,","furthermore,","also,"],["as a result,","so","therefore,"]],
-    altNote:["'in addition,', 'furthermore,' or 'also,' all work","'as a result,', 'so' or 'therefore,' all work"], topic:"Food choices" },
-  { text:["She missed the train.", "___", "she took a taxi.", "She arrived late.", "___", "she got the job done."],
-    answers:[["so","therefore,"],["still,","nevertheless,"]],
-    altNote:[null,"'still,' or 'nevertheless,' both work"], topic:"Transport" },
-  { text:["The book is very long.", "___", "it is extremely interesting.", "___", "I finished it in two days."],
-    answers:[["however,","but","on the other hand,"],["so","therefore,","as a result,"]],
-    altNote:["'however,', 'but' or 'on the other hand,' all work","'so', 'therefore,' or 'as a result,' all work"], topic:"Reading a book" },
-  { text:["Plastic pollution is a big problem.", "___", "we now use less plastic.", "___", "we still need to do more."],
-    answers:[["fortunately,","luckily,"],["however,","still,","on the other hand,"]],
-    altNote:["'fortunately,' or 'luckily,' both work","'however,', 'still,' or 'on the other hand,' all work"], topic:"Environment" },
-  { text:["My brother loves cooking.", "___", "he makes pasta every weekend.", "___", "I always eat at his house on Sundays."],
-    answers:[["for example,","for instance,"],["so","therefore,","as a result,"]],
-    altNote:["'for example,' or 'for instance,' both work","'so', 'therefore,' or 'as a result,' all work"], topic:"Family" },
-  { text:["The film got mixed reviews.", "___", "it had a great soundtrack.", "___", "I would recommend it."],
-    answers:[["however,","but","by contrast,"],["still,","nevertheless,"]],
-    altNote:["'however,', 'but' or 'by contrast,' all work","'still,' or 'nevertheless,' both work"], topic:"Cinema" },
-  { text:["She practises piano every day.", "___", "she has improved a lot.", "___", "she is going to perform at the school concert."],
-    answers:[["as a result,","therefore,","consequently,"],["in fact,","actually,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'in fact,' or 'actually,' both work"], topic:"Piano" },
-  { text:["The new shopping centre opened last month.", "___", "it has already attracted thousands of visitors.", "___", "local shops are worried."],
-    answers:[["in fact,","actually,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'in fact,' or 'actually,' both work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Shopping centre" },
-  { text:["Coffee keeps you awake.", "___", "many students drink it before exams.", "___", "doctors warn against drinking too much."],
-    answers:[["as a result,","therefore,","consequently,"],["however,","but","on the other hand,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'however,', 'but' or 'on the other hand,' all work"], topic:"Coffee" },
-  { text:["Smartphones are very useful.", "___", "they can distract students in class.", "___", "many schools have banned them."],
-    answers:[["however,","but","on the other hand,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'however,', 'but' or 'on the other hand,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Smartphones" },
-  { text:["He didn't study for the test.", "___", "he failed.", "___", "he decided to study harder next time."],
-    answers:[["as a result,","therefore,","consequently,"],["as a result,","so","therefore,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'as a result,', 'so' or 'therefore,' all work"], topic:"Failed test" },
-  { text:["The park is free to enter.", "___", "it is very popular at weekends.", "___", "it can get very crowded."],
-    answers:[["as a result,","therefore,","consequently,"],["however,","in fact,","unfortunately,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'however,', 'in fact,' or 'unfortunately,' all work"], topic:"The park" },
-  { text:["She speaks three languages.", "___", "she finds it easy to travel.", "___", "she wants to learn a fourth."],
-    answers:[["as a result,","therefore,","consequently,"],["in addition,","furthermore,","also,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'in addition,', 'furthermore,' or 'also,' all work"], topic:"Languages" },
-  { text:["The team trained every day.", "___", "they won the championship.", "___", "they were celebrated by the whole town."],
-    answers:[["as a result,","therefore,","consequently,"],["as a result,","furthermore,","in addition,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'as a result,', 'furthermore,' or 'in addition,' all work"], topic:"Sports team" },
-  { text:["Dogs need regular walks.", "___", "many owners don't have enough time.", "___", "dog walkers have become very popular."],
-    answers:[["however,","but","on the other hand,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'however,', 'but' or 'on the other hand,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Dog walking" },
-  { text:["Winter in this city is very cold.", "___", "many people prefer to stay indoors.", "___", "cafés and cinemas are always busy."],
-    answers:[["as a result,","therefore,","consequently,"],["as a result,","furthermore,","in addition,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'as a result,', 'furthermore,' or 'in addition,' all work"], topic:"Winter" },
-  { text:["The new bus route opened last week.", "___", "commuters can get to the city centre faster.", "___", "car use on that road has dropped."],
-    answers:[["as a result,","therefore,","consequently,"],["in addition,","furthermore,","also,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'in addition,', 'furthermore,' or 'also,' all work"], topic:"Public transport" },
-  { text:["Online courses are convenient.", "___", "they are often cheaper than in-person classes.", "___", "many people prefer them."],
-    answers:[["in addition,","furthermore,","also,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'in addition,', 'furthermore,' or 'also,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Online courses" },
-  { text:["Cooking at home is healthier.", "___", "it is cheaper than eating out.", "___", "more people are learning to cook."],
-    answers:[["in addition,","furthermore,","also,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'in addition,', 'furthermore,' or 'also,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Cooking at home" },
+ {"text":["Social media is popular.","___","it can be addictive.","___","some people spend hours online every day."],"answers":[["however,","but","on the other hand,"],["for example,","for instance,"]],"topic":"Social media"},
+ {"text":["Exercise is important.","___","many people don't do enough.","___","they watch TV instead."],"answers":[["however,","but"],["instead,","rather,"]],"topic":"Exercise"},
+ {"text":["She wanted a new phone.","___","it was too expensive.","___","she saved money for three months."],"answers":[["however,","but"],["therefore,","so","as a result,"]],"topic":"Saving money"},
+ {"text":["Learning English takes time.","___","with practice, you improve.","___","you can watch films and speak with native speakers."],"answers":[["however,","but","on the other hand,"],["for example,","for instance,"]],"topic":"Learning English"},
+ {"text":["The restaurant was full.","___","we waited twenty minutes.","___","we got a great table."],"answers":[["so","therefore,"],["finally,","eventually,","in the end,"]],"topic":"Restaurant"},
+ {"text":["He plays basketball and football.","___","he is on two school teams."],"answers":[["in fact,","actually,","as a result,"]],"topic":"Sports"},
+ {"text":["The weather was bad.","___","we stayed inside.","We played board games.","___","we had a great time."],"answers":[["so","therefore,"],["in the end,","finally,"]],"topic":"Bad weather day"},
+ {"text":["Travelling is expensive.","___","you can save money by planning ahead.","___","book flights early."],"answers":[["however,","but","on the other hand,"],["for example,","for instance,"]],"topic":"Travel tips"},
+ {"text":["She is very creative.","___","she draws beautiful pictures.","___","she writes short stories."],"answers":[["for example,","for instance,"],["in addition,","furthermore,","also,"]],"topic":"Creativity"},
+ {"text":["The exam was the next day.","___","we studied all night.","___","we were exhausted."],"answers":[["so","therefore,"],["as a result,","consequently,","therefore,"]],"topic":"Studying"},
+ {"text":["The city is beautiful.","___","it is very expensive to live there.","___","many young people move away."],"answers":[["however,","but","on the other hand,"],["as a result,","therefore,","consequently,"]],"topic":"City life"},
+ {"text":["Vegetarian food is healthy.","___","it is better for the environment.","___","more people are trying it."],"answers":[["in addition,","furthermore,","also,"],["as a result,","so","therefore,"]],"topic":"Food choices"},
+ {"text":["She missed the train.","___","she took a taxi.","She arrived late.","___","she got the job done."],"answers":[["so","therefore,"],["still,","nevertheless,"]],"topic":"Transport"},
+ {"text":["The book is very long.","___","it is extremely interesting.","___","I finished it in two days."],"answers":[["however,","but","on the other hand,"],["so","therefore,","as a result,"]],"topic":"Reading a book"},
+ {"text":["Plastic pollution is a big problem.","___","we now use less plastic.","___","we still need to do more."],"answers":[["fortunately,","luckily,"],["however,","still,","on the other hand,"]],"topic":"Environment"},
+ {"text":["My brother loves cooking.","___","he makes pasta every weekend.","___","I always eat at his house on Sundays."],"answers":[["for example,","for instance,"],["so","therefore,","as a result,"]],"topic":"Family"},
+ {"text":["The film got mixed reviews.","___","it had a great soundtrack.","___","I would recommend it."],"answers":[["however,","but"],["still,","nevertheless,"]],"topic":"Cinema"},
+ {"text":["She practises piano every day.","___","she has improved a lot.","___","she is going to perform at the school concert."],"answers":[["as a result,","therefore,","consequently,"],["in fact,","actually,"]],"topic":"Piano"},
+ {"text":["The new shopping centre opened last month.","___","it has already attracted thousands of visitors.","___","local shops are worried."],"answers":[["in fact,","actually,"],["as a result,","therefore,","consequently,"]],"topic":"Shopping centre"},
+ {"text":["Coffee keeps you awake.","___","many students drink it before exams.","___","doctors warn against drinking too much."],"answers":[["as a result,","therefore,","consequently,"],["however,","but","on the other hand,"]],"topic":"Coffee"},
+ {"text":["Smartphones are very useful.","___","they can distract students in class.","___","many schools have banned them."],"answers":[["however,","but","on the other hand,"],["as a result,","therefore,","consequently,"]],"topic":"Smartphones"},
+ {"text":["He didn't study for the test.","___","he failed.","___","he decided to study harder next time."],"answers":[["as a result,","therefore,","consequently,"],["as a result,","so","therefore,"]],"topic":"Failed test"},
+ {"text":["The park is free to enter.","___","it is very popular at weekends.","___","it can get very crowded."],"answers":[["as a result,","therefore,","consequently,"],["however,","in fact,","unfortunately,"]],"topic":"The park"},
+ {"text":["She speaks three languages.","___","she finds it easy to travel.","___","she wants to learn a fourth."],"answers":[["as a result,","therefore,","consequently,"],["in addition,","furthermore,","also,"]],"topic":"Languages"},
+ {"text":["The team trained every day.","___","they won the championship.","___","they were celebrated by the whole town."],"answers":[["as a result,","therefore,","consequently,"],["as a result,","furthermore,","in addition,"]],"topic":"Sports team"},
+ {"text":["Dogs need regular walks.","___","many owners don't have enough time.","___","dog walkers have become very popular."],"answers":[["however,","but","on the other hand,"],["as a result,","therefore,","consequently,"]],"topic":"Dog walking"},
+ {"text":["Winter in this city is very cold.","___","many people prefer to stay indoors.","___","cafés and cinemas are always busy."],"answers":[["as a result,","therefore,","consequently,"],["as a result,","furthermore,","in addition,"]],"topic":"Winter"},
+ {"text":["The new bus route opened last week.","___","commuters can get to the city centre faster.","___","car use on that road has dropped."],"answers":[["as a result,","therefore,","consequently,"],["in addition,","furthermore,","also,"]],"topic":"Public transport"},
+ {"text":["Online courses are convenient.","___","they are often cheaper than in-person classes.","___","many people prefer them."],"answers":[["in addition,","furthermore,","also,"],["as a result,","therefore,","consequently,"]],"topic":"Online courses"},
+ {"text":["Cooking at home is healthier.","___","it is cheaper than eating out.","___","more people are learning to cook."],"answers":[["in addition,","furthermore,","also,"],["as a result,","therefore,","consequently,"]],"topic":"Cooking at home"},
+ {"text":["Making pancakes is easy.","___","mix the flour, eggs, and milk.","___","heat the pan and add butter.","___","cook each pancake for two minutes."],"answers":[["first,","first of all,","to begin with,"],["then","next,","after that,"],["finally,","lastly,"]],"topic":"Pancake recipe"},
+ {"text":["I had a job interview yesterday.","___","I was very nervous.","___","the manager was friendly and I relaxed.","___","they offered me the job!"],"answers":[["at first,"],["fortunately,","luckily,"],["in the end,","finally,"]],"topic":"Job interview"},
+ {"text":["Our school started a recycling project.","___","we collect paper and plastic bottles.","___","we have reduced our rubbish by half.","___","small actions can make a big difference."],"answers":[["for example,","for instance,"],["as a result,","consequently,"],["in conclusion,","overall,","in short,"]],"topic":"School recycling"},
+ {"text":["Learning to drive takes time.","___","don't worry if you fail the first test.","___","my cousin failed twice.","___","she is an excellent driver now."],"answers":[["so","therefore,"],["for example,","for instance,"],["however,","but","still,"]],"topic":"Learning to drive"},
+ {"text":["Last summer we went camping.","___","we put up the tent.","___","we made a fire and cooked dinner.","___","it started to rain and everything got wet!"],"answers":[["first,","first of all,"],["then","after that,","next,"],["unfortunately,","sadly,"]],"topic":"Camping trip"},
+ {"text":["I changed my habits this year.","I sleep eight hours every night.","___","I drink more water.","___","I feel much better.","___","small changes really work."],"answers":[["also,","in addition,"],["as a result,","consequently,"],["in conclusion,","overall,","in short,"]],"topic":"New habits"}
 ],
 B1:[
-  { text:["Remote work became common during the pandemic.", "___", "some employees struggled with isolation.", "___", "companies had to rethink their communication strategies."],
-    answers:[["however,","nevertheless,","by contrast,","on the other hand,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Remote work" },
-  { text:["Fast fashion is cheap and widely available.", "___", "the environmental cost is enormous.", "___", "some brands are now offering sustainable alternatives."],
-    answers:[["however,","nevertheless,","by contrast,","on the other hand,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Fast fashion" },
-  { text:["Social media has many benefits.", "___", "it can damage mental health.", "___", "young people should limit their screen time."],
-    answers:[["however,","on the other hand,","by contrast,","nevertheless,"],["therefore,","consequently,","as a result,"]],
-    altNote:["'however,', 'on the other hand,', 'by contrast,' or 'nevertheless,' all work","'therefore,', 'consequently,' or 'as a result,' all work"], topic:"Social media & wellbeing" },
-  { text:["Electric cars are becoming more popular.", "___", "they are still very expensive.", "___", "governments are offering subsidies to encourage buyers."],
-    answers:[["however,","that said,","nevertheless,","by contrast,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'however,', 'that said,', 'nevertheless,' or 'by contrast,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Electric cars" },
-  { text:["Deforestation destroys natural habitats.", "___", "it contributes to climate change.", "___", "many governments have introduced stronger protection laws."],
-    answers:[["in addition,","furthermore,","moreover,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Deforestation" },
-  { text:["Teenagers today face enormous academic pressure.", "___", "they often neglect their health.", "___", "schools are introducing mindfulness programmes."],
-    answers:[["as a result,","consequently,","therefore,"],["therefore,","in response,","as a result,"]],
-    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'therefore,', 'in response,' or 'as a result,' all work"], topic:"Student pressure" },
-  { text:["Online shopping offers great convenience.", "___", "it has led to the decline of many high-street shops.", "___", "town centres are having to reinvent themselves."],
-    answers:[["however,","on the other hand,","by contrast,","nevertheless,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'on the other hand,', 'by contrast,' or 'nevertheless,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Online shopping" },
-  { text:["The population is ageing in many countries.", "___", "healthcare systems are under increasing pressure.", "___", "more money is being invested in elderly care."],
-    answers:[["as a result,","consequently,","therefore,"],["therefore,","in response,","consequently,"]],
-    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'therefore,', 'in response,' or 'consequently,' all work"], topic:"Ageing population" },
-  { text:["Volunteering abroad sounds exciting.", "___", "many programmes are poorly managed.", "___", "researchers now call for stricter regulation."],
-    answers:[["however,","that said,","nevertheless,","by contrast,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'however,', 'that said,', 'nevertheless,' or 'by contrast,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Volunteering" },
-  { text:["Artificial intelligence is transforming many industries.", "___", "it is also replacing certain jobs.", "___", "workers need to update their skills."],
-    answers:[["however,","furthermore,","on the other hand,","by contrast,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'however,', 'furthermore,', 'on the other hand,' or 'by contrast,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Artificial intelligence" },
-  { text:["Regular exercise improves mood and energy.", "___", "it reduces the risk of many illnesses.", "___", "doctors recommend at least thirty minutes a day."],
-    answers:[["in addition,","furthermore,","moreover,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Exercise & health" },
-  { text:["Tourism brings economic benefits to many regions.", "___", "it can damage local ecosystems.", "___", "sustainable tourism models are gaining popularity."],
-    answers:[["however,","on the other hand,","by contrast,","nevertheless,"],["therefore,","consequently,","as a result,"]],
-    altNote:["'however,', 'on the other hand,', 'by contrast,' or 'nevertheless,' all work","'therefore,', 'consequently,' or 'as a result,' all work"], topic:"Tourism" },
-  { text:["Many students struggle with time management.", "___", "they fall behind with their studies.", "___", "planning tools and daily routines can make a big difference."],
-    answers:[["as a result,","consequently,","therefore,"],["fortunately,","however,","that said,"]],
-    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'fortunately,', 'however,' or 'that said,' all work"], topic:"Time management" },
-  { text:["Processed food is convenient.", "___", "it is often high in salt, sugar, and fat.", "___", "nutritionists advise cooking fresh meals whenever possible."],
-    answers:[["however,","that said,","by contrast,","on the other hand,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'however,', 'that said,', 'by contrast,' or 'on the other hand,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Diet & nutrition" },
-  { text:["Learning a second language improves cognitive function.", "___", "it opens up new career opportunities.", "___", "it helps people understand other cultures."],
-    answers:[["in addition,","furthermore,","moreover,"],["moreover,","also,","furthermore,"]],
-    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'moreover,', 'also,' or 'furthermore,' all work"], topic:"Language learning" },
-  { text:["Space exploration is extremely costly.", "___", "it has produced many life-changing technologies.", "___", "most governments continue to invest in space programmes."],
-    answers:[["however,","nevertheless,","by contrast,","on the other hand,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Space exploration" },
-  { text:["Urban areas are growing rapidly.", "___", "infrastructure is struggling to keep up.", "___", "city planners are rethinking how space is used."],
-    answers:[["as a result,","consequently,","therefore,"],["therefore,","in response,","as a result,"]],
-    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'therefore,', 'in response,' or 'as a result,' all work"], topic:"Urban growth" },
-  { text:["Renewable energy is becoming cheaper.", "___", "it is not yet reliable enough to replace fossil fuels entirely.", "___", "investment in storage technology is increasing."],
-    answers:[["however,","that said,","nevertheless,","on the other hand,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'however,', 'that said,', 'nevertheless,' or 'on the other hand,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Renewable energy" },
-  { text:["Childhood obesity rates are rising in many countries.", "___", "governments are introducing healthier school meal programmes.", "___", "more physical education lessons are being added to the curriculum."],
-    answers:[["as a result,","consequently,","therefore,"],["in addition,","furthermore,","moreover,"]],
-    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'in addition,', 'furthermore,' or 'moreover,' all work"], topic:"Childhood health" },
-  { text:["Working from home saves commuting time.", "___", "it reduces transport costs.", "___", "not everyone has a quiet space to work effectively."],
-    answers:[["in addition,","furthermore,","moreover,"],["however,","that said,","nevertheless,"]],
-    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'however,', 'that said,' or 'nevertheless,' all work"], topic:"Working from home" },
-  { text:["Streaming services have changed how people watch television.", "___", "traditional broadcasters are losing viewers.", "___", "many are launching their own streaming platforms."],
-    answers:[["as a result,","consequently,","therefore,"],["as a result,","consequently,","in response,"]],
-    altNote:["'as a result,', 'consequently,' or 'therefore,' all work","'as a result,', 'consequently,' or 'in response,' all work"], topic:"Streaming" },
-  { text:["Reading for pleasure improves vocabulary and concentration.", "___", "fewer young people read books regularly.", "___", "schools are introducing dedicated reading time."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,' or 'by contrast,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Reading for pleasure" },
-  { text:["Air travel is one of the biggest contributors to carbon emissions.", "___", "demand for flights continues to rise.", "___", "airlines are under pressure to develop greener technology."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,' or 'by contrast,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Air travel" },
-  { text:["Single-use plastics are harmful to marine life.", "___", "many countries have introduced bans.", "___", "reusable alternatives are now widely available."],
-    answers:[["as a result,","therefore,","consequently,"],["in addition,","furthermore,","moreover,"]],
-    altNote:["'as a result,', 'therefore,' or 'consequently,' all work","'in addition,', 'furthermore,' or 'moreover,' all work"], topic:"Plastics" },
-  { text:["Video games are often blamed for violent behaviour.", "___", "research has not consistently supported this claim.", "___", "games can actually improve problem-solving skills."],
-    answers:[["however,","nevertheless,","by contrast,","on the other hand,"],["in addition,","furthermore,","moreover,"]],
-    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'in addition,', 'furthermore,' or 'moreover,' all work"], topic:"Video games" },
-  { text:["Public libraries provide free access to books and the internet.", "___", "many have seen funding cuts in recent years.", "___", "community campaigns have helped save some from closure."],
-    answers:[["however,","nevertheless,","on the other hand,","that said,"],["however,","fortunately,","nevertheless,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,' or 'that said,' all work","'however,', 'fortunately,' or 'nevertheless,' all work"], topic:"Libraries" },
-  { text:["Sleep deprivation affects concentration and memory.", "___", "it weakens the immune system.", "___", "doctors recommend seven to nine hours for adults."],
-    answers:[["in addition,","furthermore,","moreover,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Sleep" },
-  { text:["Cycling to work reduces carbon emissions.", "___", "it improves physical fitness.", "___", "many cities are investing in better cycling infrastructure."],
-    answers:[["in addition,","furthermore,","moreover,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'in addition,', 'furthermore,' or 'moreover,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Cycling" },
-  { text:["Zoos argue that they protect endangered species.", "___", "critics say the animals suffer in captivity.", "___", "the debate over their purpose continues."],
-    answers:[["however,","on the other hand,","by contrast,","nevertheless,"],["as a result,","therefore,","consequently,"]],
-    altNote:["'however,', 'on the other hand,', 'by contrast,' or 'nevertheless,' all work","'as a result,', 'therefore,' or 'consequently,' all work"], topic:"Zoos" },
-  { text:["Mental health awareness has grown significantly in recent years.", "___", "access to professional support remains limited in many areas.", "___", "online therapy platforms have begun to fill the gap."],
-    answers:[["however,","nevertheless,","on the other hand,","that said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,' or 'that said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Mental health" },
+ {"text":["Remote work became common during the pandemic.","___","some employees struggled with isolation.","___","companies had to rethink their communication strategies."],"answers":[["however,","nevertheless,","on the other hand,"],["as a result,","consequently,","therefore,"]],"topic":"Remote work"},
+ {"text":["Fast fashion is cheap and widely available.","___","the environmental cost is enormous.","___","some brands are now offering sustainable alternatives."],"answers":[["however,","nevertheless,","on the other hand,"],["therefore,","as a result,","consequently,"]],"topic":"Fast fashion"},
+ {"text":["Social media has many benefits.","___","it can damage mental health.","___","young people should limit their screen time."],"answers":[["however,","on the other hand,","nevertheless,"],["therefore,","consequently,","as a result,"]],"topic":"Social media & wellbeing"},
+ {"text":["Electric cars are becoming more popular.","___","they are still very expensive.","___","governments are offering subsidies to encourage buyers."],"answers":[["however,","that said,","nevertheless,"],["therefore,","as a result,","consequently,"]],"topic":"Electric cars"},
+ {"text":["Deforestation destroys natural habitats.","___","it contributes to climate change.","___","many governments have introduced stronger protection laws."],"answers":[["in addition,","furthermore,","moreover,"],["as a result,","therefore,","consequently,"]],"topic":"Deforestation"},
+ {"text":["Teenagers today face enormous academic pressure.","___","they often neglect their health.","___","schools are introducing mindfulness programmes."],"answers":[["as a result,","consequently,","therefore,"],["therefore,","in response,","as a result,"]],"topic":"Student pressure"},
+ {"text":["Online shopping offers great convenience.","___","it has led to the decline of many high-street shops.","___","town centres are having to reinvent themselves."],"answers":[["however,","on the other hand,","nevertheless,"],["as a result,","consequently,","therefore,"]],"topic":"Online shopping"},
+ {"text":["The population is ageing in many countries.","___","healthcare systems are under increasing pressure.","___","more money is being invested in elderly care."],"answers":[["as a result,","consequently,","therefore,"],["therefore,","in response,","consequently,"]],"topic":"Ageing population"},
+ {"text":["Volunteering abroad sounds exciting.","___","many programmes are poorly managed.","___","researchers now call for stricter regulation."],"answers":[["however,","that said,","nevertheless,"],["therefore,","as a result,","consequently,"]],"topic":"Volunteering"},
+ {"text":["Artificial intelligence is transforming many industries.","___","it is also replacing certain jobs.","___","workers need to update their skills."],"answers":[["however,","furthermore,","on the other hand,"],["therefore,","as a result,","consequently,"]],"topic":"Artificial intelligence"},
+ {"text":["Regular exercise improves mood and energy.","___","it reduces the risk of many illnesses.","___","doctors recommend at least thirty minutes a day."],"answers":[["in addition,","furthermore,","moreover,"],["therefore,","as a result,","consequently,"]],"topic":"Exercise & health"},
+ {"text":["Tourism brings economic benefits to many regions.","___","it can damage local ecosystems.","___","sustainable tourism models are gaining popularity."],"answers":[["however,","on the other hand,","nevertheless,"],["therefore,","consequently,","as a result,"]],"topic":"Tourism"},
+ {"text":["Many students struggle with time management.","___","they fall behind with their studies.","___","planning tools and daily routines can make a big difference."],"answers":[["as a result,","consequently,","therefore,"],["fortunately,","however,","that said,"]],"topic":"Time management"},
+ {"text":["Processed food is convenient.","___","it is often high in salt, sugar, and fat.","___","nutritionists advise cooking fresh meals whenever possible."],"answers":[["however,","that said,","on the other hand,"],["therefore,","as a result,","consequently,"]],"topic":"Diet & nutrition"},
+ {"text":["Learning a second language improves cognitive function.","___","it opens up new career opportunities.","___","it helps people understand other cultures."],"answers":[["in addition,","furthermore,","moreover,"],["moreover,","also,","furthermore,"]],"topic":"Language learning"},
+ {"text":["Space exploration is extremely costly.","___","it has produced many life-changing technologies.","___","most governments continue to invest in space programmes."],"answers":[["however,","nevertheless,","on the other hand,"],["therefore,","as a result,","consequently,"]],"topic":"Space exploration"},
+ {"text":["Urban areas are growing rapidly.","___","infrastructure is struggling to keep up.","___","city planners are rethinking how space is used."],"answers":[["as a result,","consequently,","therefore,"],["therefore,","in response,","as a result,"]],"topic":"Urban growth"},
+ {"text":["Renewable energy is becoming cheaper.","___","it is not yet reliable enough to replace fossil fuels entirely.","___","investment in storage technology is increasing."],"answers":[["however,","that said,","nevertheless,","on the other hand,"],["as a result,","therefore,","consequently,"]],"topic":"Renewable energy"},
+ {"text":["Childhood obesity rates are rising in many countries.","___","governments are introducing healthier school meal programmes.","___","more physical education lessons are being added to the curriculum."],"answers":[["as a result,","consequently,","therefore,"],["in addition,","furthermore,","moreover,"]],"topic":"Childhood health"},
+ {"text":["Working from home saves commuting time.","___","it reduces transport costs.","___","not everyone has a quiet space to work effectively."],"answers":[["in addition,","furthermore,","moreover,"],["however,","that said,","nevertheless,"]],"topic":"Working from home"},
+ {"text":["Streaming services have changed how people watch television.","___","traditional broadcasters are losing viewers.","___","many are launching their own streaming platforms."],"answers":[["as a result,","consequently,","therefore,"],["as a result,","consequently,","in response,"]],"topic":"Streaming"},
+ {"text":["Reading for pleasure improves vocabulary and concentration.","___","fewer young people read books regularly.","___","schools are introducing dedicated reading time."],"answers":[["however,","nevertheless,","on the other hand,"],["as a result,","therefore,","consequently,"]],"topic":"Reading for pleasure"},
+ {"text":["Air travel is one of the biggest contributors to carbon emissions.","___","demand for flights continues to rise.","___","airlines are under pressure to develop greener technology."],"answers":[["however,","nevertheless,","on the other hand,"],["as a result,","therefore,","consequently,"]],"topic":"Air travel"},
+ {"text":["Single-use plastics are harmful to marine life.","___","many countries have introduced bans.","___","reusable alternatives are now widely available."],"answers":[["as a result,","therefore,","consequently,"],["in addition,","furthermore,","moreover,"]],"topic":"Plastics"},
+ {"text":["Video games are often blamed for violent behaviour.","___","research has not consistently supported this claim.","___","games can actually improve problem-solving skills."],"answers":[["however,","nevertheless,","on the other hand,"],["in addition,","furthermore,","moreover,"]],"topic":"Video games"},
+ {"text":["Public libraries provide free access to books and the internet.","___","many have seen funding cuts in recent years.","___","community campaigns have helped save some from closure."],"answers":[["however,","nevertheless,","on the other hand,","that said,"],["however,","fortunately,","nevertheless,"]],"topic":"Libraries"},
+ {"text":["Sleep deprivation affects concentration and memory.","___","it weakens the immune system.","___","doctors recommend seven to nine hours for adults."],"answers":[["in addition,","furthermore,","moreover,"],["therefore,","as a result,","consequently,"]],"topic":"Sleep"},
+ {"text":["Cycling to work reduces carbon emissions.","___","it improves physical fitness.","___","many cities are investing in better cycling infrastructure."],"answers":[["in addition,","furthermore,","moreover,"],["as a result,","therefore,","consequently,"]],"topic":"Cycling"},
+ {"text":["Zoos argue that they protect endangered species.","___","critics say the animals suffer in captivity.","___","the debate over their purpose continues."],"answers":[["however,","on the other hand,","nevertheless,"],["as a result,","therefore,","consequently,"]],"topic":"Zoos"},
+ {"text":["Mental health awareness has grown significantly in recent years.","___","access to professional support remains limited in many areas.","___","online therapy platforms have begun to fill the gap."],"answers":[["however,","nevertheless,","on the other hand,","that said,"],["as a result,","consequently,","therefore,"]],"topic":"Mental health"},
+ {"text":["Last month I tried a week without social media.","___","I felt anxious and checked my phone constantly.","___","I began to enjoy the extra free time.","___","I now limit myself to thirty minutes a day."],"answers":[["at first,","initially,"],["gradually,","eventually,","over time,"],["as a result,","consequently,","therefore,"]],"topic":"Digital detox"},
+ {"text":["Speaking two languages changes the brain.","___","bilingual people often switch between tasks more easily.","___","some studies suggest bilingualism may delay dementia.","___","learning a language is exercise for the mind."],"answers":[["for example,","for instance,"],["in fact,","indeed,","moreover,"],["in short,","in other words,","ultimately,"]],"topic":"Bilingual brains"},
+ {"text":["Supermarkets offer convenience and low prices.","___","street markets offer fresher produce and personal service.","___","many shoppers use both, depending on the day."],"answers":[["by contrast,","on the other hand,","in contrast,"],["as a result,","consequently,","therefore,"]],"topic":"Markets vs supermarkets"},
+ {"text":["Preparing for an exam works best in stages.","___","review your notes and identify your weak areas.","___","practise with past papers under timed conditions.","___","rest properly the night before."],"answers":[["first,","firstly,","first of all,"],["then","next,","after that,"],["finally,","lastly,"]],"topic":"Exam preparation"},
+ {"text":["In some countries, cash has almost disappeared.","In Sweden, most people pay by card or phone.","___","Germany still relies heavily on cash.","___","payment habits depend on culture as much as technology."],"answers":[["by contrast,","on the other hand,","however,"],["in short,","clearly,","overall,"]],"topic":"Cash vs cards"},
+ {"text":["Everyone should learn basic first aid.","___","knowing CPR can double a victim's chance of survival.","___","most emergencies happen at home, not in hospitals.","___","a two-day course could help you save a family member's life."],"answers":[["in fact,","indeed,"],["moreover,","furthermore,","in addition,"],["in other words,","in short,","ultimately,"]],"topic":"First aid"},
+ {"text":["Wildlife photography demands enormous patience.","Some photographers wait days for a single shot.","___","the results can be breathtaking.","___","the best photos often come from the longest waits."],"answers":[["however,","nevertheless,","even so,"],["indeed,","in fact,"]],"topic":"Wildlife photography"},
+ {"text":["Individual sports like tennis teach self-reliance.","___","team sports teach communication and trust.","___","many coaches recommend that children try both."],"answers":[["by contrast,","on the other hand,","meanwhile,"],["for this reason,","therefore,","consequently,"]],"topic":"Individual vs team sports"}
 ],
 B2:[
-  { text:["Globalisation has brought undeniable economic benefits to many nations.", "___", "it has also widened the gap between the wealthy and the poor.", "___", "policymakers are under pressure to address growing inequality."],
-    answers:[["however,","nevertheless,","by contrast,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Globalisation" },
-  { text:["The use of social media in political campaigns has increased voter engagement.", "___", "it has also made the spread of misinformation significantly easier.", "___", "digital literacy education is now considered a civic priority."],
-    answers:[["however,","nevertheless,","by contrast,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'by contrast,' or 'on the other hand,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Social media & politics" },
-  { text:["Urbanisation has driven economic growth in developing countries.", "___", "it has placed enormous strain on housing, sanitation, and transport.", "___", "sustainable city planning has become an urgent priority."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Urbanisation" },
-  { text:["Automation is making many manufacturing jobs obsolete.", "___", "it is creating new roles in technology, maintenance, and design.", "___", "education systems must adapt to prepare workers for this shift."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["therefore,","as a result,","consequently,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'therefore,', 'as a result,' or 'consequently,' all work"], topic:"Automation" },
-  { text:["The growing demand for organic food reflects rising health consciousness.", "___", "organic produce remains significantly more expensive than conventional alternatives.", "___", "it is largely inaccessible to lower-income households."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Organic food" },
-  { text:["Nuclear energy produces very low carbon emissions during operation.", "___", "the risks associated with radioactive waste disposal remain a serious concern.", "___", "public opposition to new plants continues in many countries."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Nuclear energy" },
-  { text:["Private tutoring gives students a significant academic advantage.", "___", "it widens the gap between those who can afford it and those who cannot.", "___", "some countries have begun regulating or restricting the industry."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Private tutoring" },
-  { text:["Genetic research has produced breakthroughs in the treatment of hereditary diseases.", "___", "it raises profound ethical questions about the limits of human intervention.", "___", "strict international frameworks are being developed to govern its use."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Genetic research" },
-  { text:["Free trade agreements lower prices for consumers.", "___", "they can undermine local industries that are unable to compete.", "___", "governments often negotiate safeguards to protect vulnerable sectors."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'consequently,' all work"], topic:"Free trade" },
-  { text:["The arts are often the first area to face budget cuts in times of austerity.", "___", "research consistently shows their positive impact on mental health and social cohesion.", "___", "advocates argue that cuts are ultimately counterproductive."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Arts funding" },
-  { text:["Immigration has historically been a major driver of economic growth and cultural innovation.", "___", "it remains a politically divisive issue in many nations.", "___", "governments continue to struggle to find policies that satisfy all stakeholders."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Immigration" },
-  { text:["Pharmaceutical companies invest billions in developing life-saving drugs.", "___", "the high prices they charge place these medicines beyond the reach of many patients.", "___", "calls for greater regulation of drug pricing are growing louder."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Drug pricing" },
-  { text:["Standardised testing provides a consistent benchmark for measuring student achievement.", "___", "critics argue it encourages rote memorisation at the expense of critical thinking.", "___", "many education systems are exploring more holistic assessment models."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Standardised testing" },
-  { text:["The rapid growth of e-commerce has revolutionised retail and created millions of jobs.", "___", "it has devastated traditional high streets and led to the closure of many local businesses.", "___", "urban planners are rethinking the purpose of city centres."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"E-commerce" },
-  { text:["Mandatory military service instils discipline and a sense of national duty in young people.", "___", "it restricts individual freedom and may not produce effective soldiers.", "___", "most countries that once had it have moved to voluntary armed forces."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Military service" },
-  { text:["Megacities offer unparalleled access to jobs, education, and culture.", "___", "they also generate severe problems of pollution, inequality, and overcrowding.", "___", "many governments are investing in the development of secondary cities to reduce pressure on capitals."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Megacities" },
-  { text:["Cognitive behavioural therapy has proved highly effective for treating anxiety and depression.", "___", "waiting times for treatment on public health services can exceed a year in some countries.", "___", "many patients turn to private providers or digital alternatives."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Mental health treatment" },
-  { text:["Investigative journalism plays a vital role in holding governments and corporations to account.", "___", "the industry is under severe financial pressure as advertising revenues migrate to digital platforms.", "___", "many outlets have had to cut staff or close entirely."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Journalism" },
-  { text:["Animal agriculture is one of the leading causes of greenhouse gas emissions.", "___", "demand for meat and dairy products continues to rise globally.", "___", "experts argue that significant dietary shifts are essential to meet climate targets."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Animal agriculture" },
-  { text:["The internet has democratised access to information and education on an unprecedented scale.", "___", "it has also enabled the rapid spread of conspiracy theories and harmful content.", "___", "the debate over how to regulate online speech intensifies year by year."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Internet regulation" },
-  { text:["Universal basic income has been proposed as a solution to automation-driven unemployment.", "___", "critics argue it is fiscally unsustainable and could reduce the incentive to work.", "___", "pilot programmes in several countries are being closely watched by economists."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Universal basic income" },
-  { text:["Cultural heritage sites attract millions of tourists and generate significant revenue.", "___", "mass tourism can cause irreversible damage to the very sites it celebrates.", "___", "visitor limits and conservation fees are increasingly being introduced."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Heritage tourism" },
-  { text:["Advances in medical technology are enabling people to live longer than ever before.", "___", "ageing populations are placing enormous strain on pension systems and healthcare budgets.", "___", "fundamental reforms to retirement policy are increasingly urgent."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Longevity" },
-  { text:["Gig economy platforms offer workers flexibility and independence.", "___", "they provide few of the protections traditionally associated with employment.", "___", "labour laws in many countries have struggled to keep pace with this model."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Gig economy" },
-  { text:["Space tourism promises to open a new frontier for human exploration and commerce.", "___", "the environmental impact of rocket launches is considerable.", "___", "the industry faces growing scrutiny from climate scientists and policymakers."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Space tourism" },
-  { text:["Charter schools and academies have expanded parental choice in education.", "___", "evidence on whether they consistently outperform state schools is mixed.", "___", "the debate over their place in public education systems remains unresolved."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"School choice" },
-  { text:["Prison populations have grown substantially in many countries over the past four decades.", "___", "recidivism rates suggest that incarceration alone does not effectively reduce crime.", "___", "rehabilitation-focused approaches are gaining support among criminologists."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Criminal justice" },
-  { text:["The proliferation of streaming platforms has given creators unprecedented opportunities to reach global audiences.", "___", "it has also fragmented viewership and made it harder for any single work to achieve broad cultural impact.", "___", "the concept of a shared cultural moment is increasingly rare."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Streaming culture" },
-  { text:["Microplastics have now been detected in drinking water, food, and even human blood.", "___", "the long-term health effects remain insufficiently understood.", "___", "urgent investment in research and regulation is widely called for."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Microplastics" },
-  { text:["The widespread adoption of algorithmic decision-making in hiring, lending, and policing promises greater efficiency.", "___", "these systems can embed and amplify the biases present in their training data.", "___", "regulators are calling for greater transparency and accountability in their deployment."],
-    answers:[["however,","nevertheless,","on the other hand,","by contrast,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],
-    altNote:["'however,', 'nevertheless,', 'on the other hand,', 'by contrast,', 'having said that,' or 'that being said,' all work","'as a result,', 'consequently,' or 'therefore,' all work"], topic:"Algorithmic bias" },
+ {"text":["Globalisation has brought undeniable economic benefits to many nations.","___","it has also widened the gap between the wealthy and the poor.","___","policymakers are under pressure to address growing inequality."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Globalisation"},
+ {"text":["The use of social media in political campaigns has increased voter engagement.","___","it has also made the spread of misinformation significantly easier.","___","digital literacy education is now considered a civic priority."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Social media & politics"},
+ {"text":["Urbanisation has driven economic growth in developing countries.","___","it has placed enormous strain on housing, sanitation, and transport.","___","sustainable city planning has become an urgent priority."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Urbanisation"},
+ {"text":["Automation is making many manufacturing jobs obsolete.","___","it is creating new roles in technology, maintenance, and design.","___","education systems must adapt to prepare workers for this shift."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["therefore,","as a result,","consequently,"]],"topic":"Automation"},
+ {"text":["The growing demand for organic food reflects rising health consciousness.","___","organic produce remains significantly more expensive than conventional alternatives.","___","it is largely inaccessible to lower-income households."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Organic food"},
+ {"text":["Nuclear energy produces very low carbon emissions during operation.","___","the risks associated with radioactive waste disposal remain a serious concern.","___","public opposition to new plants continues in many countries."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Nuclear energy"},
+ {"text":["Private tutoring gives students a significant academic advantage.","___","it widens the gap between those who can afford it and those who cannot.","___","some countries have begun regulating or restricting the industry."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Private tutoring"},
+ {"text":["Genetic research has produced breakthroughs in the treatment of hereditary diseases.","___","it raises profound ethical questions about the limits of human intervention.","___","strict international frameworks are being developed to govern its use."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Genetic research"},
+ {"text":["Free trade agreements lower prices for consumers.","___","they can undermine local industries that are unable to compete.","___","governments often negotiate safeguards to protect vulnerable sectors."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Free trade"},
+ {"text":["The arts are often the first area to face budget cuts in times of austerity.","___","research consistently shows their positive impact on mental health and social cohesion.","___","advocates argue that cuts are ultimately counterproductive."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Arts funding"},
+ {"text":["Immigration has historically been a major driver of economic growth and cultural innovation.","___","it remains a politically divisive issue in many nations.","___","governments continue to struggle to find policies that satisfy all stakeholders."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Immigration"},
+ {"text":["Pharmaceutical companies invest billions in developing life-saving drugs.","___","the high prices they charge place these medicines beyond the reach of many patients.","___","calls for greater regulation of drug pricing are growing louder."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Drug pricing"},
+ {"text":["Standardised testing provides a consistent benchmark for measuring student achievement.","___","critics argue it encourages rote memorisation at the expense of critical thinking.","___","many education systems are exploring more holistic assessment models."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Standardised testing"},
+ {"text":["The rapid growth of e-commerce has revolutionised retail and created millions of jobs.","___","it has devastated traditional high streets and led to the closure of many local businesses.","___","urban planners are rethinking the purpose of city centres."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"E-commerce"},
+ {"text":["Mandatory military service instils discipline and a sense of national duty in young people.","___","it restricts individual freedom and may not produce effective soldiers.","___","most countries that once had it have moved to voluntary armed forces."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Military service"},
+ {"text":["Megacities offer unparalleled access to jobs, education, and culture.","___","they also generate severe problems of pollution, inequality, and overcrowding.","___","many governments are investing in the development of secondary cities to reduce pressure on capitals."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Megacities"},
+ {"text":["Cognitive behavioural therapy has proved highly effective for treating anxiety and depression.","___","waiting times for treatment on public health services can exceed a year in some countries.","___","many patients turn to private providers or digital alternatives."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Mental health treatment"},
+ {"text":["Investigative journalism plays a vital role in holding governments and corporations to account.","___","the industry is under severe financial pressure as advertising revenues migrate to digital platforms.","___","many outlets have had to cut staff or close entirely."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Journalism"},
+ {"text":["Animal agriculture is one of the leading causes of greenhouse gas emissions.","___","demand for meat and dairy products continues to rise globally.","___","experts argue that significant dietary shifts are essential to meet climate targets."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Animal agriculture"},
+ {"text":["The internet has democratised access to information and education on an unprecedented scale.","___","it has also enabled the rapid spread of conspiracy theories and harmful content.","___","the debate over how to regulate online speech intensifies year by year."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Internet regulation"},
+ {"text":["Universal basic income has been proposed as a solution to automation-driven unemployment.","___","critics argue it is fiscally unsustainable and could reduce the incentive to work.","___","pilot programmes in several countries are being closely watched by economists."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Universal basic income"},
+ {"text":["Cultural heritage sites attract millions of tourists and generate significant revenue.","___","mass tourism can cause irreversible damage to the very sites it celebrates.","___","visitor limits and conservation fees are increasingly being introduced."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Heritage tourism"},
+ {"text":["Advances in medical technology are enabling people to live longer than ever before.","___","ageing populations are placing enormous strain on pension systems and healthcare budgets.","___","fundamental reforms to retirement policy are increasingly urgent."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Longevity"},
+ {"text":["Gig economy platforms offer workers flexibility and independence.","___","they provide few of the protections traditionally associated with employment.","___","labour laws in many countries have struggled to keep pace with this model."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Gig economy"},
+ {"text":["Space tourism promises to open a new frontier for human exploration and commerce.","___","the environmental impact of rocket launches is considerable.","___","the industry faces growing scrutiny from climate scientists and policymakers."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Space tourism"},
+ {"text":["Charter schools and academies have expanded parental choice in education.","___","evidence on whether they consistently outperform state schools is mixed.","___","the debate over their place in public education systems remains unresolved."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"School choice"},
+ {"text":["Prison populations have grown substantially in many countries over the past four decades.","___","recidivism rates suggest that incarceration alone does not effectively reduce crime.","___","rehabilitation-focused approaches are gaining support among criminologists."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Criminal justice"},
+ {"text":["The proliferation of streaming platforms has given creators unprecedented opportunities to reach global audiences.","___","it has also fragmented viewership and made it harder for any single work to achieve broad cultural impact.","___","the concept of a shared cultural moment is increasingly rare."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Streaming culture"},
+ {"text":["Microplastics have now been detected in drinking water, food, and even human blood.","___","the long-term health effects remain insufficiently understood.","___","urgent investment in research and regulation is widely called for."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Microplastics"},
+ {"text":["The widespread adoption of algorithmic decision-making in hiring, lending, and policing promises greater efficiency.","___","these systems can embed and amplify the biases present in their training data.","___","regulators are calling for greater transparency and accountability in their deployment."],"answers":[["however,","nevertheless,","on the other hand,","having said that,","that being said,"],["as a result,","consequently,","therefore,"]],"topic":"Algorithmic bias"},
+ {"text":["Digital platforms are engineered to capture and hold our attention.","___","features such as infinite scroll and autoplay are designed to make stopping difficult.","___","the average user now checks their phone nearly a hundred times a day.","___","regulators are beginning to treat attention itself as a resource requiring protection."],"answers":[["for example,","for instance,","to illustrate,"],["indeed,","in fact,"],["as a result,","consequently,","accordingly,"]],"topic":"The attention economy"},
+ {"text":["Antibiotics transformed medicine in the twentieth century.","___","their overuse in both healthcare and agriculture has accelerated the evolution of resistant bacteria.","___","experts warn that routine surgery could become life-threatening within decades.","___","the search for new treatments has become a global priority."],"answers":[["however,","nevertheless,","unfortunately,"],["in fact,","indeed,"],["for this reason,","therefore,","accordingly,"]],"topic":"Antibiotic resistance"},
+ {"text":["Advocates of remote work point to higher productivity and better work-life balance.","___","defenders of the office argue that spontaneous collaboration cannot be replicated on video calls.","___","most large companies have settled on hybrid models.","___","the debate is less about location than about trust."],"answers":[["by contrast,","on the other hand,","conversely,"],["as a result,","consequently,"],["ultimately,","in essence,","fundamentally,"]],"topic":"Remote vs office work"},
+ {"text":["The placebo effect is one of the most puzzling phenomena in medicine.","Patients often improve after receiving treatments with no active ingredients.","___","the effect can work even when patients know they are taking a placebo.","___","researchers argue that the ritual of care is itself a form of medicine."],"answers":[["remarkably,","surprisingly,","strikingly,"],["for this reason,","consequently,","accordingly,"]],"topic":"The placebo effect"},
+ {"text":["Of the roughly seven thousand languages spoken today, nearly half are expected to disappear within a century.","___","a language dies every few weeks.","___","each loss erases centuries of accumulated knowledge about medicine, ecology, and culture.","___","linguists are racing to document endangered languages before they vanish."],"answers":[["in fact,","indeed,"],["moreover,","furthermore,","what is more,"],["consequently,","as a result,","accordingly,"]],"topic":"Language death"},
+ {"text":["Several European cities have begun reintroducing wild spaces into urban areas.","___","Utrecht converted hundreds of bus-stop roofs into gardens for pollinators.","___","residents reported measurable improvements in air quality and wellbeing.","___","what began as an environmental experiment has become a matter of public health."],"answers":[["for instance,","for example,"],["subsequently,","soon after,","before long,"],["in other words,","in essence,","ultimately,"]],"topic":"Urban rewilding"},
+ {"text":["Universities have awarded steadily rising grades for three decades.","Defenders claim students genuinely perform better than in the past.","___","employers increasingly complain that top grades no longer distinguish exceptional candidates.","___","several institutions have introduced stricter marking criteria.","___","the pressure to attract students makes reform difficult to sustain."],"answers":[["however,","nevertheless,"],["in response,","consequently,","as a result,"],["even so,","nevertheless,","having said that,"]],"topic":"Grade inflation"},
+ {"text":["Sleep was long dismissed as unproductive time.","Modern research has demolished this view.","___","the brain consolidates memories and clears toxins during deep sleep.","___","chronic sleep deprivation is now linked to obesity, heart disease, and dementia.","___","sleeping well may be the single most effective health intervention available."],"answers":[["in fact,","indeed,"],["moreover,","furthermore,","worse still,"],["in short,","put simply,","ultimately,"]],"topic":"The science of sleep"},
+ {"text":["Mass production made goods cheaper than at any point in history.","___","demand for handmade products has grown steadily over the past decade.","Consumers increasingly value objects with a story and a maker.","___","artisans who once struggled to compete now command premium prices.","___","the scarcity of the human touch has itself become a luxury."],"answers":[["paradoxically,","yet","nevertheless,"],["as a result,","consequently,"],["in other words,","in essence,","put simply,"]],"topic":"Craftsmanship revival"},
+ {"text":["Fact-checking corrects false claims only after they have spread.","___","researchers have developed 'prebunking' techniques that expose people to weakened forms of manipulation in advance.","___","short videos explaining common propaganda tactics measurably improved viewers' ability to spot misinformation.","___","prevention may prove more effective than cure in the information ecosystem."],"answers":[["by contrast,","in contrast,","instead,"],["for example,","for instance,"],["in short,","ultimately,","in essence,"]],"topic":"Prebunking misinformation"}
 ]
 };
+
+// ===== CONNECTOR CATEGORIES =====
+const normW=w=>w?w.toLowerCase().replace(/,$/,'').trim():'';
+const CATS={};
+[['sequence','first,firstly,first of all,to begin with,then,next,after that,finally,lastly,meanwhile,afterwards,subsequently,soon after,before long,thereafter,at first,initially,gradually,eventually,over time,in the end,in the meantime'],
+ ['contrast','but,however,still,nevertheless,nonetheless,by contrast,in contrast,on the other hand,despite this,in spite of this,even so,having said that,that being said,that said,yet,conversely,on the contrary,instead,rather,although,even though,whereas,paradoxically'],
+ ['result','so,therefore,as a result,consequently,accordingly,thus,hence,for this reason,in response,in turn'],
+ ['addition','and,also,in addition,furthermore,moreover,besides,additionally,what is more,on top of that,worse still'],
+ ['example','for example,for instance,to illustrate,in particular,namely,such as'],
+ ['summary','in conclusion,to sum up,overall,in short,in summary,all in all,ultimately,in other words,in essence,put simply,fundamentally,clearly'],
+ ['emphasis','in fact,indeed,above all,most importantly,actually,obviously,evidently'],
+ ['attitude','fortunately,luckily,unfortunately,sadly,surprisingly,remarkably,strikingly,hopefully'],
+ ['condition','if,unless,otherwise,provided that,as long as,in case,in that case,on condition that,given that'],
+ ['time','when,before,after,while,since,as soon as,prior to,until'],
+ ['comparison','similarly,likewise,in the same way,equally,simultaneously'],
+ ['purpose','to that end,with this in mind,to this end']
+].forEach(([c,ws])=>ws.split(',').forEach(w=>CATS[w.trim()]=c));
+const catOf=w=>CATS[normW(w)]||('other:'+normW(w));
+
+// ===== DECOY CATALOG ===== {w:word, c:category, l:min level idx, s:subordinator}
+const LVIDX={A1:0,A2:1,B1:2,B2:3};
+const DECOYS=[
+ {w:'because',c:'result',l:0,s:1},{w:'although',c:'contrast',l:0,s:1},{w:'if',c:'condition',l:0,s:1},
+ {w:'when',c:'time',l:0,s:1},{w:'before',c:'time',l:0,s:1},{w:'after',c:'time',l:0,s:1},
+ {w:'while',c:'time',l:0,s:1},{w:'for example,',c:'example',l:0},{w:'then',c:'sequence',l:0},
+ {w:'finally,',c:'sequence',l:0},{w:'also,',c:'addition',l:0},
+ {w:'unless',c:'condition',l:1,s:1},{w:'even though',c:'contrast',l:1,s:1},{w:'as soon as',c:'time',l:1,s:1},
+ {w:'meanwhile,',c:'sequence',l:1},{w:'similarly,',c:'comparison',l:1},{w:'otherwise,',c:'condition',l:1},
+ {w:'instead,',c:'contrast',l:1},{w:'in conclusion,',c:'summary',l:1},{w:'in fact,',c:'emphasis',l:1},
+ {w:'fortunately,',c:'attitude',l:1},{w:'first of all,',c:'sequence',l:1},
+ {w:'likewise,',c:'comparison',l:2},{w:'in the meantime,',c:'sequence',l:2},{w:'despite this,',c:'contrast',l:2},
+ {w:'even so,',c:'contrast',l:2},{w:'provided that',c:'condition',l:2,s:1},{w:'whereas',c:'contrast',l:2,s:1},
+ {w:'in particular,',c:'example',l:2},{w:'above all,',c:'emphasis',l:2},{w:'to sum up,',c:'summary',l:2},
+ {w:'surprisingly,',c:'attitude',l:2},{w:'in other words,',c:'summary',l:2},{w:'on the whole,',c:'summary',l:2},
+ {w:'given that',c:'condition',l:2,s:1},
+ {w:'to that end,',c:'purpose',l:3},{w:'with this in mind,',c:'purpose',l:3},{w:'accordingly,',c:'result',l:3},
+ {w:'simultaneously,',c:'comparison',l:3},{w:'conversely,',c:'contrast',l:3},{w:'on the contrary,',c:'contrast',l:3},
+ {w:'admittedly,',c:'contrast',l:3},{w:'namely,',c:'example',l:3},{w:'thereafter,',c:'sequence',l:3},
+ {w:'in turn,',c:'result',l:3},{w:'above all,',c:'emphasis',l:3}
+];
+
+// ===== UTILS =====
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ===== PERSISTENCE =====
+const store={
+ get(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}},
+ set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+};
+let settings=store.get('lpSettings',{level:'A1',timerDuration:120,roundsPerTeam:2,teamCount:2,teamNames:[],darkMode:true,soundOn:true});
+let seen=store.get('lpSeen',{A1:[],A2:[],B1:[],B2:[]});
+function saveSettings(){store.set('lpSettings',settings);}
+function markSeen(level,topic){
+ if(!seen[level])seen[level]=[];
+ if(!seen[level].includes(topic)){seen[level].push(topic);store.set('lpSeen',seen);}
+ updateSeenInfo();
+}
+
 // ===== AUDIO =====
 const AC=new(window.AudioContext||window.webkitAudioContext)();
-const tone=(f,d,t='sine',v=0.3)=>{const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.frequency.value=f;o.type=t;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.start();o.stop(AC.currentTime+d);};
+let soundOn=settings.soundOn!==false;
+const tone=(f,d,t='sine',v=0.3)=>{if(!soundOn)return;const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.frequency.value=f;o.type=t;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.start();o.stop(AC.currentTime+d);};
 const sfxDrop=()=>tone(330,0.1,'sine',0.15);
+const sfxPick=()=>tone(440,0.08,'sine',0.12);
 const sfxCorrect=()=>[440,554,659].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'sine',0.25),i*80));
 const sfxWrong=()=>tone(180,0.4,'sawtooth',0.2);
 const sfxReveal=()=>[261,329,392,523].forEach((f,i)=>setTimeout(()=>tone(f,0.3,'sine',0.2),i*60));
 const sfxTick=()=>tone(880,0.05,'square',0.1);
 const sfxStart=()=>[220,330,440,550].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'sine',0.25),i*80));
 const sfxFanfare=()=>[261,329,392,523,659].forEach((f,i)=>setTimeout(()=>tone(f,0.35,'sine',0.3),i*100));
+const soundToggleBtn=document.getElementById('soundToggle');
+function applySoundIcon(){soundToggleBtn.textContent=soundOn?'\uD83D\uDD0A':'\uD83D\uDD07';}
+soundToggleBtn.onclick=()=>{soundOn=!soundOn;settings.soundOn=soundOn;saveSettings();applySoundIcon();if(soundOn)sfxDrop();};
+applySoundIcon();
 
 // ===== STATE =====
-// bankWords[] fixed per round; slotAnswers[] stores bankWord INDEX (int|null)
 let G={
-  teams:[],scores:[],level:'A1',timerDuration:120,totalRounds:5,
-  currentRound:0,currentTeamIdx:0,usedParagraphs:[],currentParagraph:null,
-  timer:null,timeLeft:120,guesses:{},correctCount:0,
-  bankWords:[],slotAnswers:[],slotAnswersStrings:[],
-  drag:null
+ teams:[],scores:[],level:'A1',timerDuration:120,totalRounds:4,
+ currentRound:0,currentTeamIdx:0,usedTopics:[],currentParagraph:null,
+ timer:null,timeLeft:120,paused:false,submitted:false,
+ guesses:{},correctCount:0,wrongCount:0,emptyCount:0,speedBonus:0,
+ bankWords:[],slotAnswers:[],slotAnswersStrings:[],
+ drag:null,sel:null // sel = {bwIdx, fromSlot|null}
 };
 
 // ===== THEME =====
-let darkMode=true;
+let darkMode=settings.darkMode!==false;
 function applyTheme(){
-  document.body.classList.toggle('light',!darkMode);
-  document.getElementById('themeToggle').textContent=darkMode?'☀️':'🌙';
-  // Swap SVG gradients
-  const sky=document.getElementById('skyRect');
-  const lake=document.getElementById('lakeEl');
-  const grassB=document.getElementById('grassBack');
-  const grassF=document.getElementById('grassFront');
-  const stars=document.getElementById('stars');
-  const moon=document.getElementById('moonSun');
-  const moonInner=document.getElementById('moonSunInner');
-  if(!darkMode){
-    sky.setAttribute('fill','url(#skyGradL)');
-    lake.setAttribute('fill','url(#lakeGradL)');
-    grassB.setAttribute('fill','url(#grassGradL)');
-    grassF.setAttribute('fill','url(#grassGradL)');
-    stars.style.display='none';
-    moon.setAttribute('fill','#ffe040');
-    moon.setAttribute('r','40');
-    moon.setAttribute('cx','100');moon.setAttribute('cy','80');
-    moonInner.setAttribute('opacity','0');
-  } else {
-    sky.setAttribute('fill','url(#skyGrad)');
-    lake.setAttribute('fill','url(#lakeGrad)');
-    grassB.setAttribute('fill','url(#grassGrad)');
-    grassF.setAttribute('fill','url(#grassGrad)');
-    stars.style.display='';
-    moon.setAttribute('fill','#f0e080');
-    moon.setAttribute('r','32');
-    moon.setAttribute('cx','1340');moon.setAttribute('cy','80');
-    moonInner.setAttribute('opacity','0');
-  }
+ document.body.classList.toggle('light',!darkMode);
+ document.getElementById('themeToggle').textContent=darkMode?'\u2600\uFE0F':'\uD83C\uDF19';
+ const sky=document.getElementById('skyRect');
+ const lake=document.getElementById('lakeEl');
+ const grassB=document.getElementById('grassBack');
+ const grassF=document.getElementById('grassFront');
+ const stars=document.getElementById('stars');
+ const moon=document.getElementById('moonSun');
+ const moonInner=document.getElementById('moonSunInner');
+ if(!darkMode){
+  sky.setAttribute('fill','url(#skyGradL)');
+  lake.setAttribute('fill','url(#lakeGradL)');
+  grassB.setAttribute('fill','url(#grassGradL)');
+  grassF.setAttribute('fill','url(#grassGradL)');
+  stars.style.display='none';
+  moon.setAttribute('fill','#ffe040');moon.setAttribute('r','40');
+  moon.setAttribute('cx','100');moon.setAttribute('cy','80');
+  moonInner.setAttribute('opacity','0');
+ } else {
+  sky.setAttribute('fill','url(#skyGrad)');
+  lake.setAttribute('fill','url(#lakeGrad)');
+  grassB.setAttribute('fill','url(#grassGrad)');
+  grassF.setAttribute('fill','url(#grassGrad)');
+  stars.style.display='';
+  moon.setAttribute('fill','#f0e080');moon.setAttribute('r','32');
+  moon.setAttribute('cx','1340');moon.setAttribute('cy','80');
+  moonInner.setAttribute('opacity','0');
+ }
 }
-document.getElementById('themeToggle').onclick=()=>{ darkMode=!darkMode; applyTheme(); };
+document.getElementById('themeToggle').onclick=()=>{darkMode=!darkMode;settings.darkMode=darkMode;saveSettings();applyTheme();};
+applyTheme();
 
-// ===== TEAM COUNT DROPDOWN =====
+// ===== SETUP: RESTORE SAVED SETTINGS =====
 const teamCountSel=document.getElementById('teamCountSelect');
+function restoreSettings(){
+ ['levelGroup','timerGroup','roundsGroup'].forEach(id=>{
+  const key=id==='levelGroup'?String(settings.level):id==='timerGroup'?String(settings.timerDuration):String(settings.roundsPerTeam);
+  const grp=document.getElementById(id);
+  const target=grp.querySelector('.btn-opt[data-val="'+key+'"]');
+  if(target){grp.querySelectorAll('.btn-opt').forEach(b=>b.classList.remove('selected'));target.classList.add('selected');}
+ });
+ if(settings.teamCount)teamCountSel.value=String(settings.teamCount);
+ (settings.teamNames||[]).forEach((n,i)=>{const inp=document.getElementById('ti'+i);if(inp&&n)inp.value=n;});
+}
 function updateTeamInputs(){
-  const n=parseInt(teamCountSel.value);
-  for(let i=0;i<6;i++){
-    const inp=document.getElementById('ti'+i);
-    inp.disabled=i>=n;
-    inp.style.opacity=i>=n?'0.3':'1';
-  }
+ const n=parseInt(teamCountSel.value);
+ for(let i=0;i<6;i++){
+  const inp=document.getElementById('ti'+i);
+  inp.disabled=i>=n;
+  inp.style.opacity=i>=n?'0.3':'1';
+ }
 }
 teamCountSel.onchange=updateTeamInputs;
+restoreSettings();
 updateTeamInputs();
+
+// ===== SEEN-TEXTS INFO =====
+function updateSeenInfo(){
+ const el=document.getElementById('seenInfo');
+ if(!el)return;
+ el.textContent=['A1','A2','B1','B2'].map(l=>{
+  const total=PARAGRAPHS[l].length,s=(seen[l]||[]).filter(t=>PARAGRAPHS[l].some(p=>p.topic===t)).length;
+  return l+': '+(total-s)+'/'+total+' fresh';
+ }).join(' \u00B7 ');
+}
+document.getElementById('resetSeenBtn').onclick=()=>{
+ seen={A1:[],A2:[],B1:[],B2:[]};store.set('lpSeen',seen);updateSeenInfo();sfxDrop();
+};
+updateSeenInfo();
 
 // ===== SETUP BTNS =====
 ['levelGroup','timerGroup','roundsGroup'].forEach(id=>{
-  document.getElementById(id).querySelectorAll('.btn-opt').forEach(btn=>{
-    btn.onclick=()=>{ document.getElementById(id).querySelectorAll('.btn-opt').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); };
-  });
+ document.getElementById(id).querySelectorAll('.btn-opt').forEach(btn=>{
+  btn.onclick=()=>{document.getElementById(id).querySelectorAll('.btn-opt').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');};
+ });
 });
-function getOpt(id){ return document.querySelector('#'+id+' .selected').dataset.val; }
+function getOpt(id){return document.querySelector('#'+id+' .selected').dataset.val;}
 
 document.getElementById('startBtn').onclick=()=>{
-  AC.resume();
-  const n=parseInt(teamCountSel.value);
-  G.teams=[];
-  for(let i=0;i<n;i++){
-    const v=document.getElementById('ti'+i).value.trim()||('Team '+(i+1));
-    G.teams.push(v);
-  }
-  G.level=getOpt('levelGroup');
-  G.timerDuration=parseInt(getOpt('timerGroup'));
-  G.totalRounds=parseInt(getOpt('roundsGroup'));
-  G.scores=G.teams.map(()=>0);
-  G.currentRound=0;G.currentTeamIdx=0;G.usedParagraphs=[];
-  sfxStart();showScreen('gameScreen');nextRound();
+ AC.resume();
+ const n=parseInt(teamCountSel.value);
+ G.teams=[];
+ for(let i=0;i<n;i++){
+  const v=document.getElementById('ti'+i).value.trim()||('Team '+(i+1));
+  G.teams.push(v);
+ }
+ G.level=getOpt('levelGroup');
+ G.timerDuration=parseInt(getOpt('timerGroup'));
+ const perTeam=parseInt(getOpt('roundsGroup'));
+ G.totalRounds=perTeam*n;
+ G.scores=G.teams.map(()=>0);
+ G.currentRound=0;G.currentTeamIdx=0;G.usedTopics=[];
+ settings.level=G.level;settings.timerDuration=G.timerDuration;settings.roundsPerTeam=perTeam;
+ settings.teamCount=n;settings.teamNames=G.teams.slice();
+ saveSettings();
+ sfxStart();showScreen('gameScreen');nextRound();
 };
 
 function showScreen(id){
-  document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none';});
-  const el=document.getElementById(id);el.style.display='flex';el.classList.add('active');
+ document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none';});
+ const el=document.getElementById(id);el.style.display='flex';el.classList.add('active');
 }
 
-// ===== BANK WORDS: 6 total =====
+// ===== BANK BUILDING =====
+// Reps: one accepted answer per gap, randomly chosen, mutually distinct.
+// Decoys: comma-form connectors from categories NOT used by this paragraph
+// (so every plausible same-category alternative is either accepted or absent),
+// plus subordinators, which are wrong by form in sentence-initial gaps.
 function buildBankWords(p){
-  const reps=p.answers.map(a=>a[0]);
-  // Normalise for collision check (strip trailing comma, lowercase)
-  const norm=w=>w.toLowerCase().replace(/,$/,'').trim();
-  const repNorm=reps.map(norm);
-  const decoyPools={
-    A1:['because','although','if','when','before','while','after','since','unless','as soon as','in case','even though'],
-    A2:['although','despite this,','whereas','meanwhile,','even though','unless','similarly,','due to','as long as','provided that','given that','prior to'],
-    B1:['although','despite this,','whereas','meanwhile,','in spite of this,','even so,','provided that','given that','prior to this,','on condition that','having said that,','that being said,'],
-    B2:['although','despite this,','whereas','in spite of this,','even so,','provided that,','given that,','in turn,','accordingly,','simultaneously,','to that end,','with this in mind,']
-  };
-  const pool=decoyPools[G.level]||decoyPools.A2;
-  const filtered=pool.filter(w=>!repNorm.includes(norm(w)));
-  const needed=Math.max(0,6-reps.length);
-  const decoys=filtered.sort(()=>Math.random()-0.5).slice(0,needed);
-  return [...new Set([...reps,...decoys])].sort(()=>Math.random()-0.5);
+ const usedCats=new Set();
+ const acceptedNorms=new Set();
+ p.answers.forEach(a=>a.forEach(x=>{usedCats.add(catOf(x));acceptedNorms.add(normW(x));}));
+ // pick distinct reps
+ const reps=[],repNorms=new Set();
+ p.answers.forEach(a=>{
+  const opts=shuffle(a.slice());
+  let pick=opts.find(x=>!repNorms.has(normW(x)));
+  if(!pick)pick=a[0];
+  reps.push(pick);repNorms.add(normW(pick));
+ });
+ const lv=LVIDX[G.level]||0;
+ const ok=d=>d.l<=lv&&!acceptedNorms.has(normW(d.w));
+ const tier1=shuffle(DECOYS.filter(d=>ok(d)&&!d.s&&!usedCats.has(d.c)));
+ const tier2=shuffle(DECOYS.filter(d=>ok(d)&&d.s));
+ const seenW=new Set(reps.map(normW));
+ const decoys=[];
+ const needed=Math.max(0,6-reps.length);
+ for(const d of [...tier1,...tier2]){
+  if(decoys.length>=needed)break;
+  if(seenW.has(normW(d.w)))continue;
+  seenW.add(normW(d.w));decoys.push(d.w);
+ }
+ return shuffle([...reps,...decoys]);
 }
 
 // ===== ROUND =====
-function nextRound(){
-  G.currentRound++;
-  if(G.currentRound>G.totalRounds){showFinal();return;}
-  const pool=PARAGRAPHS[G.level];
-  let avail=pool.map((_,i)=>i).filter(i=>!G.usedParagraphs.includes(i));
-  if(!avail.length){G.usedParagraphs=[];avail=pool.map((_,i)=>i);}
-  const idx=avail[Math.floor(Math.random()*avail.length)];
-  G.usedParagraphs.push(idx);
-  G.currentParagraph=JSON.parse(JSON.stringify(pool[idx]));
-  G.bankWords=buildBankWords(G.currentParagraph);
-  G.slotAnswers=G.currentParagraph.answers.map(()=>null);
-  G.slotAnswersStrings=[];
-  G.drag=null;
-  document.getElementById('headerTeam').textContent=G.teams[G.currentTeamIdx];
-  document.getElementById('headerRound').textContent='Round '+G.currentRound+' / '+G.totalRounds;
-  document.getElementById('headerLevel').textContent=G.level;
-  document.getElementById('topicLabel').textContent=G.currentParagraph.topic;
-  updateMini();renderAll();startTimer();
+function pickParagraph(){
+ const pool=PARAGRAPHS[G.level];
+ const seenTopics=seen[G.level]||[];
+ let avail=pool.map((_,i)=>i).filter(i=>!G.usedTopics.includes(pool[i].topic)&&!seenTopics.includes(pool[i].topic));
+ if(!avail.length)avail=pool.map((_,i)=>i).filter(i=>!G.usedTopics.includes(pool[i].topic));
+ if(!avail.length){G.usedTopics=[];avail=pool.map((_,i)=>i);}
+ return pool[avail[Math.floor(Math.random()*avail.length)]];
 }
+function loadParagraph(p){
+ G.currentParagraph=JSON.parse(JSON.stringify(p));
+ G.usedTopics.push(p.topic);
+ markSeen(G.level,p.topic);
+ G.bankWords=buildBankWords(G.currentParagraph);
+ G.slotAnswers=G.currentParagraph.answers.map(()=>null);
+ G.slotAnswersStrings=[];
+ G.drag=null;G.sel=null;G.submitted=false;
+ document.getElementById('topicLabel').textContent=G.currentParagraph.topic;
+ renderAll();
+}
+function nextRound(){
+ G.currentRound++;
+ if(G.currentRound>G.totalRounds){showFinal();return;}
+ loadParagraph(pickParagraph());
+ document.getElementById('headerTeam').textContent=G.teams[G.currentTeamIdx];
+ document.getElementById('headerRound').textContent='Round '+G.currentRound+' / '+G.totalRounds;
+ document.getElementById('headerLevel').textContent=G.level;
+ updateMini();startTimer();
+}
+document.getElementById('swapBtn').onclick=()=>{
+ if(G.submitted)return;
+ sfxDrop();loadParagraph(pickParagraph());startTimer();
+};
 
 // ===== RENDER =====
 function renderAll(){renderParagraph();renderBank();}
-
 function isUsed(bwIdx){return G.slotAnswers.some(s=>s===bwIdx);}
 
 function renderParagraph(){
-  const p=G.currentParagraph;
-  const container=document.getElementById('paragraphText');
-  container.innerHTML='';
-  let si=0;
-  p.text.forEach(part=>{
-    if(part==='___'){container.appendChild(makeSlotEl(si));si++;}
-    else{container.appendChild(document.createTextNode(' '+part+' '));}
-  });
+ const p=G.currentParagraph;
+ const container=document.getElementById('paragraphText');
+ container.innerHTML='';
+ let si=0;
+ p.text.forEach(part=>{
+  if(part==='___'){container.appendChild(makeSlotEl(si));si++;}
+  else{container.appendChild(document.createTextNode(' '+part+' '));}
+ });
 }
 
 function makeSlotEl(slotIdx){
-  const slot=document.createElement('span');
-  slot.dataset.slotIdx=slotIdx;
-  const bwIdx=G.slotAnswers[slotIdx];
-  const word=bwIdx!==null?G.bankWords[bwIdx]:null;
-  slot.className=word?'drop-slot has-word':'drop-slot';
-  slot.textContent=word||'?';
-  if(word){
-    slot.draggable=true;
-    slot.addEventListener('dragstart',e=>{
-      G.drag={source:'slot',bankWordIdx:bwIdx,fromSlot:slotIdx};
-      e.dataTransfer.setData('text/plain',word);
-      showGhost(word,e.clientX,e.clientY);
-      setTimeout(()=>slot.style.opacity='0.35',0);
-    });
-    slot.addEventListener('dragend',()=>{slot.style.opacity='';hideGhost();G.drag=null;});
+ const slot=document.createElement('span');
+ slot.dataset.slotIdx=slotIdx;
+ const bwIdx=G.slotAnswers[slotIdx];
+ const word=bwIdx!==null?G.bankWords[bwIdx]:null;
+ slot.className=word?'drop-slot has-word':'drop-slot';
+ if(G.sel&&G.sel.fromSlot===slotIdx)slot.classList.add('selected');
+ else if(G.sel&&!word)slot.classList.add('target-hint');
+ slot.textContent=word||'?';
+ // --- tap-to-place ---
+ slot.addEventListener('click',()=>{
+  if(G.submitted)return;
+  if(G.sel){
+   const{bwIdx:selIdx,fromSlot}=G.sel;
+   if(fromSlot===slotIdx){G.sel=null;renderAll();return;}
+   if(fromSlot!==null&&fromSlot!==undefined){
+    const displaced=G.slotAnswers[slotIdx];
+    G.slotAnswers[slotIdx]=selIdx;
+    G.slotAnswers[fromSlot]=displaced!==undefined?displaced:null;
+   } else {
+    G.slotAnswers[slotIdx]=selIdx;
+   }
+   G.sel=null;sfxDrop();renderAll();
+  } else if(word){
+   G.sel={bwIdx:bwIdx,fromSlot:slotIdx};sfxPick();renderAll();
   }
-  slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drag-over');});
-  slot.addEventListener('dragleave',()=>slot.classList.remove('drag-over'));
-  slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drag-over');commitDropOnSlot(slotIdx);});
-  return slot;
+ });
+ // --- drag (desktop) ---
+ if(word){
+  slot.draggable=true;
+  slot.addEventListener('dragstart',e=>{
+   G.drag={source:'slot',bankWordIdx:bwIdx,fromSlot:slotIdx};
+   e.dataTransfer.setData('text/plain',word);
+   setTimeout(()=>slot.style.opacity='0.35',0);
+  });
+  slot.addEventListener('dragend',()=>{slot.style.opacity='';G.drag=null;});
+ }
+ slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drag-over');});
+ slot.addEventListener('dragleave',()=>slot.classList.remove('drag-over'));
+ slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drag-over');commitDropOnSlot(slotIdx);});
+ return slot;
 }
 
 function renderBank(){
-  const container=document.getElementById('wordsContainer');
-  container.innerHTML='';
-  G.bankWords.forEach((word,bwIdx)=>{
-    const chip=document.createElement('div');
-    chip.className='word-chip'+(isUsed(bwIdx)?' used':'');
-    chip.textContent=word;
-    chip.draggable=!isUsed(bwIdx);
-    if(!isUsed(bwIdx)){
-      chip.addEventListener('dragstart',e=>{
-        G.drag={source:'bank',bankWordIdx:bwIdx};
-        e.dataTransfer.setData('text/plain',word);
-        showGhost(word,e.clientX,e.clientY);
-        setTimeout(()=>chip.classList.add('dragging'),0);
-      });
-      chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');hideGhost();G.drag=null;});
-    }
-    container.appendChild(chip);
-  });
+ const container=document.getElementById('wordsContainer');
+ container.innerHTML='';
+ G.bankWords.forEach((word,bwIdx)=>{
+  const chip=document.createElement('div');
+  chip.className='word-chip'+(isUsed(bwIdx)?' used':'');
+  if(G.sel&&G.sel.bwIdx===bwIdx&&(G.sel.fromSlot===null||G.sel.fromSlot===undefined))chip.classList.add('selected');
+  chip.textContent=word;
+  chip.draggable=!isUsed(bwIdx);
+  if(!isUsed(bwIdx)){
+   chip.addEventListener('click',()=>{
+    if(G.submitted)return;
+    if(G.sel&&G.sel.bwIdx===bwIdx){G.sel=null;}
+    else{G.sel={bwIdx:bwIdx,fromSlot:null};sfxPick();}
+    renderAll();
+   });
+   chip.addEventListener('dragstart',e=>{
+    G.drag={source:'bank',bankWordIdx:bwIdx};
+    e.dataTransfer.setData('text/plain',word);
+    setTimeout(()=>chip.classList.add('dragging'),0);
+   });
+   chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');G.drag=null;});
+  }
+  container.appendChild(chip);
+ });
 }
 
 // ===== DROP =====
 function commitDropOnSlot(targetSlotIdx){
-  if(!G.drag)return;
-  const{source,bankWordIdx,fromSlot}=G.drag;
-  G.drag=null;
-  if(source==='bank'){
-    G.slotAnswers[targetSlotIdx]=bankWordIdx;
-  } else {
-    if(fromSlot===targetSlotIdx){renderAll();return;}
-    const displaced=G.slotAnswers[targetSlotIdx];
-    G.slotAnswers[targetSlotIdx]=bankWordIdx;
-    G.slotAnswers[fromSlot]=displaced;
-  }
-  sfxDrop();renderAll();
+ if(!G.drag)return;
+ const{source,bankWordIdx,fromSlot}=G.drag;
+ G.drag=null;G.sel=null;
+ if(source==='bank'){
+  G.slotAnswers[targetSlotIdx]=bankWordIdx;
+ } else {
+  if(fromSlot===targetSlotIdx){renderAll();return;}
+  const displaced=G.slotAnswers[targetSlotIdx];
+  G.slotAnswers[targetSlotIdx]=bankWordIdx;
+  G.slotAnswers[fromSlot]=displaced;
+ }
+ sfxDrop();renderAll();
 }
 
-// Drop on bank = return to bank
-document.querySelector('.wordbank-card').addEventListener('dragover',e=>e.preventDefault());
-document.querySelector('.wordbank-card').addEventListener('drop',e=>{
-  e.preventDefault();
-  if(!G.drag)return;
-  if(G.drag.source==='slot'){G.slotAnswers[G.drag.fromSlot]=null;sfxDrop();G.drag=null;renderAll();}
-  else G.drag=null;
+// Drop or tap on bank = return to bank
+const bankCard=document.querySelector('.wordbank-card');
+bankCard.addEventListener('dragover',e=>e.preventDefault());
+bankCard.addEventListener('drop',e=>{
+ e.preventDefault();
+ if(!G.drag)return;
+ if(G.drag.source==='slot'){G.slotAnswers[G.drag.fromSlot]=null;sfxDrop();G.drag=null;renderAll();}
+ else G.drag=null;
 });
-
-// ===== DRAG GHOST =====
-const ghost=document.getElementById('dragGhost');
-document.addEventListener('mousemove',e=>{if(G.drag){ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';}});
+bankCard.addEventListener('click',e=>{
+ if(G.submitted)return;
+ if(e.target.classList.contains('word-chip'))return;
+ if(G.sel&&G.sel.fromSlot!==null&&G.sel.fromSlot!==undefined){
+  G.slotAnswers[G.sel.fromSlot]=null;G.sel=null;sfxDrop();renderAll();
+ }
+});
 document.addEventListener('dragover',e=>e.preventDefault());
-function showGhost(w,x,y){ghost.textContent=w;ghost.style.left=x+'px';ghost.style.top=y+'px';ghost.style.display='block';}
-function hideGhost(){ghost.style.display='none';}
 
 // ===== CLEAR =====
-document.getElementById('clearBtn').onclick=()=>{G.slotAnswers=G.slotAnswers.map(()=>null);renderAll();};
+document.getElementById('clearBtn').onclick=()=>{if(G.submitted)return;G.slotAnswers=G.slotAnswers.map(()=>null);G.sel=null;renderAll();};
 
 // ===== SUBMIT =====
-document.getElementById('submitBtn').onclick=()=>{clearInterval(G.timer);checkAnswers();showGuessModal();};
+document.getElementById('submitBtn').onclick=()=>{
+ if(G.submitted)return;
+ G.submitted=true;G.sel=null;
+ clearInterval(G.timer);
+ setPauseBtn(false);
+ checkAnswers();showGuessModal();
+};
 
 function checkAnswers(){
-  let correct=0;
-  const norm=w=>w?w.toLowerCase().replace(/,$/,'').trim():'';
-  G.currentParagraph.answers.forEach((valid,idx)=>{
-    const bwIdx=G.slotAnswers[idx];
-    const given=bwIdx!==null?G.bankWords[bwIdx]:null;
-    const givenNorm=norm(given);
-    // Accept if any valid answer normalises to same string
-    const ok=given&&valid.some(v=>norm(v)===givenNorm);
-    if(ok)correct++;
-    const slot=document.querySelector('.drop-slot[data-slot-idx="'+idx+'"]');
-    if(slot){slot.classList.remove('has-word');slot.classList.add(ok?'correct':'wrong');slot.draggable=false;}
-  });
-  G.slotAnswersStrings=G.slotAnswers.map(i=>i!==null?G.bankWords[i]:null);
-  G.correctCount=correct;
+ let correct=0,wrong=0,empty=0;
+ G.currentParagraph.answers.forEach((valid,idx)=>{
+  const bwIdx=G.slotAnswers[idx];
+  const given=bwIdx!==null?G.bankWords[bwIdx]:null;
+  const ok=given&&valid.some(v=>normW(v)===normW(given));
+  if(ok)correct++;else if(given)wrong++;else empty++;
+  const slot=document.querySelector('.drop-slot[data-slot-idx="'+idx+'"]');
+  if(slot){slot.classList.remove('has-word','selected','target-hint');slot.classList.add(ok?'correct':'wrong');slot.draggable=false;}
+ });
+ G.slotAnswersStrings=G.slotAnswers.map(i=>i!==null?G.bankWords[i]:null);
+ G.correctCount=correct;G.wrongCount=wrong;G.emptyCount=empty;
+ const max=G.currentParagraph.answers.length;
+ G.speedBonus=(correct===max&&G.timeLeft>G.timerDuration/2)?5:0;
 }
 
 // ===== TIMER =====
+function setPauseBtn(paused){
+ const b=document.getElementById('pauseBtn');
+ b.textContent=paused?'\u25B6':'\u23F8';
+ b.classList.toggle('paused',paused);
+}
+document.getElementById('pauseBtn').onclick=()=>{
+ if(G.submitted)return;
+ G.paused=!G.paused;setPauseBtn(G.paused);
+};
 function startTimer(){
-  G.timeLeft=G.timerDuration;updateTimerEl();clearInterval(G.timer);
-  G.timer=setInterval(()=>{
-    G.timeLeft--;updateTimerEl();
-    if(G.timeLeft<=10)sfxTick();
-    if(G.timeLeft<=0){clearInterval(G.timer);document.getElementById('submitBtn').click();}
-  },1000);
+ G.timeLeft=G.timerDuration;G.paused=false;setPauseBtn(false);
+ updateTimerEl();clearInterval(G.timer);
+ G.timer=setInterval(()=>{
+  if(G.paused)return;
+  G.timeLeft--;updateTimerEl();
+  if(G.timeLeft<=10&&G.timeLeft>0)sfxTick();
+  if(G.timeLeft<=0){clearInterval(G.timer);document.getElementById('submitBtn').click();}
+ },1000);
 }
 function updateTimerEl(){
-  const el=document.getElementById('timerDisplay');
-  const m=Math.floor(G.timeLeft/60),s=G.timeLeft%60;
-  el.textContent=m+':'+(s<10?'0':'')+s;
-  el.classList.toggle('urgent',G.timeLeft<=10);
+ const el=document.getElementById('timerDisplay');
+ const m=Math.floor(G.timeLeft/60),s=G.timeLeft%60;
+ el.textContent=m+':'+(s<10?'0':'')+s;
+ el.classList.toggle('urgent',G.timeLeft<=10);
 }
 function updateMini(){
-  document.getElementById('scoreboardMini').innerHTML=G.teams.map((t,i)=>'<div class="score-chip">'+t+'<span>'+G.scores[i]+'</span></div>').join('');
+ const wrap=document.getElementById('scoreboardMini');
+ wrap.innerHTML='';
+ G.teams.forEach((t,i)=>{
+  const chip=document.createElement('div');chip.className='score-chip';
+  chip.textContent=t;
+  const sp=document.createElement('span');sp.textContent=G.scores[i];
+  chip.appendChild(sp);wrap.appendChild(chip);
+ });
 }
 
 // ===== GUESS MODAL =====
 function showGuessModal(){
-  document.getElementById('guessingTeamName').textContent=G.teams[G.currentTeamIdx];
-  const max=G.currentParagraph.answers.length;
-  const rows=document.getElementById('guessRows');rows.innerHTML='';G.guesses={};
-  G.teams.forEach((team,ti)=>{
-    if(ti===G.currentTeamIdx)return;
-    const row=document.createElement('div');row.className='guess-row';
-    row.innerHTML='<label>'+team+'</label><div class="guess-chips" id="gc'+ti+'"></div>';
-    rows.appendChild(row);
-    const chips=row.querySelector('#gc'+ti);
-    for(let n=0;n<=max;n++){
-      const c=document.createElement('div');c.className='guess-chip';c.textContent=n;
-      c.onclick=()=>{chips.querySelectorAll('.guess-chip').forEach(x=>x.classList.remove('selected'));c.classList.add('selected');G.guesses[ti]=n;};
-      chips.appendChild(c);
-    }
-  });
-  document.getElementById('guessModal').classList.add('active');
+ document.getElementById('guessingTeamName').textContent=G.teams[G.currentTeamIdx];
+ const max=G.currentParagraph.answers.length;
+ const rows=document.getElementById('guessRows');rows.innerHTML='';G.guesses={};
+ G.teams.forEach((team,ti)=>{
+  if(ti===G.currentTeamIdx)return;
+  const row=document.createElement('div');row.className='guess-row';
+  const label=document.createElement('label');label.textContent=team;
+  const chips=document.createElement('div');chips.className='guess-chips';
+  row.appendChild(label);row.appendChild(chips);
+  rows.appendChild(row);
+  for(let n=0;n<=max;n++){
+   const c=document.createElement('div');c.className='guess-chip';c.textContent=n;
+   c.onclick=()=>{chips.querySelectorAll('.guess-chip').forEach(x=>x.classList.remove('selected'));c.classList.add('selected');G.guesses[ti]=n;};
+   chips.appendChild(c);
+  }
+ });
+ document.getElementById('guessModal').classList.add('active');
 }
 document.getElementById('confirmGuesses').onclick=showReveal;
 
 // ===== REVEAL =====
+function statBox(num,lbl,color){
+ const b=document.createElement('div');b.className='stat-box';
+ const n=document.createElement('div');n.className='num';n.textContent=num;
+ if(color)n.style.color=color;
+ const l=document.createElement('div');l.className='lbl';l.textContent=lbl;
+ b.appendChild(n);b.appendChild(l);
+ return b;
+}
 function showReveal(){
-  document.getElementById('guessModal').classList.remove('active');
-  sfxReveal();
-  const correct=G.correctCount,pts=correct*10;
-  G.scores[G.currentTeamIdx]+=pts;
-  const max=G.currentParagraph.answers.length;
-  document.getElementById('revealStats').innerHTML=
-    '<div class="stat-box"><div class="num">'+correct+'/'+max+'</div><div class="lbl">Correct</div></div>'+
-    '<div class="stat-box"><div class="num">+'+pts+'</div><div class="lbl">'+G.teams[G.currentTeamIdx]+' pts</div></div>';
-  let gHTML='<div style="margin:10px 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Guessing Scores</div>';
-  G.teams.forEach((team,ti)=>{
-    if(ti===G.currentTeamIdx)return;
-    const guess=G.guesses[ti];if(guess===undefined)return;
-    const right=guess===correct;if(right)G.scores[ti]+=5;
-    gHTML+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;padding:7px 12px;background:var(--surface2);border-radius:8px;">'+
-      '<span style="font-weight:700;flex:1">'+team+'</span><span style="color:var(--muted)">guessed '+guess+'</span>'+
-      '<span style="font-family:\'Bebas Neue\',sans-serif;font-size:18px;color:'+(right?'var(--correct)':'var(--wrong)')+'">'+( right?'+5 pts':'no pts')+'</span></div>';
-  });
-  document.getElementById('revealGuessResults').innerHTML=gHTML;
-  buildRevealParagraph();
-  updateMini();
-  document.getElementById('revealModal').classList.add('active');
-  if(correct===max)sfxFanfare();else if(correct>0)sfxCorrect();else sfxWrong();
+ document.getElementById('guessModal').classList.remove('active');
+ sfxReveal();
+ const correct=G.correctCount;
+ const pts=correct*10+G.speedBonus;
+ G.scores[G.currentTeamIdx]+=pts;
+ const max=G.currentParagraph.answers.length;
+ const stats=document.getElementById('revealStats');stats.innerHTML='';
+ stats.appendChild(statBox(correct+'/'+max,'Correct'));
+ if(G.wrongCount)stats.appendChild(statBox(G.wrongCount,'Wrong','var(--wrong)'));
+ if(G.emptyCount)stats.appendChild(statBox(G.emptyCount,'Empty','var(--muted)'));
+ if(G.speedBonus)stats.appendChild(statBox('+'+G.speedBonus,'Speed bonus','var(--gold)'));
+ stats.appendChild(statBox('+'+pts,G.teams[G.currentTeamIdx]+' pts'));
+ // guessing scores: exact +5, off-by-one +2
+ const gWrap=document.getElementById('revealGuessResults');gWrap.innerHTML='';
+ const gTitle=document.createElement('div');
+ gTitle.style.cssText='margin:10px 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)';
+ gTitle.textContent='Guessing Scores';
+ gWrap.appendChild(gTitle);
+ G.teams.forEach((team,ti)=>{
+  if(ti===G.currentTeamIdx)return;
+  const guess=G.guesses[ti];if(guess===undefined)return;
+  const diff=Math.abs(guess-correct);
+  const gain=diff===0?5:diff===1?2:0;
+  G.scores[ti]+=gain;
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:7px;padding:7px 12px;background:var(--surface2);border-radius:8px;';
+  const nm=document.createElement('span');nm.style.cssText='font-weight:700;flex:1';nm.textContent=team;
+  const gd=document.createElement('span');gd.style.color='var(--muted)';gd.textContent='guessed '+guess;
+  const res=document.createElement('span');
+  res.style.cssText="font-family:'Bebas Neue',sans-serif;font-size:18px;color:"+(gain?'var(--correct)':'var(--wrong)');
+  res.textContent=gain?'+'+gain+' pts':'no pts';
+  row.appendChild(nm);row.appendChild(gd);row.appendChild(res);
+  gWrap.appendChild(row);
+ });
+ buildRevealParagraph();
+ updateMini();
+ document.getElementById('revealModal').classList.add('active');
+ if(correct===max)sfxFanfare();else if(correct>0)sfxCorrect();else sfxWrong();
 }
 
 function buildRevealParagraph(){
-  const p=G.currentParagraph;
-  const norm=w=>w?w.toLowerCase().replace(/,$/,'').trim():'';
-  const wrap=document.getElementById('revealParagraph');
-  wrap.innerHTML='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Complete paragraph — accepted answers highlighted</div>';
-  const para=document.createElement('div');para.className='reveal-paragraph';
-  let si=0;
-  p.text.forEach(part=>{
-    if(part==='___'){
-      const given=G.slotAnswersStrings[si];
-      const valid=p.answers[si];
-      const ok=given&&valid.some(v=>norm(v)===norm(given));
-      const ans=document.createElement('span');
-      ans.className=ok?'rs-correct':'rs-wrong';
-      ans.textContent=given||'(empty)';
-      para.appendChild(ans);
-      if(valid.length>1){
-        const alt=document.createElement('span');
-        alt.className='rs-alts';
-        alt.textContent=valid.join(' / ');
-        para.appendChild(alt);
-      }
-      si++;
-    } else {
-      para.appendChild(document.createTextNode(' '+part+' '));
-    }
-  });
-  wrap.appendChild(para);
-  if(p.answers.some(a=>a.length>1)){
-    const leg=document.createElement('div');leg.className='alt-legend';
-    leg.innerHTML='<strong style="color:var(--accent2)">Orange badges</strong> = all accepted answers for that gap.';
-    wrap.appendChild(leg);
+ const p=G.currentParagraph;
+ const wrap=document.getElementById('revealParagraph');
+ wrap.innerHTML='';
+ const hd=document.createElement('div');
+ hd.style.cssText='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;';
+ hd.textContent='Complete paragraph \u2014 accepted answers highlighted';
+ wrap.appendChild(hd);
+ const para=document.createElement('div');para.className='reveal-paragraph';
+ let si=0;
+ p.text.forEach(part=>{
+  if(part==='___'){
+   const given=G.slotAnswersStrings[si];
+   const valid=p.answers[si];
+   const ok=given&&valid.some(v=>normW(v)===normW(given));
+   const ans=document.createElement('span');
+   ans.className=ok?'rs-correct':'rs-wrong';
+   ans.textContent=given||'(empty)';
+   para.appendChild(ans);
+   // Always show accepted answers when wrong/empty; show alternatives when correct
+   const others=ok?valid.filter(v=>normW(v)!==normW(given)):valid;
+   if(others.length){
+    const alt=document.createElement('span');
+    alt.className='rs-alts';
+    alt.textContent=(ok?'also: ':'\u2713 ')+others.join(' / ');
+    para.appendChild(alt);
+   }
+   si++;
+  } else {
+   para.appendChild(document.createTextNode(' '+part+' '));
   }
+ });
+ wrap.appendChild(para);
+ const leg=document.createElement('div');leg.className='alt-legend';
+ leg.textContent='Orange badges show every accepted answer for that gap.';
+ wrap.appendChild(leg);
 }
 
 document.getElementById('nextRoundBtn').onclick=()=>{
-  document.getElementById('revealModal').classList.remove('active');
-  G.currentTeamIdx=(G.currentTeamIdx+1)%G.teams.length;
-  nextRound();
+ document.getElementById('revealModal').classList.remove('active');
+ G.currentTeamIdx=(G.currentTeamIdx+1)%G.teams.length;
+ nextRound();
 };
 
 // ===== FINAL =====
 function showFinal(){
-  clearInterval(G.timer);sfxFanfare();
-  const ranked=G.teams.map((t,i)=>({name:t,score:G.scores[i]})).sort((a,b)=>b.score-a.score);
-  const order=ranked.length>=3?[ranked[1],ranked[0],ranked[2]]:ranked;
-  const medals=['🥈','🥇','🥉'];
-  document.getElementById('podium').innerHTML=order.map((t,i)=>
-    '<div class="podium-step"><div class="podium-block"><div class="podium-rank">'+medals[i]+'</div><div class="podium-score">'+t.score+'</div></div><div class="podium-name">'+t.name+'</div></div>'
-  ).join('');
-  document.getElementById('fullScoreboard').innerHTML=ranked.map((t,i)=>
-    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 18px;display:flex;align-items:center;gap:14px;backdrop-filter:blur(8px);">'+
-    '<span style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;color:var(--muted);min-width:28px">#'+(i+1)+'</span>'+
-    '<span style="font-weight:800;font-size:17px;flex:1">'+t.name+'</span>'+
-    '<span style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;color:var(--accent2)">'+t.score+' pts</span></div>'
-  ).join('');
-  showScreen('finalScreen');
+ clearInterval(G.timer);sfxFanfare();
+ const ranked=G.teams.map((t,i)=>({name:t,score:G.scores[i]})).sort((a,b)=>b.score-a.score);
+ const order=ranked.length>=3?[ranked[1],ranked[0],ranked[2]]:ranked;
+ const medals=['\uD83E\uDD48','\uD83E\uDD47','\uD83E\uDD49'];
+ const pod=document.getElementById('podium');pod.innerHTML='';
+ order.forEach((t,i)=>{
+  const step=document.createElement('div');step.className='podium-step';
+  const block=document.createElement('div');block.className='podium-block';
+  const rank=document.createElement('div');rank.className='podium-rank';rank.textContent=ranked.length>=3?medals[i]:medals[i===0?1:0];
+  const score=document.createElement('div');score.className='podium-score';score.textContent=t.score;
+  block.appendChild(rank);block.appendChild(score);
+  const name=document.createElement('div');name.className='podium-name';name.textContent=t.name;
+  step.appendChild(block);step.appendChild(name);
+  pod.appendChild(step);
+ });
+ const board=document.getElementById('fullScoreboard');board.innerHTML='';
+ ranked.forEach((t,i)=>{
+  const row=document.createElement('div');
+  row.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 18px;display:flex;align-items:center;gap:14px;backdrop-filter:blur(8px);';
+  const pos=document.createElement('span');pos.style.cssText="font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--muted);min-width:28px";pos.textContent='#'+(i+1);
+  const nm=document.createElement('span');nm.style.cssText='font-weight:800;font-size:17px;flex:1';nm.textContent=t.name;
+  const sc=document.createElement('span');sc.style.cssText="font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--accent2)";sc.textContent=t.score+' pts';
+  row.appendChild(pos);row.appendChild(nm);row.appendChild(sc);
+  board.appendChild(row);
+ });
+ showScreen('finalScreen');
 }
-document.getElementById('restartBtn').onclick=()=>showScreen('startScreen');
+document.getElementById('restartBtn').onclick=()=>{updateSeenInfo();showScreen('startScreen');};
 </script>
 </body>
 </html>

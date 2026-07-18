@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Airtight — The Alibi Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Oswald:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#16181f;
+  --bg-soft:#1d2029;
+  --paper:#ece1c4;
+  --paper-edge:#d9c89a;
+  --paper-shadow:rgba(0,0,0,.55);
+  --ink:#2a251d;
+  --ink-soft:#5a5142;
+  --stamp:#b3261e;
+  --brass:#c9963f;
+  --brass-soft:#8a6a2e;
+  --safe:#2e7d4f;
+  --ui-text:#e8e4da;
+  --ui-dim:#9a958a;
+  --card:#22252f;
+  --card-border:#33374433;
+  --focus:#c9963f;
+}
+[data-theme="light"]{
+  --bg:#cfc4a8;
+  --bg-soft:#c2b494;
+  --paper:#f6efdc;
+  --paper-edge:#e3d5ae;
+  --paper-shadow:rgba(60,45,20,.35);
+  --ink:#241f18;
+  --ink-soft:#5a5142;
+  --ui-text:#241f18;
+  --ui-dim:#6b6350;
+  --card:#e9dfc4;
+  --card-border:#a8946633;
+  --focus:#8a5a10;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{
+  background:var(--bg);
+  background-image:radial-gradient(ellipse at 50% -10%, rgba(201,150,63,.10), transparent 55%);
+  color:var(--ui-text);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;
+  padding:18px 14px 60px;
+  transition:background .3s,color .3s;
+}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible, select:focus-visible, input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* ---------- top bar ---------- */
+.topbar{max-width:1060px;margin:0 auto 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:1.7rem;letter-spacing:.14em;text-transform:uppercase}
+.brand h1 .dot{color:var(--stamp)}
+.brand .tag{font-family:'Special Elite',monospace;font-size:.78rem;color:var(--ui-dim)}
+.topbtns{display:flex;gap:8px}
+.chip-btn{
+  background:var(--card);border:1px solid var(--card-border);color:var(--ui-text);
+  border-radius:8px;padding:7px 12px;font-size:.85rem;font-weight:500;
+}
+.chip-btn:hover{border-color:var(--brass)}
+
+/* ---------- case file paper ---------- */
+.stage{max-width:1060px;margin:0 auto;position:relative}
+.folder{
+  position:relative;
+  background:var(--paper);
+  color:var(--ink);
+  border-radius:4px 14px 4px 4px;
+  box-shadow:0 18px 40px var(--paper-shadow), 0 2px 0 var(--paper-edge) inset;
+  padding:34px 34px 40px;
+  transform:rotate(-.35deg);
+}
+.folder::before{ /* folder tab */
+  content:attr(data-tab);
+  position:absolute;top:-26px;left:26px;
+  background:var(--paper-edge);color:var(--ink-soft);
+  font-family:'Oswald',sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;
+  padding:6px 18px;border-radius:8px 8px 0 0;
+}
+.paperclip{
+  position:absolute;top:-14px;right:52px;width:16px;height:44px;
+  border:3px solid #8f8a7c;border-radius:8px;border-bottom:none;
+  opacity:.85;pointer-events:none;
+}
+.paperclip::after{content:'';position:absolute;left:2px;top:8px;width:6px;height:26px;border:2px solid #8f8a7c;border-radius:4px;border-bottom:none}
+.confidential{
+  position:absolute;top:18px;right:26px;
+  font-family:'Oswald',sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.3em;text-transform:uppercase;
+  color:var(--stamp);border:3px double var(--stamp);border-radius:4px;
+  padding:4px 10px;transform:rotate(6deg);opacity:.75;pointer-events:none;
+}
+.typed{font-family:'Special Elite',monospace}
+.folder h2{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:1.35rem;margin-bottom:4px}
+.folder .sub{font-family:'Special Elite',monospace;color:var(--ink-soft);font-size:.85rem;margin-bottom:20px}
+.rule{border:none;border-top:2px dashed color-mix(in srgb, var(--ink) 25%, transparent);margin:18px 0}
+
+/* ---------- setup ---------- */
+.case-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin:14px 0 6px}
+.case-card{
+  text-align:left;background:transparent;border:2px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  border-radius:6px;padding:12px 14px;color:var(--ink);position:relative;transition:transform .12s, border-color .12s, background .12s;
+}
+.case-card:hover{transform:translateY(-2px);border-color:var(--brass-soft)}
+.case-card.selected{border-color:var(--stamp);background:color-mix(in srgb, var(--stamp) 7%, transparent)}
+.case-card.selected::after{content:'✓ SELECTED';position:absolute;top:8px;right:10px;font-family:'Oswald',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.18em;color:var(--stamp)}
+.case-card .lvl{display:inline-block;font-family:'Oswald',sans-serif;font-size:.66rem;font-weight:700;letter-spacing:.2em;color:#fff;background:var(--brass-soft);border-radius:3px;padding:2px 7px;margin-bottom:6px}
+.case-card .lvl.a2{background:#3f7d5a}.case-card .lvl.b1{background:#8a6a2e}.case-card .lvl.b2{background:#7a3b8f}
+.case-card h3{font-family:'Special Elite',monospace;font-size:1rem;margin-bottom:3px}
+.case-card p{font-size:.8rem;color:var(--ink-soft);line-height:1.35}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:6px}
+.opt label{display:block;font-family:'Oswald',sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+.opt select,.opt input[type=text]{
+  width:100%;padding:9px 10px;border-radius:6px;border:2px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  background:color-mix(in srgb, var(--paper) 70%, #fff 30%);color:var(--ink);
+  font-family:'Special Elite',monospace;font-size:.95rem;
+}
+.pairs-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pair-tag{display:flex;align-items:center;gap:6px;background:color-mix(in srgb, var(--brass) 16%, transparent);border:1px solid var(--brass-soft);border-radius:20px;padding:5px 6px 5px 12px;font-family:'Special Elite',monospace;font-size:.85rem}
+.pair-tag button{background:none;border:none;color:var(--stamp);font-weight:700;font-size:1rem;line-height:1;padding:2px 6px}
+.addpair{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.addpair input{flex:1;min-width:180px}
+
+/* ---------- big action buttons ---------- */
+.big-btn{
+  display:inline-block;background:var(--stamp);color:#fff;border:none;border-radius:8px;
+  font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  font-size:1rem;padding:13px 30px;box-shadow:0 4px 0 color-mix(in srgb, var(--stamp) 55%, #000);
+  transition:transform .1s, box-shadow .1s;
+}
+.big-btn:hover{transform:translateY(-1px)}
+.big-btn:active{transform:translateY(2px);box-shadow:0 1px 0 color-mix(in srgb, var(--stamp) 55%, #000)}
+.big-btn.brass{background:var(--brass-soft);box-shadow:0 4px 0 color-mix(in srgb, var(--brass-soft) 55%, #000)}
+.big-btn.ghost{background:transparent;color:var(--ink);border:2px solid color-mix(in srgb, var(--ink) 35%, transparent);box-shadow:none}
+.btn-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px;align-items:center}
+
+/* ---------- briefing ---------- */
+.dossier{display:grid;grid-template-columns:1.4fr 1fr;gap:26px}
+@media(max-width:760px){.dossier{grid-template-columns:1fr}}
+.dossier .facts p{font-family:'Special Elite',monospace;font-size:1.02rem;line-height:1.75;margin-bottom:12px}
+.fact-list{list-style:none;margin-top:4px}
+.fact-list li{font-family:'Special Elite',monospace;font-size:.95rem;line-height:1.6;padding-left:22px;position:relative;margin-bottom:7px}
+.fact-list li::before{content:'▸';position:absolute;left:2px;color:var(--stamp)}
+.sidebox{background:color-mix(in srgb, var(--ink) 6%, transparent);border:2px solid color-mix(in srgb, var(--ink) 20%, transparent);border-radius:6px;padding:16px 18px;margin-bottom:14px}
+.sidebox h4{font-family:'Oswald',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--stamp);margin-bottom:9px}
+.sidebox ul{list-style:none}
+.sidebox li{font-size:.88rem;line-height:1.5;margin-bottom:6px;padding-left:16px;position:relative}
+.sidebox li::before{content:'—';position:absolute;left:0;color:var(--brass-soft)}
+.kv{display:flex;gap:10px;font-family:'Special Elite',monospace;font-size:.92rem;margin-bottom:6px}
+.kv b{min-width:86px;color:var(--stamp);font-weight:400}
+
+/* ---------- timer ---------- */
+.timer-wrap{text-align:center;margin:10px 0 4px}
+.timer{
+  font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(4rem,14vw,7.5rem);
+  letter-spacing:.06em;line-height:1;font-variant-numeric:tabular-nums;
+}
+.timer.warn{color:var(--stamp);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.timer-controls{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.phase-label{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.28em;text-transform:uppercase;font-size:.85rem;color:var(--ink-soft);text-align:center;margin-bottom:4px}
+.suspect-name{font-family:'Special Elite',monospace;text-align:center;font-size:1.2rem;margin-bottom:2px}
+
+/* ---------- question chips / checklist ---------- */
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:9px;margin-top:10px}
+.qchip{
+  text-align:left;background:color-mix(in srgb, var(--ink) 5%, transparent);
+  border:1.5px solid color-mix(in srgb, var(--ink) 22%, transparent);border-radius:6px;
+  padding:9px 12px;color:var(--ink);font-family:'Special Elite',monospace;font-size:.88rem;line-height:1.4;
+  transition:background .12s,border-color .12s,opacity .12s;
+}
+.qchip:hover{border-color:var(--brass-soft)}
+.qchip.used{opacity:.38;text-decoration:line-through}
+.hint{font-size:.8rem;color:var(--ink-soft);margin-top:8px;font-style:italic}
+
+/* ---------- claims board ---------- */
+.claims-zone{margin-top:16px}
+.claims-input{display:flex;gap:8px;flex-wrap:wrap}
+.claims-input input{flex:1;min-width:200px;padding:10px 12px;border-radius:6px;border:2px solid color-mix(in srgb, var(--ink) 30%, transparent);background:color-mix(in srgb, var(--paper) 70%, #fff 30%);font-family:'Special Elite',monospace;font-size:.95rem;color:var(--ink)}
+.claims-list{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+.claim{
+  position:relative;background:#fffdf4;border:1.5px solid #c9bd97;border-radius:3px;
+  padding:9px 12px 9px 26px;font-family:'Special Elite',monospace;font-size:.86rem;color:var(--ink);
+  box-shadow:1px 2px 4px rgba(0,0,0,.18);transform:rotate(-.6deg);
+  transition:background .15s,border-color .15s;text-align:left;cursor:default;
+}
+.claim:nth-child(even){transform:rotate(.7deg)}
+.claim::before{ /* pin */
+  content:'';position:absolute;left:9px;top:11px;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #e8e6e0, #7d7a72);
+}
+.claim.contradicted{background:#f6d3cf;border-color:var(--stamp)}
+.claim.contradicted::before{background:radial-gradient(circle at 35% 35%, #ff8d84, var(--stamp))}
+.claim.contradicted::after{content:'✗';position:absolute;top:-9px;right:-7px;background:var(--stamp);color:#fff;border-radius:50%;width:20px;height:20px;font-size:.75rem;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700}
+button.claim{cursor:pointer}
+button.claim:hover{border-color:var(--stamp)}
+.contra-meter{display:flex;align-items:center;gap:14px;justify-content:center;margin:16px 0 4px;flex-wrap:wrap}
+.contra-count{font-family:'Oswald',sans-serif;font-weight:700;font-size:2.4rem;color:var(--stamp);font-variant-numeric:tabular-nums}
+.contra-label{font-family:'Oswald',sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
+
+/* ---------- verdict stamp ---------- */
+.verdict-zone{text-align:center;padding:30px 0 10px;position:relative;min-height:220px}
+.stamp-mark{
+  display:inline-block;font-family:'Oswald',sans-serif;font-weight:700;
+  font-size:clamp(3rem,10vw,5.5rem);letter-spacing:.12em;text-transform:uppercase;
+  color:var(--stamp);border:6px double var(--stamp);border-radius:10px;padding:10px 34px;
+  transform:rotate(-8deg) scale(1);opacity:.9;
+  mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .8 .25'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
+  mask-size:cover;
+}
+.stamp-mark.clean{color:var(--safe);border-color:var(--safe)}
+@keyframes slam{0%{transform:rotate(-8deg) scale(3);opacity:0}60%{transform:rotate(-8deg) scale(.92);opacity:1}80%{transform:rotate(-8deg) scale(1.04)}100%{transform:rotate(-8deg) scale(1)}}
+.stamp-mark.slam{animation:slam .5s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes shake{0%,100%{transform:rotate(-.35deg) translate(0)}20%{transform:rotate(-.35deg) translate(-5px,3px)}40%{transform:rotate(-.35deg) translate(5px,-3px)}60%{transform:rotate(-.35deg) translate(-3px,2px)}80%{transform:rotate(-.35deg) translate(3px,-2px)}}
+.folder.shake{animation:shake .4s}
+.verdict-sub{font-family:'Special Elite',monospace;font-size:1rem;color:var(--ink-soft);margin-top:18px}
+
+/* ---------- scoreboard ---------- */
+.score-table{width:100%;border-collapse:collapse;margin-top:12px;font-family:'Special Elite',monospace}
+.score-table th{font-family:'Oswald',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:8px 10px;border-bottom:2px solid color-mix(in srgb, var(--ink) 30%, transparent)}
+.score-table td{padding:10px;border-bottom:1px dashed color-mix(in srgb, var(--ink) 20%, transparent);font-size:.95rem}
+.score-table tr.winner td{color:var(--stamp);font-weight:700}
+.score-table .v-guilty{color:var(--stamp);font-family:'Oswald',sans-serif;font-weight:700;letter-spacing:.1em;font-size:.8rem}
+.score-table .v-clean{color:var(--safe);font-family:'Oswald',sans-serif;font-weight:700;letter-spacing:.1em;font-size:.8rem}
+
+.hidden{display:none!important}
+.center{text-align:center}
+@media (prefers-reduced-motion: reduce){
+  .stamp-mark.slam,.folder.shake,.timer.warn{animation:none}
+  .case-card:hover{transform:none}
+}
+@media(max-width:560px){
+  .folder{padding:24px 18px 30px}
+  .confidential{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <h1>Airtight<span class="dot">.</span></h1>
+    <span class="tag">the alibi game — precinct nº 7</span>
+  </div>
+  <div class="topbtns">
+    <button class="chip-btn" id="soundBtn" aria-label="Toggle sound">🔊 Sound</button>
+    <button class="chip-btn" id="themeBtn" aria-label="Toggle theme">🌙 Theme</button>
+    <a class="chip-btn" href="../index.html" style="text-decoration:none;display:inline-flex;align-items:center">← Hub</a>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="folder" id="folder" data-tab="Case File">
+    <div class="paperclip" aria-hidden="true"></div>
+    <div class="confidential" aria-hidden="true">Confidential</div>
+
+    <!-- ============ SETUP ============ -->
+    <section id="screen-setup">
+      <h2>Open a case</h2>
+      <p class="sub">Two suspects share one alibi. Interrogated separately, will their stories match?</p>
+
+      <div class="case-grid" id="caseGrid" role="listbox" aria-label="Choose a case"></div>
+
+      <hr class="rule">
+
+      <div class="opts">
+        <div class="opt">
+          <label for="prepMin">Alibi prep time</label>
+          <select id="prepMin"><option value="3">3 minutes</option><option value="5" selected>5 minutes</option><option value="7">7 minutes</option><option value="10">10 minutes</option></select>
+        </div>
+        <div class="opt">
+          <label for="interMin">Interrogation time (each)</label>
+          <select id="interMin"><option value="2">2 minutes</option><option value="3" selected>3 minutes</option><option value="4">4 minutes</option><option value="5">5 minutes</option></select>
+        </div>
+        <div class="opt">
+          <label for="threshold">Contradictions to convict</label>
+          <select id="threshold"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
+        </div>
+      </div>
+
+      <hr class="rule">
+
+      <div>
+        <label class="opt" style="display:block"><span style="font-family:'Oswald',sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)">Suspect pairs (play one round each)</span></label>
+        <div class="pairs-row" id="pairsRow"></div>
+        <div class="addpair">
+          <input type="text" id="pairInput" class="typed" placeholder="e.g. Ana &amp; Bruno" maxlength="40" style="padding:9px 10px;border-radius:6px;border:2px solid color-mix(in srgb, var(--ink) 30%, transparent);background:color-mix(in srgb, var(--paper) 70%, #fff 30%);color:var(--ink)">
+          <button class="big-btn ghost" id="addPairBtn" style="padding:9px 18px;font-size:.85rem">+ Add pair</button>
+        </div>
+        <p class="hint">The rest of the class are the detectives.</p>
+      </div>
+
+      <div class="btn-row">
+        <button class="big-btn" id="startBtn">Open the file ▸</button>
+      </div>
+    </section>
+
+    <!-- ============ BRIEFING ============ -->
+    <section id="screen-briefing" class="hidden">
+      <h2 id="briefTitle"></h2>
+      <p class="sub" id="briefMeta"></p>
+      <div class="dossier">
+        <div class="facts">
+          <p id="briefCrime"></p>
+          <h4 style="font-family:'Oswald',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--stamp);margin:14px 0 8px">Known facts</h4>
+          <ul class="fact-list" id="briefFacts"></ul>
+        </div>
+        <div>
+          <div class="sidebox">
+            <h4>The accusation</h4>
+            <div class="kv"><b>Suspects:</b><span id="briefPair"></span></div>
+            <div class="kv"><b>Claim:</b><span>“We were together the whole time. We have an alibi.”</span></div>
+          </div>
+          <div class="sidebox">
+            <h4>Useful language</h4>
+            <ul id="briefLang"></ul>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="big-btn" id="toPrepBtn">Send the suspects out ▸</button>
+        <button class="big-btn ghost" id="backSetupBtn">◂ Back</button>
+      </div>
+    </section>
+
+    <!-- ============ PREP ============ -->
+    <section id="screen-prep" class="hidden">
+      <p class="phase-label">Phase 1 · Alibi preparation</p>
+      <p class="suspect-name" id="prepPair"></p>
+      <div class="timer-wrap"><div class="timer" id="prepTimer">5:00</div></div>
+      <div class="timer-controls">
+        <button class="big-btn brass" id="prepToggle">Start timer</button>
+        <button class="big-btn ghost" id="prepSkip">Skip ▸</button>
+      </div>
+      <hr class="rule">
+      <div class="dossier">
+        <div>
+          <h4 style="font-family:'Oswald',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--stamp);margin-bottom:8px">Suspects: agree on every detail</h4>
+          <div class="qgrid" id="prepChecklist"></div>
+          <p class="hint">Show this list to the suspects before they leave the room, then hide it while detectives prepare.</p>
+        </div>
+        <div>
+          <div class="sidebox">
+            <h4>Detectives: plan your questions</h4>
+            <ul>
+              <li>Ask both suspects the <b>same</b> questions.</li>
+              <li>Ask about small details — food, clothes, money, times.</li>
+              <li>Ask follow-up questions: <i>Who paid? What colour was it?</i></li>
+              <li>Take notes. You will compare the two stories.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="big-btn" id="toInter1Btn">Bring in Suspect 1 ▸</button>
+      </div>
+    </section>
+
+    <!-- ============ INTERROGATION ============ -->
+    <section id="screen-inter" class="hidden">
+      <p class="phase-label" id="interPhase">Phase 2 · Interrogation — Suspect 1</p>
+      <p class="suspect-name" id="interPair"></p>
+      <div class="timer-wrap"><div class="timer" id="interTimer">3:00</div></div>
+      <div class="timer-controls">
+        <button class="big-btn brass" id="interToggle">Start timer</button>
+        <button class="big-btn ghost" id="interReset">Reset</button>
+      </div>
+
+      <hr class="rule">
+
+      <h4 style="font-family:'Oswald',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--stamp);margin-bottom:4px">Detective question bank <span style="color:var(--ink-soft);letter-spacing:.05em;text-transform:none;font-weight:400">— tap to cross off</span></h4>
+      <div class="qgrid" id="interQuestions"></div>
+
+      <div class="claims-zone" id="claimsZone1">
+        <hr class="rule">
+        <h4 style="font-family:'Oswald',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--stamp);margin-bottom:8px">Evidence board — pin Suspect 1's claims</h4>
+        <div class="claims-input">
+          <input type="text" id="claimInput" placeholder="e.g. pizza — paid by card" maxlength="60">
+          <button class="big-btn brass" id="claimAddBtn" style="padding:10px 18px;font-size:.85rem">📌 Pin it</button>
+        </div>
+        <div class="claims-list" id="claimsList1" aria-live="polite"></div>
+      </div>
+
+      <div class="claims-zone hidden" id="claimsZone2">
+        <hr class="rule">
+        <h4 style="font-family:'Oswald',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--stamp);margin-bottom:8px">Evidence board — tap a pin when Suspect 2 contradicts it</h4>
+        <div class="claims-list" id="claimsList2" aria-live="polite"></div>
+        <div class="contra-meter">
+          <div><div class="contra-count" id="contraCount">0</div><div class="contra-label">Contradictions</div></div>
+          <button class="big-btn ghost" id="contraExtra" style="font-size:.8rem;padding:9px 16px">+1 (not on the board)</button>
+          <div class="contra-label" id="thresholdLabel"></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="big-btn" id="interNextBtn">Swap suspects ▸</button>
+      </div>
+    </section>
+
+    <!-- ============ VERDICT ============ -->
+    <section id="screen-verdict" class="hidden">
+      <p class="phase-label">Phase 4 · The verdict</p>
+      <p class="suspect-name" id="verdictPair"></p>
+      <div class="verdict-zone">
+        <div class="stamp-mark hidden" id="stampMark">Guilty</div>
+        <p class="verdict-sub" id="verdictSub"></p>
+      </div>
+      <div class="btn-row" style="justify-content:center">
+        <button class="big-btn" id="revealBtn">🔨 Deliver the verdict</button>
+        <button class="big-btn brass hidden" id="nextPairBtn">Next pair ▸</button>
+        <button class="big-btn brass hidden" id="toResultsBtn">Final results ▸</button>
+      </div>
+    </section>
+
+    <!-- ============ RESULTS ============ -->
+    <section id="screen-results" class="hidden">
+      <h2>Case closed</h2>
+      <p class="sub">Fewest contradictions wins. An airtight alibi beats a guilty conscience.</p>
+      <table class="score-table">
+        <thead><tr><th>#</th><th>Suspect pair</th><th>Contradictions</th><th>Verdict</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+      <div class="btn-row">
+        <button class="big-btn" id="againBtn">New case ▸</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =============================================================
+   AIRTIGHT — the Alibi game
+   Phil Young's English School · Game Hub
+   Single-file, no dependencies. localStorage: theme, settings.
+   ============================================================= */
+
+/* ---------------- Case bank ---------------- */
+const CASES = [
+  /* ---------- A2 ---------- */
+  {
+    id:'cake', level:'A2', title:'The Missing Cake',
+    blurb:'Someone ate the teachers\u2019 chocolate cake.',
+    time:'Yesterday, 3:00\u20134:00 p.m.', place:'The school kitchen',
+    crime:'Yesterday afternoon, somebody went into the school kitchen and ate a big chocolate cake. The cake was for the teachers\u2019 party. At 3:00 p.m. the cake was on the table. At 4:00 p.m. there was only an empty plate.',
+    facts:[
+      'The kitchen door was open.',
+      'There was chocolate on the floor near the door.',
+      'A student saw two people near the kitchen at 3:30.',
+      'The suspects say they were together all afternoon.'
+    ],
+    checklist:[
+      'Where were you between 3:00 and 4:00?',
+      'What were you doing there?',
+      'What were you wearing?',
+      'What did you eat and drink?',
+      'Who else was there?',
+      'How did you go home?',
+      'What time did you leave?',
+      'What was the weather like?'
+    ],
+    questions:[
+      'Where were you at 3:30 yesterday?',
+      'What were you doing?',
+      'Who were you with?',
+      'What were you wearing?',
+      'Did you eat anything? What?',
+      'What did you drink?',
+      'Who else did you see?',
+      'What time did you go home?',
+      'How did you go home?',
+      'Do you like chocolate cake?'
+    ],
+    lang:[ '\u201CI was studying in the library.\u201D', '\u201CWe were playing football.\u201D', '\u201CI didn\u2019t go to the kitchen.\u201D', '\u201CFirst we\u2026, then we\u2026\u201D' ]
+  },
+  {
+    id:'bike', level:'A2', title:'The Stolen Bicycle',
+    blurb:'A red bicycle disappeared from the park.',
+    time:'Saturday, 10:00\u201311:00 a.m.', place:'Central Park gate',
+    crime:'On Saturday morning, a red bicycle disappeared from the park gate. The owner left it there at 10:00 a.m. When she came back at 11:00, the bicycle wasn\u2019t there. A neighbour saw two people walking near the gate with a red bicycle.',
+    facts:[
+      'The bicycle was new and red.',
+      'The lock was on the ground, open.',
+      'It was raining on Saturday morning.',
+      'The suspects live near the park.'
+    ],
+    checklist:[
+      'Where were you on Saturday morning?',
+      'What were you doing at 10:30?',
+      'How did you travel that morning?',
+      'What were you wearing?',
+      'Was it raining? Did you have an umbrella?',
+      'Who saw you there?',
+      'What did you do after that?',
+      'Do you have a bicycle? What colour?'
+    ],
+    questions:[
+      'Where were you on Saturday at 10:30?',
+      'What were you doing?',
+      'Who were you with?',
+      'Was it raining? What did you do about the rain?',
+      'How did you travel that morning?',
+      'What were you wearing?',
+      'Do you have a bicycle? What colour is it?',
+      'Who saw you on Saturday morning?',
+      'What did you do in the afternoon?',
+      'When did you last go to the park?'
+    ],
+    lang:[ '\u201CWe were watching TV at home.\u201D', '\u201CIt was raining, so we\u2026\u201D', '\u201CWe took the bus.\u201D', '\u201CAfter that, we\u2026\u201D' ]
+  },
+  {
+    id:'window', level:'A2', title:'The Broken Window',
+    blurb:'A football broke Mr. Silva\u2019s window.',
+    time:'Friday, 5:00\u20136:00 p.m.', place:'Rose Street, house nº 12',
+    crime:'On Friday evening, a football broke the window of Mr. Silva\u2019s house on Rose Street. Mr. Silva found the ball in his living room. He says two young people ran away down the street. Nobody said sorry.',
+    facts:[
+      'The ball is white and blue.',
+      'Mr. Silva heard laughing before the crash.',
+      'The suspects often play football on Rose Street.',
+      'It happened at about 5:40 p.m.'
+    ],
+    checklist:[
+      'Where were you at 5:40 on Friday?',
+      'What were you doing?',
+      'Do you play football? Where?',
+      'What colour is your football?',
+      'What were you wearing?',
+      'Who was with you?',
+      'What did you do at 6:00?',
+      'What did you have for dinner?'
+    ],
+    questions:[
+      'Where were you at 5:40 on Friday?',
+      'What were you doing there?',
+      'Do you play football? Where do you usually play?',
+      'What colour is your ball?',
+      'Who were you with on Friday evening?',
+      'What were you wearing?',
+      'Did you hear anything unusual?',
+      'What did you do after 6:00?',
+      'What did you have for dinner?',
+      'Do you know Mr. Silva?'
+    ],
+    lang:[ '\u201CI was doing my homework.\u201D', '\u201CWe were at the shopping mall.\u201D', '\u201CWe don\u2019t play on Rose Street.\u201D', '\u201CAt six o\u2019clock we\u2026\u201D' ]
+  },
+  {
+    id:'phone', level:'A2', title:'The Missing Phone',
+    blurb:'A phone disappeared from the gym changing room.',
+    time:'Monday, 7:00\u20138:00 p.m.', place:'FitLife Gym, changing room',
+    crime:'On Monday evening, a phone disappeared from the changing room at FitLife Gym. The owner put it in his bag at 7:00 p.m. At 8:00 p.m. the bag was open and the phone wasn\u2019t there. The gym camera saw two people leaving together at 7:45.',
+    facts:[
+      'The phone is black with a green case.',
+      'The changing room was almost empty.',
+      'The suspects are members of the gym.',
+      'They left the gym at 7:45 p.m.'
+    ],
+    checklist:[
+      'What time did you arrive at the gym?',
+      'What exercise were you doing?',
+      'Where was your bag?',
+      'What were you wearing?',
+      'What time did you leave? Why?',
+      'Where did you go after the gym?',
+      'What did you eat after?',
+      'What kind of phone do you have?'
+    ],
+    questions:[
+      'What time did you arrive at the gym on Monday?',
+      'What exercise were you doing at 7:30?',
+      'Where did you put your bag?',
+      'Who else was in the changing room?',
+      'What time did you leave? Why did you leave then?',
+      'Where did you go after the gym?',
+      'What did you eat that evening?',
+      'What kind of phone do you have?',
+      'What were you wearing at the gym?',
+      'Do you know the phone\u2019s owner?'
+    ],
+    lang:[ '\u201CI was running on the treadmill.\u201D', '\u201CWe left early because\u2026\u201D', '\u201CMy phone is old and white.\u201D', '\u201CThen we went to\u2026\u201D' ]
+  },
+
+  /* ---------- B1 ---------- */
+  {
+    id:'exam', level:'B1', title:'The Missing Exam Papers',
+    blurb:'Next week\u2019s exam vanished from the teachers\u2019 room.',
+    time:'Wednesday, 12:30\u20131:30 p.m.', place:'Teachers\u2019 room, 2nd floor',
+    crime:'On Wednesday lunchtime, the final exam papers disappeared from a folder in the teachers\u2019 room. The folder was on the desk at 12:30. When the teacher returned at 1:30, the folder was empty. Two students were seen on the second floor during lunch, although students aren\u2019t allowed there.',
+    facts:[
+      'The papers were in a yellow folder.',
+      'The second floor is closed to students at lunch.',
+      'A cleaner heard whispering in the corridor around 1:00.',
+      'The suspects both have this exam next week.'
+    ],
+    checklist:[
+      'Where exactly were you during lunch?',
+      'What did you eat, and who paid?',
+      'Which floor were you on, and why?',
+      'Who did you talk to at lunch?',
+      'What was your friend carrying?',
+      'What time did you go back to class?',
+      'How do you feel about next week\u2019s exam?',
+      'What did you do right after school?'
+    ],
+    questions:[
+      'Where were you between 12:30 and 1:30 on Wednesday?',
+      'What did you have for lunch? Who paid?',
+      'Were you on the second floor at any time? Why?',
+      'Who did you talk to during lunch?',
+      'What was your partner carrying?',
+      'Did you hear or see anything strange?',
+      'What time did you go back to class?',
+      'Have you studied for next week\u2019s exam?',
+      'How did you feel about this exam before Wednesday?',
+      'What did you do after school that day?'
+    ],
+    lang:[ '\u201CWhile we were having lunch, we\u2026\u201D', '\u201CWe weren\u2019t anywhere near the second floor.\u201D', '\u201CAs far as I remember\u2026\u201D', '\u201CThat can\u2019t be true, because\u2026\u201D' ]
+  },
+  {
+    id:'trophy', level:'B1', title:'The Vanished Trophy',
+    blurb:'The championship trophy is gone from its case.',
+    time:'Thursday, 6:00\u20137:00 p.m.', place:'School sports hall',
+    crime:'The school\u2019s championship trophy disappeared from its glass case in the sports hall on Thursday evening. The case wasn\u2019t broken \u2014 somebody opened it with a key. Only a few people knew where the key was kept. Two students stayed late for training that evening.',
+    facts:[
+      'The case was opened with a key, not broken.',
+      'The key is kept in the coach\u2019s office.',
+      'Training finished at 6:15 p.m.',
+      'The lights in the hall were still on at 6:50.'
+    ],
+    checklist:[
+      'Why did you stay late on Thursday?',
+      'What exactly were you practising?',
+      'What time did training finish for you?',
+      'Did you go near the coach\u2019s office?',
+      'Who locked the hall, and when?',
+      'How did you get home, and with whom?',
+      'What did you do when you got home?',
+      'What do you think of the trophy?'
+    ],
+    questions:[
+      'Why were you at school so late on Thursday?',
+      'What were you practising, exactly?',
+      'What time did you finish training?',
+      'Did you go anywhere near the coach\u2019s office?',
+      'Who turned off the lights in the hall?',
+      'How did you get home? Who with?',
+      'What time did you arrive home?',
+      'What did you do when you got home?',
+      'Have you ever touched the trophy before?',
+      'Who do you think took it?'
+    ],
+    lang:[ '\u201CWe were still practising when\u2026\u201D', '\u201CWe left as soon as training finished.\u201D', '\u201CI\u2019m absolutely sure that\u2026\u201D', '\u201CNeither of us went near the office.\u201D' ]
+  },
+  {
+    id:'graffiti', level:'B1', title:'Graffiti at Midnight',
+    blurb:'Someone painted the mayor\u2019s statue blue.',
+    time:'Saturday night, 11:30 p.m.\u201312:30 a.m.', place:'Town square',
+    crime:'On Saturday night, somebody painted the statue in the town square bright blue. A taxi driver reported seeing two people near the statue around midnight, carrying a heavy bag. On Sunday morning, the town found the statue \u2014 and a lot of blue footprints leading away from it.',
+    facts:[
+      'The paint was a very unusual shade of blue.',
+      'The footprints were two different shoe sizes.',
+      'A local shop sold blue paint on Saturday afternoon.',
+      'The suspects were seen in town on Saturday night.'
+    ],
+    checklist:[
+      'Where were you at midnight on Saturday?',
+      'What were you doing out so late?',
+      'What shoes were you wearing?',
+      'What were you carrying?',
+      'Which streets did you walk along?',
+      'Did you buy anything on Saturday? Where?',
+      'When did you get home, and who saw you?',
+      'What colour do you hate most?'
+    ],
+    questions:[
+      'Where were you at midnight on Saturday?',
+      'Why were you out so late?',
+      'Which streets did you walk along?',
+      'What were you carrying with you?',
+      'What shoes were you wearing that night?',
+      'Did you go shopping on Saturday? What did you buy?',
+      'Did you see anything strange in the square?',
+      'What time did you get home? Who saw you arrive?',
+      'What\u2019s your opinion of the mayor?',
+      'What\u2019s your favourite colour?'
+    ],
+    lang:[ '\u201CWe were walking home from the cinema when\u2026\u201D', '\u201CWe didn\u2019t go through the square.\u201D', '\u201CI was wearing my white trainers.\u201D', '\u201CBy midnight we were already at home.\u201D' ]
+  },
+  {
+    id:'till', level:'B1', title:'The Caf\u00E9 Till',
+    blurb:'Money vanished from the till at Caf\u00E9 Aurora.',
+    time:'Sunday, 2:00\u20133:00 p.m.', place:'Caf\u00E9 Aurora, city centre',
+    crime:'On Sunday afternoon, R$300 disappeared from the till at Caf\u00E9 Aurora while the owner was in the kitchen. The caf\u00E9 was quiet \u2014 only a few customers. Two of them sat near the counter for almost an hour and left, in a hurry, without finishing their drinks.',
+    facts:[
+      'The till was open for a few minutes at 2:30.',
+      'The suspects sat at the table nearest the counter.',
+      'They ordered two drinks and one dessert.',
+      'They left quickly at about 2:45.'
+    ],
+    checklist:[
+      'What did you order, exactly?',
+      'Who paid the bill, and how?',
+      'How much did it cost?',
+      'Where exactly did you sit?',
+      'What were you talking about?',
+      'Why did you leave in a hurry?',
+      'Where did you go next?',
+      'What was the waiter like?'
+    ],
+    questions:[
+      'What did you order at the caf\u00E9?',
+      'Who paid? Did you pay by card or in cash?',
+      'How much was the bill, more or less?',
+      'Where exactly were you sitting?',
+      'What were you talking about for an hour?',
+      'Did you see the till open at any point?',
+      'Why did you leave so quickly?',
+      'Where did you go after the caf\u00E9?',
+      'What was the waiter wearing?',
+      'How often do you go to Caf\u00E9 Aurora?'
+    ],
+    lang:[ '\u201CWe were chatting about\u2026 when\u2026\u201D', '\u201CI paid by card \u2014 you can check.\u201D', '\u201CWe left because we were late for\u2026\u201D', '\u201CIt came to about thirty reais.\u201D' ]
+  },
+
+  /* ---------- B2 ---------- */
+  {
+    id:'diamond', level:'B2', title:'The Hotel Diamond',
+    blurb:'A necklace vanished during the Grand Palace gala.',
+    time:'Friday, 9:00\u201310:00 p.m.', place:'Grand Palace Hotel, ballroom',
+    crime:'During Friday\u2019s charity gala at the Grand Palace Hotel, a diamond necklace disappeared from the auction display between 9:00 and 10:00 p.m. The display was guarded, but the guard was called away for ten minutes to deal with a false fire alarm. Two guests were seen leaving the ballroom shortly afterwards.',
+    facts:[
+      'The fire alarm was triggered manually, from the corridor.',
+      'The necklace case was opened without force.',
+      'The suspects\u2019 names were on the guest list \u2014 added at the last minute.',
+      'A waiter remembers serving them near the display all evening.'
+    ],
+    checklist:[
+      'How did you get invited to the gala?',
+      'What were you both wearing, in detail?',
+      'Where were you when the alarm went off?',
+      'How did people react to the alarm?',
+      'What did you eat and drink, and who served you?',
+      'Who did you speak to during the evening?',
+      'Why did you leave the ballroom, and when?',
+      'How did you get home afterwards?'
+    ],
+    questions:[
+      'How exactly did you come to be invited?',
+      'What were you wearing that evening? Describe it.',
+      'Where were you standing when the fire alarm went off?',
+      'What did you do during the alarm?',
+      'What did you have to eat and drink?',
+      'Which other guests did you talk to? About what?',
+      'Why did you leave the ballroom before the auction?',
+      'What time did you leave the hotel, and how did you get home?',
+      'Had either of you seen the necklace before that night?',
+      'If you\u2019re innocent, who do you suspect \u2014 and why?'
+    ],
+    lang:[ '\u201CWe\u2019d been chatting to the ambassador when\u2026\u201D', '\u201CIf we\u2019d wanted to steal it, we\u2019d hardly have\u2026\u201D', '\u201CAt no point did we approach the display.\u201D', '\u201CI distinctly remember\u2026\u201D' ]
+  },
+  {
+    id:'server', level:'B2', title:'The Server Room Break-in',
+    blurb:'Confidential files were copied at TechNova HQ.',
+    time:'Tuesday, 8:00\u20139:00 p.m.', place:'TechNova, 4th floor server room',
+    crime:'On Tuesday evening, somebody accessed the server room at TechNova and copied confidential project files onto a USB drive. The door log shows it was opened with a staff card at 8:20 p.m. Most employees had gone home \u2014 but two colleagues stayed late, supposedly to finish a report.',
+    facts:[
+      'The card used belongs to an employee who was on holiday.',
+      'The security camera on the 4th floor was mysteriously unplugged.',
+      'The suspects\u2019 report was submitted at 9:05 p.m.',
+      'The office coffee machine was used at 8:30 p.m.'
+    ],
+    checklist:[
+      'What exactly was the report about?',
+      'Who wrote which part of it?',
+      'Where were you sitting, and what could you see?',
+      'Did either of you leave the desk? Why? When?',
+      'Who made coffee, and what kind?',
+      'Did you hear or see anyone else on the floor?',
+      'When did you finish, and what did you do next?',
+      'How well do you know the colleague on holiday?'
+    ],
+    questions:[
+      'What was the report about? Summarise it for me.',
+      'Which sections did each of you write?',
+      'Did either of you leave your desk between 8:00 and 9:00?',
+      'Who made the coffee at 8:30? What kind was it?',
+      'Could you see the server room door from where you sat?',
+      'Did you notice anything unusual about the cameras?',
+      'How well do you know the colleague whose card was used?',
+      'What time did you submit the report, and to whom?',
+      'What did you do immediately after finishing?',
+      'Why should we believe you were working the whole time?'
+    ],
+    lang:[ '\u201CWe\u2019d been working flat out since seven.\u201D', '\u201CNeither of us left the desk for more than a minute.\u201D', '\u201CI can\u2019t have been near the server room, because\u2026\u201D', '\u201CWhat you\u2019re suggesting simply doesn\u2019t add up.\u201D' ]
+  },
+  {
+    id:'recipe', level:'B2', title:'The Sabotaged Bake-Off',
+    blurb:'Salt replaced sugar at the national baking final.',
+    time:'Sunday, 7:00\u20138:00 a.m.', place:'Studio 3, National Bake-Off final',
+    crime:'On the morning of the national Bake-Off final, somebody swapped the sugar for salt at the favourite contestant\u2019s station. Her showstopper cake was ruined on live TV. The studio was open from 7:00 a.m., and only contestants and crew could enter. Two rival contestants arrived unusually early that morning.',
+    facts:[
+      'The sabotaged container was refilled carefully \u2014 no spills.',
+      'The studio entry log shows the suspects arrived at 7:10 a.m.',
+      'Filming didn\u2019t start until 9:00 a.m.',
+      'A runner saw someone near the victim\u2019s station \u201Cin a hurry\u201D.'
+    ],
+    checklist:[
+      'Why did you arrive so early?',
+      'What exactly did you do between 7:10 and 9:00?',
+      'What were you planning to bake, in detail?',
+      'Which stations did you walk past?',
+      'What ingredients did you check or borrow?',
+      'Who did you speak to before filming?',
+      'How do you feel about the favourite contestant?',
+      'What did you have for breakfast?'
+    ],
+    questions:[
+      'Why did you arrive nearly two hours early?',
+      'Walk me through everything you did before 9:00.',
+      'What were you planning to bake? Describe the recipe.',
+      'Did you go anywhere near her station? How near?',
+      'Did you borrow or check any ingredients that morning?',
+      'Who did you talk to before filming began?',
+      'How would you describe your relationship with her?',
+      'What did you have for breakfast, and where?',
+      'Who do you think had a reason to sabotage her?',
+      'If the cameras were checked, what would they show?'
+    ],
+    lang:[ '\u201CWe\u2019d arrived early in order to\u2026\u201D', '\u201CI was nowhere near her station.\u201D', '\u201CAdmittedly, we\u2019re rivals, but\u2026\u201D', '\u201CHad I wanted to win that way, I\u2026\u201D' ]
+  },
+  {
+    id:'launch', level:'B2', title:'The Leaked Launch',
+    blurb:'A secret product appeared online before its launch.',
+    time:'Monday, 6:00\u20137:00 p.m.', place:'Meridian Inc., meeting room B',
+    crime:'Photos of Meridian\u2019s top-secret new product appeared online the night before its launch. The photos were taken in meeting room B, where the prototype was kept, some time on Monday evening. Only people with a special pass could enter. Two employees booked the room from 6:00 to 7:00 \u2014 for a \u201Cbrainstorming session\u201D.',
+    facts:[
+      'The photos were taken from the corner of the room, by the window.',
+      'They were uploaded from an anonymous account at 11:40 p.m.',
+      'The prototype was under a cover, which was found slightly moved.',
+      'The suspects deny taking any photos at all.'
+    ],
+    checklist:[
+      'What was the brainstorming session about?',
+      'What ideas did you actually come up with?',
+      'Where in the room did each of you sit?',
+      'Were your phones in the room? Where?',
+      'Did either of you touch or approach the prototype?',
+      'What was the weather like through the window?',
+      'What did you do after 7:00?',
+      'Where were you at 11:40 p.m.?'
+    ],
+    questions:[
+      'What exactly was this brainstorming session for?',
+      'Tell me two ideas that came out of it.',
+      'Where did each of you sit in the room?',
+      'Where were your phones during the meeting?',
+      'Did either of you go near the window? Why?',
+      'Did you touch the prototype or its cover?',
+      'What did you do after the session ended?',
+      'Where were you at 11:40 that night?',
+      'Who else knew the prototype was in that room?',
+      'Why would someone want to leak the launch?'
+    ],
+    lang:[ '\u201CWe\u2019d left our phones at our desks, as required.\u201D', '\u201CBy 11:40 I\u2019d been asleep for an hour.\u201D', '\u201CAt no point did either of us touch it.\u201D', '\u201CWhoever leaked it must have\u2026\u201D' ]
+  }
+];
+
+/* ---------------- State ---------------- */
+const state = {
+  caseIdx: 0,
+  pairs: [],            // [{name, contradictions, verdict}]
+  currentPair: 0,
+  suspectPhase: 1,      // 1 or 2
+  claims: [],           // [{text, contradicted}]
+  extraContras: 0,
+  threshold: 3,
+  prepSecs: 300,
+  interSecs: 180,
+  sound: true
+};
+let prepInterval = null, interInterval = null;
+let prepLeft = 0, interLeft = 0;
+
+/* ---------------- Audio (Web Audio API) ---------------- */
+let actx = null;
+function audio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ actx=null; } } return actx; }
+function tone(freq, dur, type, gain, when, slideTo){
+  const ctx = audio(); if(!ctx || !state.sound) return;
+  const t0 = ctx.currentTime + (when||0);
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type||'sine'; o.frequency.setValueAtTime(freq, t0);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0+dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain||0.15, t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(t0); o.stop(t0+dur+0.05);
+}
+function noise(dur, gain, when, lowpass){
+  const ctx = audio(); if(!ctx || !state.sound) return;
+  const t0 = ctx.currentTime + (when||0);
+  const len = Math.max(1, Math.floor(ctx.sampleRate*dur));
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, 2);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const g = ctx.createGain(); g.gain.value = gain||0.3;
+  const f = ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value = lowpass||1200;
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t0);
+}
+const sfx = {
+  type(){ noise(0.05, 0.18, 0, 4000); },                 // typewriter clack
+  pin(){ tone(1300, 0.07, 'triangle', 0.12); tone(1750, 0.06, 'triangle', 0.08, 0.05); },
+  tick(){ tone(950, 0.04, 'square', 0.05); },
+  alarm(){ [0,0.2,0.4].forEach(w=>{ tone(830, 0.16, 'square', 0.12, w); tone(660, 0.16, 'square', 0.12, w+0.08); }); },
+  contra(){ tone(220, 0.28, 'sawtooth', 0.14, 0, 110); noise(0.1, 0.12, 0, 700); },
+  stamp(){ noise(0.16, 0.5, 0, 500); tone(80, 0.22, 'sine', 0.3, 0.01, 45); },
+  clean(){ [523,659,784,1047].forEach((f,i)=>tone(f, 0.22, 'triangle', 0.12, i*0.09)); },
+  swap(){ tone(392, 0.1, 'triangle', 0.1); tone(523, 0.12, 'triangle', 0.1, 0.09); }
+};
+
+/* ---------------- Helpers ---------------- */
+const $ = id => document.getElementById(id);
+function fmt(s){ return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+function show(id){
+  ['screen-setup','screen-briefing','screen-prep','screen-inter','screen-verdict','screen-results']
+    .forEach(s => $(s).classList.toggle('hidden', s!==id));
+  const tabs = { 'screen-setup':'Case File', 'screen-briefing':'Briefing', 'screen-prep':'Preparation',
+                 'screen-inter':'Interrogation', 'screen-verdict':'Verdict', 'screen-results':'Closed' };
+  $('folder').dataset.tab = tabs[id];
+  sfx.type();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function esc(str){ const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+
+/* ---------------- Theme & sound ---------------- */
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  $('themeBtn').textContent = t==='light' ? '🌙 Theme' : '☀️ Theme';
+  localStorage.setItem('airtight-theme', t);
+}
+$('themeBtn').addEventListener('click', ()=>{
+  applyTheme(document.documentElement.dataset.theme==='light' ? 'dark' : 'light');
+});
+$('soundBtn').addEventListener('click', ()=>{
+  state.sound = !state.sound;
+  $('soundBtn').textContent = state.sound ? '🔊 Sound' : '🔇 Muted';
+  if(state.sound) sfx.pin();
+});
+applyTheme(localStorage.getItem('airtight-theme') || 'dark');
+
+/* ---------------- Setup screen ---------------- */
+function renderCases(){
+  $('caseGrid').innerHTML = CASES.map((c,i)=>`
+    <button class="case-card ${i===state.caseIdx?'selected':''}" role="option"
+            aria-selected="${i===state.caseIdx}" data-idx="${i}">
+      <span class="lvl ${c.level.toLowerCase()}">${c.level}</span>
+      <h3>${esc(c.title)}</h3>
+      <p>${esc(c.blurb)}</p>
+    </button>`).join('');
+}
+$('caseGrid').addEventListener('click', e=>{
+  const card = e.target.closest('.case-card'); if(!card) return;
+  state.caseIdx = +card.dataset.idx;
+  renderCases(); sfx.type();
+});
+
+function renderPairs(){
+  $('pairsRow').innerHTML = state.pairs.map((p,i)=>`
+    <span class="pair-tag">${esc(p.name)}
+      <button data-del="${i}" aria-label="Remove ${esc(p.name)}">✕</button>
+    </span>`).join('') || '<span class="hint">No pairs yet — add at least one.</span>';
+}
+$('pairsRow').addEventListener('click', e=>{
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  state.pairs.splice(+b.dataset.del, 1); renderPairs();
+});
+function addPair(){
+  const v = $('pairInput').value.trim();
+  if(!v) return;
+  state.pairs.push({name:v, contradictions:null, verdict:null});
+  $('pairInput').value=''; $('pairInput').focus();
+  renderPairs(); sfx.pin();
+}
+$('addPairBtn').addEventListener('click', addPair);
+$('pairInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addPair(); });
+
+/* settings persistence */
+const saved = JSON.parse(localStorage.getItem('airtight-settings') || 'null');
+if(saved){
+  if(saved.prep)  $('prepMin').value = saved.prep;
+  if(saved.inter) $('interMin').value = saved.inter;
+  if(saved.thr)   $('threshold').value = saved.thr;
+}
+
+$('startBtn').addEventListener('click', ()=>{
+  if(state.pairs.length===0){
+    state.pairs.push({name:'Suspects A & B', contradictions:null, verdict:null});
+  }
+  state.prepSecs  = +$('prepMin').value * 60;
+  state.interSecs = +$('interMin').value * 60;
+  state.threshold = +$('threshold').value;
+  localStorage.setItem('airtight-settings', JSON.stringify({
+    prep:$('prepMin').value, inter:$('interMin').value, thr:$('threshold').value
+  }));
+  state.currentPair = 0;
+  startBriefing();
+});
+
+/* ---------------- Briefing ---------------- */
+function startBriefing(){
+  const c = CASES[state.caseIdx];
+  const pair = state.pairs[state.currentPair];
+  $('briefTitle').textContent = c.title;
+  $('briefMeta').textContent = `${c.level} · ${c.time} · ${c.place}`;
+  $('briefCrime').textContent = c.crime;
+  $('briefFacts').innerHTML = c.facts.map(f=>`<li>${esc(f)}</li>`).join('');
+  $('briefPair').textContent = pair.name;
+  $('briefLang').innerHTML = c.lang.map(l=>`<li>${esc(l)}</li>`).join('');
+  show('screen-briefing');
+}
+$('backSetupBtn').addEventListener('click', ()=> show('screen-setup'));
+$('toPrepBtn').addEventListener('click', startPrep);
+
+/* ---------------- Prep phase ---------------- */
+function startPrep(){
+  const c = CASES[state.caseIdx];
+  $('prepPair').textContent = state.pairs[state.currentPair].name;
+  $('prepChecklist').innerHTML = c.checklist.map(q=>`<div class="qchip" role="listitem">${esc(q)}</div>`).join('');
+  prepLeft = state.prepSecs;
+  clearInterval(prepInterval); prepInterval = null;
+  $('prepTimer').textContent = fmt(prepLeft);
+  $('prepTimer').classList.remove('warn');
+  $('prepToggle').textContent = 'Start timer';
+  show('screen-prep');
+}
+$('prepToggle').addEventListener('click', ()=>{
+  if(prepInterval){ clearInterval(prepInterval); prepInterval=null; $('prepToggle').textContent='Resume'; return; }
+  $('prepToggle').textContent='Pause';
+  prepInterval = setInterval(()=>{
+    prepLeft--;
+    $('prepTimer').textContent = fmt(Math.max(0,prepLeft));
+    if(prepLeft<=10 && prepLeft>0){ $('prepTimer').classList.add('warn'); sfx.tick(); }
+    if(prepLeft<=0){ clearInterval(prepInterval); prepInterval=null; sfx.alarm(); $('prepToggle').textContent='Time!'; }
+  },1000);
+});
+$('prepSkip').addEventListener('click', ()=>{ clearInterval(prepInterval); prepInterval=null; startInterrogation(1); });
+$('toInter1Btn').addEventListener('click', ()=>{ clearInterval(prepInterval); prepInterval=null; startInterrogation(1); });
+
+/* ---------------- Interrogation ---------------- */
+function startInterrogation(phase){
+  const c = CASES[state.caseIdx];
+  state.suspectPhase = phase;
+  if(phase===1){ state.claims = []; state.extraContras = 0; }
+  $('interPhase').textContent = phase===1
+    ? 'Phase 2 · Interrogation — Suspect 1 (Suspect 2 waits outside)'
+    : 'Phase 3 · Interrogation — Suspect 2 (compare the stories)';
+  $('interPair').textContent = state.pairs[state.currentPair].name;
+  $('interQuestions').innerHTML = c.questions.map(q=>`<button class="qchip">${esc(q)}</button>`).join('');
+  $('claimsZone1').classList.toggle('hidden', phase!==1);
+  $('claimsZone2').classList.toggle('hidden', phase!==2);
+  $('interNextBtn').textContent = phase===1 ? 'Swap suspects ▸' : 'Go to verdict ▸';
+  $('thresholdLabel').textContent = `${state.threshold} needed to convict`;
+  if(phase===1){ $('claimsList1').innerHTML=''; }
+  else{ renderClaims2(); updateContraCount(); sfx.swap(); }
+  interLeft = state.interSecs;
+  clearInterval(interInterval); interInterval = null;
+  $('interTimer').textContent = fmt(interLeft);
+  $('interTimer').classList.remove('warn');
+  $('interToggle').textContent = 'Start timer';
+  show('screen-inter');
+}
+$('interQuestions').addEventListener('click', e=>{
+  const chip = e.target.closest('.qchip'); if(!chip) return;
+  chip.classList.toggle('used'); sfx.type();
+});
+$('interToggle').addEventListener('click', ()=>{
+  if(interInterval){ clearInterval(interInterval); interInterval=null; $('interToggle').textContent='Resume'; return; }
+  $('interToggle').textContent='Pause';
+  interInterval = setInterval(()=>{
+    interLeft--;
+    $('interTimer').textContent = fmt(Math.max(0,interLeft));
+    if(interLeft<=10 && interLeft>0){ $('interTimer').classList.add('warn'); sfx.tick(); }
+    if(interLeft<=0){ clearInterval(interInterval); interInterval=null; sfx.alarm(); $('interToggle').textContent='Time!'; }
+  },1000);
+});
+$('interReset').addEventListener('click', ()=>{
+  clearInterval(interInterval); interInterval=null;
+  interLeft = state.interSecs;
+  $('interTimer').textContent = fmt(interLeft);
+  $('interTimer').classList.remove('warn');
+  $('interToggle').textContent = 'Start timer';
+});
+
+/* claims — phase 1 pinning */
+function addClaim(){
+  const v = $('claimInput').value.trim();
+  if(!v) return;
+  state.claims.push({text:v, contradicted:false});
+  $('claimInput').value=''; $('claimInput').focus();
+  $('claimsList1').innerHTML = state.claims.map(cl=>`<span class="claim">${esc(cl.text)}</span>`).join('');
+  sfx.pin();
+}
+$('claimAddBtn').addEventListener('click', addClaim);
+$('claimInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addClaim(); });
+
+/* claims — phase 2 contradiction marking */
+function renderClaims2(){
+  $('claimsList2').innerHTML = state.claims.length
+    ? state.claims.map((cl,i)=>`<button class="claim ${cl.contradicted?'contradicted':''}" data-ci="${i}" aria-pressed="${cl.contradicted}">${esc(cl.text)}</button>`).join('')
+    : '<span class="hint">No claims were pinned for Suspect 1 — use the +1 button below when you catch a contradiction.</span>';
+}
+$('claimsList2').addEventListener('click', e=>{
+  const b = e.target.closest('[data-ci]'); if(!b) return;
+  const cl = state.claims[+b.dataset.ci];
+  cl.contradicted = !cl.contradicted;
+  renderClaims2(); updateContraCount();
+  if(cl.contradicted) sfx.contra(); else sfx.type();
+});
+$('contraExtra').addEventListener('click', ()=>{
+  state.extraContras++; updateContraCount(); sfx.contra();
+});
+function totalContras(){
+  return state.claims.filter(c=>c.contradicted).length + state.extraContras;
+}
+function updateContraCount(){ $('contraCount').textContent = totalContras(); }
+
+$('interNextBtn').addEventListener('click', ()=>{
+  clearInterval(interInterval); interInterval=null;
+  if(state.suspectPhase===1) startInterrogation(2);
+  else startVerdict();
+});
+
+/* ---------------- Verdict ---------------- */
+function startVerdict(){
+  $('verdictPair').textContent = state.pairs[state.currentPair].name;
+  $('stampMark').classList.add('hidden');
+  $('stampMark').classList.remove('slam','clean');
+  $('verdictSub').textContent = `${totalContras()} contradiction(s) found · ${state.threshold} needed to convict`;
+  $('revealBtn').classList.remove('hidden');
+  $('nextPairBtn').classList.add('hidden');
+  $('toResultsBtn').classList.add('hidden');
+  show('screen-verdict');
+}
+$('revealBtn').addEventListener('click', ()=>{
+  const n = totalContras();
+  const guilty = n >= state.threshold;
+  const pair = state.pairs[state.currentPair];
+  pair.contradictions = n;
+  pair.verdict = guilty ? 'GUILTY' : 'AIRTIGHT';
+  const mark = $('stampMark');
+  mark.textContent = guilty ? 'Guilty' : 'Airtight';
+  mark.classList.toggle('clean', !guilty);
+  mark.classList.remove('hidden');
+  void mark.offsetWidth;               // restart animation
+  mark.classList.add('slam');
+  $('folder').classList.remove('shake'); void $('folder').offsetWidth;
+  $('folder').classList.add('shake');
+  if(guilty) sfx.stamp(); else { sfx.stamp(); sfx.clean(); }
+  $('verdictSub').textContent = guilty
+    ? `${n} contradictions — the story fell apart. Case closed.`
+    : `Only ${n} contradiction(s) — the alibi holds. They walk free\u2026 this time.`;
+  $('revealBtn').classList.add('hidden');
+  const morePairs = state.currentPair < state.pairs.length - 1;
+  $('nextPairBtn').classList.toggle('hidden', !morePairs);
+  $('toResultsBtn').classList.toggle('hidden', morePairs);
+});
+$('nextPairBtn').addEventListener('click', ()=>{
+  state.currentPair++;
+  startBriefing();
+});
+$('toResultsBtn').addEventListener('click', showResults);
+
+/* ---------------- Results ---------------- */
+function showResults(){
+  const played = state.pairs.filter(p=>p.contradictions!==null);
+  const ranked = [...played].sort((a,b)=>a.contradictions-b.contradictions);
+  $('resultsBody').innerHTML = ranked.map((p,i)=>`
+    <tr class="${i===0?'winner':''}">
+      <td>${i+1}${i===0?' 🏆':''}</td>
+      <td>${esc(p.name)}</td>
+      <td>${p.contradictions}</td>
+      <td class="${p.verdict==='GUILTY'?'v-guilty':'v-clean'}">${p.verdict}</td>
+    </tr>`).join('');
+  show('screen-results');
+  if(ranked.length && ranked[0].verdict==='AIRTIGHT') sfx.clean();
+}
+$('againBtn').addEventListener('click', ()=>{
+  state.pairs = state.pairs.map(p=>({name:p.name, contradictions:null, verdict:null}));
+  renderPairs();
+  show('screen-setup');
+});
+
+/* ---------------- Init ---------------- */
+renderCases();
+renderPairs();
+</script>
+</body>
+</html>

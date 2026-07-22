@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minefield — Game Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1220; --panel:#131c2e; --panel2:#1a2440; --line:#25314c;
+  --text:#e8eefb; --muted:#93a3c2;
+  --accent:#f59e0b; --accent2:#fbbf24;
+  --danger:#ef4444; --good:#10b981; --info:#38bdf8; --purple:#a78bfa;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+[data-theme="light"]{
+  --bg:#f3f6fc; --panel:#ffffff; --panel2:#eef2fa; --line:#dde4f0;
+  --text:#16203a; --muted:#5d6c8a;
+  --shadow:0 10px 30px rgba(20,35,70,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Inter',sans-serif; background:var(--bg); color:var(--text);
+  min-height:100vh; padding:70px 18px 40px;
+  background-image:radial-gradient(circle at 15% 10%, rgba(245,158,11,.10), transparent 45%),
+                   radial-gradient(circle at 85% 90%, rgba(56,189,248,.08), transparent 45%);
+}
+h1,h2,h3,.mono{font-family:'Sora',sans-serif}
+.back-link{
+  position:fixed; top:16px; left:16px; z-index:60;
+  background:var(--panel); color:var(--text); border:1px solid var(--line);
+  padding:9px 16px; border-radius:999px; text-decoration:none; font-weight:600; font-size:.9rem;
+  box-shadow:var(--shadow); transition:.2s;
+}
+.back-link:hover{transform:translateX(-3px); border-color:var(--accent)}
+.theme-btn{
+  position:fixed; top:16px; right:16px; z-index:60;
+  background:var(--panel); border:1px solid var(--line); color:var(--text);
+  width:42px; height:42px; border-radius:999px; cursor:pointer; font-size:1.1rem;
+  box-shadow:var(--shadow); transition:.2s;
+}
+.theme-btn:hover{border-color:var(--accent); transform:rotate(20deg)}
+.wrap{max-width:1180px; margin:0 auto}
+header{text-align:center; margin-bottom:20px}
+header h1{font-size:clamp(2rem,5vw,3.2rem); font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent2),var(--danger));
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
+header p{color:var(--muted); margin-top:6px; font-size:1.02rem}
+
+.scoreboard{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:16px}
+.team{
+  background:var(--panel); border:2px solid var(--line); border-radius:14px;
+  padding:10px 18px; min-width:140px; text-align:center; transition:.25s; position:relative;
+}
+.team.active{border-color:var(--accent); box-shadow:0 0 0 4px rgba(245,158,11,.16); transform:translateY(-3px)}
+.team .tname{font-size:.85rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.6px}
+.team.active .tname{color:var(--accent)}
+.team .tscore{font-family:'Sora',sans-serif; font-size:1.9rem; font-weight:800; line-height:1.15}
+.team .shieldbadge{position:absolute; top:-10px; right:-8px; font-size:1.2rem}
+
+.bar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
+  background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin-bottom:16px}
+.turn{font-family:'Sora',sans-serif; font-weight:700; font-size:1.15rem}
+.turn span{color:var(--accent)}
+.bar-actions{display:flex; gap:8px; flex-wrap:wrap}
+button.btn{
+  font-family:'Inter',sans-serif; font-weight:700; font-size:.92rem; cursor:pointer;
+  background:var(--panel2); color:var(--text); border:1px solid var(--line);
+  padding:9px 15px; border-radius:10px; transition:.18s;
+}
+button.btn:hover{border-color:var(--accent); transform:translateY(-2px)}
+button.btn.primary{background:linear-gradient(135deg,var(--accent),#f97316); color:#1a1200; border-color:transparent}
+button.btn.good{background:linear-gradient(135deg,var(--good),#059669); color:#022; border-color:transparent}
+button.btn.bad{background:linear-gradient(135deg,var(--danger),#b91c1c); color:#fff; border-color:transparent}
+
+.grid{display:grid; gap:10px; margin-bottom:18px}
+.tile{
+  aspect-ratio:1/1; border-radius:14px; border:1px solid var(--line);
+  background:linear-gradient(160deg,var(--panel2),var(--panel));
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; transition:.18s; font-family:'Sora',sans-serif; font-weight:800;
+  font-size:clamp(1.1rem,2.6vw,1.8rem); color:var(--muted); user-select:none; padding:6px; text-align:center;
+}
+.tile:hover:not(.done){transform:translateY(-4px) scale(1.03); border-color:var(--accent); color:var(--accent)}
+.tile.done{cursor:default; animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.75) rotateY(90deg); opacity:.2}100%{transform:scale(1) rotateY(0); opacity:1}}
+.tile .em{font-size:clamp(1.6rem,4vw,2.5rem); line-height:1}
+.tile .lb{font-size:clamp(.6rem,1.5vw,.85rem); font-weight:700; margin-top:4px; letter-spacing:.4px}
+.t-points{background:linear-gradient(160deg,#134e4a,#0f766e); color:#a7f3d0; border-color:#0f766e}
+.t-jackpot{background:linear-gradient(160deg,#4c1d95,#7c3aed); color:#ede9fe; border-color:#7c3aed}
+.t-mine{background:linear-gradient(160deg,#7f1d1d,#b91c1c); color:#fecaca; border-color:#b91c1c}
+.t-double{background:linear-gradient(160deg,#78350f,#d97706); color:#fef3c7; border-color:#d97706}
+.t-swap{background:linear-gradient(160deg,#0c4a6e,#0284c7); color:#bae6fd; border-color:#0284c7}
+.t-steal{background:linear-gradient(160deg,#3f2d63,#6d28d9); color:#ddd6fe; border-color:#6d28d9}
+.t-shield{background:linear-gradient(160deg,#164e63,#0e7490); color:#cffafe; border-color:#0e7490}
+.t-extra{background:linear-gradient(160deg,#365314,#65a30d); color:#ecfccb; border-color:#65a30d}
+.t-dud{background:var(--panel); color:var(--muted); opacity:.55}
+
+.legend{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:10px}
+.legend span{background:var(--panel); border:1px solid var(--line); border-radius:999px;
+  padding:6px 13px; font-size:.82rem; color:var(--muted); font-weight:600}
+
+/* modal */
+.overlay{position:fixed; inset:0; background:rgba(4,8,18,.82); backdrop-filter:blur(5px);
+  display:none; align-items:center; justify-content:center; z-index:100; padding:20px}
+.overlay.show{display:flex}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:20px;
+  box-shadow:var(--shadow); width:100%; max-width:760px; padding:28px; animation:up .25s ease}
+@keyframes up{from{transform:translateY(24px); opacity:0}to{transform:none; opacity:1}}
+.modal h2{font-size:1.5rem; margin-bottom:6px}
+.eyebrow{font-size:.8rem; letter-spacing:1.6px; text-transform:uppercase; color:var(--accent); font-weight:800; margin-bottom:10px}
+.qtext{font-family:'Sora',sans-serif; font-size:clamp(1.3rem,3.4vw,2.05rem); font-weight:600;
+  line-height:1.35; margin:14px 0 18px; text-align:center}
+.answer{display:none; text-align:center; font-size:clamp(1.05rem,2.6vw,1.5rem); font-weight:700;
+  color:var(--good); background:rgba(16,185,129,.10); border:1px dashed var(--good);
+  border-radius:12px; padding:12px; margin-bottom:18px}
+.answer.show{display:block}
+.modal-actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
+.reveal-em{font-size:4.5rem; text-align:center; line-height:1; margin-bottom:8px}
+.reveal-title{text-align:center; font-family:'Sora',sans-serif; font-size:2rem; font-weight:800; margin-bottom:6px}
+.reveal-desc{text-align:center; color:var(--muted); font-size:1.05rem; margin-bottom:18px}
+
+/* setup */
+.field{margin-bottom:16px}
+.field label{display:block; font-weight:700; font-size:.88rem; margin-bottom:6px; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.7px}
+.field input, .field select, .field textarea{
+  width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  border-radius:10px; padding:10px 12px; font-family:'Inter',sans-serif; font-size:.95rem}
+.field textarea{min-height:100px; resize:vertical; font-size:.88rem}
+.chips{display:flex; gap:8px; flex-wrap:wrap}
+.chip{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:8px 14px;
+  cursor:pointer; font-weight:700; font-size:.9rem; transition:.16s}
+.chip.on{background:var(--accent); color:#1a1200; border-color:var(--accent)}
+.teamlist{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px}
+
+.rank{display:flex; justify-content:space-between; align-items:center; background:var(--panel2);
+  border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin-bottom:8px}
+.rank.first{border-color:var(--accent); background:rgba(245,158,11,.12)}
+.rank .rn{font-family:'Sora',sans-serif; font-weight:800; font-size:1.1rem}
+.rank .rs{font-family:'Sora',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent)}
+.pickteam{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:14px}
+.pickteam button{padding:16px; font-size:1rem}
+@media(max-width:600px){ body{padding-top:64px} .bar{flex-direction:column; align-items:stretch} }
+</style>
+</head>
+<body>
+<a class="back-link" href="../">← Game Hub</a>
+<button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌗</button>
+
+<div class="wrap">
+  <header>
+    <h1>💣 Minefield</h1>
+    <p>Answer correctly to dig a tile. Claim treasure — or trip a mine.</p>
+  </header>
+
+  <div id="scoreboard" class="scoreboard"></div>
+
+  <div class="bar">
+    <div class="turn" id="turnLabel">Team 1's turn</div>
+    <div class="bar-actions">
+      <button class="btn" onclick="openSetup()">⚙️ Setup</button>
+      <button class="btn" onclick="newBoard()">🔄 New Board</button>
+      <button class="btn" onclick="showResults()">🏁 Results</button>
+    </div>
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div class="legend">
+    <span>💰 Treasure</span><span>💎 Jackpot +1000</span><span>💣 Mine −half</span>
+    <span>⭐ Double</span><span>🔄 Swap</span><span>🥷 Steal 200</span>
+    <span>🛡️ Shield</span><span>⚡ Extra turn</span>
+  </div>
+</div>
+
+<!-- QUESTION -->
+<div class="overlay" id="qOverlay">
+  <div class="modal">
+    <div class="eyebrow" id="qEyebrow">Tile 1 · Team 1 · B1</div>
+    <div class="qtext" id="qText">—</div>
+    <div class="answer" id="qAnswer">—</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="toggleAnswer()">👁️ Show answer</button>
+      <button class="btn" onclick="anotherQuestion()">🔁 Another question</button>
+      <button class="btn good" onclick="judge(true)">✅ Correct</button>
+      <button class="btn bad" onclick="judge(false)">❌ Incorrect</button>
+    </div>
+  </div>
+</div>
+
+<!-- REVEAL -->
+<div class="overlay" id="rOverlay">
+  <div class="modal" style="max-width:520px">
+    <div class="reveal-em" id="rEm">💰</div>
+    <div class="reveal-title" id="rTitle">+200</div>
+    <div class="reveal-desc" id="rDesc">Nice dig!</div>
+    <div class="modal-actions"><button class="btn primary" onclick="closeReveal()">Continue →</button></div>
+  </div>
+</div>
+
+<!-- PICK TEAM -->
+<div class="overlay" id="pOverlay">
+  <div class="modal" style="max-width:560px">
+    <div class="eyebrow">Choose a target</div>
+    <div class="reveal-title" id="pTitle" style="font-size:1.5rem">Pick a team</div>
+    <div class="pickteam" id="pList"></div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="overlay" id="sOverlay">
+  <div class="modal">
+    <h2>⚙️ Game Setup</h2>
+    <p style="color:var(--muted); font-size:.9rem; margin-bottom:18px">Changes start a fresh board.</p>
+
+    <div class="field">
+      <label>Number of teams</label>
+      <div class="chips" id="teamCountChips"></div>
+    </div>
+    <div class="field">
+      <label>Team names</label>
+      <div class="teamlist" id="teamNameInputs"></div>
+    </div>
+    <div class="field">
+      <label>Question level</label>
+      <div class="chips" id="levelChips"></div>
+    </div>
+    <div class="field">
+      <label>Board size</label>
+      <div class="chips" id="sizeChips"></div>
+    </div>
+    <div class="field">
+      <label>Your own questions (optional — replaces the bank)</label>
+      <textarea id="customQ" placeholder="One per line. Use | to add the answer:&#10;What is the past of 'go'? | went&#10;Name three jobs."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSetup()">Cancel</button>
+      <button class="btn primary" onclick="applySetup()">▶ Start Game</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="overlay" id="eOverlay">
+  <div class="modal" style="max-width:560px">
+    <div class="eyebrow">Final standings</div>
+    <div class="reveal-em" id="eEm">🏆</div>
+    <div class="reveal-title" id="eTitle" style="margin-bottom:18px">Winner!</div>
+    <div id="eRanks"></div>
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn" onclick="hide('eOverlay')">Keep playing</button>
+      <button class="btn primary" onclick="hide('eOverlay'); resetScores(); newBoard();">🔄 Play again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- theme ---------- */
+function toggleTheme(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  h.setAttribute('data-theme',next);
+  localStorage.setItem('theme',next);
+}
+(function(){ var s=localStorage.getItem('theme'); if(s) document.documentElement.setAttribute('data-theme',s); })();
+
+/* ---------- audio ---------- */
+var actx=null;
+function ac(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+function tone(freq,dur,type,vol,delay){
+  var c=ac(); if(!c) return;
+  var t=c.currentTime+(delay||0);
+  var o=c.createOscillator(), g=c.createGain();
+  o.type=type||'sine'; o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol||0.18,t+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.05);
+}
+function sfxGood(){ tone(523,0.13,'triangle',0.2,0); tone(659,0.13,'triangle',0.2,0.1); tone(784,0.22,'triangle',0.2,0.2); }
+function sfxBad(){ tone(200,0.2,'sawtooth',0.14,0); tone(140,0.3,'sawtooth',0.14,0.14); }
+function sfxBoom(){
+  var c=ac(); if(!c) return;
+  var b=c.createBuffer(1,c.sampleRate*0.7,c.sampleRate), d=b.getChannelData(0);
+  for(var i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.2);
+  var s=c.createBufferSource(); s.buffer=b;
+  var f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(900,c.currentTime);
+  var g=c.createGain(); g.gain.setValueAtTime(0.35,c.currentTime);
+  s.connect(f); f.connect(g); g.connect(c.destination); s.start();
+}
+function sfxJackpot(){ [523,659,784,1046,1318].forEach(function(f,i){ tone(f,0.2,'square',0.15,i*0.08); }); }
+function sfxClick(){ tone(420,0.06,'square',0.09,0); }
+
+/* ---------- question bank ---------- */
+var BANK={
+A1:[["She ___ (be) a teacher.","is"],["What is the plural of 'child'?","children"],["I ___ like coffee. (negative)","don't"],
+["Make it a question: You are from Brazil.","Are you from Brazil?"],["He ___ (go) to school every day.","goes"],
+["a or an: ___ apple","an"],["Opposite of 'big'?","small"],["There ___ three books on the table.","are"],
+["Say the time: 7:30","half past seven / seven thirty"],["This is ___ bag. (I)","my"],
+["We ___ (not have) a car.","don't have"],["Past of 'eat'?","ate"],["in / on / at: ___ Monday","on"],
+["Can you ___ (swim)?","swim"],["Name three colours.","teacher decides"],["She is ___ (tall) than me.","taller"],
+["some / any: I don't have ___ money.","any"],["Which day comes after Wednesday?","Thursday"],
+["They ___ (watch) TV now.","are watching"],["Opposite of 'cheap'?","expensive"],
+["How ___ students are there?","many"],["Past of 'go'?","went"],["this / these: ___ shoes","these"],
+["I'm hungry. I want ___ eat.","to"],["Where do you buy bread?","a bakery"],["He ___ (like) pizza.","likes"],
+["It's 0°C. What's the weather like?","cold / freezing"],["My sister ___ (be) 12 years old.","is"],
+["Spell the word 'beautiful'.","b-e-a-u-t-i-f-u-l"],["Let's ___ (meet) at six.","meet"]],
+
+A2:[["I ___ (buy) a new phone yesterday.","bought"],["She ___ (never be) to Japan.","has never been"],
+["This film is ___ (interesting) than that one.","more interesting"],["If it rains, we ___ (stay) home.","will stay"],
+["Look at those clouds! It ___ rain.","is going to"],["I'm good ___ maths.","at"],
+["I ___ (sleep) when you called.","was sleeping"],["Everest is ___ (high) mountain in the world.","the highest"],
+["Give advice: You ___ see a doctor.","should"],["too / enough: The coffee is ___ hot to drink.","too"],
+["I've lived here ___ 2019.","since"],["Add the tag: You're coming, ___?","aren't you"],
+["She's the woman ___ works at the bank.","who"],["How ___ time do we have?","much"],
+["Past of 'bring'?","brought"],["I used ___ play football.","to"],["Opposite of 'borrow'?","lend"],
+["He's interested ___ history.","in"],["I ___ (just finish) my homework.","have just finished"],
+["Would you like ___ (come) with us?","to come"],["Adverb form of 'careful'?","carefully"],
+["There isn't ___ milk left.","any"],["Prohibition: You ___ smoke here.","mustn't"],
+["I'm looking forward ___ the party.","to"],["Past of 'teach'?","taught"],
+["It's the ___ (bad) film I've ever seen.","worst"],["Who repairs cars?","a mechanic"],
+["She speaks English ___ (good).","well"],["They arrived ___ the airport at six.","at"],
+["If I ___ (see) him, I'll tell him.","see"]],
+
+B1:[["If I ___ (be) rich, I'd travel the world.","were / was"],["The letter ___ (send) yesterday.","was sent"],
+["Report it: \"I'm tired,\" he said.","He said (that) he was tired."],["I wish I ___ (can) speak Chinese.","could"],
+["I ___ getting up early now. (be used to)","am used to"],["She ___ (study) for three hours.","has been studying"],
+["He denied ___ (steal) the money.","stealing"],["That's the house ___ I grew up.","where"],
+["By the time we arrived, the film ___ (start).","had started"],["Deduction: He ___ be at home — his car is outside.","must"],
+["I'd rather you ___ (not smoke).","didn't smoke"],["Phrasal verb: to postpone = to put ___","off"],
+["It's high time we ___ (leave).","left"],["Coffee ___ (grow) in Brazil.","is grown"],
+["She's not used ___ working nights.","to"],["If I had known, I ___ (come).","would have come"],
+["Neither of the answers ___ (be) correct.","is"],["Noun form of 'decide'?","decision"],
+["He suggested ___ (go) to the beach.","going"],["The more you practise, ___ better you get.","the"],
+["Phrasal verb: to invent a story = to make ___","up"],["I haven't seen her ___ ages.","for"],
+["Report it: \"Where do you live?\" She asked me ___","where I lived"],["Despite ___ (be) tired, he kept working.","being"],
+["You ___ (not need) to bring anything.","don't need"],["Adjective form of 'success'?","successful"],
+["A bridge ___ (build) at the moment.","is being built"],["Phrasal verb: to tolerate = to put up ___","with"],
+["Noun form of 'arrive'?","arrival"],["He asked me if I ___ (want) a lift.","wanted"]],
+
+B2:[["Not only ___ he arrive late, but he forgot the tickets.","did"],["Had I known, I ___ have acted differently.","would"],
+["If I had studied, I ___ a better job now.","would have"],["She's said to ___ (live) in Paris.","live"],
+["Adjective form of 'sustain'?","sustainable"],["No sooner had we left ___ it started to rain.","than"],
+["I object ___ being treated like that.","to"],["It was John ___ broke the window.","who"],
+["Little ___ she know what was coming.","did"],["The report needs ___ (finish) by Friday.","finishing / to be finished"],
+["What does 'to bite the bullet' mean?","to face something difficult"],["Rarely ___ we see such talent.","do"],
+["She regretted ___ (tell) him the truth.","telling"],["Were it not ___ your help, I'd have failed.","for"],
+["Noun form of 'persuade'?","persuasion"],["Only after the meeting ___ I understand.","did"],
+["What does 'once in a blue moon' mean?","very rarely"],["Collocation: to ___ a decision","make"],
+["I'd sooner you ___ (not mention) it.","didn't mention"],["Noun form of 'anxious'?","anxiety"],
+["There's no point ___ (argue) about it.","arguing"],["He was accused ___ cheating.","of"],
+["I can't help ___ (laugh) at him.","laughing"],["Collocation: to ___ a risk","take"],
+["Such ___ his anger that he walked out.","was"],["The sooner we start, ___ sooner we finish.","the"],
+["What does 'the last straw' mean?","the final problem that causes a breakdown"],
+["Under no circumstances ___ you open this door.","should / must"],
+["He'd have passed, ___ he studied harder.","had"],["Collocation: to ___ attention to something","pay"]]
+};
+
+/* ---------- effects ---------- */
+var FX={
+  p100:{em:'💰',t:'+100',d:'A small stash. Every point counts.',cls:'t-points'},
+  p200:{em:'💰',t:'+200',d:'Solid dig!',cls:'t-points'},
+  p300:{em:'💰',t:'+300',d:'Now we\'re talking.',cls:'t-points'},
+  p500:{em:'💰',t:'+500',d:'A serious haul!',cls:'t-points'},
+  jackpot:{em:'💎',t:'JACKPOT +1000',d:'One per board. Incredible luck.',cls:'t-jackpot'},
+  mine:{em:'💣',t:'MINE!',d:'You lose HALF your points.',cls:'t-mine'},
+  double:{em:'⭐',t:'DOUBLE',d:'Your score is doubled!',cls:'t-double'},
+  swap:{em:'🔄',t:'SWAP',d:'Swap scores with any team you choose.',cls:'t-swap'},
+  steal:{em:'🥷',t:'STEAL 200',d:'Take 200 points from a team of your choice.',cls:'t-steal'},
+  shield:{em:'🛡️',t:'SHIELD',d:'The next mine you hit does nothing.',cls:'t-shield'},
+  extra:{em:'⚡',t:'EXTRA TURN',d:'Go again — pick another tile!',cls:'t-extra'}
+};
+
+/* ---------- state ---------- */
+var S={
+  teams:[], turn:0, size:5, level:'Mixed', tiles:[], pool:[], custom:null,
+  activeTile:null, currentQ:null
+};
+
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+
+function buildEffects(n){
+  var list=[], add=function(k,c){ for(var i=0;i<c;i++) list.push(k); };
+  add('jackpot',1);
+  add('mine',Math.max(2,Math.round(n*0.16)));
+  add('double',Math.max(1,Math.round(n*0.08)));
+  add('swap',Math.max(1,Math.round(n*0.06)));
+  add('steal',Math.max(1,Math.round(n*0.08)));
+  add('shield',Math.max(1,Math.round(n*0.06)));
+  add('extra',Math.max(1,Math.round(n*0.08)));
+  var pool=['p100','p100','p200','p200','p200','p300','p300','p500'];
+  while(list.length<n) list.push(pool[Math.floor(Math.random()*pool.length)]);
+  while(list.length>n) list.pop();
+  return shuffle(list);
+}
+
+function refillPool(){
+  var qs=[];
+  if(S.custom && S.custom.length){ qs=S.custom.slice(); }
+  else if(S.level==='Mixed'){ ['A1','A2','B1','B2'].forEach(function(l){ BANK[l].forEach(function(q){ qs.push([q[0],q[1],l]); }); }); }
+  else { BANK[S.level].forEach(function(q){ qs.push([q[0],q[1],S.level]); }); }
+  S.pool=shuffle(qs);
+}
+function nextQuestion(){ if(!S.pool.length) refillPool(); return S.pool.pop(); }
+
+/* ---------- render ---------- */
+function renderScores(){
+  var el=document.getElementById('scoreboard'); el.innerHTML='';
+  S.teams.forEach(function(t,i){
+    var d=document.createElement('div');
+    d.className='team'+(i===S.turn?' active':'');
+    d.innerHTML='<div class="tname">'+esc(t.name)+'</div><div class="tscore">'+t.score+'</div>'+
+                (t.shield?'<div class="shieldbadge">🛡️</div>':'');
+    el.appendChild(d);
+  });
+  document.getElementById('turnLabel').innerHTML='Now digging: <span>'+esc(S.teams[S.turn].name)+'</span>';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+function renderGrid(){
+  var g=document.getElementById('grid');
+  g.style.gridTemplateColumns='repeat('+S.size+',1fr)';
+  g.innerHTML='';
+  S.tiles.forEach(function(tile,i){
+    var d=document.createElement('div');
+    if(tile.done){
+      var f=FX[tile.fx];
+      d.className='tile done '+(tile.fx==='dud'?'t-dud':f.cls);
+      d.innerHTML='<div class="em">'+f.em+'</div><div class="lb">'+f.t+'</div>';
+    } else {
+      d.className='tile';
+      d.textContent=(i+1);
+      d.onclick=function(){ openQuestion(i); };
+    }
+    g.appendChild(d);
+  });
+}
+
+/* ---------- flow ---------- */
+function openQuestion(i){
+  if(S.tiles[i].done) return;
+  sfxClick(); ac();
+  S.activeTile=i;
+  S.currentQ=nextQuestion();
+  paintQuestion();
+  show('qOverlay');
+}
+function paintQuestion(){
+  var q=S.currentQ;
+  document.getElementById('qEyebrow').textContent='Tile '+(S.activeTile+1)+' · '+S.teams[S.turn].name+(q[2]?' · '+q[2]:'');
+  document.getElementById('qText').textContent=q[0];
+  var a=document.getElementById('qAnswer');
+  a.textContent=q[1]?('Answer: '+q[1]):'Teacher decides.';
+  a.classList.remove('show');
+}
+function anotherQuestion(){ S.currentQ=nextQuestion(); paintQuestion(); sfxClick(); }
+function toggleAnswer(){ document.getElementById('qAnswer').classList.toggle('show'); }
+
+function judge(ok){
+  hide('qOverlay');
+  var i=S.activeTile, t=S.teams[S.turn];
+  if(!ok){
+    sfxBad();
+    S.tiles[i].peeked=true;
+    nextTurn(); renderScores(); renderGrid();
+    return;
+  }
+  var fx=S.tiles[i].fx;
+  S.tiles[i].done=true;
+  renderGrid();
+  applyEffect(fx,t);
+}
+
+function applyEffect(fx,t){
+  var d=FX[fx], extra=false, msg=d.d;
+  if(fx.charAt(0)==='p'){ t.score+=parseInt(fx.slice(1),10); sfxGood(); }
+  else if(fx==='jackpot'){ t.score+=1000; sfxJackpot(); }
+  else if(fx==='mine'){
+    if(t.shield){ t.shield=false; msg='🛡️ Your shield absorbed the blast! No points lost.'; sfxGood(); }
+    else { t.score=Math.floor(t.score/2); sfxBoom(); }
+  }
+  else if(fx==='double'){ t.score=t.score*2; sfxJackpot(); if(t.score===0) msg='Double of zero is… still zero. Ouch.'; }
+  else if(fx==='shield'){ t.shield=true; sfxGood(); }
+  else if(fx==='extra'){ extra=true; sfxGood(); }
+  else if(fx==='swap' || fx==='steal'){ sfxGood(); showReveal(d,function(){ pickTeam(fx,t); }); renderScores(); return; }
+
+  showReveal({em:d.em,t:d.t,d:msg},function(){
+    if(!extra) nextTurn();
+    renderScores(); renderGrid(); checkEnd();
+  });
+  renderScores();
+}
+
+var revealCb=null;
+function showReveal(d,cb){
+  document.getElementById('rEm').textContent=d.em;
+  document.getElementById('rTitle').textContent=d.t;
+  document.getElementById('rDesc').textContent=d.d;
+  revealCb=cb||null;
+  show('rOverlay');
+}
+function closeReveal(){ hide('rOverlay'); var c=revealCb; revealCb=null; if(c) c(); }
+
+function pickTeam(kind,actor){
+  document.getElementById('pTitle').textContent = kind==='swap'
+    ? actor.name+': swap scores with…' : actor.name+': steal 200 from…';
+  var list=document.getElementById('pList'); list.innerHTML='';
+  var others=S.teams.filter(function(t){ return t!==actor; });
+  if(!others.length){ nextTurn(); renderScores(); checkEnd(); return; }
+  others.forEach(function(t){
+    var b=document.createElement('button');
+    b.className='btn primary';
+    b.innerHTML=esc(t.name)+'<br><span style="font-weight:800">'+t.score+'</span>';
+    b.onclick=function(){
+      if(kind==='swap'){ var tmp=actor.score; actor.score=t.score; t.score=tmp; }
+      else { var amt=Math.min(200,t.score); t.score-=amt; actor.score+=amt; }
+      sfxGood(); hide('pOverlay'); nextTurn(); renderScores(); renderGrid(); checkEnd();
+    };
+    list.appendChild(b);
+  });
+  show('pOverlay');
+}
+
+function nextTurn(){ S.turn=(S.turn+1)%S.teams.length; }
+
+function checkEnd(){
+  var left=S.tiles.filter(function(t){ return !t.done; }).length;
+  if(left===0) setTimeout(showResults,400);
+}
+
+function showResults(){
+  var sorted=S.teams.slice().sort(function(a,b){ return b.score-a.score; });
+  var box=document.getElementById('eRanks'); box.innerHTML='';
+  sorted.forEach(function(t,i){
+    var d=document.createElement('div');
+    d.className='rank'+(i===0?' first':'');
+    var medal=['🥇','🥈','🥉'][i]||'　';
+    d.innerHTML='<div class="rn">'+medal+' '+esc(t.name)+'</div><div class="rs">'+t.score+'</div>';
+    box.appendChild(d);
+  });
+  var tied=sorted.filter(function(t){ return t.score===sorted[0].score; });
+  document.getElementById('eTitle').textContent = tied.length>1 ? 'It\'s a tie!' : sorted[0].name+' wins!';
+  sfxJackpot();
+  show('eOverlay');
+}
+
+function resetScores(){ S.teams.forEach(function(t){ t.score=0; t.shield=false; }); S.turn=0; }
+
+function newBoard(){
+  var n=S.size*S.size;
+  var fx=buildEffects(n);
+  S.tiles=fx.map(function(f){ return {fx:f, done:false}; });
+  refillPool();
+  renderGrid(); renderScores();
+}
+
+/* ---------- overlays ---------- */
+function show(id){ document.getElementById(id).classList.add('show'); }
+function hide(id){ document.getElementById(id).classList.remove('show'); }
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){ ['qOverlay','rOverlay','pOverlay','sOverlay','eOverlay'].forEach(hide); }
+});
+
+/* ---------- setup panel ---------- */
+var setupState={count:3, level:'Mixed', size:5, names:['Team 1','Team 2','Team 3','Team 4','Team 5','Team 6']};
+
+function openSetup(){
+  setupState.count=S.teams.length;
+  setupState.level=S.level; setupState.size=S.size;
+  S.teams.forEach(function(t,i){ setupState.names[i]=t.name; });
+  document.getElementById('customQ').value = S.custom ? S.custom.map(function(q){ return q[1]?q[0]+' | '+q[1]:q[0]; }).join('\n') : '';
+  paintSetup(); show('sOverlay');
+}
+function closeSetup(){ hide('sOverlay'); }
+
+function paintSetup(){
+  var tc=document.getElementById('teamCountChips'); tc.innerHTML='';
+  [2,3,4,5,6].forEach(function(n){
+    var b=document.createElement('div');
+    b.className='chip'+(setupState.count===n?' on':''); b.textContent=n+' teams';
+    b.onclick=function(){ setupState.count=n; paintSetup(); };
+    tc.appendChild(b);
+  });
+  var ni=document.getElementById('teamNameInputs'); ni.innerHTML='';
+  for(var i=0;i<setupState.count;i++){
+    (function(idx){
+      var inp=document.createElement('input');
+      inp.type='text'; inp.value=setupState.names[idx]; inp.maxLength=18;
+      inp.oninput=function(){ setupState.names[idx]=inp.value; };
+      ni.appendChild(inp);
+    })(i);
+  }
+  var lc=document.getElementById('levelChips'); lc.innerHTML='';
+  ['A1','A2','B1','B2','Mixed'].forEach(function(l){
+    var b=document.createElement('div');
+    b.className='chip'+(setupState.level===l?' on':''); b.textContent=l;
+    b.onclick=function(){ setupState.level=l; paintSetup(); };
+    lc.appendChild(b);
+  });
+  var sc=document.getElementById('sizeChips'); sc.innerHTML='';
+  [[4,'4 × 4 · short'],[5,'5 × 5 · standard'],[6,'6 × 6 · long']].forEach(function(p){
+    var b=document.createElement('div');
+    b.className='chip'+(setupState.size===p[0]?' on':''); b.textContent=p[1];
+    b.onclick=function(){ setupState.size=p[0]; paintSetup(); };
+    sc.appendChild(b);
+  });
+}
+
+function applySetup(){
+  var raw=document.getElementById('customQ').value.trim();
+  if(raw){
+    S.custom=raw.split('\n').map(function(line){
+      var parts=line.split('|');
+      var q=parts[0].trim(); var a=parts.length>1?parts.slice(1).join('|').trim():'';
+      return q?[q,a,'Custom']:null;
+    }).filter(Boolean);
+    if(!S.custom.length) S.custom=null;
+  } else S.custom=null;
+
+  S.level=setupState.level; S.size=setupState.size;
+  S.teams=[];
+  for(var i=0;i<setupState.count;i++){
+    S.teams.push({name:(setupState.names[i]||('Team '+(i+1))).trim()||('Team '+(i+1)), score:0, shield:false});
+  }
+  S.turn=0;
+  hide('sOverlay');
+  newBoard();
+}
+
+/* ---------- boot ---------- */
+(function init(){
+  S.teams=[{name:'Team 1',score:0,shield:false},{name:'Team 2',score:0,shield:false},{name:'Team 3',score:0,shield:false}];
+  newBoard();
+})();
+</script>
+</body>
+</html>

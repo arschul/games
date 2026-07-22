@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Cover — Game Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=Inter:wght@400;500;600;700&family=Chivo+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1220; --panel:#131c2e; --panel2:#1a2440; --line:#26314a;
+  --text:#e9eefb; --muted:#93a2c0;
+  --blue:#38bdf8; --blue-deep:#0e7490; --blue-ink:#04202b;
+  --red:#fb7185; --red-deep:#9f1239; --red-ink:#2a060f;
+  --neutral:#c2ab84; --neutral-ink:#241d10;
+  --mole:#05070c; --amber:#f2b544;
+  --good:#34d399;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --tile-face:#1c2740;
+}
+[data-theme="light"]{
+  --bg:#eef1f8; --panel:#ffffff; --panel2:#e8edf7; --line:#d6deee;
+  --text:#16203a; --muted:#5c6a88;
+  --blue:#0284c7; --blue-ink:#ffffff;
+  --red:#e11d48; --red-ink:#ffffff;
+  --neutral:#b39b71; --neutral-ink:#ffffff;
+  --mole:#111318;
+  --shadow:0 10px 30px rgba(20,35,70,.10);
+  --tile-face:#f4f7fd;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Inter',sans-serif; background:var(--bg); color:var(--text);
+  min-height:100vh; padding:66px 16px 40px;
+  background-image:radial-gradient(circle at 12% 8%, rgba(56,189,248,.10), transparent 42%),
+                   radial-gradient(circle at 88% 92%, rgba(251,113,133,.09), transparent 42%);
+}
+h1,h2,h3{font-family:'Sora',sans-serif}
+.mono{font-family:'Chivo Mono',monospace}
+a,button{font-family:inherit}
+:focus-visible{outline:3px solid var(--amber); outline-offset:2px}
+
+.back-link{
+  position:fixed; top:14px; left:14px; z-index:60;
+  background:var(--panel); color:var(--text); border:1px solid var(--line);
+  padding:9px 16px; border-radius:999px; text-decoration:none; font-weight:600; font-size:.9rem;
+  box-shadow:var(--shadow); transition:.2s;
+}
+.back-link:hover{transform:translateX(-3px); border-color:var(--amber)}
+.theme-btn{
+  position:fixed; top:14px; right:14px; z-index:60;
+  background:var(--panel); border:1px solid var(--line); color:var(--text);
+  width:42px; height:42px; border-radius:999px; cursor:pointer; font-size:1.05rem;
+  box-shadow:var(--shadow); transition:.2s;
+}
+.theme-btn:hover{border-color:var(--amber); transform:rotate(20deg)}
+
+.wrap{max-width:1120px; margin:0 auto}
+header{text-align:center; margin-bottom:16px}
+header h1{font-size:clamp(1.9rem,4.6vw,2.9rem); font-weight:800; letter-spacing:-.02em}
+header .stencil{
+  font-family:'Chivo Mono',monospace; font-size:.72rem; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--amber); margin-bottom:6px;
+}
+header p{color:var(--muted); margin-top:5px; font-size:.98rem}
+
+/* ---- scoreboard ---- */
+.networks{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:14px}
+.net{
+  background:var(--panel); border:2px solid var(--line); border-radius:16px;
+  padding:10px 18px; min-width:190px; transition:.25s;
+}
+.net.on{transform:translateY(-3px)}
+.net.blue.on{border-color:var(--blue); box-shadow:0 0 0 4px rgba(56,189,248,.16)}
+.net.red.on{border-color:var(--red); box-shadow:0 0 0 4px rgba(251,113,133,.16)}
+.net .nlabel{
+  font-family:'Chivo Mono',monospace; font-size:.68rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--muted);
+}
+.net.blue .nname{color:var(--blue)} .net.red .nname{color:var(--red)}
+.net .nname{font-family:'Sora',sans-serif; font-weight:700; font-size:1.05rem; line-height:1.3}
+.pips{display:flex; gap:5px; margin-top:7px; flex-wrap:wrap}
+.pip{width:13px; height:13px; border-radius:4px; opacity:.28}
+.net.blue .pip{background:var(--blue)} .net.red .pip{background:var(--red)}
+.pip.live{opacity:1}
+
+/* ---- clue banner (signature) ---- */
+.clue-bar{
+  background:var(--panel); border:1px solid var(--line); border-radius:18px;
+  padding:14px 18px; margin-bottom:14px;
+  display:flex; gap:14px; align-items:center; flex-wrap:wrap; justify-content:space-between;
+}
+.clue-live{display:flex; align-items:center; gap:16px; min-height:52px; flex:1 1 320px}
+.stamp{
+  flex:none; width:52px; height:52px; border-radius:50%;
+  display:grid; place-items:center; font-family:'Chivo Mono',monospace; font-weight:700;
+  font-size:1.3rem; border:3px solid var(--amber); color:var(--amber);
+}
+.clue-word{
+  font-family:'Chivo Mono',monospace; font-weight:700; text-transform:uppercase;
+  font-size:clamp(1.3rem,3.4vw,2.1rem); letter-spacing:.1em; line-height:1.1;
+  word-break:break-word;
+}
+.clue-sub{font-size:.82rem; color:var(--muted); margin-top:3px}
+.guess-dots{display:flex; gap:6px; margin-top:7px}
+.gdot{width:10px; height:10px; border-radius:50%; background:var(--amber); opacity:.22}
+.gdot.live{opacity:1}
+.waiting{color:var(--muted); font-size:1rem}
+.waiting b{color:var(--text)}
+
+.clue-form{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+input.clue-input, select.num{
+  font-family:'Chivo Mono',monospace; font-size:1rem; text-transform:uppercase;
+  background:var(--panel2); color:var(--text); border:1px solid var(--line);
+  border-radius:10px; padding:10px 13px; width:190px;
+}
+select.num{width:74px; text-transform:none}
+.timer{
+  font-family:'Chivo Mono',monospace; font-weight:700; font-size:1.25rem;
+  padding:8px 14px; border-radius:10px; background:var(--panel2); border:1px solid var(--line);
+}
+.timer.low{color:#fff; background:var(--red-deep); border-color:transparent; animation:pulse .9s infinite}
+@keyframes pulse{50%{opacity:.55}}
+
+/* ---- buttons ---- */
+button.btn{
+  font-weight:600; font-size:.9rem; cursor:pointer;
+  background:var(--panel2); color:var(--text); border:1px solid var(--line);
+  padding:10px 15px; border-radius:10px; transition:.16s;
+}
+button.btn:hover{border-color:var(--amber); transform:translateY(-2px)}
+button.btn.primary{background:var(--amber); color:#241a00; border-color:transparent}
+button.btn.ghost{background:transparent}
+button.btn:disabled{opacity:.4; cursor:not-allowed; transform:none}
+
+.toolbar{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:14px}
+
+/* ---- grid ---- */
+.grid{display:grid; gap:10px; margin-bottom:16px}
+.grid.g5{grid-template-columns:repeat(5,1fr)}
+.grid.g4{grid-template-columns:repeat(4,1fr)}
+.tile{
+  position:relative; aspect-ratio:5/3; border-radius:12px; cursor:pointer;
+  background:var(--tile-face); border:1px solid var(--line);
+  display:grid; place-items:center; padding:6px; text-align:center;
+  font-family:'Chivo Mono',monospace; font-weight:600; text-transform:uppercase;
+  font-size:clamp(.6rem,1.35vw,1.02rem); letter-spacing:.06em; line-height:1.2;
+  color:var(--text); transition:transform .14s, box-shadow .14s, background .25s;
+  word-break:break-word;
+}
+.tile:hover:not(.done):not(.locked){transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,.35); border-color:var(--amber)}
+.tile.locked{cursor:default}
+.tile .idx{
+  position:absolute; top:5px; left:8px; font-size:.58rem; opacity:.34; letter-spacing:0;
+}
+.tile.done{cursor:default; border-color:transparent}
+.tile.done.blue{background:var(--blue); color:var(--blue-ink)}
+.tile.done.red{background:var(--red); color:var(--red-ink)}
+.tile.done.neutral{background:var(--neutral); color:var(--neutral-ink)}
+.tile.done.mole{background:var(--mole); color:#ff6b6b; box-shadow:inset 0 0 0 2px var(--red)}
+.tile.done .idx{opacity:.5}
+
+/* ---- log ---- */
+.log{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 18px}
+.log h3{font-size:.95rem; margin-bottom:8px}
+.log .empty{color:var(--muted); font-size:.88rem}
+.log ul{list-style:none; display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto}
+.log li{
+  font-size:.88rem; display:flex; gap:10px; align-items:baseline;
+  border-bottom:1px dashed var(--line); padding-bottom:6px;
+}
+.log li:last-child{border-bottom:none}
+.log .tag{font-family:'Chivo Mono',monospace; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; flex:none; width:74px}
+.log .tag.blue{color:var(--blue)} .log .tag.red{color:var(--red)}
+.log .cw{font-family:'Chivo Mono',monospace; font-weight:700; text-transform:uppercase}
+.log .res{color:var(--muted)}
+
+/* ---- overlays ---- */
+.overlay{
+  position:fixed; inset:0; background:rgba(4,8,16,.82); backdrop-filter:blur(4px);
+  display:none; place-items:center; z-index:200; padding:20px;
+}
+.overlay.show{display:grid}
+.modal{
+  background:var(--panel); border:1px solid var(--line); border-radius:20px;
+  padding:26px; width:100%; max-width:640px; box-shadow:var(--shadow);
+  max-height:92vh; overflow:auto;
+}
+.modal h2{font-size:1.35rem; margin-bottom:6px}
+.modal .sub{color:var(--muted); font-size:.9rem; margin-bottom:18px}
+.field{margin-bottom:16px}
+.field label{
+  display:block; font-family:'Chivo Mono',monospace; font-size:.7rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:7px;
+}
+.chips{display:flex; gap:7px; flex-wrap:wrap}
+.chip{
+  cursor:pointer; padding:8px 13px; border-radius:999px; font-size:.85rem; font-weight:600;
+  background:var(--panel2); border:1px solid var(--line); color:var(--text); transition:.16s;
+}
+.chip:hover{border-color:var(--amber)}
+.chip.sel{background:var(--amber); color:#241a00; border-color:transparent}
+.field input[type=text], .field textarea{
+  width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--line);
+  border-radius:10px; padding:10px 13px; font-size:.94rem;
+}
+.field textarea{min-height:92px; resize:vertical; font-family:'Chivo Mono',monospace; font-size:.85rem}
+.namerow{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.switch{display:flex; align-items:center; gap:9px; font-size:.9rem; cursor:pointer}
+.switch input{width:18px; height:18px; accent-color:var(--amber); cursor:pointer}
+.modal-actions{display:flex; gap:9px; flex-wrap:wrap; justify-content:flex-end; margin-top:20px}
+.err{color:var(--red); font-size:.85rem; margin-top:8px; min-height:1.1em}
+
+/* key card */
+.keycard .warn{
+  text-align:center; font-family:'Chivo Mono',monospace; letter-spacing:.18em;
+  text-transform:uppercase; font-size:.78rem; color:var(--amber); margin-bottom:14px;
+}
+.kgrid{display:grid; gap:6px; margin-bottom:14px; transition:filter .18s}
+.kgrid.g5{grid-template-columns:repeat(5,1fr)}
+.kgrid.g4{grid-template-columns:repeat(4,1fr)}
+.kgrid.hidden{filter:blur(11px)}
+.kcell{
+  aspect-ratio:5/3; border-radius:8px; display:grid; place-items:center; padding:4px;
+  font-family:'Chivo Mono',monospace; font-size:clamp(.5rem,1.5vw,.72rem); text-transform:uppercase;
+  text-align:center; line-height:1.15; word-break:break-word;
+}
+.kcell.blue{background:var(--blue); color:var(--blue-ink)}
+.kcell.red{background:var(--red); color:var(--red-ink)}
+.kcell.neutral{background:var(--neutral); color:var(--neutral-ink)}
+.kcell.mole{background:var(--mole); color:#ff6b6b; box-shadow:inset 0 0 0 2px var(--red)}
+.kcell.out{opacity:.3}
+.hold-btn{
+  width:100%; padding:16px; border-radius:12px; border:2px dashed var(--amber);
+  background:transparent; color:var(--amber); font-weight:700; font-size:1rem; cursor:pointer;
+  user-select:none; -webkit-user-select:none; touch-action:none;
+}
+.hold-btn:active{background:rgba(242,181,68,.14)}
+.starts{text-align:center; font-size:.9rem; color:var(--muted); margin-bottom:12px}
+.starts b.blue{color:var(--blue)} .starts b.red{color:var(--red)}
+
+/* reveal toast */
+.toast{
+  position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(140%);
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:13px 22px; box-shadow:var(--shadow); z-index:300; transition:transform .3s;
+  max-width:min(560px,92vw); text-align:center; font-size:.95rem;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast b.blue{color:var(--blue)} .toast b.red{color:var(--red)}
+.toast .say{display:block; margin-top:5px; font-size:.85rem; color:var(--amber)}
+
+.win-em{font-size:3.4rem; text-align:center; margin-bottom:6px}
+.win-title{text-align:center; font-family:'Sora',sans-serif; font-weight:800; font-size:1.7rem; margin-bottom:8px}
+.win-title.blue{color:var(--blue)} .win-title.red{color:var(--red)}
+.win-desc{text-align:center; color:var(--muted); font-size:.95rem}
+
+.rules{font-size:.88rem; color:var(--muted); line-height:1.7}
+.rules b{color:var(--text)}
+.rules ol{margin:8px 0 0 20px; display:flex; flex-direction:column; gap:6px}
+.rules .legend{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+.rules .lg{display:flex; align-items:center; gap:6px; font-size:.82rem}
+.rules .sw{width:15px; height:15px; border-radius:4px}
+
+@media(max-width:720px){
+  body{padding-top:62px}
+  .clue-bar{flex-direction:column; align-items:stretch}
+  .clue-form{justify-content:space-between}
+  input.clue-input{flex:1 1 130px; width:auto}
+  .namerow{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+</head>
+<body>
+<a class="back-link" href="../">← Game Hub</a>
+<button class="theme-btn" onclick="toggleTheme()" title="Switch light or dark" aria-label="Switch light or dark">🌗</button>
+
+<div class="wrap">
+  <header>
+    <div class="stencil">Classified · Word Association</div>
+    <h1>Deep Cover</h1>
+    <p>One spymaster. One clue. Find your agents before the other network finds theirs.</p>
+  </header>
+
+  <div class="networks" id="networks"></div>
+
+  <div class="clue-bar">
+    <div class="clue-live" id="clueLive"></div>
+    <div class="clue-form" id="clueForm">
+      <input class="clue-input" id="clueInput" placeholder="CLUE WORD" maxlength="22" autocomplete="off" aria-label="Clue word">
+      <select class="num" id="clueNum" aria-label="Number of words">
+        <option>1</option><option>2</option><option>3</option><option>4</option>
+        <option>5</option><option>6</option><option value="0">∞</option>
+      </select>
+      <button class="btn primary" id="giveBtn" onclick="giveClue()">Send clue</button>
+      <div class="timer" id="timer" style="display:none">--</div>
+    </div>
+  </div>
+  <div class="err" id="clueErr" role="alert"></div>
+
+  <div class="toolbar">
+    <button class="btn" onclick="openKey()">🔑 Key card</button>
+    <button class="btn" id="endBtn" onclick="endTurn('The team stopped guessing.')">⏭ End turn</button>
+    <button class="btn ghost" onclick="show('rulesOverlay')">📖 How to play</button>
+    <button class="btn ghost" onclick="openSetup()">⚙️ Setup</button>
+    <button class="btn ghost" onclick="newGame()">🔄 New grid</button>
+  </div>
+
+  <div class="grid g5" id="grid"></div>
+
+  <div class="log">
+    <h3>Clue log</h3>
+    <div id="logBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- KEY CARD -->
+<div class="overlay" id="keyOverlay">
+  <div class="modal keycard">
+    <h2>🔑 Key card</h2>
+    <p class="sub">Spymasters only. Everyone else, eyes on the ceiling.</p>
+    <div class="warn" id="keyWarn">Hidden — hold the bar below to read it</div>
+    <div class="starts" id="keyStarts"></div>
+    <div class="kgrid g5 hidden" id="kgrid"></div>
+    <button class="hold-btn" id="holdBtn">👁 Hold to reveal</button>
+    <label class="switch" style="margin-top:14px">
+      <input type="checkbox" id="keepVisible" onchange="setKeep(this.checked)">
+      <span>Keep it on screen (use when spymasters have their own device)</span>
+    </label>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="closeKey()">Hide key card</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="overlay" id="setupOverlay">
+  <div class="modal">
+    <h2>⚙️ Setup</h2>
+    <p class="sub">Saving starts a fresh grid.</p>
+
+    <div class="field">
+      <label>Network names</label>
+      <div class="namerow">
+        <input type="text" id="blueName" maxlength="22" placeholder="Blue Network">
+        <input type="text" id="redName" maxlength="22" placeholder="Red Network">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Word list</label>
+      <div class="chips" id="bankChips"></div>
+    </div>
+
+    <div class="field">
+      <label>Your own words (optional — replaces the list above)</label>
+      <textarea id="customWords" placeholder="One word per line, or separated by commas. You need at least 25."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Grid</label>
+      <div class="chips" id="sizeChips"></div>
+    </div>
+
+    <div class="field">
+      <label>Turn timer</label>
+      <div class="chips" id="timerChips"></div>
+    </div>
+
+    <div class="field">
+      <label class="switch">
+        <input type="checkbox" id="justifyChk">
+        <span>Say it out loud: after each correct guess, the team explains the link in a full sentence</span>
+      </label>
+    </div>
+
+    <div class="err" id="setupErr" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="hide('setupOverlay')">Cancel</button>
+      <button class="btn primary" onclick="applySetup()">Start game</button>
+    </div>
+  </div>
+</div>
+
+<!-- RULES -->
+<div class="overlay" id="rulesOverlay">
+  <div class="modal">
+    <h2>📖 How to play</h2>
+    <p class="sub">Two teams. Two spymasters. Twenty-five codenames.</p>
+    <div class="rules">
+      <ol>
+        <li>Split the class into two networks. Each network picks one <b>spymaster</b>.</li>
+        <li>Both spymasters read the <b>key card</b> together — it shows which words belong to which network. Everyone else looks away.</li>
+        <li>On your turn, your spymaster says <b>one English word</b> and <b>a number</b>: "OCEAN, 3" means three of your words link to <i>ocean</i>.</li>
+        <li>The team talks it through and taps the tiles they think are theirs. They get the number of guesses in the clue, plus one extra.</li>
+        <li>Tap one of your own agents and you keep going. Tap a bystander or a rival agent and your turn ends. Tap the <b>mole</b> and you lose on the spot.</li>
+        <li>First network to uncover all its agents wins.</li>
+      </ol>
+      <p style="margin-top:12px"><b>Clue rules:</b> one word only, in English. No word that is printed on the grid, no rhymes, no spelling out letters, no gestures. Compound place names count as one word.</p>
+      <div class="legend">
+        <span class="lg"><span class="sw" style="background:var(--blue)"></span> Blue agent</span>
+        <span class="lg"><span class="sw" style="background:var(--red)"></span> Red agent</span>
+        <span class="lg"><span class="sw" style="background:var(--neutral)"></span> Bystander</span>
+        <span class="lg"><span class="sw" style="background:var(--mole);box-shadow:inset 0 0 0 2px var(--red)"></span> The mole</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="hide('rulesOverlay')">Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="overlay" id="overOverlay">
+  <div class="modal" style="max-width:520px">
+    <div class="win-em" id="overEm">🏆</div>
+    <div class="win-title" id="overTitle">Winner</div>
+    <p class="win-desc" id="overDesc"></p>
+    <div class="modal-actions" style="justify-content:center">
+      <button class="btn" onclick="hide('overOverlay'); openKey()">Show the key card</button>
+      <button class="btn primary" onclick="hide('overOverlay'); newGame()">Play again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- theme ---------------- */
+function toggleTheme(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  h.setAttribute('data-theme',next);
+  try{localStorage.setItem('theme',next);}catch(e){}
+}
+(function(){ try{var s=localStorage.getItem('theme'); if(s) document.documentElement.setAttribute('data-theme',s);}catch(e){} })();
+
+/* ---------------- word banks ---------------- */
+var BANKS = {
+  a1:{label:'A1 · Everyday', words:[
+    'apple','ball','bed','bike','bird','book','box','bread','cake','car','cat','chair','child','city','class',
+    'clock','cloud','coffee','cup','dog','door','ear','egg','eye','family','farm','fish','flower','foot','friend',
+    'game','garden','glass','grass','hand','hat','head','heart','home','horse','house','ice','juice','key','kitchen',
+    'lamp','leg','letter','light','man','milk','money','monkey','moon','mother','mouse','music','name','night','nose',
+    'orange','paper','park','pen','phone','picture','rain','river','road','room','salt','school','sea','shoe','shop',
+    'sister','snow','star','street','sun','table','tea','tree','water','window','woman','word','work','year'
+  ]},
+  a2:{label:'A2 · Wider world', words:[
+    'airport','animal','autumn','baby','bank','beach','bell','bottle','bridge','brush','camera','candle','castle',
+    'cheese','church','circle','coast','corner','crowd','dance','desert','doctor','dream','drum','engine','factory',
+    'feather','field','forest','gift','glove','guest','guitar','hero','hill','hospital','hotel','island','jacket',
+    'journey','jungle','king','ladder','lake','leaf','library','lion','machine','market','mountain','museum','needle',
+    'nurse','ocean','pilot','pocket','police','prize','queen','rabbit','rocket','sand','ship','singer','soldier',
+    'spoon','stamp','storm','ticket','tiger','train','uniform','village','wallet','wheel','wing','winter','zoo'
+  ]},
+  b1:{label:'B1 · Intermediate', words:[
+    'accident','advice','alarm','anchor','arrow','balance','bargain','battery','blanket','border','branch','budget',
+    'cabin','canvas','capital','career','cave','ceiling','cell','channel','charge','climate','coach','code','compass',
+    'contract','crash','crew','crown','current','deadline','degree','diamond','duty','echo','edge','evidence','fault',
+    'fever','flame','flood','fuel','gallery','grain','harbour','harvest','helmet','horizon','impact','ink','iron',
+    'jury','knot','layer','lecture','lens','lightning','lock','magnet','mask','match','mission','nerve','network',
+    'orbit','oxygen','palm','pattern','pitch','plot','pole','port','pressure','pupil','range','record','rescue',
+    'ring','rope','rust','satellite','scale','screen','seal','shadow','shelter','shift','signal','spark','spring',
+    'stage','steam','stream','strike','suit','surface','switch','tank','target','temple','thread','tide','tower',
+    'trace','track','trap','tunnel','vault','wave','web','wire','witness','wreck'
+  ]},
+  b2:{label:'B2 · Advanced', words:[
+    'alloy','ambush','anthem','archive','asylum','avalanche','ballot','barrier','beacon','bias','blueprint','bounty',
+    'breach','bulletin','bunker','cargo','catalyst','census','chamber','charter','cipher','clause','cluster','colony',
+    'commodity','conductor','convoy','coup','cradle','crest','curfew','decoy','dialect','doctrine','drought','embassy',
+    'ember','epidemic','escort','estate','exile','facade','famine','fatigue','flare','forge','fortress','fossil',
+    'fracture','franchise','frontier','fuse','garrison','gauge','glare','guild','hearth','heir','hive','hoax',
+    'hostage','hull','inquiry','kiln','lantern','leverage','lobby','mandate','mantle','margin','mast','memoir',
+    'merger','militia','momentum','monopoly','mosaic','myth','nectar','niche','nomad','oath','outpost','paradox',
+    'patent','pendulum','pilgrim','plague','plateau','pledge','prism','probe','quarry','quota','raft','rally',
+    'ration','realm','reef','refuge','relic','remnant','reservoir','ridge','rift','ripple','roster','rubble',
+    'saddle','sanction','scaffold','scent','sentinel','shard','shrine','siege','siren','slate','sovereign','spectrum',
+    'spine','spire','stalemate','stronghold','summit','surge','surplus','syndicate','tariff','tempest','tenant',
+    'terrain','thorn','throne','timber','toll','torrent','treaty','trench','truce','turbine','veil','venom',
+    'verdict','vessel','veteran','vigil','voyage','warrant','wilderness','yield','zenith'
+  ]},
+  food:{label:'Food & drink', words:[
+    'apple','bacon','banana','basket','bean','bowl','bread','butter','cabbage','cake','carrot','cheese','cherry',
+    'chicken','chilli','chocolate','coconut','coffee','cream','dessert','dough','egg','flour','fork','fridge','garlic',
+    'grape','honey','jam','juice','kettle','knife','lemon','lettuce','menu','mushroom','noodle','nut','oil','olive',
+    'onion','orange','oven','pancake','pasta','pepper','pie','plate','potato','pumpkin','recipe','rice','salad',
+    'salt','sauce','sausage','soup','spice','spoon','steak','strawberry','sugar','tea','toast','tomato','vinegar','waiter'
+  ]},
+  travel:{label:'Travel & places', words:[
+    'airport','arrival','backpack','baggage','beach','border','bridge','cabin','camp','canal','capital','carriage',
+    'castle','coast','compass','continent','cruise','customs','delay','desert','dock','ferry','flight','gate',
+    'guide','harbour','highway','hostel','hotel','island','journey','landmark','lounge','luggage','map','market',
+    'motel','mountain','museum','passport','path','pier','platform','port','postcard','ranch','resort','route',
+    'ruins','sail','souvenir','station','suitcase','sunrise','taxi','ticket','tour','trail','train','tunnel',
+    'valley','village','visa','voyage','wharf'
+  ]},
+  jobs:{label:'Jobs & work', words:[
+    'agenda','apron','architect','artist','badge','baker','banker','boss','budget','builder','captain','chef',
+    'client','coach','contract','crew','deadline','dentist','desk','driver','engineer','farmer','file','firefighter',
+    'guard','hammer','interview','judge','ladder','lawyer','manager','meeting','miner','nurse','office','painter',
+    'pilot','plumber','printer','raise','report','salary','sailor','scientist','shift','soldier','staff','strike',
+    'surgeon','tailor','teacher','team','tool','training','uniform','vet','wage','waiter','workshop','writer'
+  ]},
+  nature:{label:'Nature & animals', words:[
+    'ant','bat','bear','bee','beetle','branch','cave','cliff','cloud','coral','crab','crow','deer','desert','dolphin',
+    'eagle','earth','feather','fern','flood','forest','fox','frog','glacier','goat','grass','harvest','hawk','hive',
+    'horizon','ice','island','jungle','lake','leaf','lightning','lion','marsh','meadow','moss','moth','mountain',
+    'nest','ocean','owl','panda','pine','rabbit','rain','reef','river','root','sand','seed','shark','shell','snail',
+    'snake','snow','soil','spider','storm','stream','swamp','thunder','tide','tiger','trunk','valley','whale','wolf'
+  ]},
+  tech:{label:'Technology', words:[
+    'algorithm','antenna','app','backup','battery','browser','bug','button','cable','camera','channel','chip','circuit',
+    'cloud','code','console','crash','cursor','data','desktop','device','download','drive','engine','file','filter',
+    'firewall','folder','gadget','grid','headset','icon','inbox','install','keyboard','laptop','link','memory',
+    'menu','message','microphone','model','monitor','mouse','network','password','patch','pixel','plug','printer',
+    'program','robot','router','satellite','screen','sensor','server','signal','socket','software','speaker',
+    'stream','switch','tablet','update','upload','virus','wire'
+  ]},
+  body:{label:'Body & health', words:[
+    'ambulance','ankle','arm','bandage','blood','bone','brain','breath','bruise','check-up','chest','chin','clinic',
+    'cough','cure','cut','dentist','diet','doctor','ear','elbow','exercise','eye','face','fever','finger','fitness',
+    'flu','foot','hand','head','heart','heel','hip','hospital','injury','jaw','knee','lung','medicine','muscle',
+    'nerve','nose','nurse','pain','patient','pill','pulse','recovery','rest','rib','scar','shoulder','skin','sleep',
+    'spine','stomach','stretch','surgeon','throat','thumb','toe','tongue','tooth','vitamin','ward','wrist'
+  ]}
+};
+var BANK_ORDER=['a1','a2','b1','b2','food','travel','jobs','nature','tech','body'];
+
+/* ---------------- state ---------------- */
+var S = {
+  names:{blue:'Blue Network', red:'Red Network'},
+  bank:'a2', custom:null, size:25, timerLen:0, justify:false,
+  words:[], key:[], seen:[], turn:'blue', first:'blue',
+  phase:'clue', guessesLeft:0, clue:null, log:[], over:false,
+  tick:null, timeLeft:0, keepKey:false, revealAll:false
+};
+
+function other(t){ return t==='blue' ? 'red' : 'blue'; }
+function nameOf(t){ return S.names[t]; }
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------------- audio ---------------- */
+var AC=null;
+function beep(freq,dur,type,vol){
+  try{
+    if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)();
+    var o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.07, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+(dur||0.18));
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime+(dur||0.18));
+  }catch(e){}
+}
+function sHit(){ beep(660,.14,'triangle',.08); setTimeout(function(){beep(880,.16,'triangle',.07);},90); }
+function sMiss(){ beep(220,.28,'sawtooth',.06); }
+function sMole(){ beep(160,.5,'sawtooth',.10); setTimeout(function(){beep(110,.7,'sawtooth',.09);},220); }
+function sWin(){ [523,659,784,1047].forEach(function(f,i){ setTimeout(function(){beep(f,.22,'triangle',.08);}, i*130); }); }
+
+/* ---------------- pools ---------------- */
+function pool(){
+  if(S.custom && S.custom.length>=S.size) return S.custom.slice();
+  return BANKS[S.bank].words.slice();
+}
+
+/* ---------------- new game ---------------- */
+function newGame(){
+  stopTimer();
+  var p = pool();
+  S.words = shuffle(p).slice(0, S.size);
+  S.first = Math.random()<0.5 ? 'blue' : 'red';
+  var second = other(S.first);
+  var counts = S.size===25 ? {a:9,b:8,n:7} : {a:6,b:5,n:4};
+  var k=[], i;
+  for(i=0;i<counts.a;i++) k.push(S.first);
+  for(i=0;i<counts.b;i++) k.push(second);
+  for(i=0;i<counts.n;i++) k.push('neutral');
+  k.push('mole');
+  S.key = shuffle(k);
+  S.seen = S.words.map(function(){ return false; });
+  S.turn = S.first; S.phase='clue'; S.guessesLeft=0; S.clue=null;
+  S.log=[]; S.over=false; S.keepKey=false; S.revealAll=false;
+  var kv=document.getElementById('keepVisible'); if(kv) kv.checked=false;
+  render();
+  buildKeyCard();
+  toast('New grid dealt. <b class="'+S.first+'">'+esc(nameOf(S.first))+'</b> goes first — spymasters, read the key card.');
+}
+
+function remaining(team){
+  var n=0;
+  for(var i=0;i<S.key.length;i++) if(S.key[i]===team && !S.seen[i]) n++;
+  return n;
+}
+function total(team){
+  var counts = S.size===25 ? {a:9,b:8} : {a:6,b:5};
+  return team===S.first ? counts.a : counts.b;
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  // networks
+  var nets='';
+  ['blue','red'].forEach(function(t){
+    var rem=remaining(t), tot=total(t), pips='';
+    for(var i=0;i<tot;i++) pips+='<span class="pip'+(i<rem?' live':'')+'"></span>';
+    nets+='<div class="net '+t+(S.turn===t&&!S.over?' on':'')+'">'+
+      '<div class="nlabel">'+(S.turn===t&&!S.over?'On mission':'Standing by')+'</div>'+
+      '<div class="nname">'+esc(nameOf(t))+'</div>'+
+      '<div class="pips">'+pips+'</div>'+
+      '<div class="nlabel" style="margin-top:6px">'+rem+' of '+tot+' still undercover</div>'+
+    '</div>';
+  });
+  document.getElementById('networks').innerHTML=nets;
+
+  // clue area
+  var live=document.getElementById('clueLive');
+  if(S.over){
+    live.innerHTML='<div class="waiting">Mission over. Deal a new grid to play again.</div>';
+  } else if(S.phase==='clue'){
+    live.innerHTML='<div class="waiting">Waiting on <b>'+esc(nameOf(S.turn))+'</b>&rsquo;s spymaster&hellip;</div>';
+  } else {
+    var dots='';
+    var shown = S.clue.num===0 ? Math.min(S.guessesLeft,9) : S.clue.num+1;
+    for(var i=0;i<shown;i++) dots+='<span class="gdot'+(i<S.guessesLeft?' live':'')+'"></span>';
+    live.innerHTML='<div class="stamp">'+(S.clue.num===0?'∞':S.clue.num)+'</div>'+
+      '<div><div class="clue-word">'+esc(S.clue.word)+'</div>'+
+      '<div class="clue-sub">'+esc(nameOf(S.turn))+' &middot; '+S.guessesLeft+' guess'+(S.guessesLeft===1?'':'es')+' left</div>'+
+      '<div class="guess-dots">'+dots+'</div></div>';
+  }
+  document.getElementById('clueForm').style.display = (!S.over && S.phase==='clue') ? 'flex' : 'none';
+  document.getElementById('endBtn').disabled = S.over || S.phase!=='guess';
+
+  // grid
+  var g=document.getElementById('grid');
+  g.className='grid '+(S.size===25?'g5':'g4');
+  var html='';
+  for(var i=0;i<S.words.length;i++){
+    var cls='tile';
+    if(S.seen[i]||S.revealAll) cls+=' done '+S.key[i];
+    else if(S.over || S.phase!=='guess') cls+=' locked';
+    html+='<button class="'+cls+'" onclick="pick('+i+')" '+((S.seen[i]||S.revealAll)?'disabled':'')+'>'+
+      '<span class="idx">'+(i+1)+'</span>'+esc(S.words[i])+'</button>';
+  }
+  g.innerHTML=html;
+
+  // log
+  var lb=document.getElementById('logBody');
+  if(!S.log.length){ lb.innerHTML='<p class="empty">No clues yet. The first spymaster is thinking.</p>'; }
+  else{
+    var items='';
+    for(var j=S.log.length-1;j>=0;j--){
+      var e=S.log[j];
+      items+='<li><span class="tag '+e.team+'">'+esc(nameOf(e.team).slice(0,9))+'</span>'+
+        '<span><span class="cw">'+esc(e.word)+' '+(e.num===0?'∞':e.num)+'</span> '+
+        '<span class="res">'+e.res+'</span></span></li>';
+    }
+    lb.innerHTML='<ul>'+items+'</ul>';
+  }
+}
+
+/* ---------------- clue ---------------- */
+function giveClue(){
+  if(S.over || S.phase!=='clue') return;
+  var inp=document.getElementById('clueInput');
+  var w=(inp.value||'').trim();
+  var err=document.getElementById('clueErr');
+  err.textContent='';
+  if(!w){ err.textContent='Type the clue word first.'; inp.focus(); return; }
+  if(/\s/.test(w) && w.split(/\s+/).length>2){ err.textContent='One word, please — two only for a place name like New York.'; return; }
+  var low=w.toLowerCase();
+  for(var i=0;i<S.words.length;i++){
+    if(!S.seen[i] && S.words[i].toLowerCase()===low){
+      err.textContent='"'+w+'" is on the grid. Pick a different clue.'; return;
+    }
+  }
+  var n=parseInt(document.getElementById('clueNum').value,10);
+  S.clue={word:w, num:n};
+  S.guessesLeft = n===0 ? 9 : n+1;
+  S.phase='guess';
+  S.log.push({team:S.turn, word:w, num:n, res:''});
+  inp.value='';
+  startTimer();
+  render();
+  beep(520,.16,'sine',.06);
+}
+
+function logResult(txt){
+  if(S.log.length){
+    var e=S.log[S.log.length-1];
+    e.res = e.res ? e.res+' '+txt : txt;
+  }
+}
+
+/* ---------------- guessing ---------------- */
+function pick(i){
+  if(S.over || S.phase!=='guess' || S.seen[i]) return;
+  S.seen[i]=true;
+  var k=S.key[i], word=S.words[i];
+
+  if(k==='mole'){
+    sMole();
+    logResult('☠ hit the mole on ' + word + '.');
+    render();
+    endGame(other(S.turn), esc(nameOf(other(S.turn)))+' wins because '+esc(nameOf(S.turn))+' uncovered the mole on <b>'+esc(word)+'</b>.', '☠️');
+    return;
+  }
+
+  if(k===S.turn){
+    sHit();
+    S.guessesLeft--;
+    logResult('✓ '+word+'.');
+    render();
+    if(remaining(S.turn)===0){
+      endGame(S.turn, esc(nameOf(S.turn))+' brought every agent home.', '🏆');
+      return;
+    }
+    var msg='<b class="'+S.turn+'">'+esc(word)+'</b> is one of yours.';
+    if(S.guessesLeft<=0){
+      toast(msg+' That was the last guess.', S.justify);
+      setTimeout(function(){ endTurn('Out of guesses.'); }, 700);
+    } else {
+      toast(msg+' '+S.guessesLeft+' guess'+(S.guessesLeft===1?'':'es')+' left.', S.justify);
+    }
+    return;
+  }
+
+  if(k==='neutral'){
+    sMiss();
+    logResult('— bystander ('+word+'). Turn over.');
+    render();
+    toast('<b>'+esc(word)+'</b> is a bystander. Turn over.');
+    setTimeout(function(){ endTurn(''); }, 650);
+    return;
+  }
+
+  // rival agent
+  sMiss();
+  logResult('✗ handed '+word+' to the other side.');
+  render();
+  if(remaining(k)===0){
+    endGame(k, esc(nameOf(k))+' wins — the last of their agents was handed over by '+esc(nameOf(S.turn))+'.', '🏆');
+    return;
+  }
+  toast('<b class="'+k+'">'+esc(word)+'</b> works for '+esc(nameOf(k))+'. Turn over.');
+  setTimeout(function(){ endTurn(''); }, 650);
+}
+
+function endTurn(note){
+  if(S.over) return;
+  stopTimer();
+  if(note) logResult(note);
+  S.turn=other(S.turn);
+  S.phase='clue'; S.clue=null; S.guessesLeft=0;
+  document.getElementById('clueErr').textContent='';
+  render();
+  var inp=document.getElementById('clueInput');
+  if(inp) inp.focus();
+}
+
+function endGame(winner, desc, em){
+  S.over=true; stopTimer();
+  S.revealAll=true;
+  render();
+  if(em!=='☠️') sWin();
+  document.getElementById('overEm').textContent=em;
+  var t=document.getElementById('overTitle');
+  t.className='win-title '+winner;
+  t.textContent=nameOf(winner)+' wins';
+  document.getElementById('overDesc').innerHTML=desc;
+  setTimeout(function(){ show('overOverlay'); }, 900);
+}
+
+/* ---------------- timer ---------------- */
+function startTimer(){
+  stopTimer();
+  var el=document.getElementById('timer');
+  if(!S.timerLen){ el.style.display='none'; return; }
+  S.timeLeft=S.timerLen;
+  el.style.display='block';
+  paintTimer();
+  S.tick=setInterval(function(){
+    S.timeLeft--;
+    paintTimer();
+    if(S.timeLeft<=0){
+      stopTimer();
+      toast('Time. Turn passes to '+esc(nameOf(other(S.turn)))+'.');
+      endTurn('⏱ Ran out of time.');
+    }
+  },1000);
+}
+function paintTimer(){
+  var el=document.getElementById('timer');
+  var m=Math.floor(S.timeLeft/60), s=S.timeLeft%60;
+  el.textContent=m+':'+(s<10?'0':'')+s;
+  el.className='timer'+(S.timeLeft<=10?' low':'');
+  if(S.timeLeft<=5 && S.timeLeft>0) beep(880,.09,'square',.05);
+}
+function stopTimer(){
+  if(S.tick){ clearInterval(S.tick); S.tick=null; }
+  var el=document.getElementById('timer'); if(el) el.style.display='none';
+}
+
+/* ---------------- toast ---------------- */
+var toastT=null;
+function toast(html, withSay){
+  var el=document.getElementById('toast');
+  el.innerHTML = html + (withSay ? '<span class="say">Now say it: explain the link in a full sentence.</span>' : '');
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){ el.classList.remove('show'); }, withSay?4200:2800);
+}
+
+/* ---------------- key card ---------------- */
+function buildKeyCard(){
+  var g=document.getElementById('kgrid');
+  g.className='kgrid '+(S.size===25?'g5':'g4')+(S.keepKey?'':' hidden');
+  var html='';
+  for(var i=0;i<S.words.length;i++){
+    html+='<div class="kcell '+S.key[i]+(S.seen[i]?' out':'')+'">'+esc(S.words[i])+'</div>';
+  }
+  g.innerHTML=html;
+  document.getElementById('keyStarts').innerHTML =
+    'Starts: <b class="'+S.first+'">'+esc(nameOf(S.first))+'</b> &middot; '+
+    (S.size===25?'9 blue-or-red / 8 / 7 bystanders / 1 mole':'6 / 5 / 4 bystanders / 1 mole');
+}
+function openKey(){ buildKeyCard(); show('keyOverlay'); }
+function closeKey(){
+  S.keepKey=false;
+  document.getElementById('keepVisible').checked=false;
+  document.getElementById('kgrid').classList.add('hidden');
+  document.getElementById('keyWarn').textContent='Hidden — hold the bar below to read it';
+  hide('keyOverlay');
+}
+function setKeep(on){
+  S.keepKey=on;
+  var g=document.getElementById('kgrid');
+  if(on){ g.classList.remove('hidden'); document.getElementById('keyWarn').textContent='Visible — spymasters only'; }
+  else{ g.classList.add('hidden'); document.getElementById('keyWarn').textContent='Hidden — hold the bar below to read it'; }
+}
+(function(){
+  var b=document.getElementById('holdBtn'), g=document.getElementById('kgrid'), w=document.getElementById('keyWarn');
+  function on(e){ e.preventDefault(); g.classList.remove('hidden'); w.textContent='Reading… release to hide'; }
+  function off(){ if(!S.keepKey){ g.classList.add('hidden'); w.textContent='Hidden — hold the bar below to read it'; } }
+  ['mousedown','touchstart','pointerdown'].forEach(function(ev){ b.addEventListener(ev,on); });
+  ['mouseup','mouseleave','touchend','touchcancel','pointerup','pointercancel'].forEach(function(ev){ b.addEventListener(ev,off); });
+  b.addEventListener('keydown',function(e){ if(e.key===' '||e.key==='Enter') on(e); });
+  b.addEventListener('keyup',function(e){ if(e.key===' '||e.key==='Enter') off(); });
+})();
+
+/* ---------------- setup ---------------- */
+var pending={bank:'a2', size:25, timerLen:0};
+function openSetup(){
+  pending={bank:S.bank, size:S.size, timerLen:S.timerLen};
+  document.getElementById('blueName').value=S.names.blue;
+  document.getElementById('redName').value=S.names.red;
+  document.getElementById('justifyChk').checked=S.justify;
+  document.getElementById('setupErr').textContent='';
+  paintChips();
+  show('setupOverlay');
+}
+function paintChips(){
+  var b='';
+  BANK_ORDER.forEach(function(k){
+    b+='<button class="chip'+(pending.bank===k?' sel':'')+'" onclick="pending.bank=\''+k+'\';paintChips()">'+BANKS[k].label+'</button>';
+  });
+  document.getElementById('bankChips').innerHTML=b;
+
+  var sz='';
+  [[25,'5 × 5 · 25 words'],[16,'4 × 4 · 16 words']].forEach(function(o){
+    sz+='<button class="chip'+(pending.size===o[0]?' sel':'')+'" onclick="pending.size='+o[0]+';paintChips()">'+o[1]+'</button>';
+  });
+  document.getElementById('sizeChips').innerHTML=sz;
+
+  var t='';
+  [[0,'Off'],[60,'60 s'],[90,'90 s'],[120,'2 min']].forEach(function(o){
+    t+='<button class="chip'+(pending.timerLen===o[0]?' sel':'')+'" onclick="pending.timerLen='+o[0]+';paintChips()">'+o[1]+'</button>';
+  });
+  document.getElementById('timerChips').innerHTML=t;
+}
+function applySetup(){
+  var err=document.getElementById('setupErr');
+  err.textContent='';
+  var raw=(document.getElementById('customWords').value||'').trim();
+  var custom=null;
+  if(raw){
+    var seen={}, list=[];
+    raw.split(/[\n,;]+/).forEach(function(w){
+      w=w.trim().replace(/\s+/g,' ');
+      if(w && !seen[w.toLowerCase()]){ seen[w.toLowerCase()]=1; list.push(w); }
+    });
+    if(list.length < pending.size){
+      err.textContent='That list has '+list.length+' word'+(list.length===1?'':'s')+'. You need at least '+pending.size+' for this grid.';
+      return;
+    }
+    custom=list;
+  }
+  S.custom=custom;
+  S.bank=pending.bank; S.size=pending.size; S.timerLen=pending.timerLen;
+  S.justify=document.getElementById('justifyChk').checked;
+  S.names.blue=(document.getElementById('blueName').value||'').trim()||'Blue Network';
+  S.names.red=(document.getElementById('redName').value||'').trim()||'Red Network';
+  hide('setupOverlay');
+  newGame();
+}
+
+/* ---------------- overlays ---------------- */
+function show(id){ document.getElementById(id).classList.add('show'); }
+function hide(id){ document.getElementById(id).classList.remove('show'); }
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){
+    ['setupOverlay','rulesOverlay','overOverlay'].forEach(hide);
+    if(document.getElementById('keyOverlay').classList.contains('show')) closeKey();
+  }
+});
+document.getElementById('clueInput').addEventListener('keydown', function(e){
+  if(e.key==='Enter') giveClue();
+});
+[].forEach.call(document.querySelectorAll('.overlay'), function(o){
+  o.addEventListener('click', function(e){
+    if(e.target!==o) return;
+    if(o.id==='keyOverlay') closeKey(); else o.classList.remove('show');
+  });
+});
+
+/* ---------------- go ---------------- */
+newGame();
+</script>
+</body>
+</html>

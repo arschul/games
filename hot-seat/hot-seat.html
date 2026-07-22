@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hot Seat — Games Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1220; --bg2:#111c30; --panel:#16243c; --line:#26364f;
+  --text:#f1f5f9; --muted:#94a3b8;
+  --accent:#f97316; --accent2:#fbbf24;
+  --good:#22c55e; --bad:#ef4444; --teamA:#38bdf8; --teamB:#f472b6;
+}
+html[data-theme="light"]{
+  --bg:#f6f7fb; --bg2:#ffffff; --panel:#ffffff; --line:#e2e8f0;
+  --text:#0f172a; --muted:#64748b;
+  --accent:#ea580c; --accent2:#d97706;
+  --good:#16a34a; --bad:#dc2626; --teamA:#0284c7; --teamB:#db2777;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;padding:70px 18px 28px;transition:background .25s,color .25s;
+}
+h1,h2,h3,.word,.timer,.score{font-family:'Sora',sans-serif}
+
+.back-link{
+  position:fixed;top:14px;left:14px;z-index:100000;
+  background:rgba(15,23,42,.78);color:#fff;text-decoration:none;
+  padding:9px 16px;border-radius:999px;font-weight:600;font-size:.85rem;
+  border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(6px);
+}
+.back-link:hover{background:var(--accent);border-color:var(--accent)}
+.theme-toggle{
+  position:fixed;top:14px;right:14px;z-index:100000;cursor:pointer;
+  background:rgba(15,23,42,.78);color:#fff;border:1px solid rgba(255,255,255,.18);
+  padding:9px 14px;border-radius:999px;font-size:1rem;backdrop-filter:blur(6px);
+}
+
+header{max-width:1400px;margin:0 auto 18px;text-align:center}
+h1{font-size:clamp(1.6rem,4vw,2.6rem);font-weight:800;letter-spacing:-.02em}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:.95rem;margin-top:4px}
+
+.bar{
+  max-width:1400px;margin:16px auto;display:flex;flex-wrap:wrap;
+  gap:10px;justify-content:center;align-items:center;
+}
+.pill{
+  background:var(--panel);border:2px solid var(--line);color:var(--text);
+  padding:8px 18px;border-radius:999px;font-weight:700;font-size:.9rem;
+  cursor:pointer;transition:.15s;font-family:'Inter',sans-serif;
+}
+.pill:hover{border-color:var(--accent)}
+.pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.divider{width:1px;height:26px;background:var(--line)}
+.lbl{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+
+.stage{
+  max-width:1400px;margin:0 auto;display:grid;
+  grid-template-columns:1fr minmax(320px,2.2fr) 1fr;gap:18px;align-items:stretch;
+}
+@media(max-width:900px){.stage{grid-template-columns:1fr}}
+
+.team{
+  background:var(--panel);border:3px solid var(--line);border-radius:20px;
+  padding:22px 16px;text-align:center;display:flex;flex-direction:column;
+  justify-content:center;gap:6px;transition:.2s;
+}
+.team.active{box-shadow:0 0 0 4px color-mix(in srgb,var(--tc) 40%,transparent);border-color:var(--tc)}
+.team h3{font-size:1.15rem;font-weight:800;color:var(--tc)}
+.score{font-size:clamp(2.6rem,7vw,4.4rem);font-weight:800;line-height:1}
+.turnflag{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-height:1em}
+.team.active .turnflag{color:var(--tc)}
+.tiny-btn{
+  background:transparent;border:1px solid var(--line);color:var(--muted);
+  border-radius:8px;padding:4px 10px;font-size:.75rem;cursor:pointer;margin:2px;
+  font-family:'Inter',sans-serif;
+}
+.tiny-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.card{
+  background:var(--bg2);border:3px solid var(--accent);border-radius:24px;
+  padding:26px 22px;display:flex;flex-direction:column;align-items:center;gap:16px;
+  position:relative;overflow:hidden;
+}
+.card::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(600px 200px at 50% -10%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%);
+  pointer-events:none}
+.lvltag{
+  background:var(--accent);color:#fff;font-weight:800;font-size:.75rem;
+  padding:4px 12px;border-radius:999px;letter-spacing:.1em;
+}
+.word{
+  font-size:clamp(2.4rem,7.5vw,5rem);font-weight:800;text-align:center;
+  line-height:1.05;letter-spacing:-.02em;word-break:break-word;
+}
+.dontsay{
+  width:100%;max-width:520px;background:var(--panel);border:2px solid var(--line);
+  border-radius:16px;padding:14px;
+}
+.dontsay .head{
+  color:var(--bad);font-weight:800;font-size:.78rem;letter-spacing:.14em;
+  text-transform:uppercase;text-align:center;margin-bottom:10px;
+}
+.forbid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.forbid div{
+  background:color-mix(in srgb,var(--bad) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--bad) 35%,transparent);
+  border-radius:10px;padding:8px 6px;text-align:center;
+  font-weight:600;font-size:clamp(.95rem,2vw,1.25rem);
+}
+.timer{
+  font-size:clamp(2.6rem,8vw,4.6rem);font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.timer.warn{color:var(--bad);animation:pulse .6s infinite alternate}
+@keyframes pulse{to{transform:scale(1.06)}}
+.timer.idle{color:var(--muted)}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%}
+.btn{
+  font-family:'Sora',sans-serif;font-weight:700;font-size:1rem;
+  border:none;border-radius:14px;padding:14px 26px;cursor:pointer;
+  transition:transform .1s,filter .15s;color:#fff;
+}
+.btn:hover{filter:brightness(1.1)}
+.btn:active{transform:translateY(2px)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.good{background:var(--good)}
+.btn.pass{background:var(--muted)}
+.btn.go{background:var(--accent)}
+.btn.ghost{background:transparent;color:var(--text);border:2px solid var(--line)}
+.keyhint{color:var(--muted);font-size:.75rem;text-align:center}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(2,6,23,.82);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;z-index:99999;padding:20px;
+}
+.overlay.show{display:flex}
+.modal{
+  background:var(--bg2);border:3px solid var(--accent);border-radius:22px;
+  padding:28px;max-width:620px;width:100%;max-height:86vh;overflow:auto;
+}
+.modal h2{font-size:1.6rem;margin-bottom:6px}
+.modal .m-sub{color:var(--muted);margin-bottom:16px;font-size:.9rem}
+.reslist{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.reslist li{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;
+  font-weight:600;
+}
+.tag{font-size:.72rem;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.06em}
+.tag.y{background:var(--good);color:#fff}
+.tag.n{background:var(--muted);color:#fff}
+.gained{font-size:1.1rem;font-weight:800;color:var(--accent);margin-bottom:14px}
+.rules{color:var(--muted);font-size:.92rem;line-height:1.65}
+.rules li{margin-left:18px;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<a class="back-link" href="../">← Games Hub</a>
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+
+<header>
+  <h1>🔥 Hot <span>Seat</span></h1>
+  <p class="sub">Describe the word — without saying any of the forbidden words.</p>
+</header>
+
+<div class="bar">
+  <span class="lbl">Level</span>
+  <button class="pill" data-lvl="A1" onclick="setLevel('A1')">A1</button>
+  <button class="pill" data-lvl="A2" onclick="setLevel('A2')">A2</button>
+  <button class="pill" data-lvl="B1" onclick="setLevel('B1')">B1</button>
+  <button class="pill" data-lvl="B2" onclick="setLevel('B2')">B2</button>
+  <span class="divider"></span>
+  <span class="lbl">Round</span>
+  <button class="pill" data-sec="30" onclick="setSeconds(30)">30s</button>
+  <button class="pill" data-sec="60" onclick="setSeconds(60)">60s</button>
+  <button class="pill" data-sec="90" onclick="setSeconds(90)">90s</button>
+  <span class="divider"></span>
+  <button class="pill" id="penaltyBtn" onclick="togglePenalty()">Pass = −1</button>
+  <button class="pill" onclick="openRules()">? Rules</button>
+  <button class="pill" onclick="resetAll()">Reset scores</button>
+</div>
+
+<div class="stage">
+  <div class="team active" id="teamA" style="--tc:var(--teamA)">
+    <h3 id="nameA">Team A</h3>
+    <div class="score" id="scoreA">0</div>
+    <div class="turnflag" id="flagA">Their turn</div>
+    <div>
+      <button class="tiny-btn" onclick="renameTeam('A')">Rename</button>
+      <button class="tiny-btn" onclick="adjust('A',-1)">−1</button>
+      <button class="tiny-btn" onclick="adjust('A',1)">+1</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lvltag" id="lvlTag">A2</div>
+    <div class="word" id="word">Ready?</div>
+    <div class="dontsay">
+      <div class="head">Do not say</div>
+      <div class="forbid" id="forbid"></div>
+    </div>
+    <div class="timer idle" id="timer">0:60</div>
+    <div class="controls">
+      <button class="btn go" id="startBtn" onclick="startTurn()">▶ Start turn</button>
+      <button class="btn good" id="gotBtn" onclick="gotIt()" disabled>✓ Got it</button>
+      <button class="btn pass" id="passBtn" onclick="passIt()" disabled>↷ Pass</button>
+      <button class="btn ghost" onclick="endTurn(false)" id="stopBtn" disabled>■ End</button>
+    </div>
+    <p class="keyhint">Keyboard: <b>Space</b> = got it · <b>P</b> = pass · <b>Enter</b> = start / end</p>
+  </div>
+
+  <div class="team" id="teamB" style="--tc:var(--teamB)">
+    <h3 id="nameB">Team B</h3>
+    <div class="score" id="scoreB">0</div>
+    <div class="turnflag" id="flagB"></div>
+    <div>
+      <button class="tiny-btn" onclick="renameTeam('B')">Rename</button>
+      <button class="tiny-btn" onclick="adjust('B',-1)">−1</button>
+      <button class="tiny-btn" onclick="adjust('B',1)">+1</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+/* ---------- theme ---------- */
+function toggleTheme(){
+  const h=document.documentElement;
+  const next=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  h.setAttribute('data-theme',next);
+  localStorage.setItem('theme',next);
+}
+(function(){const s=localStorage.getItem('theme');if(s)document.documentElement.setAttribute('data-theme',s);})();
+
+/* ---------- word bank: [target, f1, f2, f3, f4] ---------- */
+const WORDS={
+A1:[
+["dog","animal","pet","bark","cat"],
+["school","teacher","study","class","student"],
+["apple","fruit","red","eat","tree"],
+["teacher","school","class","student","learn"],
+["car","drive","road","wheel","vehicle"],
+["book","read","page","story","library"],
+["water","drink","wet","blue","rain"],
+["house","live","home","door","room"],
+["sun","hot","sky","day","light"],
+["rain","water","wet","sky","umbrella"],
+["cat","animal","pet","mouse","dog"],
+["friend","person","like","together","best"],
+["pizza","food","italian","cheese","eat"],
+["bicycle","ride","two","wheel","bike"],
+["mother","family","mum","parent","father"],
+["phone","call","mobile","text","talk"],
+["shoes","feet","wear","walk","socks"],
+["beach","sand","sea","sun","swim"],
+["chair","sit","table","wood","furniture"],
+["bread","eat","bakery","sandwich","butter"],
+["window","glass","open","look","wall"],
+["milk","drink","white","cow","glass"],
+["birthday","cake","party","year","born"],
+["bed","sleep","room","night","pillow"],
+["dance","music","move","party","feet"],
+["hospital","doctor","sick","nurse","ill"],
+["banana","fruit","yellow","monkey","peel"],
+["kitchen","cook","food","room","stove"],
+["winter","cold","snow","season","summer"],
+["football","sport","ball","play","goal"],
+["computer","screen","type","internet","laptop"],
+["money","pay","buy","cash","rich"],
+["tree","green","leaf","wood","forest"],
+["music","listen","song","sound","hear"],
+["sister","family","girl","brother","sibling"],
+["park","grass","trees","walk","playground"],
+["clock","time","hour","hands","watch"],
+["ice cream","cold","sweet","dessert","cone"],
+["bus","ride","driver","stop","transport"],
+["film","watch","cinema","actor","screen"]
+],
+A2:[
+["airport","plane","fly","travel","ticket"],
+["hobby","free time","like","activity","do"],
+["restaurant","eat","waiter","menu","food"],
+["dentist","teeth","doctor","drill","appointment"],
+["holiday","travel","break","work","trip"],
+["supermarket","shop","food","buy","trolley"],
+["weather","rain","sun","forecast","temperature"],
+["photograph","camera","picture","take","photo"],
+["homework","school","study","home","teacher"],
+["neighbour","next","live","house","near"],
+["passport","travel","document","country","airport"],
+["uniform","wear","school","same","clothes"],
+["concert","music","band","live","tickets"],
+["recipe","cook","food","ingredients","instructions"],
+["suitcase","travel","pack","clothes","bag"],
+["exam","test","study","school","pass"],
+["hairdresser","hair","cut","salon","scissors"],
+["wallet","money","pocket","cards","purse"],
+["museum","art","history","visit","exhibition"],
+["camping","tent","outside","nature","sleep"],
+["traffic","cars","road","jam","slow"],
+["medicine","sick","pill","doctor","health"],
+["library","books","quiet","borrow","read"],
+["swimming","pool","water","sport","dive"],
+["present","give","birthday","wrap","surprise"],
+["jacket","wear","cold","coat","clothes"],
+["train station","train","platform","ticket","travel"],
+["mountain","high","climb","hill","snow"],
+["celebrity","famous","star","media","actor"],
+["blanket","bed","warm","cover","sleep"],
+["crowded","many","people","full","space"],
+["delicious","tasty","food","good","eat"],
+["borrow","lend","take","return","give"],
+["lazy","work","tired","nothing","effort"],
+["journey","travel","trip","go","distance"],
+["invitation","party","ask","come","card"],
+["rubbish","bin","throw","waste","trash"],
+["earthquake","shake","ground","disaster","natural"],
+["sunset","sun","evening","sky","down"],
+["queue","wait","people","stand","line"]
+],
+B1:[
+["deadline","time","finish","work","date"],
+["interview","job","questions","ask","employer"],
+["rumour","story","true","people","spread"],
+["volunteer","help","free","work","charity"],
+["recycling","waste","plastic","environment","reuse"],
+["commute","work","travel","daily","journey"],
+["superstition","luck","believe","ladder","black cat"],
+["curfew","time","home","parents","night"],
+["allowance","money","parents","week","pocket"],
+["peer pressure","friends","influence","group","do"],
+["stereotype","group","idea","prejudice","assume"],
+["jet lag","travel","tired","time zone","flight"],
+["blackout","power","electricity","dark","cut"],
+["procrastinate","later","delay","work","postpone"],
+["audition","acting","try","part","role"],
+["refund","money","back","return","shop"],
+["eco-friendly","environment","green","planet","harm"],
+["sarcasm","say","opposite","tone","joke"],
+["overrated","good","people","think","better"],
+["addicted","stop","habit","dependent","quit"],
+["burnout","tired","work","stress","exhausted"],
+["shortcut","quick","way","faster","route"],
+["multitask","same time","two","things","once"],
+["sleepover","friends","night","house","stay"],
+["plot twist","story","surprise","end","film"],
+["spoiler","story","tell","ending","ruin"],
+["influencer","social media","followers","promote","online"],
+["crowdfunding","money","online","project","donate"],
+["rehearsal","practice","play","before","performance"],
+["landlord","rent","flat","tenant","owner"],
+["souvenir","travel","buy","remember","gift"],
+["hitchhike","car","thumb","ride","free"],
+["insomnia","sleep","night","awake","tired"],
+["bargain","cheap","price","buy","deal"],
+["anonymous","name","unknown","hidden","identity"],
+["generation gap","old","young","difference","parents"],
+["side effect","medicine","unwanted","result","drug"],
+["work experience","job","student","learn","placement"],
+["homesick","miss","home","away","travel"],
+["eyewitness","see","crime","court","describe"]
+],
+B2:[
+["bureaucracy","paperwork","government","slow","forms"],
+["sustainability","environment","future","resources","long-term"],
+["censorship","ban","information","government","media"],
+["nostalgia","past","feeling","memory","miss"],
+["gentrification","neighbourhood","rich","prices","change"],
+["whistleblower","expose","company","secret","report"],
+["paradox","contradiction","statement","true","opposite"],
+["bias","unfair","opinion","judgement","prejudice"],
+["inflation","prices","money","rise","economy"],
+["ethics","right","wrong","moral","principles"],
+["resilience","recover","difficulty","strong","bounce"],
+["algorithm","computer","steps","rules","calculate"],
+["meritocracy","talent","reward","system","effort"],
+["philanthropy","give","money","charity","rich"],
+["deforestation","trees","cut","forest","Amazon"],
+["surveillance","watch","cameras","monitor","privacy"],
+["empathy","feel","others","understand","emotions"],
+["infrastructure","roads","bridges","systems","build"],
+["controversy","disagree","argument","public","opinion"],
+["innovation","new","invent","idea","technology"],
+["loophole","law","escape","rules","gap"],
+["scapegoat","blame","person","fault","others"],
+["counterfeit","fake","money","copy","brand"],
+["prejudice","judge","before","unfair","group"],
+["autonomy","independent","control","freedom","self"],
+["stigma","shame","society","label","negative"],
+["entrepreneur","business","start","risk","company"],
+["propaganda","information","persuade","political","biased"],
+["accountability","responsible","blame","answer","actions"],
+["urbanisation","cities","move","growth","rural"],
+["plagiarism","copy","work","credit","steal"],
+["cynical","believe","negative","motives","distrust"],
+["inevitable","happen","stop","certain","avoid"],
+["subsidy","money","government","support","industry"],
+["nuance","small","difference","detail","subtle"],
+["echo chamber","opinions","same","online","bubble"],
+["obsolete","old","useless","outdated","replace"],
+["mediation","conflict","resolve","agreement","neutral"],
+["exploitation","unfair","use","workers","advantage"],
+["threshold","limit","point","cross","minimum"]
+]
+};
+
+/* ---------- state ---------- */
+const S={
+  level:'A2', seconds:60, penalty:true,
+  scores:{A:0,B:0}, names:{A:'Team A',B:'Team B'},
+  turn:'A', running:false, left:60, timerId:null,
+  deck:[], idx:0, current:null, log:[], gained:0
+};
+
+/* ---------- persistence ---------- */
+function save(){
+  localStorage.setItem('hotseat-games',JSON.stringify({
+    level:S.level,seconds:S.seconds,penalty:S.penalty,names:S.names
+  }));
+}
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem('hotseat-games')||'{}');
+    if(d.level&&WORDS[d.level])S.level=d.level;
+    if([30,60,90].includes(d.seconds))S.seconds=d.seconds;
+    if(typeof d.penalty==='boolean')S.penalty=d.penalty;
+    if(d.names&&d.names.A&&d.names.B)S.names=d.names;
+  }catch(e){}
+}
+
+/* ---------- audio ---------- */
+let ac=null;
+function actx(){ if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)(); return ac; }
+function beep(freq,dur,type,vol){
+  try{
+    const c=actx(),o=c.createOscillator(),g=c.createGain();
+    o.type=type||'sine';o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.15,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+dur);
+    o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+dur);
+  }catch(e){}
+}
+function sndGood(){beep(660,.12,'triangle',.18);setTimeout(()=>beep(990,.18,'triangle',.18),110);}
+function sndPass(){beep(240,.18,'square',.12);}
+function sndTick(){beep(880,.06,'sine',.08);}
+function sndEnd(){beep(300,.25,'sawtooth',.14);setTimeout(()=>beep(200,.45,'sawtooth',.14),240);}
+function sndStart(){beep(520,.1,'triangle',.14);setTimeout(()=>beep(780,.15,'triangle',.14),100);}
+
+/* ---------- deck ---------- */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function buildDeck(){ S.deck=shuffle(WORDS[S.level].slice()); S.idx=0; }
+function nextCard(){
+  if(S.idx>=S.deck.length) buildDeck();
+  S.current=S.deck[S.idx++];
+  renderCard();
+}
+
+/* ---------- render ---------- */
+function renderCard(){
+  document.getElementById('lvlTag').textContent=S.level;
+  document.getElementById('word').textContent=S.current[0];
+  document.getElementById('forbid').innerHTML=
+    S.current.slice(1).map(w=>'<div>'+w+'</div>').join('');
+}
+function fmt(n){const m=Math.floor(n/60),s=n%60;return m+':'+(s<10?'0':'')+s;}
+function renderTimer(){
+  const t=document.getElementById('timer');
+  t.textContent=fmt(S.left);
+  t.classList.toggle('warn',S.running&&S.left<=10);
+  t.classList.toggle('idle',!S.running);
+}
+function renderScores(){
+  document.getElementById('scoreA').textContent=S.scores.A;
+  document.getElementById('scoreB').textContent=S.scores.B;
+  document.getElementById('nameA').textContent=S.names.A;
+  document.getElementById('nameB').textContent=S.names.B;
+  document.getElementById('teamA').classList.toggle('active',S.turn==='A');
+  document.getElementById('teamB').classList.toggle('active',S.turn==='B');
+  document.getElementById('flagA').textContent=S.turn==='A'?'Their turn':'';
+  document.getElementById('flagB').textContent=S.turn==='B'?'Their turn':'';
+}
+function renderBar(){
+  document.querySelectorAll('[data-lvl]').forEach(b=>b.classList.toggle('on',b.dataset.lvl===S.level));
+  document.querySelectorAll('[data-sec]').forEach(b=>b.classList.toggle('on',+b.dataset.sec===S.seconds));
+  const p=document.getElementById('penaltyBtn');
+  p.classList.toggle('on',S.penalty);
+  p.textContent=S.penalty?'Pass = −1':'Pass = 0';
+}
+function renderButtons(){
+  document.getElementById('startBtn').disabled=S.running;
+  document.getElementById('gotBtn').disabled=!S.running;
+  document.getElementById('passBtn').disabled=!S.running;
+  document.getElementById('stopBtn').disabled=!S.running;
+}
+
+/* ---------- settings ---------- */
+function setLevel(l){
+  if(S.running)return;
+  S.level=l;buildDeck();nextCard();renderBar();save();
+}
+function setSeconds(n){
+  if(S.running)return;
+  S.seconds=n;S.left=n;renderTimer();renderBar();save();
+}
+function togglePenalty(){S.penalty=!S.penalty;renderBar();save();}
+function renameTeam(t){
+  const v=prompt('Team name:',S.names[t]);
+  if(v&&v.trim()){S.names[t]=v.trim().slice(0,18);renderScores();save();}
+}
+function adjust(t,n){S.scores[t]=Math.max(0,S.scores[t]+n);renderScores();}
+function resetAll(){
+  if(S.running)return;
+  S.scores={A:0,B:0};S.turn='A';buildDeck();nextCard();renderScores();
+}
+
+/* ---------- turn flow ---------- */
+function startTurn(){
+  if(S.running)return;
+  try{actx().resume();}catch(e){}
+  S.running=true;S.left=S.seconds;S.log=[];S.gained=0;
+  sndStart();nextCard();renderTimer();renderButtons();
+  S.timerId=setInterval(()=>{
+    S.left--;
+    if(S.running&&S.left<=5&&S.left>0)sndTick();
+    renderTimer();
+    if(S.left<=0)endTurn(true);
+  },1000);
+}
+function gotIt(){
+  if(!S.running)return;
+  S.scores[S.turn]++;S.gained++;
+  S.log.push({w:S.current[0],ok:true});
+  sndGood();renderScores();nextCard();
+}
+function passIt(){
+  if(!S.running)return;
+  if(S.penalty){S.scores[S.turn]=Math.max(0,S.scores[S.turn]-1);S.gained--;}
+  S.log.push({w:S.current[0],ok:false});
+  sndPass();renderScores();nextCard();
+}
+function endTurn(timeUp){
+  if(!S.running)return;
+  clearInterval(S.timerId);S.running=false;
+  if(timeUp)sndEnd();
+  renderButtons();
+  const who=S.names[S.turn];
+  S.turn=S.turn==='A'?'B':'A';
+  renderScores();
+  S.left=S.seconds;renderTimer();
+  showSummary(who,timeUp);
+}
+
+/* ---------- modals ---------- */
+function closeModal(){document.getElementById('overlay').classList.remove('show');}
+function showSummary(who,timeUp){
+  const items=S.log.length
+    ? S.log.map(e=>'<li><span>'+e.w+'</span><span class="tag '+(e.ok?'y':'n')+'">'+(e.ok?'GOT IT':'PASSED')+'</span></li>').join('')
+    : '<li><span>No cards played</span></li>';
+  document.getElementById('modal').innerHTML=
+    '<h2>'+(timeUp?"Time is up!":"Turn ended")+'</h2>'+
+    '<p class="m-sub">'+who+' — round review. Ask the class to use two of these words in a sentence.</p>'+
+    '<p class="gained">Points this turn: '+(S.gained>0?'+':'')+S.gained+'</p>'+
+    '<ul class="reslist">'+items+'</ul>'+
+    '<div class="controls"><button class="btn go" onclick="closeModal()">Next team →</button></div>';
+  document.getElementById('overlay').classList.add('show');
+}
+function openRules(){
+  document.getElementById('modal').innerHTML=
+    '<h2>How to play</h2>'+
+    '<p class="m-sub">Taboo-style describing game for pairs, teams or the whole class.</p>'+
+    '<div class="rules"><ol>'+
+    '<li>Split the class into two teams. One student from the active team stands so they can see the screen — their team faces away.</li>'+
+    '<li>Press <b>Start turn</b>. The describer explains the big word in English.</li>'+
+    '<li>They must not say the word itself, any part of it, or any of the four forbidden words. No gestures, no translation.</li>'+
+    '<li>Team guesses correctly → <b>Got it</b> (+1). Stuck → <b>Pass</b>.</li>'+
+    '<li>When the timer stops, the other team takes over. Highest score wins.</li>'+
+    '</ol><p style="margin-top:12px">Tip: after each turn, use the review list as a quick speaking warm-up — students make a sentence with two of the words.</p></div>'+
+    '<div class="controls" style="margin-top:18px"><button class="btn go" onclick="closeModal()">Got it</button></div>';
+  document.getElementById('overlay').classList.add('show');
+}
+
+/* ---------- keyboard ---------- */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  const open=document.getElementById('overlay').classList.contains('show');
+  if(open){ if(e.code==='Enter'||e.code==='Escape'||e.code==='Space'){e.preventDefault();closeModal();} return; }
+  if(e.code==='Space'){e.preventDefault();S.running?gotIt():startTurn();}
+  else if(e.key==='p'||e.key==='P'){e.preventDefault();passIt();}
+  else if(e.code==='Enter'){e.preventDefault();S.running?endTurn(false):startTurn();}
+});
+document.getElementById('overlay').addEventListener('click',e=>{
+  if(e.target.id==='overlay')closeModal();
+});
+
+/* ---------- init ---------- */
+load();
+S.left=S.seconds;
+buildDeck();nextCard();
+renderBar();renderScores();renderTimer();renderButtons();
+</script>
+</body>
+</html>

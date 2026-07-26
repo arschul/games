@@ -39,6 +39,18 @@ header{text-align:center;padding:2.5rem 0 1.8rem;border-bottom:1px solid var(--b
 .toolbar{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:1.2rem;}
 .tools{display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end;}
 .khint{font-size:.7rem;color:var(--muted);letter-spacing:.05em;text-align:center;margin:-.4rem 0 1.3rem;}
+.meta{font-size:.7rem;color:var(--muted);letter-spacing:.07em;margin-top:.75rem;line-height:1.7;}
+.meta b{color:var(--accent2);font-weight:400;}
+.ttsrow{display:flex;gap:.4rem;justify-content:flex-end;align-items:center;margin-top:1.2rem;padding-top:.95rem;border-top:1px solid var(--border);}
+.tbtn.live{border-color:var(--accent);color:var(--accent);}
+.ecount{font-size:.82rem;color:var(--muted);letter-spacing:.05em;margin-bottom:.9rem;}
+.ecount b{color:var(--accent);font-size:1.2rem;font-weight:700;}
+.egroup{font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;margin:1.3rem 0 .55rem;}
+.egroup:first-child{margin-top:0;}
+.endgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:.45rem;}
+.eslot{background:var(--surface2);border-radius:7px;padding:.5rem .65rem;font-size:.75rem;line-height:1.4;border-left:3px solid var(--border);}
+.eslot.locked{color:var(--muted);opacity:.5;font-style:italic;}
+.ereset{margin-top:1.5rem;text-align:center;}
 .ch-label{font-size:.74rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;}
 .tbtn{background:transparent;border:1px solid var(--border);border-radius:50px;padding:.38rem .9rem;color:var(--muted);font-family:'Lato',sans-serif;font-size:.76rem;cursor:pointer;transition:border-color .2s,color .2s;display:inline-flex;align-items:center;gap:.35rem;}
 .tbtn:hover{border-color:var(--accent);color:var(--accent);}
@@ -100,11 +112,13 @@ header{text-align:center;padding:2.5rem 0 1.8rem;border-bottom:1px solid var(--b
   <header>
     <div class="logo">The Lost Signal</div>
     <div class="tagline">A Choose Your Own Adventure</div>
+    <div class="meta" id="meta"></div>
   </header>
   <div class="toolbar">
     <span class="ch-label" id="chlabel" aria-live="polite">—</span>
     <div class="tools">
       <button class="tbtn" id="undobtn" title="Go back one scene (Backspace)">↩ <span class="tlab">Back</span></button>
+      <button class="tbtn" id="endbtn" title="Endings you have found (E)">🏆 <span class="tlab">Endings</span></button>
       <button class="tbtn" id="storybtn" title="Story so far (S)">📖 <span class="tlab">Story</span></button>
       <button class="tbtn" id="bigbtn" title="Projection size (P)" aria-pressed="false">🔍 <span class="tlab">Big</span></button>
       <button class="tbtn" id="themebtn" title="Light / dark mode (T)" aria-label="Switch to light mode">🌙</button>
@@ -117,7 +131,7 @@ header{text-align:center;padding:2.5rem 0 1.8rem;border-bottom:1px solid var(--b
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="mhead">
-      <div class="mtitle">Story So Far</div>
+      <div class="mtitle" id="mtitle">Story So Far</div>
       <button class="mclose" id="mclose">✕</button>
     </div>
     <div id="mcontents"></div>
@@ -3298,6 +3312,120 @@ let cur=null,hist=[],step=0;
 const $=id=>document.getElementById(id);
 const arena=$('arena'), modal=$('modal');
 const RM=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ALL_END=Object.keys(SC).filter(k=>SC[k].ty==='ending');
+const END_TOTAL=ALL_END.length;
+
+/* ── expected scenes remaining (value iteration over the branch graph) ── */
+const EXP=(function(){
+  const ids=Object.keys(SC), E={};
+  ids.forEach(i=>E[i]=SC[i].ty==='ending'?0:1);
+  for(let it=0;it<400;it++){
+    let d=0;
+    for(const i of ids){
+      if(SC[i].ty==='ending')continue;
+      const cx=SC[i].cx||[]; if(!cx.length)continue;
+      let s=0; for(const c of cx)s+=(E[c.nx]!==undefined?E[c.nx]:1);
+      const v=1+s/cx.length;
+      if(Math.abs(v-E[i])>d)d=Math.abs(v-E[i]);
+      E[i]=v;
+    }
+    if(d<1e-9)break;
+  }
+  return E;
+})();
+
+/* ── endings collection ── */
+const END_KEY='lostsignal_endings';
+let found=new Set();
+function loadFound(){
+  try{const r=localStorage.getItem(END_KEY);if(r){const a=JSON.parse(r);if(Array.isArray(a))found=new Set(a.filter(x=>SC[x]&&SC[x].ty==='ending'));}}catch(e){}
+  updateEndBtn();
+}
+function markFound(id){
+  if(found.has(id))return;
+  found.add(id);
+  try{localStorage.setItem(END_KEY,JSON.stringify([...found]));}catch(e){}
+  updateEndBtn();
+}
+function updateEndBtn(){
+  const b=$('endbtn'); if(!b)return;
+  b.title='Endings found: '+found.size+' of '+END_TOTAL+' (E)';
+  b.classList.toggle('on',found.size>0);
+}
+
+/* ── read aloud (Web Speech API) ── */
+const TTS={
+  ok:(typeof window!=='undefined'&&'speechSynthesis'in window&&typeof SpeechSynthesisUtterance!=='undefined'),
+  on:false, rate:0.85, voice:null,
+  init(){
+    if(!this.ok)return;
+    try{const r=parseFloat(localStorage.getItem('ls_rate'));if(r===0.7||r===0.85||r===1)this.rate=r;}catch(e){}
+    try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>this.pick();}catch(e){}
+    this.pick();
+  },
+  pick(){
+    if(!this.ok)return;
+    let vs=[]; try{vs=speechSynthesis.getVoices()||[];}catch(e){}
+    this.voice=vs.find(v=>v.lang==='en-GB'&&/google|natural|female/i.test(v.name))
+             ||vs.find(v=>v.lang==='en-GB')
+             ||vs.find(v=>/^en[-_]GB/i.test(v.lang))
+             ||vs.find(v=>/^en[-_]/i.test(v.lang))||null;
+  },
+  chunks(t){
+    const parts=t.replace(/\s+/g,' ').match(/[^.!?]+[.!?]*\s*/g)||[t];
+    const out=[]; let buf='';
+    for(const p of parts){
+      if((buf+p).length>170&&buf){out.push(buf.trim());buf=p;} else buf+=p;
+    }
+    if(buf.trim())out.push(buf.trim());
+    return out;
+  },
+  stop(){
+    if(!this.ok)return;
+    try{speechSynthesis.cancel();}catch(e){}
+    this.setOn(false);
+  },
+  setOn(v){
+    this.on=v;
+    const b=$('readbtn'); if(!b)return;
+    b.classList.toggle('live',v);
+    b.innerHTML=v?'\u23f9 Stop':'\ud83d\udd0a Read aloud';
+  },
+  say(text){
+    if(!this.ok||!text)return;
+    try{speechSynthesis.cancel();}catch(e){}
+    this.pick();
+    const parts=this.chunks(text), self=this;
+    this.setOn(true);
+    setTimeout(()=>{
+      if(!self.on)return;
+      parts.forEach((p,i)=>{
+        const u=new SpeechSynthesisUtterance(p);
+        if(self.voice)u.voice=self.voice;
+        u.lang=self.voice?self.voice.lang:'en-GB';
+        u.rate=self.rate; u.pitch=1; u.volume=1;
+        if(i===parts.length-1)u.onend=()=>self.setOn(false);
+        u.onerror=()=>self.setOn(false);
+        try{speechSynthesis.speak(u);}catch(e){self.setOn(false);}
+      });
+    },60);
+  },
+  cycleRate(){
+    const steps=[0.7,0.85,1];
+    this.rate=steps[(steps.indexOf(this.rate)+1)%steps.length];
+    try{localStorage.setItem('ls_rate',String(this.rate));}catch(e){}
+    const b=$('ratebtn'); if(b)b.textContent=this.rate+'\u00d7';
+    if(this.on&&cur)this.say(sceneSpeech(SC[cur]));
+  }
+};
+function sceneSpeech(sc){
+  if(!sc)return '';
+  let t=sc.ti+'. '+strip(sc.tx);
+  const cx=sc.cx||sc.cy||[];
+  if(cx.length)t+=' Your choices are. '+cx.map((c,i)=>AL[i]+'. '+c.t).join(' ');
+  else if(sc.etx)t+=' '+strip(sc.etx);
+  return t;
+}
 
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function strip(s){return s.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();}
@@ -3335,10 +3463,11 @@ function loadSave(){
 }
 
 /* ── rendering ── */
-function pct(id){
+function pct(id,traveled){
   if(!SC[id])return 0;
   if(SC[id].ty==='ending')return 100;
-  return Math.min(95,5+(SC[id].d||5)*5);
+  const rem=EXP[id]!==undefined?EXP[id]:4, t=Math.max(0,traveled||0);
+  return Math.max(3,Math.min(98,Math.round(100*t/(t+rem))));
 }
 
 function pushHist(id,sc){
@@ -3366,11 +3495,14 @@ function render(id,noPush){
       '<div class="stext"><p style="color:var(--bad)">'+esc(id)+'</p></div></div>';
     return;
   }
+  TTS.stop();
   cur=id;
   if(!noPush)pushHist(id,sc);
   step=hist.length;
+  if(sc.ty==='ending')markFound(id);
   $('chlabel').textContent=sc.ch||('Step '+step);
-  $('pfill').style.width=pct(id)+'%';
+  $('pfill').style.width=pct(id,step-1)+'%';
+  showMeta(step<=1);
 
   let h='<div class="card">'+
     '<div class="scene-banner"><span class="sem">'+(sc.em||'❓')+'</span>'+
@@ -3379,15 +3511,18 @@ function render(id,noPush){
   const enm={good:'★ Good Ending',neutral:'◆ Neutral Ending',bad:'✖ Bad Ending',weird:'✦ Strange Ending'};
   const enc={good:'eg',neutral:'en',bad:'eb',weird:'ew'};
   if(sc.ty==='ending')h+='<div class="ebadge '+(enc[sc.en]||'en')+'">'+(enm[sc.en]||'Ending')+'</div>';
-  h+='<div class="stitle" tabindex="-1">'+esc(sc.ti)+'</div><div class="stext">'+sc.tx+'</div></div>';
+  h+='<div class="stitle" tabindex="-1">'+esc(sc.ti)+'</div><div class="stext">'+sc.tx+'</div>';
 
+  h+=ttsRow()+'</div>';
   if(sc.ty==='ending'){
     h+='<div class="card" style="border-color:rgba(128,128,128,.16)">'+
       '<div class="ebadge '+(enc[sc.en]||'en')+'" style="margin-bottom:.8rem">'+esc(sc.eti||'')+'</div>'+
       '<div class="stext">'+(sc.etx||'')+'</div>'+
+      '<div class="ecount" style="margin-top:1.1rem"><b>'+found.size+'</b> of '+END_TOTAL+' endings found</div>'+
       '<div class="rrow">'+
         '<button class="rbtn ra" data-act="restart">↺ Start Over</button>'+
         '<button class="rbtn rb" data-act="undo">↩ Go back one step</button>'+
+        '<button class="rbtn rb" data-act="endings">🏆 See all endings</button>'+
       '</div></div>';
   }else{
     const cx=sc.cx||sc.cy||[];
@@ -3406,6 +3541,44 @@ function render(id,noPush){
   focusTitle();
 }
 
+function ttsRow(){
+  if(!TTS.ok)return '';
+  return '<div class="ttsrow">'+
+    '<button class="tbtn" id="ratebtn" data-act="rate" title="Reading speed">'+TTS.rate+'\u00d7</button>'+
+    '<button class="tbtn" id="readbtn" data-act="read" title="Read this scene aloud (L)">\ud83d\udd0a Read aloud</button>'+
+    '</div>';
+}
+
+function showMeta(on){
+  const m=$('meta'); if(!m)return;
+  if(!on){m.innerHTML='';return;}
+  m.innerHTML='Reading level <b>A2\u2013B1</b> \u00b7 <b>'+END_TOTAL+'</b> endings \u00b7 about <b>6</b> scenes per playthrough'+
+    (found.size?' \u00b7 <b>'+found.size+'</b> found so far':'');
+}
+
+function openEndings(){
+  TTS.stop();
+  $('mtitle').textContent='Endings';
+  modal.classList.add('open');
+  const groups=[['good','\u2605 Good','var(--good)'],['neutral','\u25c6 Neutral','var(--neutral)'],['weird','\u2726 Strange','var(--weird)'],['bad','\u2716 Bad','var(--bad)']];
+  let html='<div class="ecount"><b>'+found.size+'</b> of '+END_TOTAL+' endings found</div>';
+  groups.forEach(([key,label,col])=>{
+    const list=ALL_END.filter(i=>SC[i].en===key);
+    if(!list.length)return;
+    const got=list.filter(i=>found.has(i)).length;
+    html+='<div class="egroup" style="color:'+col+'">'+label+' \u00b7 '+got+'/'+list.length+'</div><div class="endgrid">';
+    list.forEach(i=>{
+      html+=found.has(i)
+        ? '<div class="eslot" style="border-left-color:'+col+'">'+esc(SC[i].ti)+'</div>'
+        : '<div class="eslot locked">not found yet</div>';
+    });
+    html+='</div>';
+  });
+  html+='<div class="ereset"><button class="tbtn" data-act="resetend">Clear ending record</button></div>';
+  $('mcontents').innerHTML=html;
+  $('mclose').focus();
+}
+
 function choose(nx,tx){
   if(!SC[nx]){
     arena.insertAdjacentHTML('beforeend','<p style="color:var(--bad);padding:1rem">Missing: '+esc(nx)+'</p>');
@@ -3416,6 +3589,7 @@ function choose(nx,tx){
 }
 
 function undo(){
+  TTS.stop();
   if(hist.length<2)return;
   hist.pop();
   const p=hist[hist.length-1];
@@ -3424,6 +3598,7 @@ function undo(){
 }
 
 function doRestart(ask){
+  TTS.stop();
   if(ask&&hist.length>1&&!confirm('Start the story over from the beginning?'))return;
   hist=[];step=0;clearSave();
   render('start');
@@ -3433,7 +3608,8 @@ function showResume(s){
   const sc=SC[s.cur], n=s.hist.length;
   hist=s.hist; cur=s.cur;
   $('chlabel').textContent='Saved story';
-  $('pfill').style.width=pct(s.cur)+'%';
+  $('pfill').style.width=pct(s.cur,Math.max(0,n-1))+'%';
+  showMeta(false);
   arena.innerHTML='<div class="card">'+
     '<div class="scene-banner"><span class="sem">🔖</span><span class="slabel">saved progress</span></div>'+
     '<div class="stitle" tabindex="-1">Continue your story?</div>'+
@@ -3448,7 +3624,9 @@ function showResume(s){
 
 /* ── story-so-far modal ── */
 function openModal(){
+  TTS.stop();
   const ct=$('mcontents');
+  $('mtitle').textContent='Story So Far';
   modal.classList.add('open');
   if(!hist.length){ct.innerHTML='<p style="text-align:center;color:var(--muted);padding:2rem 0">No story yet.</p>';return;}
   const ec={good:'var(--good)',neutral:'var(--neutral)',bad:'var(--bad)',weird:'var(--weird)'};
@@ -3477,6 +3655,9 @@ arena.addEventListener('click',e=>{
   else if(act==='undo')undo();
   else if(act==='resume')render(cur,true);
   else if(act==='fresh')doRestart(false);
+  else if(act==='endings')openEndings();
+  else if(act==='read'){TTS.on?TTS.stop():TTS.say(sceneSpeech(SC[cur]));}
+  else if(act==='rate')TTS.cycleRate();
 });
 
 $('undobtn').addEventListener('click',()=>undo());
@@ -3484,7 +3665,16 @@ $('restartbtn').addEventListener('click',()=>doRestart(true));
 $('storybtn').addEventListener('click',openModal);
 $('themebtn').addEventListener('click',()=>setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light'));
 $('bigbtn').addEventListener('click',()=>setBig(document.documentElement.getAttribute('data-big')!=='1'));
+$('endbtn').addEventListener('click',openEndings);
 $('mclose').addEventListener('click',closeModal);
+$('mcontents').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act="resetend"]');
+  if(!b)return;
+  if(!confirm('Clear the record of which endings have been found?'))return;
+  found=new Set();
+  try{localStorage.removeItem(END_KEY);}catch(e2){}
+  updateEndBtn(); openEndings();
+});
 modal.addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 
 document.addEventListener('keydown',e=>{
@@ -3501,12 +3691,17 @@ document.addEventListener('keydown',e=>{
   if(k==='T'){setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');return;}
   if(k==='P'){setBig(document.documentElement.getAttribute('data-big')!=='1');return;}
   if(k==='S'){e.preventDefault();openModal();return;}
+  if(k==='E'){e.preventDefault();openEndings();return;}
+  if(k==='L'){e.preventDefault();TTS.on?TTS.stop():TTS.say(sceneSpeech(SC[cur]));return;}
   if(k==='R'){doRestart(true);return;}
 });
 
 /* ── boot ── */
 setTheme(document.documentElement.getAttribute('data-theme')==='light'?'light':'dark');
 setBig(document.documentElement.getAttribute('data-big')==='1');
+TTS.init();
+loadFound();
+window.addEventListener('pagehide',()=>TTS.stop());
 const saved=loadSave();
 if(saved)showResume(saved); else render('start');
 </script>

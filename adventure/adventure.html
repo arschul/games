@@ -51,6 +51,9 @@ header{text-align:center;padding:2.5rem 0 1.8rem;border-bottom:1px solid var(--b
 .eslot{background:var(--surface2);border-radius:7px;padding:.5rem .65rem;font-size:.75rem;line-height:1.4;border-left:3px solid var(--border);}
 .eslot.locked{color:var(--muted);opacity:.5;font-style:italic;}
 .ereset{margin-top:1.5rem;text-align:center;}
+.vsel{background:var(--surface2);border:1px solid var(--border);border-radius:50px;padding:.4rem .7rem;color:var(--muted);font-family:'Lato',sans-serif;font-size:.72rem;letter-spacing:.04em;cursor:pointer;max-width:9.5rem;text-overflow:ellipsis;}
+.vsel:hover,.vsel:focus{border-color:var(--accent);color:var(--accent);outline:none;}
+.vsel option,.vsel optgroup{background:var(--surface);color:var(--text);}
 .gl{border-bottom:1px dotted var(--accent2);cursor:help;}
 .gl:hover,.gl:focus{background:rgba(201,123,58,.14);outline:none;border-bottom-style:solid;}
 .gpop{position:absolute;z-index:120;max-width:280px;background:var(--surface2);border:1px solid var(--accent);border-radius:9px;padding:.7rem .85rem;box-shadow:0 8px 26px rgba(0,0,0,.45);display:none;}
@@ -3764,21 +3767,34 @@ function updateEndBtn(){
 /* ── read aloud (Web Speech API) ── */
 const TTS={
   ok:(typeof window!=='undefined'&&'speechSynthesis'in window&&typeof SpeechSynthesisUtterance!=='undefined'),
-  on:false, rate:0.85, voice:null,
+  on:false, rate:0.85, voice:null, voiceKey:'',
   init(){
     if(!this.ok)return;
     try{const r=parseFloat(localStorage.getItem('ls_rate'));if(r===0.7||r===0.85||r===1)this.rate=r;}catch(e){}
-    try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>this.pick();}catch(e){}
+    try{this.voiceKey=localStorage.getItem('ls_voice')||'';}catch(e){}
+    try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{this.pick();refreshVoiceSel();};}catch(e){}
     this.pick();
   },
   pick(){
     if(!this.ok)return;
     let vs=[]; try{vs=speechSynthesis.getVoices()||[];}catch(e){}
+    if(this.voiceKey){
+      const m=vs.find(v=>vkey(v)===this.voiceKey);
+      if(m){this.voice=m;return;}
+    }
     this.voice=vs.find(v=>v.lang==='en-GB'&&/google|natural|female/i.test(v.name))
              ||vs.find(v=>v.lang==='en-GB')
              ||vs.find(v=>/^en[-_]GB/i.test(v.lang))
              ||vs.find(v=>/^en[-_]/i.test(v.lang))||null;
   },
+  setVoice(key){
+    this.voiceKey=key||'';
+    try{localStorage.setItem('ls_voice',this.voiceKey);}catch(e){}
+    this.pick();
+    const s=$('voicesel');
+    if(s)s.title=this.voice?('Reading voice: '+this.voice.name+' ('+this.voice.lang+')'):'Reading voice';
+  },
+  sample(){ this.say('The torch is lying on the moss, still switched on.'); },
   chunks(t){
     const parts=t.replace(/\s+/g,' ').match(/[^.!?]+[.!?]*\s*/g)||[t];
     const out=[]; let buf='';
@@ -4000,10 +4016,43 @@ function showGloss(el){
   gpop.style.left=x+'px'; gpop.style.top=Math.max(8,y)+'px';
 }
 
+function vkey(v){return v.voiceURI||v.name;}
+function vshort(v){
+  return v.name.replace(/\s*\(?(Natural|Enhanced|Premium|Compact)\)?/gi,'')
+               .replace(/\s*[-\u2013]\s*English.*$/i,'')
+               .replace(/\s*\(English[^)]*\)\s*$/i,'')
+               .replace(/\s+Online\s*$/i,'').trim()||v.name;
+}
+function vlist(){
+  let vs=[]; try{vs=speechSynthesis.getVoices()||[];}catch(e){}
+  const en=vs.filter(v=>/^en/i.test(v.lang));
+  return (en.length?en:vs).slice(0,80);
+}
+function voiceOptions(){
+  const vs=vlist();
+  let h='<option value=""'+(TTS.voiceKey?'':' selected')+'>Auto voice</option>';
+  const g={};
+  vs.forEach(v=>{(g[v.lang]=g[v.lang]||[]).push(v);});
+  Object.keys(g).sort().forEach(lang=>{
+    h+='<optgroup label="'+esc(lang)+'">';
+    g[lang].forEach(v=>{
+      h+='<option value="'+esc(vkey(v))+'"'+(TTS.voiceKey===vkey(v)?' selected':'')+'>'+esc(vshort(v))+'</option>';
+    });
+    h+='</optgroup>';
+  });
+  return h;
+}
+function refreshVoiceSel(){
+  const s=$('voicesel');
+  if(s)s.innerHTML=voiceOptions();
+}
+
 function ttsRow(){
   let h='<div class="ttsrow">'+
     '<button class="tbtn'+(GLON?' on':'')+'" id="glossbtn" data-act="gloss" aria-pressed="'+(GLON?'true':'false')+'" title="Word help \u2014 tap the underlined words (G)">\ud83d\udd24 Word help</button>';
-  if(TTS.ok)h+='<button class="tbtn" id="ratebtn" data-act="rate" title="Reading speed">'+TTS.rate+'\u00d7</button>'+
+  if(TTS.ok)h+='<select class="vsel" id="voicesel" aria-label="Reading voice" title="'+
+      esc(TTS.voice?('Reading voice: '+TTS.voice.name+' ('+TTS.voice.lang+')'):'Reading voice')+'">'+voiceOptions()+'</select>'+
+    '<button class="tbtn" id="ratebtn" data-act="rate" title="Reading speed">'+TTS.rate+'\u00d7</button>'+
     '<button class="tbtn" id="readbtn" data-act="read" title="Read this scene aloud (L)">\ud83d\udd0a Read aloud</button>';
   return h+'</div>';
 }
@@ -4127,6 +4176,13 @@ $('restartbtn').addEventListener('click',()=>doRestart(true));
 $('storybtn').addEventListener('click',openModal);
 $('themebtn').addEventListener('click',()=>setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light'));
 $('bigbtn').addEventListener('click',()=>setBig(document.documentElement.getAttribute('data-big')!=='1'));
+arena.addEventListener('change',e=>{
+  const s=e.target.closest&&e.target.closest('#voicesel');
+  if(!s)return;
+  TTS.setVoice(s.value);
+  TTS.sample();
+});
+
 arena.addEventListener('keydown',e=>{
   if(e.key!=='Enter'&&e.key!==' ')return;
   const g=e.target.closest&&e.target.closest('.gl');

@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Off — Minimal Pairs Battle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1220; --bg2:#111c30; --card:#16233b; --card2:#1d2d49;
+  --line:#26375a; --txt:#eaf1ff; --dim:#93a6c8;
+  --acc:#22d3ee; --acc2:#a3e635; --warn:#fbbf24; --bad:#f87171;
+  --shadow:0 18px 45px rgba(0,0,0,.45);
+}
+[data-theme="light"]{
+  --bg:#f2f6fb; --bg2:#e7eef7; --card:#ffffff; --card2:#f7fafd;
+  --line:#d3e0ee; --txt:#0d1b2e; --dim:#54688a;
+  --acc:#0891b2; --acc2:#4d7c0f; --warn:#b45309; --bad:#b91c1c;
+  --shadow:0 12px 30px rgba(20,40,70,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:radial-gradient(1200px 700px at 15% -10%, var(--bg2), var(--bg)) fixed;
+  color:var(--txt); min-height:100vh; padding:70px 18px 40px;
+}
+h1,h2,h3,.f{font-family:'Sora',sans-serif;font-weight:800;letter-spacing:-.02em}
+.back-link,.theme-btn{
+  position:fixed; top:14px; z-index:60; text-decoration:none;
+  background:var(--card); color:var(--txt); border:1px solid var(--line);
+  padding:9px 16px; border-radius:999px; font-weight:600; font-size:.9rem;
+  cursor:pointer; box-shadow:var(--shadow);
+}
+.back-link{left:14px} .theme-btn{right:14px}
+.back-link:hover,.theme-btn:hover{border-color:var(--acc);color:var(--acc)}
+.wrap{max-width:1150px;margin:0 auto}
+.screen{display:none} .screen.on{display:block;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- setup ---------- */
+.hero{text-align:center;margin-bottom:26px}
+.hero h1{font-size:clamp(2.4rem,7vw,4.2rem);line-height:1}
+.hero h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--dim);margin-top:10px;font-size:1.05rem}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;margin-bottom:18px;box-shadow:var(--shadow)}
+.panel h2{font-size:1.1rem;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+.panel h2 small{font-family:'Inter';font-weight:500;color:var(--dim);font-size:.8rem}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pill{background:var(--card2);border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:999px;font-weight:600;cursor:pointer;font-size:.92rem}
+.pill:hover{border-color:var(--acc)}
+.pill.sel{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#04121b;border-color:transparent}
+input[type=text],select{
+  background:var(--card2);border:1px solid var(--line);color:var(--txt);
+  padding:11px 14px;border-radius:12px;font-family:'Inter';font-size:.95rem;width:100%;
+}
+input[type=text]:focus,select:focus{outline:none;border-color:var(--acc)}
+.teams-in{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:12px}
+.sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.set{
+  background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;
+  display:flex;flex-direction:column;gap:3px;transition:.15s;
+}
+.set:hover{border-color:var(--acc)}
+.set.on{border-color:var(--acc2);background:linear-gradient(180deg,rgba(163,230,53,.13),transparent)}
+.set b{font-family:'Sora';font-size:1rem}
+.set small{color:var(--dim);font-size:.8rem}
+.set .lv{align-self:flex-start;margin-top:4px;font-size:.68rem;font-weight:700;letter-spacing:.06em;
+  background:var(--line);padding:2px 8px;border-radius:999px;color:var(--txt)}
+.set.on .lv{background:var(--acc2);color:#0d1b0a}
+.go{
+  display:block;width:100%;padding:18px;border:none;border-radius:16px;cursor:pointer;
+  font-family:'Sora';font-weight:800;font-size:1.25rem;color:#04121b;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:var(--shadow);
+}
+.go:hover{filter:brightness(1.08)} .go:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.hintbar{color:var(--dim);font-size:.85rem;margin-top:8px}
+
+/* ---------- game ---------- */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.rnd{font-family:'Sora';font-weight:700;font-size:1.05rem}
+.rnd small{color:var(--dim);font-weight:500;font-family:'Inter'}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:.75rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:6px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
+.badge.pts{background:var(--acc);color:#04121b;border-color:transparent}
+.badge.dbl{background:var(--warn);color:#2b1a00;border-color:transparent;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.scorestrip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.sc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;display:flex;gap:9px;align-items:center;font-size:.9rem}
+.sc b{font-family:'Sora';font-size:1.15rem}
+.sc .dot{width:10px;height:10px;border-radius:50%}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:30px 22px;box-shadow:var(--shadow);text-align:center}
+.task{color:var(--dim);font-size:1rem;margin-bottom:6px}
+.taskbig{font-family:'Sora';font-weight:700;font-size:1.4rem;margin-bottom:20px}
+.playbtn{
+  border:none;border-radius:999px;cursor:pointer;color:#04121b;font-family:'Sora';font-weight:800;
+  font-size:1.35rem;padding:20px 46px;background:linear-gradient(90deg,var(--acc),var(--acc2));
+  box-shadow:0 0 0 0 rgba(34,211,238,.5);
+}
+.playbtn:hover{filter:brightness(1.08)}
+.playbtn.playing{animation:ring 1s infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(34,211,238,.5)}100%{box-shadow:0 0 0 26px rgba(34,211,238,0)}}
+.subctl{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap;align-items:center}
+.mini{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:7px 14px;font-size:.85rem;cursor:pointer;font-weight:600}
+.mini:hover{color:var(--acc);border-color:var(--acc)}
+.opts{display:grid;gap:14px;margin:26px auto 0;max-width:820px}
+.opts.c2{grid-template-columns:repeat(2,1fr)}
+.opts.c3{grid-template-columns:repeat(3,1fr)}
+.opts.c4{grid-template-columns:repeat(2,1fr)}
+.opt{
+  background:var(--card2);border:2px solid var(--line);border-radius:18px;padding:22px 12px;
+  font-family:'Sora';font-weight:800;font-size:clamp(1.5rem,4.5vw,2.6rem);position:relative;transition:.2s;
+}
+.opt .tag{position:absolute;top:8px;left:12px;font-family:'Inter';font-size:.8rem;font-weight:700;color:var(--dim)}
+.opt .ipa{display:block;font-family:'Inter';font-weight:500;font-size:.95rem;color:var(--dim);margin-top:6px}
+.opt.right{border-color:var(--acc2);background:linear-gradient(180deg,rgba(163,230,53,.18),transparent)}
+.opt.wrongo{opacity:.35}
+.syls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:24px 0 0}
+.syl{background:var(--card2);border:2px solid var(--line);border-radius:14px;padding:16px 22px;font-family:'Sora';font-weight:700;font-size:clamp(1.3rem,4vw,2.2rem)}
+.syl .n{display:block;font-family:'Inter';font-size:.78rem;color:var(--dim);font-weight:700}
+.syl.right{border-color:var(--acc2);background:linear-gradient(180deg,rgba(163,230,53,.2),transparent);transform:translateY(-6px)}
+.sayline{font-family:'Sora';font-weight:800;font-size:clamp(1.6rem,5vw,3rem);line-height:1.25;margin:14px 0 4px}
+.sayhint{color:var(--dim);font-size:.95rem}
+.peek{margin-top:20px;font-size:.75rem;color:var(--dim);opacity:.55}
+.peek b{color:var(--warn)}
+.answerbox{margin-top:22px;padding:16px;border-radius:16px;background:var(--card2);border:1px dashed var(--line)}
+.answerbox .a{font-family:'Sora';font-weight:800;font-size:1.6rem;color:var(--acc2)}
+.answerbox .why{color:var(--dim);font-size:.92rem;margin-top:6px}
+.award{margin-top:22px}
+.award h3{font-size:1rem;margin-bottom:12px;color:var(--dim);font-weight:600;font-family:'Inter'}
+.tchips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.tchip{background:var(--card2);border:2px solid var(--line);border-radius:14px;padding:12px 20px;cursor:pointer;font-family:'Sora';font-weight:700;font-size:1.05rem;display:flex;align-items:center;gap:9px}
+.tchip .dot{width:11px;height:11px;border-radius:50%}
+.tchip.got{border-color:var(--acc2);background:linear-gradient(180deg,rgba(163,230,53,.18),transparent)}
+.tchip .mk{opacity:.25}
+.tchip.got .mk{opacity:1}
+.actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+.btn{border:none;border-radius:14px;padding:14px 28px;font-family:'Sora';font-weight:700;font-size:1.05rem;cursor:pointer}
+.btn.pri{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#04121b}
+.btn.sec{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
+.btn.sec:hover{border-color:var(--acc)}
+.btn:hover{filter:brightness(1.08)}
+
+/* ---------- end ---------- */
+.podium{display:flex;justify-content:center;align-items:flex-end;gap:14px;margin:30px 0;flex-wrap:wrap}
+.pod{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center;min-width:150px;box-shadow:var(--shadow)}
+.pod .rk{font-size:2rem}
+.pod .nm{font-family:'Sora';font-weight:800;font-size:1.15rem;margin:6px 0}
+.pod .pt{color:var(--acc);font-family:'Sora';font-weight:800;font-size:1.7rem}
+.pod.p1{transform:translateY(-16px);border-color:var(--acc2)}
+.recap{max-width:680px;margin:0 auto;text-align:left}
+.recap .r{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
+.recap .r span:last-child{color:var(--dim)}
+@media (max-width:640px){
+  .opts.c2,.opts.c4{grid-template-columns:1fr}
+  .opts.c3{grid-template-columns:1fr}
+  body{padding-top:64px}
+}
+</style>
+</head>
+<body>
+<a class="back-link" href="../">← Game Hub</a>
+<button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 Dark</button>
+
+<div class="wrap">
+
+<!-- ============ SETUP ============ -->
+<section class="screen on" id="scSetup">
+  <div class="hero">
+    <h1>SOUND <span>OFF</span></h1>
+    <p>Minimal-pair listening battle · trains the sounds Brazilian learners mix up · A1–B2</p>
+  </div>
+
+  <div class="panel">
+    <h2>1 · Teams <small>2–6 teams</small></h2>
+    <div class="row" id="teamCount"></div>
+    <div class="teams-in" id="teamInputs"></div>
+  </div>
+
+  <div class="panel">
+    <h2>2 · Sound contrasts <small>pick the ones your class needs</small></h2>
+    <div class="row" style="margin-bottom:12px">
+      <button class="pill" onclick="preset('br')">🇧🇷 Brazil focus</button>
+      <button class="pill" onclick="preset('easy')">A1–A2 starter</button>
+      <button class="pill" onclick="preset('all')">Everything</button>
+      <button class="pill" onclick="preset('none')">Clear</button>
+    </div>
+    <div class="sets" id="setGrid"></div>
+    <div class="hintbar" id="setCount"></div>
+  </div>
+
+  <div class="panel">
+    <h2>3 · Round settings</h2>
+    <div class="row" style="margin-bottom:14px">
+      <span style="color:var(--dim);font-size:.9rem;min-width:80px">Rounds</span>
+      <div class="row" id="roundPick"></div>
+    </div>
+    <div class="row" style="margin-bottom:14px">
+      <span style="color:var(--dim);font-size:.9rem;min-width:80px">Voice</span>
+      <div style="flex:1;min-width:230px"><select id="voiceSel"></select></div>
+    </div>
+    <div class="row">
+      <span style="color:var(--dim);font-size:.9rem;min-width:80px">Speed</span>
+      <div class="row" id="ratePick"></div>
+      <button class="mini" onclick="testVoice()">🔊 Test</button>
+    </div>
+    <div class="hintbar">Use Chrome or Edge for the clearest speech. The word is <b>never</b> shown before the reveal — only the options.</div>
+  </div>
+
+  <button class="go" id="startBtn" onclick="startGame()">▶ Start the battle</button>
+</section>
+
+<!-- ============ GAME ============ -->
+<section class="screen" id="scGame">
+  <div class="topbar">
+    <div class="rnd" id="rndLabel">Round 1 <small>of 12</small></div>
+    <div class="badges" id="badges"></div>
+  </div>
+  <div class="scorestrip" id="strip"></div>
+  <div class="stage" id="stage"></div>
+</section>
+
+<!-- ============ END ============ -->
+<section class="screen" id="scEnd">
+  <div class="hero"><h1>FINAL <span>SCORE</span></h1></div>
+  <div class="podium" id="podium"></div>
+  <div class="panel recap">
+    <h2>Sounds you practised</h2>
+    <div id="recap"></div>
+  </div>
+  <div class="actions">
+    <button class="btn pri" onclick="location.reload()">🔁 New game</button>
+    <button class="btn sec" onclick="rematch()">⚡ Same teams, new rounds</button>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ============================================================
+   THEME
+============================================================ */
+function toggleTheme(){
+  const h=document.documentElement;
+  const next=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  h.setAttribute('data-theme',next);
+  try{ localStorage.setItem('theme',next); }catch(e){}
+  paintThemeBtn();
+}
+function paintThemeBtn(){
+  const d=document.documentElement.getAttribute('data-theme')==='dark';
+  document.getElementById('themeBtn').textContent=d?'🌙 Dark':'☀️ Light';
+}
+(function(){
+  let s=null; try{ s=localStorage.getItem('theme'); }catch(e){}
+  if(s) document.documentElement.setAttribute('data-theme',s);
+})();
+
+/* ============================================================
+   DATA — minimal pair sets
+============================================================ */
+const SETS=[
+ {id:'i',label:'/ɪ/ vs /iː/',ex:'ship – sheep',lv:'A1',br:true,easy:true,
+  note:'Short i is relaxed and quick; long ee is tense and smiling.',
+  pairs:[['ship','sheep'],['bit','beat'],['fill','feel'],['live','leave'],['it','eat'],['chip','cheap'],['hit','heat'],['sit','seat'],['still','steal'],['bin','bean'],['rich','reach'],['slip','sleep']]},
+
+ {id:'ae',label:'/æ/ vs /ɛ/',ex:'bad – bed',lv:'A1',br:true,easy:true,
+  note:'Open your mouth wider for /æ/ — it is longer and flatter than /ɛ/.',
+  pairs:[['bad','bed'],['man','men'],['sat','set'],['bat','bet'],['pan','pen'],['land','lend'],['gas','guess'],['mat','met'],['sad','said'],['tan','ten'],['bag','beg'],['dad','dead']]},
+
+ {id:'au',label:'/æ/ vs /ʌ/',ex:'cat – cut',lv:'A2',br:true,easy:true,
+  note:'/ʌ/ is short and central, made with a relaxed mouth.',
+  pairs:[['cat','cut'],['bag','bug'],['ran','run'],['hat','hut'],['cap','cup'],['match','much'],['track','truck'],['ankle','uncle'],['drank','drunk'],['bad','bud'],['stack','stuck'],['ham','hum']]},
+
+ {id:'th',label:'/θ/ vs /t/ · /s/',ex:'thin – tin',lv:'A2',br:true,easy:true,
+  note:'Tongue tip between the teeth for TH — air escapes, no /t/ or /s/.',
+  pairs:[['thin','tin'],['think','sink'],['three','tree'],['thing','sing'],['thick','tick'],['theme','team'],['thought','taught'],['path','pass'],['mouth','mouse'],['faith','face'],['worth','worse'],['thanks','tanks']]},
+
+ {id:'dh',label:'/ð/ vs /d/',ex:'they – day',lv:'A2',br:true,
+  note:'Voiced TH buzzes with the tongue between the teeth — it never becomes a hard /d/.',
+  pairs:[['they','day'],['then','den'],['there','dare'],['those','doze'],['though','dough'],['breathe','breed'],['with','width']]},
+
+ {id:'rh',label:'/r/ vs /h/',ex:'rat – hat',lv:'A1',br:true,easy:true,
+  note:'English R curls the tongue back. A Portuguese initial R sounds like English H.',
+  pairs:[['rat','hat'],['red','head'],['ride','hide'],['rope','hope'],['ram','ham'],['rear','hear'],['rate','hate'],['rail','hail'],['rot','hot'],['rye','high']]},
+
+ {id:'lr',label:'/l/ vs /r/',ex:'light – right',lv:'A2',br:true,
+  note:'For /l/ the tongue touches the roof; for /r/ it never touches.',
+  pairs:[['light','right'],['glass','grass'],['play','pray'],['collect','correct'],['lace','race'],['long','wrong'],['alive','arrive'],['fly','fry'],['lock','rock'],['load','road'],['climb','crime'],['lead','read']]},
+
+ {id:'bv',label:'/b/ vs /v/',ex:'berry – very',lv:'A1',br:true,easy:true,
+  note:'/b/ closes both lips; /v/ uses top teeth on bottom lip.',
+  pairs:[['berry','very'],['boat','vote'],['bet','vet'],['ban','van'],['best','vest'],['base','vase'],['curb','curve'],['marble','marvel'],['bury','vary']]},
+
+ {id:'wv',label:'/w/ vs /v/',ex:'wine – vine',lv:'A2',br:true,
+  note:'/w/ rounds the lips with no teeth contact at all.',
+  pairs:[['wine','vine'],['west','vest'],['wet','vet'],['worse','verse'],['while','vile'],['wheel','veal'],['wary','vary'],['wow','vow']]},
+
+ {id:'sz',label:'/s/ vs /z/',ex:'price – prize',lv:'A2',
+  note:'/z/ vibrates the voice box; /s/ is pure air.',
+  pairs:[['price','prize'],['ice','eyes'],['place','plays'],['bus','buzz'],['peace','peas'],['loose','lose'],['race','raise'],['sip','zip'],['sue','zoo'],['niece','knees'],['advice','advise']]},
+
+ {id:'sh',label:'/ʃ/ vs /tʃ/',ex:'ship – chip',lv:'A2',br:true,
+  note:'/tʃ/ starts with a hard T-stop; /ʃ/ is a smooth hush.',
+  pairs:[['ship','chip'],['share','chair'],['wash','watch'],['cash','catch'],['sheep','cheap'],['shoes','choose'],['wish','witch'],['shop','chop'],['sherry','cherry'],['mash','match']]},
+
+ {id:'dj',label:'/dʒ/ vs /j/',ex:'jet – yet',lv:'B1',br:true,
+  note:'/dʒ/ begins with a D; /j/ glides straight from the tongue like Portuguese "i".',
+  pairs:[['jet','yet'],['jam','yam'],['joke','yoke'],['jello','yellow'],['jeers','years'],['juice','use']]},
+
+ {id:'h',label:'Silent H trap',ex:'at – hat',lv:'A1',easy:true,
+  note:'H is never silent at the start of these words — push the air out.',
+  pairs:[['at','hat'],['and','hand'],['art','heart'],['ear','hear'],['eat','heat'],['ill','hill'],['old','hold'],['air','hair'],['is','his'],['edge','hedge'],['ate','hate'],['arm','harm']]},
+
+ {id:'ng',label:'/ŋ/ vs /n/',ex:'sing – sin',lv:'B1',
+  note:'-ing ends in the back of the mouth; the tongue tip stays down.',
+  pairs:[['sing','sin'],['thing','thin'],['wing','win'],['bang','ban'],['rang','ran'],['song','son'],['tongue','ton'],['king','kin']]},
+
+ {id:'ou',label:'/oʊ/ vs /ɔː/',ex:'coat – caught',lv:'B1',
+  note:'/oʊ/ glides to a W; /ɔː/ stays open and long.',
+  pairs:[['coat','caught'],['boat','bought'],['low','law'],['so','saw'],['coal','call'],['bowl','ball'],['woke','walk'],['own','on']]},
+
+ {id:'uu',label:'/uː/ vs /ʊ/',ex:'fool – full',lv:'B1',
+  note:'/ʊ/ is short and relaxed; /uː/ is long with tight lips.',
+  pairs:[['fool','full'],['pool','pull'],['Luke','look'],['suit','soot'],['cooed','could']]},
+
+ {id:'er',label:'/ɜː/ vs /ɔː/',ex:'bird – bored',lv:'B1',
+  note:'/ɜː/ is central with a slight R colour; /ɔː/ is rounded and back.',
+  pairs:[['bird','bored'],['work','walk'],['shirt','short'],['turn','torn'],['burn','born'],['first','forced'],['heard','hoard']]},
+
+ {id:'end',label:'Consonant endings',ex:'card – car',lv:'B1',br:true,
+  note:'Never add an extra vowel: it is "card", not "car-dee".',
+  pairs:[['card','car'],['start','star'],['hard','harm'],['find','fine'],['send','sent'],['cold','coal'],['build','bill'],['past','pass'],['test','tense'],['lift','live']]}
+];
+
+const STRESS=[
+ {w:'photograph',s:['pho','to','graph'],i:0},
+ {w:'photographer',s:['pho','to','gra','pher'],i:1},
+ {w:'important',s:['im','por','tant'],i:1},
+ {w:'comfortable',s:['com','for','ta','ble'],i:0},
+ {w:'interesting',s:['in','te','res','ting'],i:0},
+ {w:'development',s:['de','ve','lop','ment'],i:1},
+ {w:'vegetable',s:['ve','ge','ta','ble'],i:0},
+ {w:'necessary',s:['ne','ces','sa','ry'],i:0},
+ {w:'computer',s:['com','pu','ter'],i:1},
+ {w:'banana',s:['ba','na','na'],i:1},
+ {w:'hotel',s:['ho','tel'],i:1},
+ {w:'restaurant',s:['res','tau','rant'],i:0},
+ {w:'Japanese',s:['Ja','pa','nese'],i:2},
+ {w:'engineer',s:['en','gi','neer'],i:2},
+ {w:'umbrella',s:['um','brel','la'],i:1},
+ {w:'tomorrow',s:['to','mor','row'],i:1},
+ {w:'because',s:['be','cause'],i:1},
+ {w:'family',s:['fa','mi','ly'],i:0},
+ {w:'library',s:['li','bra','ry'],i:0},
+ {w:'September',s:['Sep','tem','ber'],i:1},
+ {w:'delicious',s:['de','li','cious'],i:1},
+ {w:'understand',s:['un','der','stand'],i:2},
+ {w:'afternoon',s:['af','ter','noon'],i:2},
+ {w:'chocolate',s:['cho','co','late'],i:0},
+ {w:'difficult',s:['di','ffi','cult'],i:0},
+ {w:'expensive',s:['ex','pen','sive'],i:1},
+ {w:'hospital',s:['hos','pi','tal'],i:0},
+ {w:'technology',s:['tech','no','lo','gy'],i:1},
+ {w:'refrigerator',s:['re','fri','ge','ra','tor'],i:1},
+ {w:'opportunity',s:['op','por','tu','ni','ty'],i:2},
+ {w:'comfortably',s:['com','for','ta','bly'],i:0},
+ {w:'imagination',s:['i','ma','gi','na','tion'],i:3}
+];
+
+const TWISTERS=[
+ 'She sells sea shells by the sea shore.',
+ 'Three thin thieves thought a thousand thoughts.',
+ 'Red lorry, yellow lorry, red lorry, yellow lorry.',
+ 'A big black bug bit a big black bear.',
+ 'Very well, Willy will wear a warm wool vest.',
+ 'Rural roads are really rough and really long.',
+ 'Which witch wished which wicked wish?',
+ 'Fresh fried fish, fish fresh fried.',
+ 'The thirty-three thirsty thinkers thanked them.',
+ 'Her hard heart heard her hurry home.',
+ 'Six slick slim sleek sleds slide.',
+ 'I scream, you scream, we all scream for ice cream.'
+];
+
+const COLORS=['#22d3ee','#a3e635','#f472b6','#fbbf24','#818cf8','#fb923c'];
+
+/* ============================================================
+   AUDIO FX
+============================================================ */
+let AC=null;
+function ac(){ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); return AC; }
+function tone(f,dur,type,vol,delay){
+  try{
+    const c=ac(), t=c.currentTime+(delay||0);
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(f,t);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol||.14,t+.015);
+    g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+.05);
+  }catch(e){}
+}
+const fx={
+  click:()=>tone(420,.07,'triangle',.08),
+  reveal:()=>{tone(523,.14,'sine',.12,0);tone(784,.2,'sine',.12,.1);},
+  point:()=>{tone(660,.1,'sine',.13,0);tone(880,.14,'sine',.13,.09);tone(1175,.2,'sine',.11,.18);},
+  zero:()=>tone(180,.25,'sawtooth',.07),
+  next:()=>tone(520,.09,'triangle',.09),
+  win:()=>{[523,659,784,1047].forEach((f,i)=>tone(f,.3,'sine',.13,i*.13));}
+};
+
+/* ============================================================
+   SPEECH
+============================================================ */
+let VOICES=[], chosenVoice=null, rate=0.9;
+function loadVoices(){
+  VOICES=(window.speechSynthesis?speechSynthesis.getVoices():[]).filter(v=>/^en/i.test(v.lang));
+  const sel=document.getElementById('voiceSel');
+  if(!VOICES.length){ sel.innerHTML='<option>No English voice found — use Chrome</option>'; return; }
+  let saved=null; try{ saved=localStorage.getItem('soundoff_voice'); }catch(e){}
+  sel.innerHTML=VOICES.map(v=>`<option value="${v.voiceURI}">${v.name} (${v.lang})</option>`).join('');
+  const pick=VOICES.find(v=>v.voiceURI===saved)
+    || VOICES.find(v=>/en-US/i.test(v.lang)&&/google|natural|samantha|aria/i.test(v.name))
+    || VOICES.find(v=>/en-US/i.test(v.lang)) || VOICES[0];
+  sel.value=pick.voiceURI; chosenVoice=pick.voiceURI;
+}
+if(window.speechSynthesis){
+  loadVoices();
+  speechSynthesis.onvoiceschanged=loadVoices;
+}
+document.getElementById('voiceSel').addEventListener('change',e=>{
+  chosenVoice=e.target.value; try{ localStorage.setItem('soundoff_voice',chosenVoice); }catch(e){}
+});
+function voiceObj(){
+  const list=(window.speechSynthesis?speechSynthesis.getVoices():[]).filter(v=>/^en/i.test(v.lang));
+  return list.find(v=>v.voiceURI===chosenVoice)||list.find(v=>/en-US/i.test(v.lang))||list[0]||null;
+}
+function speakSeq(words,onDone){
+  if(!window.speechSynthesis){ onDone&&onDone(); return; }
+  speechSynthesis.cancel();
+  let i=0;
+  const step=()=>{
+    if(i>=words.length){ onDone&&onDone(); return; }
+    const u=new SpeechSynthesisUtterance(words[i]); i++;
+    const v=voiceObj(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang='en-US';
+    u.rate=rate; u.pitch=1;
+    u.onend=()=>setTimeout(step,words.length>1?520:0);
+    u.onerror=()=>setTimeout(step,300);
+    speechSynthesis.speak(u);
+  };
+  setTimeout(step,60);
+}
+function testVoice(){ fx.click(); speakSeq(['ship','sheep']); }
+
+/* ============================================================
+   SETUP UI
+============================================================ */
+const S={teams:[],nTeams:3,sets:[],rounds:12,queue:[],idx:0,cur:null,revealed:false,plays:0,awarded:new Set(),log:[]};
+
+function buildSetup(){
+  const tc=document.getElementById('teamCount');
+  tc.innerHTML=[2,3,4,5,6].map(n=>`<button class="pill${n===S.nTeams?' sel':''}" onclick="setTeams(${n})">${n} teams</button>`).join('');
+  const ti=document.getElementById('teamInputs');
+  ti.innerHTML=Array.from({length:S.nTeams},(_,i)=>
+    `<input type="text" id="tn${i}" placeholder="Team ${i+1}" value="${S.teams[i]||''}" maxlength="16">`).join('');
+
+  const sg=document.getElementById('setGrid');
+  sg.innerHTML=SETS.map(s=>`
+    <div class="set${S.sets.includes(s.id)?' on':''}" onclick="toggleSet('${s.id}')">
+      <b>${s.label}</b><small>${s.ex}</small>
+      <span class="lv">${s.lv}${s.br?' · 🇧🇷':''}</span>
+    </div>`).join('');
+  document.getElementById('setCount').textContent=
+    S.sets.length+' contrast set'+(S.sets.length===1?'':'s')+' selected · '+poolSize()+' word pairs in play';
+
+  const rp=document.getElementById('roundPick');
+  rp.innerHTML=[8,12,16,20].map(n=>`<button class="pill${n===S.rounds?' sel':''}" onclick="setRounds(${n})">${n}</button>`).join('');
+  const rt=document.getElementById('ratePick');
+  rt.innerHTML=[['0.7','Slow'],['0.9','Normal'],['1.05','Fast']].map(([v,l])=>
+    `<button class="pill${parseFloat(v)===rate?' sel':''}" onclick="setRate(${v})">${l}</button>`).join('');
+  document.getElementById('startBtn').disabled=S.sets.length===0;
+}
+function poolSize(){ return SETS.filter(s=>S.sets.includes(s.id)).reduce((a,s)=>a+s.pairs.length,0); }
+function saveNames(){ for(let i=0;i<S.nTeams;i++){ const el=document.getElementById('tn'+i); if(el) S.teams[i]=el.value; } }
+function setTeams(n){ fx.click(); saveNames(); S.nTeams=n; buildSetup(); }
+function setRounds(n){ fx.click(); saveNames(); S.rounds=n; buildSetup(); }
+function setRate(v){ fx.click(); saveNames(); rate=v; buildSetup(); }
+function toggleSet(id){
+  fx.click(); saveNames();
+  S.sets=S.sets.includes(id)?S.sets.filter(x=>x!==id):S.sets.concat(id);
+  buildSetup();
+}
+function preset(kind){
+  fx.click(); saveNames();
+  if(kind==='br') S.sets=SETS.filter(s=>s.br).map(s=>s.id);
+  else if(kind==='easy') S.sets=SETS.filter(s=>s.easy).map(s=>s.id);
+  else if(kind==='all') S.sets=SETS.map(s=>s.id);
+  else S.sets=[];
+  buildSetup();
+}
+S.sets=SETS.filter(s=>s.br).map(s=>s.id);
+buildSetup(); paintThemeBtn();
+
+/* ============================================================
+   ROUND GENERATION
+============================================================ */
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function activeSets(){ return SETS.filter(s=>S.sets.includes(s.id)); }
+
+let usedPairs=[];
+function pickPair(){
+  const sets=activeSets();
+  for(let t=0;t<40;t++){
+    const st=rnd(sets), p=rnd(st.pairs), key=st.id+'|'+p[0];
+    if(!usedPairs.includes(key)){ usedPairs.push(key); return {set:st,pair:p}; }
+  }
+  usedPairs=[];
+  const st=rnd(sets); return {set:st,pair:rnd(st.pairs)};
+}
+
+const PATTERN=['listen2','listen2','odd','say','listen4','listen2','stress','listen2','odd','listen4','say','listen2','stress','listen2','odd','listen4','listen2','say','stress','listen2'];
+
+function buildQueue(){
+  usedPairs=[]; S.queue=[]; S.log=[];
+  for(let i=0;i<S.rounds;i++){
+    const type=PATTERN[i%PATTERN.length];
+    S.queue.push(makeRound(type,i));
+  }
+}
+function makeRound(type,i){
+  const dbl=(i+1)%5===0;
+  if(type==='stress'){
+    const s=rnd(STRESS);
+    return {type,dbl,base:2,word:s.w,syl:s.s,ans:s.i,setLabel:'Word stress',
+      note:'Stress makes one syllable louder, longer and higher.'};
+  }
+  if(type==='say'){
+    if(Math.random()<0.45){
+      const t=rnd(TWISTERS);
+      return {type,dbl,base:3,mode:'twister',text:t,setLabel:'Tongue twister',
+        note:'Speed is not the point — every sound must be clear.'};
+    }
+    const {set,pair}=pickPair();
+    return {type,dbl,base:2,mode:'pair',text:pair[0].toUpperCase()+'  ·  '+pair[1].toUpperCase(),
+      words:pair,setLabel:set.label,note:set.note};
+  }
+  if(type==='odd'){
+    const {set,pair}=pickPair();
+    const a=rnd([0,1]), b=1-a;
+    const seq=shuffle([pair[a],pair[a],pair[b]]);
+    const ans=seq.findIndex(w=>w===pair[b]);
+    return {type,dbl,base:2,seq,ans,setLabel:set.label,note:set.note,
+      answerText:'#'+(ans+1)+' — '+pair[b]};
+  }
+  if(type==='listen4'){
+    const sets=activeSets().filter(s=>s.pairs.length>=2);
+    const st=sets.length?rnd(sets):rnd(activeSets());
+    const two=shuffle(st.pairs).slice(0,2);
+    const opts=shuffle([two[0][0],two[0][1],two[1][0],two[1][1]]);
+    const target=rnd(opts);
+    return {type,dbl,base:2,opts,target,ans:opts.indexOf(target),setLabel:st.label,note:st.note};
+  }
+  const {set,pair}=pickPair();
+  const opts=shuffle(pair);
+  const target=rnd(opts);
+  return {type:'listen2',dbl,base:1,opts,target,ans:opts.indexOf(target),setLabel:set.label,note:set.note};
+}
+
+/* ============================================================
+   GAME FLOW
+============================================================ */
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on')); document.getElementById(id).classList.add('on'); }
+
+function startGame(){
+  saveNames();
+  if(!S.sets.length) return;
+  ac();
+  S.teams=Array.from({length:S.nTeams},(_,i)=>({name:(S.teams[i]||'').trim()||('Team '+(i+1)),score:0,color:COLORS[i%COLORS.length]}));
+  buildQueue(); S.idx=0;
+  fx.reveal(); show('scGame'); renderRound();
+}
+function rematch(){
+  S.teams.forEach(t=>t.score=0);
+  buildQueue(); S.idx=0; show('scGame'); renderRound();
+}
+
+function renderRound(){
+  const r=S.queue[S.idx]; S.cur=r; S.revealed=false; S.plays=0; S.awarded=new Set();
+  document.getElementById('rndLabel').innerHTML=`Round ${S.idx+1} <small>of ${S.rounds}</small>`;
+  const pts=r.base*(r.dbl?2:1);
+  document.getElementById('badges').innerHTML=
+    `<span class="badge">${r.setLabel}</span>`+
+    `<span class="badge pts">${pts} point${pts>1?'s':''}</span>`+
+    (r.dbl?`<span class="badge dbl">⚡ Double</span>`:'');
+  renderStrip();
+  const st=document.getElementById('stage');
+
+  if(r.type==='listen2'||r.type==='listen4'){
+    st.innerHTML=`
+      <div class="task">Listen carefully. Which word did you hear?</div>
+      <div class="taskbig">Teams hold up their answer — no shouting.</div>
+      <button class="playbtn" id="pb" onclick="playCur()">🔊 Play the word</button>
+      <div class="subctl">
+        <button class="mini" onclick="playCur()">↻ Replay</button>
+        <span style="color:var(--dim);font-size:.85rem" id="playCount">not played yet</span>
+      </div>
+      <div class="opts ${r.opts.length===4?'c4':'c2'}" id="opts">
+        ${r.opts.map((w,i)=>`<div class="opt" id="o${i}"><span class="tag">${'ABCD'[i]}</span>${w}</div>`).join('')}
+      </div>
+      <div class="peek">Teacher only: <b id="peekTxt">••••</b> <button class="mini" style="padding:2px 9px;font-size:.7rem" onclick="peek()">reveal to me</button></div>
+      <div class="actions"><button class="btn pri" onclick="doReveal()">👁 Reveal answer</button></div>`;
+  }
+
+  if(r.type==='odd'){
+    st.innerHTML=`
+      <div class="task">You will hear three words.</div>
+      <div class="taskbig">Which one is different — 1, 2 or 3?</div>
+      <button class="playbtn" id="pb" onclick="playCur()">🔊 Play the three words</button>
+      <div class="subctl">
+        <button class="mini" onclick="playCur()">↻ Replay</button>
+        <span style="color:var(--dim);font-size:.85rem" id="playCount">not played yet</span>
+      </div>
+      <div class="opts c3" id="opts">
+        ${[0,1,2].map(i=>`<div class="opt" id="o${i}"><span class="tag">#${i+1}</span>?</div>`).join('')}
+      </div>
+      <div class="peek">Teacher only: <b id="peekTxt">••••</b> <button class="mini" style="padding:2px 9px;font-size:.7rem" onclick="peek()">reveal to me</button></div>
+      <div class="actions"><button class="btn pri" onclick="doReveal()">👁 Reveal answer</button></div>`;
+  }
+
+  if(r.type==='stress'){
+    st.innerHTML=`
+      <div class="task">Word stress</div>
+      <div class="taskbig">Which syllable is the strongest?</div>
+      <button class="playbtn" id="pb" onclick="playCur()">🔊 Play "${r.word}"</button>
+      <div class="subctl">
+        <button class="mini" onclick="playCur()">↻ Replay</button>
+        <span style="color:var(--dim);font-size:.85rem" id="playCount">not played yet</span>
+      </div>
+      <div class="syls" id="opts">
+        ${r.syl.map((s,i)=>`<div class="syl" id="o${i}"><span class="n">${i+1}</span>${s}</div>`).join('')}
+      </div>
+      <div class="actions"><button class="btn pri" onclick="doReveal()">👁 Reveal answer</button></div>`;
+  }
+
+  if(r.type==='say'){
+    const team=S.teams[S.idx%S.teams.length];
+    st.innerHTML=`
+      <div class="task">Say-It Challenge — <b style="color:${team.color}">${team.name}</b></div>
+      <div class="taskbig">${r.mode==='twister'?'Say it clearly. The teacher is the judge.':'Say both words so the class hears the difference.'}</div>
+      <div class="sayline">${r.text}</div>
+      <div class="sayhint">${r.note}</div>
+      <div class="subctl" style="margin-top:18px">
+        <button class="playbtn" style="font-size:1.05rem;padding:14px 30px" onclick="playCur()">🔊 Hear the model</button>
+      </div>
+      <div class="actions">
+        <button class="btn pri" onclick="judgeSay(true)">✅ Clear — award points</button>
+        <button class="btn sec" onclick="judgeSay(false)">❌ Try again next time</button>
+      </div>`;
+  }
+}
+
+function renderStrip(){
+  document.getElementById('strip').innerHTML=S.teams.map(t=>
+    `<div class="sc"><span class="dot" style="background:${t.color}"></span>${t.name} <b>${t.score}</b></div>`).join('');
+}
+
+function playCur(){
+  const r=S.cur; S.plays++;
+  const pb=document.getElementById('pb');
+  if(pb){ pb.classList.add('playing'); }
+  const pc=document.getElementById('playCount');
+  if(pc) pc.textContent='played '+S.plays+'×';
+  let words;
+  if(r.type==='odd') words=r.seq;
+  else if(r.type==='stress') words=[r.word];
+  else if(r.type==='say') words=r.mode==='twister'?[r.text]:r.words;
+  else words=[r.target];
+  speakSeq(words,()=>{ if(pb) pb.classList.remove('playing'); });
+}
+
+function peek(){
+  const r=S.cur;
+  const el=document.getElementById('peekTxt');
+  if(!el) return;
+  el.textContent=r.type==='odd'?r.answerText:r.target;
+}
+
+function doReveal(){
+  if(S.revealed) return;
+  S.revealed=true; fx.reveal();
+  const r=S.cur;
+  if(r.type==='stress'){
+    document.getElementById('o'+r.ans).classList.add('right');
+  } else if(r.type==='odd'){
+    for(let i=0;i<3;i++){
+      const el=document.getElementById('o'+i);
+      el.innerHTML=`<span class="tag">#${i+1}</span>${r.seq[i]}`;
+      if(i===r.ans) el.classList.add('right'); else el.classList.add('wrongo');
+    }
+  } else {
+    r.opts.forEach((w,i)=>{
+      const el=document.getElementById('o'+i);
+      if(i===r.ans) el.classList.add('right'); else el.classList.add('wrongo');
+    });
+  }
+  const pts=r.base*(r.dbl?2:1);
+  const box=document.createElement('div');
+  box.className='answerbox';
+  box.innerHTML=`<div class="a">${r.type==='stress'?('Stress on syllable '+(r.ans+1)+' — '+r.syl.map((s,i)=>i===r.ans?s.toUpperCase():s).join('·')):(r.type==='odd'?r.answerText:r.target)}</div>
+    <div class="why">${r.note}</div>`;
+  document.getElementById('stage').querySelector('.actions').before(box);
+
+  const aw=document.createElement('div');
+  aw.className='award';
+  aw.innerHTML=`<h3>Tap every team that got it right (+${pts})</h3>
+    <div class="tchips">${S.teams.map((t,i)=>
+      `<div class="tchip" id="tc${i}" onclick="toggleAward(${i})"><span class="dot" style="background:${t.color}"></span>${t.name} <span class="mk">✅</span></div>`).join('')}</div>`;
+  document.getElementById('stage').querySelector('.actions').before(aw);
+  document.getElementById('stage').querySelector('.actions').innerHTML=
+    `<button class="btn pri" onclick="nextRound()">${S.idx+1>=S.rounds?'🏁 Final score':'Next round →'}</button>`;
+}
+
+function toggleAward(i){
+  const r=S.cur, pts=r.base*(r.dbl?2:1);
+  const chip=document.getElementById('tc'+i);
+  if(S.awarded.has(i)){ S.awarded.delete(i); S.teams[i].score-=pts; chip.classList.remove('got'); fx.zero(); }
+  else { S.awarded.add(i); S.teams[i].score+=pts; chip.classList.add('got'); fx.point(); }
+  renderStrip();
+}
+
+function judgeSay(ok){
+  const r=S.cur, pts=r.base*(r.dbl?2:1);
+  const team=S.teams[S.idx%S.teams.length];
+  if(ok){ team.score+=pts; fx.point(); } else fx.zero();
+  S.log.push({label:r.setLabel,detail:r.text});
+  renderStrip();
+  const at=S.idx;
+  setTimeout(()=>{ if(S.idx===at) nextRound(); },450);
+}
+
+function nextRound(){
+  const r=S.cur;
+  if(r.type!=='say') S.log.push({label:r.setLabel,detail:r.type==='stress'?r.word:(r.type==='odd'?r.seq.join(' / '):r.opts.join(' / '))});
+  S.idx++;
+  if(S.idx>=S.rounds){ endGame(); return; }
+  fx.next(); renderRound();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function endGame(){
+  fx.win(); show('scEnd');
+  const sorted=S.teams.slice().sort((a,b)=>b.score-a.score);
+  const medals=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'];
+  const order=sorted.length>1?[sorted[1],sorted[0]].concat(sorted.slice(2)):sorted;
+  document.getElementById('podium').innerHTML=order.map(t=>{
+    const rank=sorted.indexOf(t);
+    return `<div class="pod ${rank===0?'p1':''}">
+      <div class="rk">${medals[rank]||''}</div>
+      <div class="nm" style="color:${t.color}">${t.name}</div>
+      <div class="pt">${t.score}</div></div>`;
+  }).join('');
+  const counts={};
+  S.log.forEach(l=>{ counts[l.label]=(counts[l.label]||0)+1; });
+  document.getElementById('recap').innerHTML=Object.keys(counts).sort((a,b)=>counts[b]-counts[a])
+    .map(k=>`<div class="r"><span>${k}</span><span>${counts[k]} round${counts[k]>1?'s':''}</span></div>`).join('');
+}
+
+/* keyboard: space = play, R = reveal, N = next */
+document.addEventListener('keydown',e=>{
+  if(/input|select|textarea/i.test(e.target.tagName)) return;
+  if(!document.getElementById('scGame').classList.contains('on')) return;
+  if(e.code==='Space'){ e.preventDefault(); playCur(); }
+  if(e.key==='r'||e.key==='R'){ if(!S.revealed && S.cur && S.cur.type!=='say') doReveal(); }
+  if(e.key==='n'||e.key==='N'){ if(S.revealed) nextRound(); }
+});
+</script>
+</body>
+</html>

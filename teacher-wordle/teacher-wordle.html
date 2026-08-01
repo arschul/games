@@ -1,13 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WordQuest — Teacher's Wordle</title>
+<script>
+  // localStorage throws on file:// and in private-mode Safari — never let it break the game
+  window.WQ_STORE = (function () {
+    var mem = {};
+    var live = false;
+    try { window.localStorage.setItem('__wq', '1'); window.localStorage.removeItem('__wq'); live = true; } catch (e) {}
+    return {
+      get: function (k) { try { return live ? window.localStorage.getItem(k) : (k in mem ? mem[k] : null); } catch (e) { return null; } },
+      set: function (k, v) { try { live ? window.localStorage.setItem(k, v) : (mem[k] = v); } catch (e) { mem[k] = v; } }
+    };
+  })();
+  (function () {
+    var saved = window.WQ_STORE.get('theme');
+    if (saved === 'light' || saved === 'dark') {
+      document.documentElement.setAttribute('data-theme', saved);
+    }
+  })();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap');
 
-  :root {
+  :root, html[data-theme="dark"] {
     --bg: #0f0e17;
     --surface: #1a1930;
     --border: #2e2c50;
@@ -15,11 +33,35 @@
     --muted: #6b6a8a;
     --correct: #2cb67d;
     --present: #f4a127;
-    --absent: #2e2c50;
+    /* Absent must be clearly distinct from both --border (empty tile) and --key-bg */
+    --absent: #100f1e;
+    --absent-border: #3d3a68;
+    --absent-text: #57567a;
+    --key-bg: #2e2c50;
+    --key-absent-bg: #14132a;
+    --badge-checking-bg: #2e2c50;
     --correct-text: #fffffe;
     --tile-size: 58px;
     --tile-gap: 6px;
     --accent: #7f5af0;
+  }
+
+  html[data-theme="light"] {
+    --bg: #f2f2f7;
+    --surface: #ffffff;
+    --border: #d5d5e2;
+    --text: #16151f;
+    --muted: #6f6e88;
+    --correct: #1a9c66;
+    --present: #d1830f;
+    --absent: #b9b9c9;
+    --absent-border: #a4a4b8;
+    --absent-text: #4a4960;
+    --key-bg: #dedeea;
+    --key-absent-bg: #c2c2d1;
+    --badge-checking-bg: #e4e4ee;
+    --correct-text: #ffffff;
+    --accent: #6841dd;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,7 +84,7 @@
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    padding: 2rem;
+    padding: 4.5rem 2rem 2rem;
     gap: 2rem;
     animation: fadeIn .5s ease;
   }
@@ -176,7 +218,7 @@
     border-radius: 999px;
     font-weight: 700;
   }
-  .valid-badge.checking { background: #2e2c50; color: var(--muted); }
+  .valid-badge.checking { background: var(--badge-checking-bg); color: var(--muted); }
   .valid-badge.valid    { background: #0e3d2a; color: var(--correct); border: 1px solid var(--correct); }
   .valid-badge.invalid  { background: #3d1010; color: #ff6b6b;        border: 1px solid #ff6b6b; }
 
@@ -196,7 +238,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
-    padding: 1.2rem 1rem 2rem;
+    padding: 4.2rem 1rem 2rem;
     gap: 1rem;
     animation: fadeIn .4s ease;
   }
@@ -260,7 +302,7 @@
 
   .tile.correct  { background: var(--correct);  border-color: var(--correct);  color: #fff; }
   .tile.present  { background: var(--present);  border-color: var(--present);  color: #fff; }
-  .tile.absent   { background: var(--absent);   border-color: var(--absent);   color: var(--muted); }
+  .tile.absent   { background: var(--absent);   border-color: var(--absent-border); color: var(--absent-text); }
 
   .tile.flip {
     animation: flip .5s ease forwards;
@@ -308,7 +350,7 @@
     height: 52px;
     min-width: 36px;
     padding: 0 6px;
-    background: #2e2c50;
+    background: var(--key-bg);
     border: none;
     border-radius: 8px;
     color: var(--text);
@@ -324,12 +366,12 @@
   .key.wide { min-width: 58px; font-size: .72rem; letter-spacing: 1px; }
   .key.correct { background: var(--correct); color: #fff; }
   .key.present { background: var(--present); color: #fff; }
-  .key.absent  { background: #1a1930; color: var(--muted); }
+  .key.absent  { background: var(--key-absent-bg); color: var(--absent-text); }
 
   /* ── Toast ── */
   #toast {
     position: fixed;
-    top: 1.5rem;
+    top: 4.4rem;
     left: 50%;
     transform: translateX(-50%) translateY(-80px);
     background: var(--text);
@@ -391,9 +433,85 @@
     transition: background .2s, color .2s;
   }
   .btn-again:hover { background: var(--accent); color: #fff; }
+
+  /* ── Chrome: back-link, top controls, offline badge ── */
+  .back-link {
+    position: fixed;
+    top: 1rem; left: 1rem;
+    z-index: 200;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    text-decoration: none;
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: 1px;
+    transition: color .2s, border-color .2s;
+  }
+  .back-link:hover { color: var(--text); border-color: var(--accent); }
+
+  .top-controls {
+    position: fixed;
+    top: 1rem; right: 1rem;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .icon-btn {
+    width: 38px; height: 38px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .2s, transform .1s;
+  }
+  .icon-btn:hover  { border-color: var(--accent); }
+  .icon-btn:active { transform: scale(.92); }
+  .icon-btn.off    { opacity: .5; }
+
+  #offline-badge {
+    display: none;
+    align-items: center;
+    gap: .4rem;
+    padding: .45rem .8rem;
+    border-radius: 999px;
+    background: #3d2a10;
+    border: 1px solid var(--present);
+    color: var(--present);
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  html[data-theme="light"] #offline-badge { background: #fdf1dc; }
+
+  @media (max-width: 560px) {
+    .back-link { font-size: .62rem; padding: .4rem .7rem; }
+    .icon-btn  { width: 32px; height: 32px; font-size: .85rem; }
+    #offline-badge { font-size: .55rem; padding: .35rem .6rem; }
+  }
 </style>
 </head>
 <body>
+
+<a class="back-link" href="../">← Game Hub</a>
+<div class="top-controls">
+  <div id="offline-badge">⚠ OFFLINE MODE</div>
+  <button class="icon-btn" id="btn-mute"  title="Mute sounds"  aria-label="Mute sounds">🔊</button>
+  <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle light or dark theme">🌙</button>
+</div>
 
 <!-- ══ SETUP SCREEN ══ -->
 <div id="setup-screen">
@@ -463,21 +581,44 @@ const KB_ROWS = [
 ];
 
 const DICT_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
-const wordCache = {}; // word → true/false
+const DICT_TIMEOUT = 3000;      // never let a hung fetch lock the game
+const DICT_FAIL_LIMIT = 2;      // two strikes → stop waiting for the rest of the session
+const wordCache = {};           // word → true/false
+let dictFailures = 0;
+let dictOffline  = false;
 
+function goOffline() {
+  if (dictOffline) return;
+  dictOffline = true;
+  const badge = document.getElementById('offline-badge');
+  if (badge) badge.style.display = 'inline-flex';
+}
+
+// Returns true (real word), false (not found), or null (unknown — allow it through)
 async function isRealWord(word) {
   const key = word.toLowerCase();
   if (key in wordCache) return wordCache[key];
+  if (dictOffline) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DICT_TIMEOUT);
   try {
-    const res = await fetch(DICT_API + key);
+    const res = await fetch(DICT_API + encodeURIComponent(key), { signal: controller.signal });
+    if (res.status >= 500) throw new Error('dictionary server error');
+    dictFailures = 0;
     wordCache[key] = res.ok;
     return res.ok;
   } catch {
-    return null; // network error → treat as unknown
+    dictFailures++;
+    if (dictFailures >= DICT_FAIL_LIMIT) goOffline();
+    return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 // ── State ──
+let screen = 'setup';   // 'setup' | 'game' — never infer this from DOM styles
 let secretWord = '';
 let wordLen = 0;
 let maxGuesses = 0;
@@ -502,7 +643,11 @@ const toastEl      = document.getElementById('toast');
 const validBadge   = document.getElementById('word-valid-badge');
 const bypassCheck  = document.getElementById('bypass-dict');
 
+const btnMute      = document.getElementById('btn-mute');
+const btnTheme     = document.getElementById('btn-theme');
+
 let validationTimer = null;
+let pendingLaunch   = false;   // Enter pressed while the dictionary check was still running
 
 function setBadge(state, text) {
   validBadge.className = 'valid-badge ' + state;
@@ -532,11 +677,12 @@ secretInput.addEventListener('input', () => {
   setupError.textContent  = '';
   validBadge.innerHTML    = '';
   btnStart.disabled       = true;
+  pendingLaunch           = false;
   clearTimeout(validationTimer);
 
   if (len < 2) return;
 
-  if (bypassCheck.checked) {
+  if (bypassCheck.checked || dictOffline) {
     btnStart.disabled = false;
     return;
   }
@@ -551,13 +697,33 @@ secretInput.addEventListener('input', () => {
       setBadge('invalid', '✗ NOT FOUND');
       setupError.textContent = 'Word not found. Use SKIP CHECK to override.';
       btnStart.disabled = true;
+      pendingLaunch = false;
     } else {
-      // network error
+      // Unreachable or timed out — never block the teacher on a flaky network
       setBadge('invalid', '⚠ NO CONNECTION');
-      setupError.textContent = 'Could not reach dictionary. Use SKIP CHECK to proceed.';
-      btnStart.disabled = false; // allow teacher to proceed
+      setupError.textContent = 'Dictionary unreachable — starting anyway is fine.';
+      btnStart.disabled = false;
+    }
+    if (pendingLaunch && !btnStart.disabled) {
+      pendingLaunch = false;
+      launchGame();
     }
   }, 600);
+});
+
+// Enter launches the game from the setup screen
+secretInput.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (!btnStart.disabled) {
+    launchGame();
+  } else if (secretInput.value.replace(/[^a-zA-Z]/g, '').length >= 2) {
+    // Validation still in flight — launch as soon as it clears
+    pendingLaunch = true;
+    showToast('Checking word…', 3000);
+  } else {
+    setupError.textContent = 'Enter at least 2 letters.';
+  }
 });
 
 toggleVisBtn.addEventListener('click', () => {
@@ -583,6 +749,8 @@ function launchGame() {
   gameOver    = false;
   keyMap      = {};
   submitting  = false;
+  pendingLaunch = false;
+  screen      = 'game';
 
   setupScreen.style.display = 'none';
   gameScreen.style.display  = 'flex';
@@ -595,14 +763,23 @@ function launchGame() {
 }
 
 // ── Board ──
+function sizeBoard() {
+  if (!wordLen) return;
+  const maxW = Math.min(window.innerWidth - 32, 500);
+  const size = Math.max(26, Math.min(58, Math.floor((maxW - (wordLen - 1) * 6) / wordLen)));
+  document.documentElement.style.setProperty('--tile-size', size + 'px');
+}
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(sizeBoard, 100);
+});
+
 function buildBoard() {
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
-
-  // Dynamic tile size
-  const maxW = Math.min(window.innerWidth - 32, 500);
-  const size = Math.min(58, Math.floor((maxW - (wordLen - 1) * 6) / wordLen));
-  document.documentElement.style.setProperty('--tile-size', size + 'px');
+  sizeBoard();
 
   for (let r = 0; r < maxGuesses; r++) {
     const row = document.createElement('div');
@@ -638,10 +815,17 @@ function buildKeyboard() {
 
 // ── Input ──
 document.addEventListener('keydown', e => {
-  if (gameOver || gameScreen.style.display === 'none') return;
-  if (e.key === 'Enter')     handleKey('ENTER');
-  else if (e.key === 'Backspace') handleKey('⌫');
-  else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+  if (screen !== 'game' || gameOver) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleKey('ENTER');
+  } else if (e.key === 'Backspace') {
+    e.preventDefault();               // stop stray back-navigation
+    handleKey('⌫');
+  } else if (/^[a-zA-Z]$/.test(e.key)) {
+    handleKey(e.key.toUpperCase());
+  }
 });
 
 function handleKey(k) {
@@ -689,10 +873,17 @@ async function submitGuess() {
   const guess = currentGuess.join('');
 
   // Dictionary check for student guess
+  let valid = null;
   submitting = true;
-  showToast('Checking…', 3000);
-  const valid = await isRealWord(guess);
-  submitting = false;
+  // Only surface "Checking…" if the lookup is actually slow — avoids a flash on every guess
+  const checkingToast = setTimeout(() => showToast('Checking…', 4000), 350);
+  try {
+    valid = await isRealWord(guess);
+  } finally {
+    clearTimeout(checkingToast);
+    submitting = false;          // always unlock, even if the lookup threw
+  }
+  hideToast();                   // never let "Checking…" linger over the reveal
 
   if (valid === false) {
     shakeRow(currentRow);
@@ -700,7 +891,7 @@ async function submitGuess() {
     SFX.invalid();
     return;
   }
-  // valid === null means network error → allow the guess
+  // valid === null means unreachable/timed out → allow the guess
 
   const result = evaluate(guess, secretWord);
 
@@ -752,7 +943,7 @@ function evaluate(guess, answer) {
 
 // ── Reveal animation ──
 function revealRow(row, result, guess, callback) {
-  const delay = 300;
+  const delay = 220;   // setTimeout provides the stagger — SFX must not add its own
   result.forEach((state, col) => {
     setTimeout(() => {
       const tile = board[row][col].el;
@@ -762,12 +953,12 @@ function revealRow(row, result, guess, callback) {
         tile.classList.add(state);
         tile.classList.remove('filled');
         if (state === 'correct')       SFX.correct(col);
-        else if (state === 'present')  SFX.present(col);
-        else                           SFX.absent(col);
+        else if (state === 'present')  SFX.present();
+        else                           SFX.absent();
       }, 150);
     }, col * delay);
   });
-  setTimeout(callback, wordLen * delay + 300);
+  setTimeout(callback, (wordLen - 1) * delay + 450);
 }
 
 function shakeRow(row) {
@@ -780,6 +971,7 @@ function shakeRow(row) {
 // ══════════════════════════════════════════
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let ctx = null;
+let muted = WQ_STORE.get('wq-muted') === '1';
 
 function getCtx() {
   if (!ctx) ctx = new AudioCtx();
@@ -790,6 +982,7 @@ function getCtx() {
 function playTone({ type = 'sine', freq = 440, freq2, duration = 0.12, volume = 0.18,
                     attack = 0.005, decay = 0.05, sustain = 0.6, release = 0.08,
                     detune = 0, delay = 0 } = {}) {
+  if (muted) return;
   const ac = getCtx();
   const t0 = ac.currentTime + delay;
 
@@ -815,6 +1008,7 @@ function playTone({ type = 'sine', freq = 440, freq2, duration = 0.12, volume = 
 }
 
 function playNoise({ duration = 0.08, volume = 0.12, highpass = 800, delay = 0 } = {}) {
+  if (muted) return;
   const ac = getCtx();
   const t0 = ac.currentTime + delay;
   const bufSize = ac.sampleRate * duration;
@@ -853,20 +1047,20 @@ const SFX = {
     playNoise({ duration: 0.15, volume: 0.08, highpass: 400 });
   },
   tileFlip(col) {
-    playTone({ type: 'sine', freq: 300 + col * 40, duration: 0.1, volume: 0.1, attack: 0.003, decay: 0.03, sustain: 0.4, delay: col * 0.04 });
+    playTone({ type: 'sine', freq: 300 + col * 40, duration: 0.1, volume: 0.1, attack: 0.003, decay: 0.03, sustain: 0.4 });
   },
   correct(col) {
-    // Bright chime
-    playTone({ type: 'triangle', freq: 520 + col * 60, freq2: 620 + col * 60, duration: 0.18, volume: 0.14, attack: 0.004, decay: 0.04, sustain: 0.5, delay: col * 0.04 });
+    // Bright chime — pitch still rises across the row, but timing comes from revealRow
+    playTone({ type: 'triangle', freq: 520 + col * 60, freq2: 620 + col * 60, duration: 0.18, volume: 0.14, attack: 0.004, decay: 0.04, sustain: 0.5 });
   },
-  present(col) {
+  present() {
     // Warm mid tone
-    playTone({ type: 'sine', freq: 400, duration: 0.14, volume: 0.11, attack: 0.005, decay: 0.05, sustain: 0.4, delay: col * 0.04 });
+    playTone({ type: 'sine', freq: 400, duration: 0.14, volume: 0.11, attack: 0.005, decay: 0.05, sustain: 0.4 });
   },
-  absent(col) {
+  absent() {
     // Dull thud
-    playTone({ type: 'triangle', freq: 200, freq2: 160, duration: 0.1, volume: 0.07, attack: 0.003, decay: 0.05, sustain: 0.2, delay: col * 0.04 });
-    playNoise({ duration: 0.06, volume: 0.05, highpass: 300, delay: col * 0.04 });
+    playTone({ type: 'triangle', freq: 200, freq2: 160, duration: 0.1, volume: 0.07, attack: 0.003, decay: 0.05, sustain: 0.2 });
+    playNoise({ duration: 0.06, volume: 0.05, highpass: 300 });
   },
   win() {
     // Ascending fanfare arpeggio
@@ -927,6 +1121,11 @@ function showToast(msg, duration = 1500) {
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), duration);
 }
 
+function hideToast() {
+  clearTimeout(toastTimer);
+  toastEl.classList.remove('show');
+}
+
 // ── Result ──
 function showResult(won) {
   const banner = document.getElementById('result-banner');
@@ -940,6 +1139,11 @@ function showResult(won) {
 }
 
 document.getElementById('btn-again').addEventListener('click', () => {
+  screen = 'setup';
+  gameOver = true;
+  pendingLaunch = false;
+  submitting = false;
+  hideToast();
   secretInput.value = '';
   letterCount.textContent = '—';
   guessCount.textContent  = '—';
@@ -951,7 +1155,42 @@ document.getElementById('btn-again').addEventListener('click', () => {
   btnStart.disabled       = true;
   setupScreen.style.display = 'flex';
   gameScreen.style.display  = 'none';
+  secretInput.focus();
 });
+
+// ══════════════════════════════════════════
+// ── Chrome: mute + theme ──
+// ══════════════════════════════════════════
+function renderMute() {
+  btnMute.textContent = muted ? '🔇' : '🔊';
+  btnMute.classList.toggle('off', muted);
+  btnMute.title = muted ? 'Unmute sounds' : 'Mute sounds';
+  btnMute.setAttribute('aria-label', btnMute.title);
+}
+
+btnMute.addEventListener('click', () => {
+  muted = !muted;
+  WQ_STORE.set('wq-muted', muted ? '1' : '0');
+  renderMute();
+  if (!muted) SFX.keyPress();
+});
+
+function renderTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+  btnTheme.textContent = dark ? '🌙' : '☀️';
+}
+
+btnTheme.addEventListener('click', () => {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  WQ_STORE.set('theme', next);
+  renderTheme();
+});
+
+renderMute();
+renderTheme();
+secretInput.focus();
 </script>
 </body>
 </html>

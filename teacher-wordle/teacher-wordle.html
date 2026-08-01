@@ -20,6 +20,9 @@
     if (saved === 'light' || saved === 'dark') {
       document.documentElement.setAttribute('data-theme', saved);
     }
+    if (window.WQ_STORE.get('wq-cb') === '1') {
+      document.documentElement.setAttribute('data-cb', 'on');
+    }
   })();
 </script>
 <style>
@@ -44,6 +47,17 @@
     --tile-size: 58px;
     --tile-gap: 6px;
     --accent: #7f5af0;
+  }
+
+  /* Colour-blind safe mode: green/orange is the worst pairing for deuteranopia.
+     Blue/orange separates cleanly, and glyphs cover every remaining case. */
+  html[data-cb="on"] {
+    --correct: #4a9eff;
+    --present: #f0871a;
+  }
+  html[data-cb="on"][data-theme="light"] {
+    --correct: #1f6fd0;
+    --present: #c96a05;
   }
 
   html[data-theme="light"] {
@@ -247,11 +261,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: min(500px, 96vw);
+    width: min(1100px, 94vw);
   }
 
   .game-logo {
-    font-size: 1.6rem;
+    font-size: clamp(1.6rem, 2.6vw, 2.4rem);
     font-weight: 800;
     letter-spacing: -1px;
     background: linear-gradient(135deg, #7f5af0, #2cb67d);
@@ -262,7 +276,7 @@
 
   .guess-counter {
     font-family: 'Space Mono', monospace;
-    font-size: .75rem;
+    font-size: clamp(.75rem, 1.2vw, 1.1rem);
     color: var(--muted);
     letter-spacing: 1px;
   }
@@ -288,7 +302,7 @@
     align-items: center;
     justify-content: center;
     font-family: 'Space Mono', monospace;
-    font-size: 1.5rem;
+    font-size: calc(var(--tile-size) * 0.52);
     font-weight: 700;
     text-transform: uppercase;
     color: var(--text);
@@ -297,6 +311,28 @@
     position: relative;
     user-select: none;
   }
+
+  /* State glyphs — only rendered in colour-blind mode */
+  .tile::after, .key::after {
+    display: none;
+    position: absolute;
+    top: 3px; right: 5px;
+    font-size: .42em;
+    line-height: 1;
+    opacity: .9;
+    pointer-events: none;
+  }
+  html[data-cb="on"] .tile.correct::after,
+  html[data-cb="on"] .tile.present::after,
+  html[data-cb="on"] .tile.absent::after,
+  html[data-cb="on"] .key.correct::after,
+  html[data-cb="on"] .key.present::after,
+  html[data-cb="on"] .key.absent::after { display: block; }
+
+  html[data-cb="on"] .tile.correct::after, html[data-cb="on"] .key.correct::after { content: '\25CF'; }
+  html[data-cb="on"] .tile.present::after, html[data-cb="on"] .key.present::after { content: '\25B2'; }
+  html[data-cb="on"] .tile.absent::after,  html[data-cb="on"] .key.absent::after  { content: '\00D7'; }
+  html[data-cb="on"] .key::after { top: 2px; right: 3px; font-size: .6em; }
 
   .tile.filled { border-color: var(--muted); animation: pop .1s ease; }
 
@@ -362,7 +398,14 @@
     transition: background .15s, color .15s, transform .1s;
     display: flex; align-items: center; justify-content: center;
   }
+  .key { position: relative; }
   .key:active { transform: scale(.93); }
+
+  @media (min-width: 1000px) {
+    .key      { height: 64px; min-width: 48px; font-size: 1.1rem; padding: 0 10px; }
+    .key.wide { min-width: 82px; font-size: .95rem; }
+    .kb-row   { gap: 7px; }
+  }
   .key.wide { min-width: 58px; font-size: .72rem; letter-spacing: 1px; }
   .key.correct { background: var(--correct); color: #fff; }
   .key.present { background: var(--present); color: #fff; }
@@ -398,18 +441,18 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 16px;
-    width: min(400px, 90vw);
+    width: min(560px, 92vw);
     animation: fadeIn .5s ease .2s both;
   }
   .result-label {
     font-family: 'Space Mono', monospace;
-    font-size: .7rem;
+    font-size: clamp(.7rem, 1.1vw, 1rem);
     letter-spacing: 3px;
     text-transform: uppercase;
     color: var(--muted);
   }
   .result-word {
-    font-size: 2.2rem;
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
     font-weight: 800;
     letter-spacing: 6px;
     text-transform: uppercase;
@@ -454,6 +497,24 @@
     transition: color .2s, border-color .2s;
   }
   .back-link:hover { color: var(--text); border-color: var(--accent); }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+    }
+  }
 
   .top-controls {
     position: fixed;
@@ -509,6 +570,7 @@
 <a class="back-link" href="../">← Game Hub</a>
 <div class="top-controls">
   <div id="offline-badge">⚠ OFFLINE MODE</div>
+  <button class="icon-btn" id="btn-cb"    title="Colour-blind friendly mode" aria-label="Colour-blind friendly mode" aria-pressed="false">👓</button>
   <button class="icon-btn" id="btn-mute"  title="Mute sounds"  aria-label="Mute sounds">🔊</button>
   <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle light or dark theme">🌙</button>
 </div>
@@ -524,7 +586,7 @@
     <div>
       <div class="field-label">Secret Word</div>
       <div class="word-input-wrap">
-        <input id="secret-word" type="password" maxlength="12" placeholder="Type word…" autocomplete="off" spellcheck="false" />
+        <input id="secret-word" type="password" maxlength="12" placeholder="Type word…" autocomplete="off" spellcheck="false" aria-label="Secret word" />
         <button id="toggle-vis" title="Show/hide word">👁</button>
       </div>
     </div>
@@ -535,14 +597,14 @@
     </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;">
-      <div id="word-valid-badge"></div>
+      <div id="word-valid-badge" role="status" aria-live="polite"></div>
       <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:1px;">
         <input type="checkbox" id="bypass-dict" style="accent-color:var(--accent);cursor:pointer;">
         SKIP CHECK
       </label>
     </div>
 
-    <div class="error-msg" id="setup-error"></div>
+    <div class="error-msg" id="setup-error" role="alert"></div>
 
     <button class="btn-start" id="btn-start" disabled>Launch Game →</button>
   </div>
@@ -555,22 +617,23 @@
     <div class="guess-counter">Guess <span id="cur-guess">1</span> of <span id="max-guess">6</span></div>
   </header>
 
-  <div id="board"></div>
+  <div id="board" role="grid" aria-label="Guess board"></div>
 
-  <div id="result-banner">
+  <div id="result-banner" role="status" aria-live="polite">
     <div class="result-label" id="result-label">The word was</div>
     <div class="result-word" id="result-word"></div>
     <button class="btn-again" id="btn-again">New Word</button>
   </div>
 
-  <div id="keyboard">
+  <div id="keyboard" role="group" aria-label="Letter keyboard">
     <div class="kb-row" id="kb-row-1"></div>
     <div class="kb-row" id="kb-row-2"></div>
     <div class="kb-row" id="kb-row-3"></div>
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="sr-live" class="sr-only" role="status" aria-live="polite"></div>
 
 <script>
 // ── Keyboard layout ──
@@ -644,6 +707,8 @@ const validBadge   = document.getElementById('word-valid-badge');
 const bypassCheck  = document.getElementById('bypass-dict');
 
 const btnMute      = document.getElementById('btn-mute');
+const btnCb        = document.getElementById('btn-cb');
+const srLive       = document.getElementById('sr-live');
 const btnTheme     = document.getElementById('btn-theme');
 
 let validationTimer = null;
@@ -765,8 +830,16 @@ function launchGame() {
 // ── Board ──
 function sizeBoard() {
   if (!wordLen) return;
-  const maxW = Math.min(window.innerWidth - 32, 500);
-  const size = Math.max(26, Math.min(58, Math.floor((maxW - (wordLen - 1) * 6) / wordLen)));
+  const gap = 6;
+  // Width budget
+  const maxW = Math.min(window.innerWidth - 32, 1100);
+  const byWidth = Math.floor((maxW - (wordLen - 1) * gap) / wordLen);
+  // Height budget — reserve top chrome, header, keyboard and padding so tall
+  // boards (long words = many rows) never overflow the projected screen
+  const reserved = window.innerWidth >= 1000 ? 380 : 320;  // header + keyboard + padding
+  const availH = Math.max(150, window.innerHeight - reserved);
+  const byHeight = Math.floor((availH - (maxGuesses - 1) * gap) / maxGuesses);
+  const size = Math.max(26, Math.min(92, byWidth, byHeight));
   document.documentElement.style.setProperty('--tile-size', size + 'px');
 }
 
@@ -785,11 +858,15 @@ function buildBoard() {
     const row = document.createElement('div');
     row.className = 'row';
     row.id = `row-${r}`;
+    row.setAttribute('role', 'row');
+    row.setAttribute('aria-label', `Guess ${r + 1}`);
     board.push([]);
     for (let c = 0; c < wordLen; c++) {
       const tile = document.createElement('div');
       tile.className = 'tile';
       tile.id = `tile-${r}-${c}`;
+      tile.setAttribute('role', 'gridcell');
+      tile.setAttribute('aria-label', `Letter ${c + 1}, empty`);
       row.appendChild(tile);
       board[r].push({ el: tile, letter: '', state: '' });
     }
@@ -807,6 +884,7 @@ function buildKeyboard() {
       btn.className = 'key' + (k.length > 1 ? ' wide' : '');
       btn.textContent = k;
       btn.dataset.key = k;
+      btn.setAttribute('aria-label', k === '⌫' ? 'Backspace' : k === 'ENTER' ? 'Submit guess' : `Letter ${k}`);
       btn.addEventListener('click', () => handleKey(k));
       rowEl.appendChild(btn);
     });
@@ -843,6 +921,7 @@ function addLetter(letter) {
   if (currentCol >= wordLen) return;
   const tile = board[currentRow][currentCol].el;
   tile.textContent = letter;
+  tile.setAttribute('aria-label', `Letter ${currentCol + 1}, ${letter}`);
   tile.classList.add('filled');
   board[currentRow][currentCol].letter = letter;
   currentGuess.push(letter);
@@ -855,6 +934,7 @@ function deleteLetter() {
   currentCol--;
   const tile = board[currentRow][currentCol].el;
   tile.textContent = '';
+  tile.setAttribute('aria-label', `Letter ${currentCol + 1}, empty`);
   tile.classList.remove('filled');
   board[currentRow][currentCol].letter = '';
   currentGuess.pop();
@@ -952,12 +1032,14 @@ function revealRow(row, result, guess, callback) {
       setTimeout(() => {
         tile.classList.add(state);
         tile.classList.remove('filled');
+        tile.setAttribute('aria-label', `Letter ${col + 1}, ${guess[col]}, ${STATE_WORD[state]}`);
         if (state === 'correct')       SFX.correct(col);
         else if (state === 'present')  SFX.present();
         else                           SFX.absent();
       }, 150);
     }, col * delay);
   });
+  announce(guess.split('').map((l, i) => `${l} ${STATE_WORD[result[i]]}`).join(', '));
   setTimeout(callback, (wordLen - 1) * delay + 450);
 }
 
@@ -1087,6 +1169,18 @@ const SFX = {
   }
 };
 
+// ── Screen-reader announcements ──
+const STATE_WORD = {
+  correct: 'correct position',
+  present: 'wrong position',
+  absent:  'not in the word'
+};
+
+function announce(msg) {
+  srLive.textContent = '';
+  setTimeout(() => { srLive.textContent = msg; }, 50);
+}
+
 // ── Keyboard coloring ──
 const STATE_PRIORITY = { correct: 3, present: 2, absent: 1, '': 0 };
 
@@ -1102,6 +1196,7 @@ function updateKeyboard(guess, result) {
     const k = btn.dataset.key;
     if (k && k.length === 1 && keyMap[k]) {
       btn.className = `key ${keyMap[k]}`;
+      btn.setAttribute('aria-label', `Letter ${k}, ${STATE_WORD[keyMap[k]]}`);
     }
   });
 }
@@ -1134,6 +1229,9 @@ function showResult(won) {
     : 'The word was';
   document.getElementById('result-word').textContent = secretWord;
   banner.style.display = 'flex';
+  announce(won
+    ? `Correct! The word was ${secretWord.split('').join(' ')}, solved in ${currentRow + 1} guesses.`
+    : `Out of guesses. The word was ${secretWord.split('').join(' ')}.`);
   if (won) SFX.win();
   else     SFX.lose();
 }
@@ -1175,6 +1273,23 @@ btnMute.addEventListener('click', () => {
   if (!muted) SFX.keyPress();
 });
 
+function renderCb() {
+  const on = document.documentElement.getAttribute('data-cb') === 'on';
+  btnCb.classList.toggle('off', !on);
+  btnCb.setAttribute('aria-pressed', on ? 'true' : 'false');
+  btnCb.title = on ? 'Colour-blind mode: ON' : 'Colour-blind friendly mode';
+}
+
+btnCb.addEventListener('click', () => {
+  const html = document.documentElement;
+  const on = html.getAttribute('data-cb') === 'on';
+  if (on) html.removeAttribute('data-cb');
+  else    html.setAttribute('data-cb', 'on');
+  WQ_STORE.set('wq-cb', on ? '0' : '1');
+  renderCb();
+  showToast(on ? 'Colour-blind mode off' : 'Colour-blind mode on');
+});
+
 function renderTheme() {
   const dark = document.documentElement.getAttribute('data-theme') !== 'light';
   btnTheme.textContent = dark ? '🌙' : '☀️';
@@ -1190,6 +1305,7 @@ btnTheme.addEventListener('click', () => {
 
 renderMute();
 renderTheme();
+renderCb();
 secretInput.focus();
 </script>
 </body>

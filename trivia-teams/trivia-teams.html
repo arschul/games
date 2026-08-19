@@ -384,6 +384,11 @@ html[data-theme="light"] .opt-btn.wrong   { color: #991b1b; }
   padding: 4px 12px; border-radius: 20px;
   background: rgba(124,58,237,.2); border: 1px solid rgba(124,58,237,.4); color: var(--accent2);
 }
+.modal-lvl-badge {
+  font-size: 10px; font-weight: 900; letter-spacing: 1px;
+  padding: 5px 9px; border-radius: 20px;
+  background: rgba(136,136,170,.15); border: 1px solid var(--border); color: var(--muted);
+}
 .modal-pts-badge {
   font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px;
   padding: 4px 12px; border-radius: 20px;
@@ -675,6 +680,20 @@ body:has(#game-screen.active) .corner-ui { display: none; }
   </div>
 
   <div class="setup-section">
+    <span class="sect-label">Language level — <span id="level-count" style="color:var(--accent2)">…</span></span>
+    <select id="level-filter" onchange="updateLevelCount()"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;padding:9px 12px;outline:none;cursor:pointer;">
+      <option value="all" selected>All levels — A1 to B2+</option>
+      <option value="A2,B1">Up to B1 — leaves out the most academic wording</option>
+      <option value="A2">A1–A2 only — short sentences, everyday words</option>
+    </select>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+      Filters by how hard the question is to <em>read</em>, not how hard it is to answer —
+      plenty of 500-point questions are written in simple English.
+    </div>
+  </div>
+
+  <div class="setup-section">
     <span class="sect-label">Settings</span>
     <div class="settings-row">
       <div class="setting-item">
@@ -781,7 +800,10 @@ body:has(#game-screen.active) .corner-ui { display: none; }
   <div class="modal-box">
     <div class="modal-top">
       <div class="modal-cat-badge" id="modal-cat-badge">Category</div>
-      <div class="modal-pts-badge" id="modal-pts-badge">100 PTS</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div class="modal-lvl-badge" id="modal-lvl-badge" title="How hard this question is to read">A2</div>
+        <div class="modal-pts-badge" id="modal-pts-badge">100 PTS</div>
+      </div>
     </div>
 
     <!-- Timer -->
@@ -930,6 +952,7 @@ function initSetup() {
   document.getElementById('badge-bonus').value = 300;
   document.getElementById('badge-bonus-val').textContent = '300';
   document.getElementById('speed-bonus').value = 'on';
+  document.getElementById('level-filter').value = 'all';
 
   updateCatCountLabel();
 }
@@ -940,6 +963,24 @@ function syncBadgeSlider(v) {
   document.getElementById('badges-val').textContent = n > total ? total : n;
 }
 
+// Reading-level filter. Returns [] for "all levels", which the DB treats
+// as no filtering at all.
+function currentLevels() {
+  const v = document.getElementById('level-filter').value;
+  return v === 'all' ? [] : v.split(',');
+}
+
+function updateLevelCount() {
+  const cats = TriviaDB.getCategoriesByLevel(currentLevels())
+    .filter(c => selectedCats.has(c.id));
+  const n = cats.reduce((a, c) => a + c.questions.length, 0);
+  const thin = cats.filter(c => c.questions.length < 5).length;
+  const el = document.getElementById('level-count');
+  el.textContent = `${n} question${n !== 1 ? 's' : ''} available`
+    + (thin ? ` · ${thin} thin categor${thin !== 1 ? 'ies' : 'y'}` : '');
+  el.style.color = n < 20 ? 'var(--wrong)' : 'var(--accent2)';
+}
+
 function updateCatCountLabel() {
   document.getElementById('cat-count-lbl').textContent = selectedCats.size + ' selected';
   // Also clamp badge slider max to selected count
@@ -947,6 +988,7 @@ function updateCatCountLabel() {
   sl.max = Math.max(1, selectedCats.size);
   if (parseInt(sl.value) > selectedCats.size) sl.value = selectedCats.size;
   syncBadgeSlider(sl.value);
+  updateLevelCount();
 }
 
 function toggleCat(id) {
@@ -991,7 +1033,14 @@ function startGame() {
     ? [...teamList].sort(() => Math.random() - .5)
     : [...teamList];
 
-  const activeCats = TriviaDB.getCategories().filter(c => selectedCats.has(c.id));
+  // Questions are filtered by reading level here, so the whole game — board,
+  // pools, availability — only ever sees questions the class can read.
+  const activeCats = TriviaDB.getCategoriesByLevel(currentLevels())
+    .filter(c => selectedCats.has(c.id) && c.questions.length > 0);
+  if (!activeCats.length) {
+    toast('No questions at that language level — widen the level or pick more categories');
+    return;
+  }
   const badgesNeeded = Math.min(parseInt(document.getElementById('badges-to-win').value), activeCats.length);
   const timerSecs = parseInt(document.getElementById('timer-secs').value) || 30;
   const badgeBonus = parseInt(document.getElementById('badge-bonus').value);
@@ -1286,6 +1335,9 @@ function openQuestion(catId, pts) {
   // Reset modal
   document.getElementById('modal-cat-badge').textContent = cat.emoji + ' ' + cat.label;
   document.getElementById('modal-pts-badge').textContent = pts + ' PTS';
+  const lvl = document.getElementById('modal-lvl-badge');
+  lvl.textContent = q.cefr || '';
+  lvl.style.display = q.cefr ? '' : 'none';
   document.getElementById('modal-question').textContent = q.q;
   document.getElementById('result-banner').className = 'result-banner';
   document.getElementById('answer-reveal').className = 'answer-reveal';

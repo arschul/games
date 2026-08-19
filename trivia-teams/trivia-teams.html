@@ -327,7 +327,7 @@ html[data-theme="light"] .opt-btn.wrong   { color: #991b1b; }
    by-other = another team answered this slot (tick)
    by-team  = this team already played the category (hatched, dash) */
 .q-cell.used::after { content: '✓'; font-size: 14px; }
-.q-cell.used.by-team::after { content: '–'; font-size: 18px; }
+.q-cell.used.by-team::after { content: ''; }
 .q-cell.used.by-team {
   opacity: .45;
   background-image: repeating-linear-gradient(45deg,
@@ -464,6 +464,38 @@ html[data-theme="light"] .opt-btn.wrong   { color: #991b1b; }
   background: var(--optletter); font-size: 11px; font-weight: 900;
   text-align: center; line-height: 22px; margin-right: 8px;
 }
+
+/* Reveal gate */
+.reveal-gate { display: none; text-align: center; padding: 10px 0 4px; }
+.reveal-gate.open { display: block; }
+.reveal-note { font-size: 13px; color: var(--muted); font-weight: 700; margin-bottom: 12px; }
+.btn-reveal {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none; border-radius: 10px; color: white;
+  font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px;
+  cursor: pointer; transition: filter .15s;
+}
+.btn-reveal:hover { filter: brightness(1.1); }
+
+/* Hint */
+.btn-hint {
+  display: none; width: 100%; padding: 9px; margin-bottom: 12px;
+  background: var(--surface2); border: 1px dashed var(--gold2); border-radius: 10px;
+  color: var(--gold2); font-family: 'Nunito', sans-serif;
+  font-size: 12px; font-weight: 800; cursor: pointer; transition: all .15s;
+}
+.btn-hint.visible { display: block; }
+.btn-hint:hover:not(:disabled) { background: rgba(245,158,11,.12); }
+.btn-hint:disabled { opacity: .4; cursor: default; border-style: solid; }
+
+.hint-box {
+  display: none; font-size: 13px; font-weight: 700; line-height: 1.4;
+  padding: 10px 14px; margin-bottom: 14px; border-radius: 10px;
+  background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.35);
+  color: var(--gold2);
+}
+.hint-box.visible { display: block; }
 
 /* Result */
 .result-banner {
@@ -662,6 +694,19 @@ body:has(#game-screen.active) .corner-ui { display: none; }
           <option value="random">Random</option>
         </select>
       </div>
+      <div class="setting-item">
+        <label>Points per badge — <span id="badge-bonus-val" style="color:var(--gold2)">300</span></label>
+        <input type="range" id="badge-bonus" min="0" max="500" value="300" step="50"
+          title="Each badge is worth this many points in the final score. Set to 0 to make badges decorative."
+          oninput="document.getElementById('badge-bonus-val').textContent=this.value">
+      </div>
+      <div class="setting-item">
+        <label>Speed bonus</label>
+        <select id="speed-bonus" title="Up to x1.3 for answering quickly. Turn off for lower levels so reading speed isn't scored.">
+          <option value="on" selected>On — up to ×1.3</option>
+          <option value="off">Off — reading time is free</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -698,11 +743,12 @@ body:has(#game-screen.active) .corner-ui { display: none; }
       <div class="categories-board" id="categories-board"></div>
       <div class="board-legend">
         <span class="legend-item"><span class="legend-swatch s-open">100</span> Available</span>
-        <span class="legend-item"><span class="legend-swatch s-other">✓</span> Answered by another team</span>
-        <span class="legend-item"><span class="legend-swatch s-team">–</span> Category already played by this team</span>
+        <span class="legend-item"><span class="legend-swatch s-other">—</span> No questions left at this value</span>
+        <span class="legend-item"><span class="legend-swatch s-team"></span> Category already played by this team</span>
       </div>
       <div class="kbd-hint">
-        <kbd>1</kbd>–<kbd>4</kbd> answer · <kbd>Space</kbd> next · <kbd>P</kbd> pause ·
+        <kbd>1</kbd>–<kbd>3</kbd> confidence · <kbd>Space</kbd> reveal / next · <kbd>1</kbd>–<kbd>4</kbd> answer ·
+        <kbd>H</kbd> hint · <kbd>P</kbd> pause ·
         <kbd>Esc</kbd> cancel · <kbd>S</kbd> scores · <kbd>U</kbd> undo · <kbd>K</kbd> skip
       </div>
     </div>
@@ -715,10 +761,10 @@ body:has(#game-screen.active) .corner-ui { display: none; }
 <div id="end-screen" class="screen">
   <div class="end-box">
     <div class="end-title">GAME OVER</div>
-    <div class="end-subtitle">Ranked by total points — badges don't decide the winner</div>
+    <div class="end-subtitle" id="end-subtitle">Points earned plus a bonus per badge</div>
     <div class="podium" id="podium"></div>
     <table class="results-table">
-      <thead><tr><th>#</th><th>Team</th><th>Score</th><th>Badges</th><th>Questions</th></tr></thead>
+      <thead><tr><th>#</th><th>Team</th><th>Points</th><th>Badges</th><th>Bonus</th><th>Total</th><th>Qs</th></tr></thead>
       <tbody id="results-tbody"></tbody>
     </table>
     <div class="end-btns">
@@ -739,7 +785,7 @@ body:has(#game-screen.active) .corner-ui { display: none; }
     </div>
 
     <!-- Timer -->
-    <div class="timer-row">
+    <div class="timer-row" id="timer-row">
       <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar"></div></div>
       <div class="timer-head">
         <div class="timer-label" id="timer-label">30</div>
@@ -767,10 +813,19 @@ body:has(#game-screen.active) .corner-ui { display: none; }
       </div>
     </div>
 
+    <!-- Confidence is locked in BEFORE the question is visible, so the
+         bet is a real one rather than a formality once you know the answer -->
+    <div class="reveal-gate" id="reveal-gate">
+      <div class="reveal-note">Lock in your confidence — then reveal the question.</div>
+      <button class="btn-reveal" onclick="revealQuestion()">Reveal Question →</button>
+    </div>
+
     <div class="result-banner" id="result-banner"></div>
     <div class="modal-question" id="modal-question">Question text</div>
+    <div class="hint-box" id="hint-box"></div>
     <div class="answer-reveal" id="answer-reveal"></div>
     <div class="options-grid" id="options-grid"></div>
+    <button class="btn-hint" id="btn-hint" onclick="useHint()">💡 Show hint — halves the points</button>
     <div class="points-earned" id="points-earned"></div>
     <button class="btn-next" id="btn-next" onclick="closeQuestion()">Next Turn →</button>
   </div>
@@ -871,6 +926,11 @@ function initSetup() {
   timerSl.value = 30;
   document.getElementById('timer-val').textContent = '30s';
 
+  // Scoring defaults
+  document.getElementById('badge-bonus').value = 300;
+  document.getElementById('badge-bonus-val').textContent = '300';
+  document.getElementById('speed-bonus').value = 'on';
+
   updateCatCountLabel();
 }
 
@@ -934,28 +994,28 @@ function startGame() {
   const activeCats = TriviaDB.getCategories().filter(c => selectedCats.has(c.id));
   const badgesNeeded = Math.min(parseInt(document.getElementById('badges-to-win').value), activeCats.length);
   const timerSecs = parseInt(document.getElementById('timer-secs').value) || 30;
+  const badgeBonus = parseInt(document.getElementById('badge-bonus').value);
+  const speedBonus = document.getElementById('speed-bonus').value === 'on';
 
   // ── Question assignment model ──────────────────────────────────
   //
-  // A question cell (catId × pts) is SHARED across teams — once any
-  // team answers it, it's gone for everyone at that point value.
+  // A cell (catId × pts) is available to any team that hasn't played the
+  // category, for as long as questions remain in that tier's pool. Each
+  // open pop()s a question, so two teams picking the same cell get
+  // different questions.
   //
-  // Per team: usedCats tracks which categories the team has already
-  // played. Once a team picks any point value in a category, the
-  // whole category is locked for that team only.
+  // This replaces the old global slot lock, where the first team to
+  // answer Brazil-100 closed that cell for everyone — which stranded
+  // teams with no legal move and left the deeper 100/200 pools (up to 8
+  // questions) permanently unreachable behind a single play.
   //
-  // questionPool[catId][pts] = shuffled array of question objects.
-  // We pop() from it each time a cell is opened, so teams get
-  // different questions and the pool rotates each game.
-  //
-  // usedPts[catId] = Set of point values already answered by any team.
+  // Per team: usedCats still locks a whole category once that team has
+  // played any value in it.
 
   const questionPool = {};
-  const usedPts = {};          // globally used point-value slots
 
   activeCats.forEach(cat => {
     questionPool[cat.id] = {};
-    usedPts[cat.id] = new Set();
     PT_TIERS.forEach(pts => {
       // Shuffle all questions at this tier — random order each game
       questionPool[cat.id][pts] = cat.questions
@@ -974,9 +1034,10 @@ function startGame() {
     })),
     activeCats,
     questionPool,
-    usedPts,                 // globally exhausted point-value slots per cat
     badgesNeeded,
     timerSecs,
+    badgeBonus,      // points each badge adds to the final score
+    speedBonus,      // whether answering fast earns a multiplier
     currentTeamIdx: 0,
     round: 1,
     finalRoundTriggeredBy: null,
@@ -1009,9 +1070,10 @@ function renderTeams() {
       return `<div class="badge ${earned ? 'earned' : ''}" title="${cat.label}">${cat.emoji}</div>`;
     }).join('');
 
+    const bonus = badgeBonusFor(t);
     const scoreBlock = G.showScores
-      ? `<div class="team-score-shown">${t.score.toLocaleString()}</div>
-         <div class="team-score-label">points</div>
+      ? `<div class="team-score-shown">${finalScore(t).toLocaleString()}</div>
+         <div class="team-score-label">${bonus ? `${t.score.toLocaleString()} + ${bonus.toLocaleString()} badges` : 'points'}</div>
          <div class="score-adjust">
            <button onclick="adjustScore(${i},-50)" title="Subtract 50 points">−50</button>
            <button onclick="adjustScore(${i},50)" title="Add 50 points">+50</button>
@@ -1054,22 +1116,17 @@ function renderBoard() {
       </div>`;
 
     PT_TIERS.forEach(pts => {
-      const usedGlobally = G.usedPts[cat.id].has(pts);            // answered by any team
-      const noQuestions  = !G.questionPool[cat.id][pts].length && !usedGlobally;  // pool empty, never played
-      const hasPool      = G.questionPool[cat.id][pts].length > 0; // questions still available
+      const left = G.questionPool[cat.id][pts].length;
 
       if (catDoneByTeam) {
-        // Team already played this category — hatched, dash
+        // This team has already played the category — hatched row
         row += `<div class="q-cell pts-${pts} used by-team" title="${cat.label} already played by ${team.name}"></div>`;
-      } else if (usedGlobally) {
-        // Another team already used this exact slot — tick
-        row += `<div class="q-cell pts-${pts} used by-other" title="Already answered by another team"></div>`;
-      } else if (!hasPool) {
-        // No question exists at this value for this category
-        row += `<div class="q-cell pts-${pts} locked" title="No question available">—</div>`;
+      } else if (!left) {
+        // Every question at this value has been used up this game
+        row += `<div class="q-cell pts-${pts} locked" title="No questions left at this value">—</div>`;
       } else {
         row += `<div class="q-cell pts-${pts}" onclick="openQuestion('${cat.id}',${pts})"
-          title="${cat.label} — ${pts} pts">${pts}</div>`;
+          title="${cat.label} — ${pts} pts (${left} question${left !== 1 ? 's' : ''} left)">${pts}</div>`;
       }
     });
 
@@ -1093,7 +1150,7 @@ function updateTopInfo() {
     // hasn't played — a category whose every tier is gone is not "left".
     const remaining = G.activeCats.filter(cat =>
       !t.usedCats.has(cat.id) &&
-      PT_TIERS.some(pts => !G.usedPts[cat.id].has(pts) && G.questionPool[cat.id][pts].length > 0)
+      PT_TIERS.some(pts => G.questionPool[cat.id][pts].length > 0)
     ).length;
     meta.textContent = `${remaining} categor${remaining !== 1 ? 'ies' : 'y'} playable for ${t.name}`;
     meta.className = 'board-meta';
@@ -1117,6 +1174,8 @@ let pendingBadgeCat = null;
 let currentOpts = [];
 let correctIdx = -1;
 let paused = false;
+let questionRevealed = false;
+let hintUsed = false;
 
 // ── UNDO ────────────────────────────────────────────────────────
 // Snapshot everything a question can change, taken *before* the question
@@ -1131,7 +1190,6 @@ function pushHistory() {
       questionsAnswered: t.questionsAnswered,
       usedCats: [...t.usedCats],
     })),
-    usedPts: Object.fromEntries(Object.entries(G.usedPts).map(([k, v]) => [k, [...v]])),
     pool: Object.fromEntries(Object.entries(G.questionPool).map(([k, tiers]) =>
       [k, Object.fromEntries(Object.entries(tiers).map(([p, arr]) => [p, arr.slice()]))])),
     currentTeamIdx: G.currentTeamIdx,
@@ -1160,7 +1218,6 @@ function restoreSnapshot(h) {
     t.questionsAnswered = h.teams[i].questionsAnswered;
     t.usedCats = new Set(h.teams[i].usedCats);
   });
-  Object.keys(G.usedPts).forEach(k => { G.usedPts[k] = new Set(h.usedPts[k]); });
   Object.keys(G.questionPool).forEach(k => {
     PT_TIERS.forEach(p => { G.questionPool[k][p] = h.pool[k][p].slice(); });
   });
@@ -1178,6 +1235,7 @@ function cancelQuestion() {
   clearInterval(timerInterval);
   paused = false;
   questionAnswered = false;
+  questionRevealed = false;
   pendingBadgeCat = null;
   document.getElementById('q-modal').classList.remove('open');
   restoreSnapshot(G.history.pop());
@@ -1207,7 +1265,6 @@ function openQuestion(catId, pts) {
   const team = G.teams[ti];
 
   if (team.usedCats.has(catId)) return;
-  if (G.usedPts[catId].has(pts)) return;
 
   const pool = G.questionPool[catId][pts];
   if (!pool || !pool.length) return;
@@ -1221,7 +1278,10 @@ function openQuestion(catId, pts) {
   currentQ = { q, cat, pts, catId };
   currentConf = 1;
   questionAnswered = false;
+  questionRevealed = false;
+  hintUsed = false;
   pendingBadgeCat = null;
+  paused = false;
 
   // Reset modal
   document.getElementById('modal-cat-badge').textContent = cat.emoji + ' ' + cat.label;
@@ -1231,9 +1291,19 @@ function openQuestion(catId, pts) {
   document.getElementById('answer-reveal').className = 'answer-reveal';
   document.getElementById('points-earned').className = 'points-earned';
   document.getElementById('btn-next').className = 'btn-next';
+  document.getElementById('hint-box').className = 'hint-box';
+  document.getElementById('btn-hint').className = 'btn-hint';
+  document.getElementById('btn-hint').disabled = false;
+
+  // Hold everything behind the confidence gate until the team commits
+  document.getElementById('reveal-gate').classList.add('open');
+  document.getElementById('modal-question').style.display = 'none';
+  document.getElementById('options-grid').style.display = 'none';
+  document.getElementById('timer-row').style.display = 'none';
 
   setConf(1, true);
   document.querySelectorAll('.conf-btn').forEach(b => b.disabled = false);
+  updateMultPreview();
 
   currentOpts = TriviaDB.getShuffledOptions(q);
   correctIdx = currentOpts.findIndex(o => o.correct);
@@ -1245,7 +1315,34 @@ function openQuestion(catId, pts) {
   ).join('');
 
   document.getElementById('q-modal').classList.add('open');
+}
+
+// Confidence is now locked. Show the question and start the clock.
+function revealQuestion() {
+  if (questionRevealed) return;
+  questionRevealed = true;
+  document.getElementById('reveal-gate').classList.remove('open');
+  document.getElementById('modal-question').style.display = '';
+  document.getElementById('options-grid').style.display = '';
+  document.getElementById('timer-row').style.display = '';
+  document.querySelectorAll('.conf-btn').forEach(b => b.disabled = true);
+  if (currentQ.q.hint) document.getElementById('btn-hint').classList.add('visible');
   startTimer();
+}
+
+// A hint halves what a correct answer is worth. It does NOT soften a wrong
+// answer — otherwise taking one would always be the safe play.
+function useHint() {
+  if (hintUsed || questionAnswered || !questionRevealed) return;
+  hintUsed = true;
+  const box = document.getElementById('hint-box');
+  box.textContent = '💡 ' + currentQ.q.hint;
+  box.classList.add('visible');
+  const btn = document.getElementById('btn-hint');
+  btn.disabled = true;
+  btn.textContent = '💡 Hint used — points halved';
+  updateMultPreview();
+  playBeep(440, 0.15, 'triangle', 0.2);
 }
 
 function setConf(level, silent) {
@@ -1256,6 +1353,7 @@ function setConf(level, silent) {
 }
 
 function getTimerMult() {
+  if (!G.speedBonus) return 1;
   return 1 + (Math.max(0, timeLeft) / G.timerSecs) * 0.3;
 }
 
@@ -1264,8 +1362,10 @@ function getConfMult() {
 }
 
 function updateMultPreview() {
-  const total = (getTimerMult() * getConfMult()).toFixed(2);
-  document.getElementById('total-mult').textContent = total + '×';
+  // Before the reveal there is no clock yet, so only confidence counts
+  const speed = questionRevealed ? getTimerMult() : 1;
+  const total = speed * getConfMult() * (hintUsed ? 0.5 : 1);
+  document.getElementById('total-mult').textContent = total.toFixed(2) + '×';
 }
 
 function startTimer() {
@@ -1327,8 +1427,6 @@ function recordAnswer(correct) {
   // Mark category as done for this team
   team.usedCats.add(currentQ.catId);
   team.questionsAnswered++;
-  // Mark this point-value slot as globally used (no other team can pick it)
-  G.usedPts[currentQ.catId].add(currentQ.pts);
   // Badge awarded only on correct answer
   if (correct && !team.badges.has(currentQ.catId)) {
     team.badges.add(currentQ.catId);
@@ -1343,6 +1441,7 @@ function timeExpired() {
   document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
   document.querySelectorAll('.conf-btn').forEach(b => b.disabled = true);
   document.getElementById('pause-btn').disabled = true;
+  document.getElementById('btn-hint').classList.remove('visible');
 
   const team = G.teams[G.currentTeamIdx];
   const confMult = getConfMult();
@@ -1381,7 +1480,7 @@ function revealCorrectOption() {
 }
 
 function answer(btn, idx) {
-  if (questionAnswered) return;
+  if (questionAnswered || !questionRevealed) return;
   if (paused) { toast('Timer is paused — press P to resume'); return; }
   const correct = (idx === correctIdx);
   questionAnswered = true;
@@ -1390,6 +1489,7 @@ function answer(btn, idx) {
   document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
   document.querySelectorAll('.conf-btn').forEach(b => b.disabled = true);
   document.getElementById('pause-btn').disabled = true;
+  document.getElementById('btn-hint').classList.remove('visible');
 
   const team = G.teams[G.currentTeamIdx];
   const timerMult = getTimerMult();
@@ -1402,12 +1502,17 @@ function answer(btn, idx) {
   const pe = document.getElementById('points-earned');
 
   if (correct) {
-    const earned = Math.round(base * timerMult * confMult);
+    const hintMult = hintUsed ? 0.5 : 1;
+    const earned = Math.round(base * timerMult * confMult * hintMult);
     team.score += earned;
     banner.textContent = '✓ CORRECT!';
     banner.className = 'result-banner correct';
+    const bits = [String(base)];
+    if (G.speedBonus) bits.push(`${timerMult.toFixed(2)} (speed)`);
+    bits.push(`${confMult.toFixed(1)} (conf)`);
+    if (hintUsed) bits.push('0.5 (hint)');
     pe.innerHTML = `
-      <span style="color:var(--muted)">${base} × ${timerMult.toFixed(2)} (speed) × ${confMult.toFixed(1)} (conf) =</span>
+      <span style="color:var(--muted)">${bits.join(' × ')} =</span>
       <span class="pts-calc"> +${earned} pts</span>
       <span style="color:var(--muted);font-size:11px;display:block;margin-top:4px;">Running total hidden until game ends</span>`;
     playBeep(523, 0.12); setTimeout(() => playBeep(659, 0.12), 130); setTimeout(() => playBeep(784, 0.22), 260);
@@ -1437,6 +1542,7 @@ function closeQuestion() {
   document.getElementById('q-modal').classList.remove('open');
   clearInterval(timerInterval);
   paused = false;
+  questionRevealed = false;
 
   const pc = pendingBadgeCat;
   pendingBadgeCat = null;
@@ -1460,7 +1566,6 @@ function playableCount(team) {
   G.activeCats.forEach(cat => {
     if (team.usedCats.has(cat.id)) return;
     PT_TIERS.forEach(pts => {
-      if (G.usedPts[cat.id].has(pts)) return;
       if (G.questionPool[cat.id][pts].length > 0) count++;
     });
   });
@@ -1544,6 +1649,11 @@ function dismissBadge() {
 // ══════════════════════════════════════════════════════════════════
 //  END GAME
 // ══════════════════════════════════════════════════════════════════
+// A team's final score = points earned + a flat bonus per badge.
+// Set "Points per badge" to 0 in setup to make badges decorative again.
+function badgeBonusFor(t) { return t.badges.size * (G.badgeBonus || 0); }
+function finalScore(t)    { return t.score + badgeBonusFor(t); }
+
 function endGame() {
   clearInterval(timerInterval);
   clearTimeout(stuckTimer);
@@ -1551,12 +1661,17 @@ function endGame() {
   document.getElementById('q-modal').classList.remove('open');
   document.getElementById('badge-overlay').classList.remove('show');
 
-  // Rank by points; ties broken by badges, then by fewest questions used
+  // Rank by final score (points + badge bonus); ties broken by badges,
+  // then by fewest questions used
   const sorted = [...G.teams].sort((a, b) =>
-    (b.score - a.score) ||
+    (finalScore(b) - finalScore(a)) ||
     (b.badges.size - a.badges.size) ||
     (a.questionsAnswered - b.questionsAnswered)
   );
+
+  document.getElementById('end-subtitle').textContent = G.badgeBonus > 0
+    ? `Points earned plus ${G.badgeBonus} per badge`
+    : 'Ranked by points earned — badges are decorative this game';
 
   // Podium — 1st centre, 2nd left, 3rd right; 2-team games kept both
   // teams off the podium before (only the winner was drawn).
@@ -1569,21 +1684,24 @@ function endGame() {
     const rank = sorted.indexOf(t) + 1;
     return `<div class="podium-slot ${posClass[i]}">
       <div class="podium-name" style="color:${t.color}">${t.name}</div>
-      <div class="podium-pts">${t.score.toLocaleString()} pts</div>
+      <div class="podium-pts">${finalScore(t).toLocaleString()} pts</div>
       <div class="podium-block">${rank === 1 ? '🏆' : rank}</div>
     </div>`;
   }).join('');
 
-  // Table — ranked by points, badges shown as info
+  // Table — points, badge bonus and total shown separately so teams can
+  // see exactly where the win came from
   document.getElementById('results-tbody').innerHTML = sorted.map((t, i) => `
     <tr class="${i === 0 ? 'rank-1' : ''}">
       <td>${i === 0 ? '🏆' : i + 1}</td>
       <td style="color:${t.color};font-weight:900">${t.name}</td>
-      <td><strong>${t.score.toLocaleString()}</strong></td>
+      <td style="color:var(--muted)">${t.score.toLocaleString()}</td>
       <td>${Array.from(t.badges).map(cid => {
         const cat = G.activeCats.find(c => c.id === cid);
         return cat ? cat.emoji : '';
       }).join('')} <span style="color:var(--muted)">(${t.badges.size})</span></td>
+      <td style="color:var(--gold2)">${badgeBonusFor(t) ? '+' + badgeBonusFor(t).toLocaleString() : '—'}</td>
+      <td><strong>${finalScore(t).toLocaleString()}</strong></td>
       <td style="color:var(--muted)">${t.questionsAnswered}</td>
     </tr>`).join('');
 
@@ -1687,12 +1805,21 @@ document.addEventListener('keydown', (e) => {
   if (!document.getElementById('game-screen').classList.contains('active')) return;
 
   if (document.getElementById('q-modal').classList.contains('open')) {
-    if (k === 'p') { e.preventDefault(); togglePause(); return; }
     if (k === 'escape') {
       e.preventDefault();
       if (questionAnswered) closeQuestion(); else cancelQuestion();
       return;
     }
+
+    // Before the reveal: 1-3 pick confidence, Space/Enter reveals
+    if (!questionRevealed) {
+      if (k === '1' || k === '2' || k === '3') { e.preventDefault(); setConf(+k); return; }
+      if (k === ' ' || k === 'enter') { e.preventDefault(); revealQuestion(); }
+      return;
+    }
+
+    if (k === 'p') { e.preventDefault(); togglePause(); return; }
+    if (k === 'h') { e.preventDefault(); useHint(); return; }
     if (k === ' ' || k === 'enter') {
       if (questionAnswered) { e.preventDefault(); closeQuestion(); }
       return;

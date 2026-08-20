@@ -2,7 +2,9 @@
  * TRIVIA QUESTION DATABASE
  * For use with Brazilian teen students (ages 10-17)
  * Language: English
- * 20 categories, 357 questions (>= 3 at every point value in every category)
+ * 20 categories, 524 questions
+ *   >= 3 at every point value in every category, and >= 3 A2 questions in
+ *   every (category, point value) cell, so an A1-A2 class sees a full board
  *
  * Structure per question:
  *   id       – unique string "CAT-001"
@@ -34,7 +36,7 @@
 
 const TriviaDB = (() => {
 
-  const categories = [
+    const categories = [
 
     // ─────────────────────────────────────────────
     //  1. BRAZIL
@@ -163,6 +165,55 @@ const TriviaDB = (() => {
           a: "Pico da Neblina",
           wrong: ["Pico da Bandeira", "Pico Paraná", "Monte Roraima"],
           hint: "At 2,995 m it rises in the Amazon rainforest, in the state of Amazonas."
+        },
+        {
+          id: "BR-018", points: 100, cefr: "A2",
+          q: "What is the capital of Brazil?",
+          a: "Brasília",
+          wrong: ["Rio de Janeiro", "São Paulo", "Salvador"],
+          hint: "It was built in the 1950s in the center of the country."
+        },
+        {
+          id: "BR-019", points: 300, cefr: "A2",
+          q: "Which country has the longest border with Brazil?",
+          a: "Bolivia",
+          wrong: ["Peru", "Colombia", "Argentina"],
+          hint: "This country is famous for a huge white salt flat."
+        },
+        {
+          id: "BR-020", points: 300, cefr: "A2",
+          q: "In which city is the famous Teatro Amazonas opera house?",
+          a: "Manaus",
+          wrong: ["Belém", "Porto Velho", "Rio Branco"],
+          hint: "It stands in the middle of the rainforest, on the Rio Negro."
+        },
+        {
+          id: "BR-021", points: 400, cefr: "A2",
+          q: "Which river meets the Rio Negro near Manaus?",
+          a: "Solimões",
+          wrong: ["Madeira", "Tapajós", "Xingu"],
+          hint: "The two rivers make the famous meeting of the waters."
+        },
+        {
+          id: "BR-022", points: 400, cefr: "A2",
+          q: "What is the capital of the state of Roraima?",
+          a: "Boa Vista",
+          wrong: ["Macapá", "Porto Velho", "Rio Branco"],
+          hint: "It is the only Brazilian capital north of the equator."
+        },
+        {
+          id: "BR-023", points: 500, cefr: "A2",
+          q: "What is the largest natural lake in Brazil?",
+          a: "Lagoa dos Patos",
+          wrong: ["Lagoa Mirim", "Lago de Furnas", "Lagoa Feia"],
+          hint: "It is in the far south, near the city of Porto Alegre."
+        },
+        {
+          id: "BR-024", points: 500, cefr: "A2",
+          q: "In which state is the Chapada dos Veadeiros park?",
+          a: "Goiás",
+          wrong: ["Bahia", "Piauí", "Tocantins"],
+          hint: "This state is in the Center-West of Brazil."
         }
       ]
     },
@@ -287,6 +338,90 @@ const TriviaDB = (() => {
           a: "Heitor Villa-Lobos",
           wrong: ["Carlos Gomes", "Tom Jobim", "Chiquinha Gonzaga"],
           hint: "He is Brazil's best-known classical composer, born in Rio de Janeiro in 1887."
+        },
+        {
+          id: "BH-017", points: 100, cefr: "A2",
+          q: "What is the most popular sport in Brazil?",
+          a: "Soccer",
+          wrong: ["Volleyball", "Basketball", "Tennis"],
+          hint: "People play it with their feet and a round ball."
+        },
+        {
+          id: "BH-018", points: 100, cefr: "A2",
+          q: "Which music style is famous at Carnaval in Rio?",
+          a: "Samba",
+          wrong: ["Forró", "Sertanejo", "Frevo"],
+          hint: "Big schools of dancers parade to this music every year."
+        },
+        {
+          id: "BH-019", points: 200, cefr: "A2",
+          q: "Which Brazilian player is called 'O Rei' (The King)?",
+          a: "Pelé",
+          wrong: ["Zico", "Romário", "Garrincha"],
+          hint: "He won three World Cups with Brazil."
+        },
+        {
+          id: "BH-020", points: 200, cefr: "A2",
+          q: "In which year did Brazil first win the World Cup?",
+          a: "1958",
+          wrong: ["1950", "1962", "1970"],
+          hint: "It happened in Sweden, and Pelé was only 17 years old."
+        },
+        {
+          id: "BH-021", points: 200, cefr: "A2",
+          q: "Which food is the main part of feijoada?",
+          a: "Black beans",
+          wrong: ["Rice", "Corn", "Potatoes"],
+          hint: "Many Brazilian families eat this dish on Saturday."
+        },
+        {
+          id: "BH-022", points: 300, cefr: "A2",
+          q: "Which Brazilian musician wrote 'Garota de Ipanema'?",
+          a: "Tom Jobim",
+          wrong: ["Roberto Carlos", "Gilberto Gil", "Caetano Veloso"],
+          hint: "He helped create bossa nova with his piano."
+        },
+        {
+          id: "BH-023", points: 300, cefr: "A2",
+          q: "How many stars are on the Brazilian flag today?",
+          a: "27",
+          wrong: ["26", "22", "30"],
+          hint: "Think about the states on the map of Brazil."
+        },
+        {
+          id: "BH-024", points: 400, cefr: "A2",
+          q: "Which Brazilian writer wrote 'Capitães da Areia'?",
+          a: "Jorge Amado",
+          wrong: ["Clarice Lispector", "Graciliano Ramos", "Monteiro Lobato"],
+          hint: "He was from Bahia and wrote many books about Salvador."
+        },
+        {
+          id: "BH-025", points: 400, cefr: "A2",
+          q: "Which tree gave Brazil its name?",
+          a: "Brazilwood",
+          wrong: ["Rubber tree", "Cashew tree", "Palm tree"],
+          hint: "People in Europe used it to make a red color for clothes."
+        },
+        {
+          id: "BH-026", points: 400, cefr: "A2",
+          q: "Which Brazilian singer wore a hat of fruit in Hollywood?",
+          a: "Carmen Miranda",
+          wrong: ["Elis Regina", "Clara Nunes", "Rita Lee"],
+          hint: "She became a big movie star in the USA in the 1940s."
+        },
+        {
+          id: "BH-027", points: 500, cefr: "A2",
+          q: "Who painted the famous picture 'Abaporu'?",
+          a: "Tarsila do Amaral",
+          wrong: ["Anita Malfatti", "Candido Portinari", "Di Cavalcanti"],
+          hint: "She was married to the writer Oswald de Andrade."
+        },
+        {
+          id: "BH-028", points: 500, cefr: "A2",
+          q: "Which Brazilian state did Brazil buy from Bolivia in 1903?",
+          a: "Acre",
+          wrong: ["Rondônia", "Roraima", "Amapá"],
+          hint: "It is in the far west, and people there collected rubber."
         }
       ]
     },
@@ -365,10 +500,10 @@ const TriviaDB = (() => {
         },
         {
           id: "BIO-010", points: 100, cefr: "A2",
-          q: "Which animal is the largest on Earth?",
-          a: "Blue whale",
-          wrong: ["African elephant", "Giant squid", "Whale shark"],
-          hint: "It lives in the ocean and is a mammal."
+          q: "Which bone protects your brain?",
+          a: "The skull",
+          wrong: ["The ribs", "The hips", "The jaw"],
+          hint: "You can feel this hard bone under your hair."
         },
         {
           id: "BIO-011", points: 400, cefr: "B2",
@@ -386,10 +521,10 @@ const TriviaDB = (() => {
         },
         {
           id: "BIO-013", points: 300, cefr: "A2",
-          q: "How many bones are there in the adult human body?",
-          a: "206",
-          wrong: ["186", "226", "306"],
-          hint: "The number is between 200 and 210."
+          q: "Where does the human body make new blood?",
+          a: "In the bones",
+          wrong: ["In the heart", "In the lungs", "In the stomach"],
+          hint: "It happens in a soft red part inside something hard."
         },
         {
           id: "BIO-014", points: 300, cefr: "B1",
@@ -399,11 +534,11 @@ const TriviaDB = (() => {
           hint: "It sits on the right side of the body, under the ribs."
         },
         {
-          id: "BIO-015", points: 400, cefr: "B1",
-          q: "Which vitamin is produced by human skin when it is exposed to sunlight?",
-          a: "Vitamin D",
-          wrong: ["Vitamin A", "Vitamin C", "Vitamin K"],
-          hint: "People who get very little sun often do not have enough of it."
+          id: "BIO-015", points: 400, cefr: "A2",
+          q: "A potato is which part of the plant?",
+          a: "The stem",
+          wrong: ["The root", "The leaf", "The seed"],
+          hint: "It is not a root, even though it grows under the ground."
         },
         {
           id: "BIO-016", points: 400, cefr: "A2",
@@ -425,6 +560,76 @@ const TriviaDB = (() => {
           a: "Four",
           wrong: ["Two", "Three", "Seven"],
           hint: "Grass is fermented in the first and largest one, called the rumen."
+        },
+        {
+          id: "BIO-019", points: 100, cefr: "A2",
+          q: "How many legs does a spider have?",
+          a: "8",
+          wrong: ["6", "10", "4"],
+          hint: "It is two more than an insect has."
+        },
+        {
+          id: "BIO-020", points: 100, cefr: "A2",
+          q: "What is the smallest living part of the human body called?",
+          a: "A cell",
+          wrong: ["An atom", "A bubble", "A drop"],
+          hint: "You need a microscope to see one."
+        },
+        {
+          id: "BIO-021", points: 200, cefr: "A2",
+          q: "Which part of a plant takes water from the ground?",
+          a: "Roots",
+          wrong: ["Leaves", "Flowers", "Seeds"],
+          hint: "You cannot see this part when the plant is growing."
+        },
+        {
+          id: "BIO-022", points: 300, cefr: "A2",
+          q: "Which land animal has the biggest eyes?",
+          a: "Ostrich",
+          wrong: ["Elephant", "Horse", "Giraffe"],
+          hint: "It is a very big bird, but it cannot fly."
+        },
+        {
+          id: "BIO-023", points: 300, cefr: "A2",
+          q: "Which animal carries its baby for almost two years?",
+          a: "Elephant",
+          wrong: ["Giraffe", "Camel", "Horse"],
+          hint: "This big animal lives in Africa and in Asia."
+        },
+        {
+          id: "BIO-024", points: 400, cefr: "A2",
+          q: "Which Australian animal has fingerprints like a human?",
+          a: "Koala",
+          wrong: ["Kangaroo", "Wombat", "Platypus"],
+          hint: "It sleeps a lot in trees and eats eucalyptus leaves."
+        },
+        {
+          id: "BIO-025", points: 400, cefr: "A2",
+          q: "Which mammal is the only one that can really fly?",
+          a: "Bat",
+          wrong: ["Flying squirrel", "Sugar glider", "Colugo"],
+          hint: "It sleeps upside down and comes out at night."
+        },
+        {
+          id: "BIO-026", points: 500, cefr: "A2",
+          q: "How many eyes does a bee have?",
+          a: "5",
+          wrong: ["2", "3", "8"],
+          hint: "It has two big ones and some very small ones on top."
+        },
+        {
+          id: "BIO-027", points: 500, cefr: "A2",
+          q: "Which sea animal can go back to being a baby?",
+          a: "Jellyfish",
+          wrong: ["Starfish", "Coral", "Sponge"],
+          hint: "It is soft, it has no bones, and it can sting you."
+        },
+        {
+          id: "BIO-028", points: 500, cefr: "A2",
+          q: "Which plant has the biggest flower in the world?",
+          a: "Rafflesia",
+          wrong: ["Sunflower", "Lotus", "Tulip"],
+          hint: "It grows in the forests of Asia and smells very bad."
         }
       ]
     },
@@ -570,6 +775,55 @@ const TriviaDB = (() => {
           a: "Dmitri Mendeleev",
           wrong: ["Antoine Lavoisier", "John Dalton", "Niels Bohr"],
           hint: "He was Russian and left gaps for elements not yet discovered."
+        },
+        {
+          id: "PC-020", points: 100, cefr: "A2",
+          q: "Which gas do we need to breathe?",
+          a: "Oxygen",
+          wrong: ["Helium", "Argon", "Neon"],
+          hint: "You cannot see it. About 21% of the air is this gas."
+        },
+        {
+          id: "PC-021", points: 200, cefr: "A2",
+          q: "Which gas makes soda drinks fizzy?",
+          a: "Carbon dioxide",
+          wrong: ["Hydrogen", "Helium", "Methane"],
+          hint: "Plants use this gas to make their food."
+        },
+        {
+          id: "PC-022", points: 300, cefr: "A2",
+          q: "What is the hardest natural material on Earth?",
+          a: "Diamond",
+          wrong: ["Gold", "Quartz", "Granite"],
+          hint: "People wear it in rings."
+        },
+        {
+          id: "PC-023", points: 300, cefr: "A2",
+          q: "Which planet has the strongest gravity?",
+          a: "Jupiter",
+          wrong: ["Saturn", "Neptune", "Mars"],
+          hint: "This planet is bigger than all the others."
+        },
+        {
+          id: "PC-024", points: 400, cefr: "A2",
+          q: "How long does sunlight take to reach the Earth?",
+          a: "8 minutes",
+          wrong: ["3 minutes", "20 minutes", "45 minutes"],
+          hint: "Light travels 300,000 km every second."
+        },
+        {
+          id: "PC-025", points: 500, cefr: "A2",
+          q: "Which metal is the best at carrying electricity?",
+          a: "Silver",
+          wrong: ["Copper", "Gold", "Aluminum"],
+          hint: "It is white and shiny, and it costs less than gold."
+        },
+        {
+          id: "PC-026", points: 500, cefr: "A2",
+          q: "Which element did scientists first make in a lab?",
+          a: "Technetium",
+          wrong: ["Plutonium", "Francium", "Americium"],
+          hint: "Scientists made it in Italy in 1937."
         }
       ]
     },
@@ -708,6 +962,62 @@ const TriviaDB = (() => {
           a: "Al-Khwarizmi",
           wrong: ["Euclid", "Fibonacci", "Pythagoras"],
           hint: "He worked in Baghdad in the 9th century."
+        },
+        {
+          id: "MA-019", points: 200, cefr: "A2",
+          q: "How many sides does a stop sign have?",
+          a: "8",
+          wrong: ["5", "6", "7"],
+          hint: "An octopus has the same number of arms."
+        },
+        {
+          id: "MA-020", points: 200, cefr: "A2",
+          q: "How many degrees are there in a full circle?",
+          a: "360",
+          wrong: ["180", "270", "90"],
+          hint: "It is five less than the days in a year."
+        },
+        {
+          id: "MA-021", points: 200, cefr: "A2",
+          q: "What is 7 times 8?",
+          a: "56",
+          wrong: ["54", "63", "48"],
+          hint: "The answer is between 50 and 60."
+        },
+        {
+          id: "MA-022", points: 300, cefr: "A2",
+          q: "How many zeros are there in one million?",
+          a: "6",
+          wrong: ["3", "9", "12"],
+          hint: "One thousand has three zeros."
+        },
+        {
+          id: "MA-023", points: 300, cefr: "A2",
+          q: "What is the next prime number after 7?",
+          a: "11",
+          wrong: ["9", "13", "15"],
+          hint: "You can divide 9 and 15 by 3."
+        },
+        {
+          id: "MA-024", points: 300, cefr: "A2",
+          q: "How many black shapes are on a classic soccer ball?",
+          a: "12",
+          wrong: ["8", "16", "20"],
+          hint: "The white shapes on the ball have six sides."
+        },
+        {
+          id: "MA-025", points: 400, cefr: "A2",
+          q: "In Roman numbers, what does the letter M mean?",
+          a: "One thousand",
+          wrong: ["One hundred", "Fifty", "Five hundred"],
+          hint: "M is bigger than D, C and L."
+        },
+        {
+          id: "MA-026", points: 500, cefr: "A2",
+          q: "How many minutes are there in one week?",
+          a: "10,080",
+          wrong: ["7,200", "5,040", "12,960"],
+          hint: "One day has 1,440 minutes."
         }
       ]
     },
@@ -846,6 +1156,41 @@ const TriviaDB = (() => {
           a: "Nepal",
           wrong: ["Bhutan", "Sri Lanka", "Mongolia"],
           hint: "It lies in the Himalayas, between India and China."
+        },
+        {
+          id: "WG-019", points: 200, cefr: "A2",
+          q: "Which country is shaped like a boot?",
+          a: "Italy",
+          wrong: ["Spain", "Greece", "Portugal"],
+          hint: "This country is famous for pizza and pasta."
+        },
+        {
+          id: "WG-020", points: 300, cefr: "A2",
+          q: "Which is the biggest island in the world?",
+          a: "Greenland",
+          wrong: ["Madagascar", "Borneo", "Iceland"],
+          hint: "It is very cold and it is near Canada."
+        },
+        {
+          id: "WG-021", points: 400, cefr: "A2",
+          q: "The Atacama, the driest desert, is in which country?",
+          a: "Chile",
+          wrong: ["Peru", "Mexico", "Namibia"],
+          hint: "It is a long, thin country next to the Pacific."
+        },
+        {
+          id: "WG-022", points: 400, cefr: "A2",
+          q: "Which country has the most lakes in the world?",
+          a: "Canada",
+          wrong: ["Russia", "Finland", "Sweden"],
+          hint: "It is the second biggest country in the world."
+        },
+        {
+          id: "WG-023", points: 500, cefr: "A2",
+          q: "Which country has three capital cities?",
+          a: "South Africa",
+          wrong: ["Bolivia", "Nigeria", "Chile"],
+          hint: "It is famous for the Kruger safari park."
         }
       ]
     },
@@ -991,6 +1336,62 @@ const TriviaDB = (() => {
           a: "116",
           wrong: ["100", "75", "130"],
           hint: "It ran from 1337 to 1453, so the name is misleading."
+        },
+        {
+          id: "WH-020", points: 200, cefr: "A2",
+          q: "Who was the first man to travel into space?",
+          a: "Yuri Gagarin",
+          wrong: ["Alan Shepard", "John Glenn", "Buzz Aldrin"],
+          hint: "He flew for the Soviet Union in 1961."
+        },
+        {
+          id: "WH-021", points: 300, cefr: "A2",
+          q: "Which ship took the Pilgrims to America in 1620?",
+          a: "Mayflower",
+          wrong: ["Santa Maria", "Golden Hind", "Endeavour"],
+          hint: "Its name has a month in it."
+        },
+        {
+          id: "WH-022", points: 300, cefr: "A2",
+          q: "Which city was buried by a volcano in the year 79?",
+          a: "Pompeii",
+          wrong: ["Carthage", "Athens", "Troy"],
+          hint: "It was a Roman city in Italy."
+        },
+        {
+          id: "WH-023", points: 300, cefr: "A2",
+          q: "Which country gave the Statue of Liberty to the USA?",
+          a: "France",
+          wrong: ["Spain", "Italy", "England"],
+          hint: "The same country has the Eiffel Tower."
+        },
+        {
+          id: "WH-024", points: 400, cefr: "A2",
+          q: "Hannibal took 37 of which animal over the Alps?",
+          a: "Elephants",
+          wrong: ["Horses", "Camels", "Donkeys"],
+          hint: "Rome's soldiers were afraid of these big animals."
+        },
+        {
+          id: "WH-025", points: 500, cefr: "A2",
+          q: "Which country has the oldest flag still used today?",
+          a: "Denmark",
+          wrong: ["Sweden", "Austria", "Portugal"],
+          hint: "It is a small country in the north of Europe."
+        },
+        {
+          id: "WH-026", points: 500, cefr: "A2",
+          q: "Which country made the first paper money?",
+          a: "China",
+          wrong: ["Italy", "Greece", "Turkey"],
+          hint: "The same country invented paper."
+        },
+        {
+          id: "WH-027", points: 500, cefr: "A2",
+          q: "Which country has the oldest university in Europe?",
+          a: "Italy",
+          wrong: ["England", "France", "Spain"],
+          hint: "The university is in the city of Bologna."
         }
       ]
     },
@@ -1136,6 +1537,55 @@ const TriviaDB = (() => {
           a: "Sweden",
           wrong: ["Hungary", "Czechoslovakia", "Italy"],
           hint: "Brazil won 5-2 against the host country."
+        },
+        {
+          id: "FB-020", points: 200, cefr: "A2",
+          q: "Which country won the 2018 World Cup?",
+          a: "France",
+          wrong: ["Croatia", "Germany", "Spain"],
+          hint: "This European country also won in 1998."
+        },
+        {
+          id: "FB-021", points: 200, cefr: "A2",
+          q: "Which color card means a player must leave the game?",
+          a: "Red",
+          wrong: ["Yellow", "Blue", "Green"],
+          hint: "It is the same color as a stop sign."
+        },
+        {
+          id: "FB-022", points: 300, cefr: "A2",
+          q: "Which Brazilian player is nicknamed 'O Fenômeno'?",
+          a: "Ronaldo",
+          wrong: ["Romário", "Rivaldo", "Bebeto"],
+          hint: "He scored both goals in the 2002 World Cup final."
+        },
+        {
+          id: "FB-023", points: 400, cefr: "A2",
+          q: "In which city did Brazil lose the 1950 World Cup match?",
+          a: "Rio de Janeiro",
+          wrong: ["São Paulo", "Belo Horizonte", "Porto Alegre"],
+          hint: "This city was the capital of Brazil at that time."
+        },
+        {
+          id: "FB-024", points: 400, cefr: "A2",
+          q: "How many World Cups has Germany won?",
+          a: "4",
+          wrong: ["2", "3", "5"],
+          hint: "Only Brazil has won more."
+        },
+        {
+          id: "FB-025", points: 500, cefr: "A2",
+          q: "How many teams played in the first World Cup in 1930?",
+          a: "13",
+          wrong: ["8", "16", "24"],
+          hint: "Fewer than sixteen teams played."
+        },
+        {
+          id: "FB-026", points: 500, cefr: "A2",
+          q: "The team called 'Samurai Blue' comes from which country?",
+          a: "Japan",
+          wrong: ["China", "Thailand", "Vietnam"],
+          hint: "It is an island country in Asia."
         }
       ]
     },
@@ -1274,6 +1724,69 @@ const TriviaDB = (() => {
           a: "Tacking",
           wrong: ["Jibing", "Heeling", "Trimming"],
           hint: "The opposite manoeuvre turns the stern through the wind."
+        },
+        {
+          id: "SM-019", points: 100, cefr: "A2",
+          q: "In which sport do players run to four bases?",
+          a: "Baseball",
+          wrong: ["Cricket", "Rugby", "Tennis"],
+          hint: "People play it with a bat in the USA."
+        },
+        {
+          id: "SM-020", points: 200, cefr: "A2",
+          q: "In which country did judo begin?",
+          a: "Japan",
+          wrong: ["China", "Korea", "Mongolia"],
+          hint: "Sumo comes from the same country."
+        },
+        {
+          id: "SM-021", points: 200, cefr: "A2",
+          q: "How many volleyball players from one team are on the court?",
+          a: "6",
+          wrong: ["5", "7", "9"],
+          hint: "Three players stand in front and three behind."
+        },
+        {
+          id: "SM-022", points: 300, cefr: "A2",
+          q: "In which sport can you win the Ryder Cup?",
+          a: "Golf",
+          wrong: ["Tennis", "Rowing", "Cycling"],
+          hint: "Teams from Europe and the USA play each other."
+        },
+        {
+          id: "SM-023", points: 300, cefr: "A2",
+          q: "How many world titles did Ayrton Senna win in Formula 1?",
+          a: "3",
+          wrong: ["1", "2", "4"],
+          hint: "He won more than two times."
+        },
+        {
+          id: "SM-024", points: 400, cefr: "A2",
+          q: "The Stanley Cup is the big prize in which sport?",
+          a: "Ice hockey",
+          wrong: ["Baseball", "Cricket", "Rowing"],
+          hint: "People play it in Canada in winter."
+        },
+        {
+          id: "SM-025", points: 400, cefr: "A2",
+          q: "Table tennis became an Olympic sport in which year?",
+          a: "1988",
+          wrong: ["1972", "1996", "2004"],
+          hint: "It was the same year as the Seoul Games."
+        },
+        {
+          id: "SM-026", points: 500, cefr: "A2",
+          q: "How many water polo players from one team are in the water?",
+          a: "7",
+          wrong: ["5", "6", "9"],
+          hint: "The number is more than six."
+        },
+        {
+          id: "SM-027", points: 500, cefr: "A2",
+          q: "In which sport do teams race for the America's Cup?",
+          a: "Sailing",
+          wrong: ["Surfing", "Swimming", "Running"],
+          hint: "The teams use the wind to go fast."
         }
       ]
     },
@@ -1419,6 +1932,62 @@ const TriviaDB = (() => {
           a: "4",
           wrong: ["5", "6", "7"],
           hint: "It has the same number of strings as a ukulele."
+        },
+        {
+          id: "PM-020", points: 200, cefr: "A2",
+          q: "Which instrument does Ed Sheeran usually play on stage?",
+          a: "Guitar",
+          wrong: ["Piano", "Drums", "Violin"],
+          hint: "It has six strings."
+        },
+        {
+          id: "PM-021", points: 200, cefr: "A2",
+          q: "Which country is the singer Rosalía from?",
+          a: "Spain",
+          wrong: ["Mexico", "Chile", "Cuba"],
+          hint: "Her country is in Europe, not in America."
+        },
+        {
+          id: "PM-022", points: 200, cefr: "A2",
+          q: "How many members are in the K-pop group BTS?",
+          a: "7",
+          wrong: ["4", "5", "9"],
+          hint: "It is an odd number under eight."
+        },
+        {
+          id: "PM-023", points: 300, cefr: "A2",
+          q: "Michael Jackson sang in which family band as a boy?",
+          a: "The Jackson 5",
+          wrong: ["The Temptations", "The Supremes", "The Miracles"],
+          hint: "The name of the band has a number in it."
+        },
+        {
+          id: "PM-024", points: 400, cefr: "A2",
+          q: "Which singer's real name is Stefani Germanotta?",
+          a: "Lady Gaga",
+          wrong: ["Katy Perry", "Dua Lipa", "Rihanna"],
+          hint: "She once wore a dress made of meat."
+        },
+        {
+          id: "PM-025", points: 400, cefr: "A2",
+          q: "Which country does the band ABBA come from?",
+          a: "Sweden",
+          wrong: ["Norway", "Denmark", "Finland"],
+          hint: "It is a cold country in the north of Europe."
+        },
+        {
+          id: "PM-026", points: 500, cefr: "A2",
+          q: "Queen singer Freddie Mercury was born on which island?",
+          a: "Zanzibar",
+          wrong: ["Malta", "Cyprus", "Jamaica"],
+          hint: "The island is near the east coast of Africa."
+        },
+        {
+          id: "PM-027", points: 500, cefr: "A2",
+          q: "Which American city is called the home of country music?",
+          a: "Nashville",
+          wrong: ["Memphis", "Austin", "Detroit"],
+          hint: "It is in the state of Tennessee."
         }
       ]
     },
@@ -1564,6 +2133,69 @@ const TriviaDB = (() => {
           a: "Denouement",
           wrong: ["Prologue", "Montage", "Flashback"],
           hint: "The French word behind it means 'untying' a knot."
+        },
+        {
+          id: "MS-020", points: 200, cefr: "A2",
+          q: "In 'Finding Nemo', what kind of fish is Nemo?",
+          a: "Clownfish",
+          wrong: ["Goldfish", "Catfish", "Swordfish"],
+          hint: "Its name makes you think of a circus."
+        },
+        {
+          id: "MS-021", points: 200, cefr: "A2",
+          q: "Who plays Jack in the film 'Titanic'?",
+          a: "Leonardo DiCaprio",
+          wrong: ["Brad Pitt", "Tom Cruise", "Matt Damon"],
+          hint: "He is also the star of the film 'Inception'."
+        },
+        {
+          id: "MS-022", points: 300, cefr: "A2",
+          q: "In which city does the series 'Friends' take place?",
+          a: "New York",
+          wrong: ["Chicago", "Boston", "Seattle"],
+          hint: "This city has a big green statue on an island."
+        },
+        {
+          id: "MS-023", points: 300, cefr: "A2",
+          q: "In Star Wars, what color is Yoda's lightsaber?",
+          a: "Green",
+          wrong: ["Blue", "Red", "Purple"],
+          hint: "Obi-Wan's blade is blue and Sith blades are red."
+        },
+        {
+          id: "MS-024", points: 300, cefr: "A2",
+          q: "In Harry Potter, what sport do wizards play on brooms?",
+          a: "Quidditch",
+          wrong: ["Cricket", "Polo", "Rugby"],
+          hint: "The players fly in the air and catch a ball."
+        },
+        {
+          id: "MS-025", points: 400, cefr: "A2",
+          q: "What was Pixar's first long movie, not a short film?",
+          a: "Toy Story",
+          wrong: ["Cars", "Monsters Inc", "A Bug's Life"],
+          hint: "It came out in 1995."
+        },
+        {
+          id: "MS-026", points: 400, cefr: "A2",
+          q: "In 'The Simpsons', what is the name of the family's town?",
+          a: "Springfield",
+          wrong: ["Shelbyville", "Riverdale", "Smallville"],
+          hint: "The show never tells us which US state this town is in."
+        },
+        {
+          id: "MS-027", points: 500, cefr: "A2",
+          q: "Which actor was the voice of Darth Vader in Star Wars?",
+          a: "James Earl Jones",
+          wrong: ["Morgan Freeman", "Samuel Jackson", "Denzel Washington"],
+          hint: "He only did the voice; another man wore the suit."
+        },
+        {
+          id: "MS-028", points: 500, cefr: "A2",
+          q: "In 'Home Alone', which city does the family fly to?",
+          a: "Paris",
+          wrong: ["Rome", "London", "Madrid"],
+          hint: "This city has a famous iron tower."
         }
       ]
     },
@@ -1716,6 +2348,69 @@ const TriviaDB = (() => {
           a: "Images displayed on screen each second",
           wrong: ["Time needed to load a level", "Memory a game uses while running", "Speed of the internet connection"],
           hint: "It is written as FPS in the settings menu."
+        },
+        {
+          id: "VG-021", points: 100, cefr: "A2",
+          q: "In Minecraft, which animal gives you wool?",
+          a: "Sheep",
+          wrong: ["Cow", "Pig", "Chicken"],
+          hint: "You can dye this animal pink or blue in the game."
+        },
+        {
+          id: "VG-022", points: 100, cefr: "A2",
+          q: "What color is Sonic the Hedgehog?",
+          a: "Blue",
+          wrong: ["Red", "Green", "Yellow"],
+          hint: "His friend Knuckles is red and his friend Tails is orange."
+        },
+        {
+          id: "VG-023", points: 200, cefr: "A2",
+          q: "In the Mario games, what is Mario's brother called?",
+          a: "Luigi",
+          wrong: ["Wario", "Toad", "Yoshi"],
+          hint: "He is tall and he wears green clothes."
+        },
+        {
+          id: "VG-024", points: 200, cefr: "A2",
+          q: "In Angry Birds, which animals do the birds fight?",
+          a: "Pigs",
+          wrong: ["Cats", "Dogs", "Foxes"],
+          hint: "These animals are green and they take the eggs."
+        },
+        {
+          id: "VG-025", points: 300, cefr: "A2",
+          q: "Which company makes the PlayStation?",
+          a: "Sony",
+          wrong: ["Sega", "Nintendo", "Microsoft"],
+          hint: "It is a very big company from Japan."
+        },
+        {
+          id: "VG-026", points: 400, cefr: "A2",
+          q: "The game Tetris was made in which country?",
+          a: "Russia",
+          wrong: ["Japan", "Poland", "China"],
+          hint: "It is the biggest country in the world."
+        },
+        {
+          id: "VG-027", points: 400, cefr: "A2",
+          q: "What did Nintendo make in 1889, long before video games?",
+          a: "Playing cards",
+          wrong: ["Toy trains", "Bicycles", "Radios"],
+          hint: "People use them to play at a table."
+        },
+        {
+          id: "VG-028", points: 500, cefr: "A2",
+          q: "In Pac-Man, what is the name of the red ghost?",
+          a: "Blinky",
+          wrong: ["Pinky", "Clyde", "Sue"],
+          hint: "This ghost chases Pac-Man from behind. Its US name is Shadow."
+        },
+        {
+          id: "VG-029", points: 500, cefr: "A2",
+          q: "In which year did the first Super Mario Bros. game come out?",
+          a: "1985",
+          wrong: ["1979", "1990", "1994"],
+          hint: "It is older than the first Game Boy, which came out in 1989."
         }
       ]
     },
@@ -1847,6 +2542,62 @@ const TriviaDB = (() => {
           a: "United Kingdom",
           wrong: ["Finland", "Japan", "United States"],
           hint: "It happened in Europe, but not in the home country of Nokia."
+        },
+        {
+          id: "TI-018", points: 200, cefr: "A2",
+          q: "What does the 'e' in 'email' mean?",
+          a: "Electronic",
+          wrong: ["Express", "External", "Easy"],
+          hint: "The same 'e' as in e-book."
+        },
+        {
+          id: "TI-019", points: 200, cefr: "A2",
+          q: "Which company made the first cell phone, back in 1973?",
+          a: "Motorola",
+          wrong: ["Nokia", "Ericsson", "Samsung"],
+          hint: "It is an American company, not from Europe or Asia."
+        },
+        {
+          id: "TI-020", points: 300, cefr: "A2",
+          q: "What was the first thing people bought on Amazon?",
+          a: "A book",
+          wrong: ["A CD", "A toy", "A phone"],
+          hint: "In 1995 Amazon sold only one kind of product."
+        },
+        {
+          id: "TI-021", points: 300, cefr: "A2",
+          q: "Which social network was very popular in Brazil before Facebook?",
+          a: "Orkut",
+          wrong: ["MySpace", "Friendster", "Hi5"],
+          hint: "Google made it, and it closed in 2014."
+        },
+        {
+          id: "TI-022", points: 400, cefr: "A2",
+          q: "In which year did YouTube start?",
+          a: "2005",
+          wrong: ["2001", "2009", "2012"],
+          hint: "One year after Facebook started."
+        },
+        {
+          id: "TI-023", points: 400, cefr: "A2",
+          q: "What was the first computer mouse made of?",
+          a: "Wood",
+          wrong: ["Plastic", "Metal", "Glass"],
+          hint: "It was not plastic. The first one was carved by hand."
+        },
+        {
+          id: "TI-024", points: 500, cefr: "A2",
+          q: "What was the first thing sold on eBay?",
+          a: "Broken laser pointer",
+          wrong: ["Old comic book", "Used guitar", "Small toy car"],
+          hint: "It cost only $14.83, and the buyer collected these things."
+        },
+        {
+          id: "TI-025", points: 500, cefr: "A2",
+          q: "Which two letters were the first message sent on the internet?",
+          a: "Lo",
+          wrong: ["Hi", "Ok", "Go"],
+          hint: "The message stopped early. It is not a greeting."
         }
       ]
     },
@@ -1992,6 +2743,55 @@ const TriviaDB = (() => {
           a: "Transpiration",
           wrong: ["Condensation", "Respiration", "Germination"],
           hint: "It works like sweating and helps pull water up from the roots."
+        },
+        {
+          id: "AN-020", points: 200, cefr: "A2",
+          q: "What do we call a baby frog?",
+          a: "Tadpole",
+          wrong: ["Cub", "Calf", "Chick"],
+          hint: "It lives in water and has a tail."
+        },
+        {
+          id: "AN-021", points: 200, cefr: "A2",
+          q: "Which bird cannot fly but swims very well?",
+          a: "Penguin",
+          wrong: ["Eagle", "Parrot", "Duck"],
+          hint: "It is black and white and lives in cold places."
+        },
+        {
+          id: "AN-022", points: 300, cefr: "A2",
+          q: "How many bones does a shark have?",
+          a: "None",
+          wrong: ["Fifty", "Two hundred", "Six hundred"],
+          hint: "Its body is soft inside, like your ear or your nose."
+        },
+        {
+          id: "AN-023", points: 400, cefr: "A2",
+          q: "Which bird is the fastest animal when it dives?",
+          a: "Peregrine falcon",
+          wrong: ["Golden eagle", "Common swift", "Albatross"],
+          hint: "It hunts other birds and falls like a stone."
+        },
+        {
+          id: "AN-024", points: 400, cefr: "A2",
+          q: "Where does a butterfly taste its food?",
+          a: "On its feet",
+          wrong: ["On its wings", "On its eyes", "On its back"],
+          hint: "It knows the taste when it lands on a flower."
+        },
+        {
+          id: "AN-025", points: 500, cefr: "A2",
+          q: "Which continent has no snakes at all?",
+          a: "Antarctica",
+          wrong: ["Australia", "Africa", "Europe"],
+          hint: "It is the coldest continent, with ice everywhere."
+        },
+        {
+          id: "AN-026", points: 500, cefr: "A2",
+          q: "Which animal was the mascot of the 2014 World Cup in Brazil?",
+          a: "Armadillo",
+          wrong: ["Parrot", "Monkey", "Toucan"],
+          hint: "It lives in the dry caatinga in the northeast of Brazil."
         }
       ]
     },
@@ -2123,6 +2923,55 @@ const TriviaDB = (() => {
           a: "Jaguar",
           wrong: ["Tiger", "Panther", "Leopard"],
           hint: "Portuguese borrowed this big cat's name from Tupi; it prowls the Amazon."
+        },
+        {
+          id: "EL-018", points: 200, cefr: "A2",
+          q: "Which of these words is the most common in English?",
+          a: "The",
+          wrong: ["Of", "Is", "You"],
+          hint: "You use this word before a noun, in almost every sentence."
+        },
+        {
+          id: "EL-019", points: 300, cefr: "A2",
+          q: "Which letter do people use most often in English?",
+          a: "E",
+          wrong: ["A", "T", "S"],
+          hint: "It is a vowel, and it is silent at the end of many words."
+        },
+        {
+          id: "EL-020", points: 300, cefr: "A2",
+          q: "The English word 'shampoo' came from a language of which country?",
+          a: "India",
+          wrong: ["China", "Egypt", "Greece"],
+          hint: "A big country in Asia. Its food is very spicy."
+        },
+        {
+          id: "EL-021", points: 400, cefr: "A2",
+          q: "Which word has three double letters, one after the other?",
+          a: "Bookkeeper",
+          wrong: ["Committee", "Balloon", "Success"],
+          hint: "This person writes down the money a shop makes."
+        },
+        {
+          id: "EL-022", points: 400, cefr: "A2",
+          q: "The English word 'piano' came from which language?",
+          a: "Italian",
+          wrong: ["Spanish", "German", "Russian"],
+          hint: "The same country gave us the words pizza and opera."
+        },
+        {
+          id: "EL-023", points: 500, cefr: "A2",
+          q: "Brazil got its name from a tree. What color does that tree give?",
+          a: "Red",
+          wrong: ["Blue", "Green", "Yellow"],
+          hint: "'Brasa' in Portuguese means the hot coals in a fire."
+        },
+        {
+          id: "EL-024", points: 500, cefr: "A2",
+          q: "Which letter was the last one added to the English alphabet?",
+          a: "J",
+          wrong: ["K", "W", "Z"],
+          hint: "People used to write this letter as an 'I'."
         }
       ]
     },
@@ -2254,6 +3103,62 @@ const TriviaDB = (() => {
           a: "Valles Marineris",
           wrong: ["Olympus Mons", "Hellas Planitia", "Tharsis Ridge"],
           hint: "It is named after the space probe that photographed it in 1971."
+        },
+        {
+          id: "SP-018", points: 200, cefr: "A2",
+          q: "Which planet has big rings around it?",
+          a: "Saturn",
+          wrong: ["Mars", "Venus", "Mercury"],
+          hint: "It is the second biggest planet."
+        },
+        {
+          id: "SP-019", points: 200, cefr: "A2",
+          q: "Which animal was the first to travel around the Earth in space?",
+          a: "A dog",
+          wrong: ["A cat", "A monkey", "A mouse"],
+          hint: "Many people keep this animal as a pet at home."
+        },
+        {
+          id: "SP-020", points: 200, cefr: "A2",
+          q: "In 1957, people sent the first satellite up. What was it called?",
+          a: "Sputnik",
+          wrong: ["Explorer", "Vostok", "Apollo"],
+          hint: "A Soviet team put it in the sky before anyone else did."
+        },
+        {
+          id: "SP-021", points: 300, cefr: "A2",
+          q: "How many moons does Mars have?",
+          a: "2",
+          wrong: ["0", "1", "4"],
+          hint: "Mars has small rocky moons, not one big moon like Earth."
+        },
+        {
+          id: "SP-022", points: 400, cefr: "A2",
+          q: "Which planet has the strongest winds?",
+          a: "Neptune",
+          wrong: ["Jupiter", "Saturn", "Mars"],
+          hint: "It is the farthest planet from the Sun."
+        },
+        {
+          id: "SP-023", points: 400, cefr: "A2",
+          q: "How many people have walked on the Moon?",
+          a: "12",
+          wrong: ["6", "9", "20"],
+          hint: "They all walked there between 1969 and 1972."
+        },
+        {
+          id: "SP-024", points: 500, cefr: "A2",
+          q: "Which small world did New Horizons fly past in 2015?",
+          a: "Pluto",
+          wrong: ["Ceres", "Eris", "Makemake"],
+          hint: "People called it a planet until 2006."
+        },
+        {
+          id: "SP-025", points: 500, cefr: "A2",
+          q: "What color is a sunset on Mars?",
+          a: "Blue",
+          wrong: ["Red", "Green", "Pink"],
+          hint: "It is not red, like the planet itself."
         }
       ]
     },
@@ -2399,6 +3304,62 @@ const TriviaDB = (() => {
           a: "Fermented fish",
           wrong: ["Sweet plums", "Hot chilli peppers", "Sour limes"],
           hint: "Nothing to do with tomatoes at first; the main ingredient came from the sea."
+        },
+        {
+          id: "FC-020", points: 200, cefr: "A2",
+          q: "Which country do tacos come from?",
+          a: "Mexico",
+          wrong: ["Spain", "Peru", "Chile"],
+          hint: "Its capital city has the same name."
+        },
+        {
+          id: "FC-021", points: 200, cefr: "A2",
+          q: "What is the main ingredient in hummus?",
+          a: "Chickpeas",
+          wrong: ["Rice", "Corn", "Lentils"],
+          hint: "People eat it with warm pita bread."
+        },
+        {
+          id: "FC-022", points: 200, cefr: "A2",
+          q: "Paella is a famous rice dish from which country?",
+          a: "Spain",
+          wrong: ["Italy", "Greece", "Portugal"],
+          hint: "The dish comes from the city of Valencia."
+        },
+        {
+          id: "FC-023", points: 300, cefr: "A2",
+          q: "Pastel de nata is a small egg cake from which country?",
+          a: "Portugal",
+          wrong: ["Spain", "France", "Brazil"],
+          hint: "This country is west of Spain, next to the Atlantic."
+        },
+        {
+          id: "FC-024", points: 400, cefr: "A2",
+          q: "Chocolate comes from the seeds of which tree?",
+          a: "Cacao",
+          wrong: ["Coconut", "Coffee", "Palm"],
+          hint: "The Aztecs used its seeds as money."
+        },
+        {
+          id: "FC-025", points: 400, cefr: "A2",
+          q: "Which country does the cashew nut come from originally?",
+          a: "Brazil",
+          wrong: ["India", "Vietnam", "Nigeria"],
+          hint: "The tree grows near the beaches of the northeast."
+        },
+        {
+          id: "FC-026", points: 500, cefr: "A2",
+          q: "Which food can stay good for thousands of years?",
+          a: "Honey",
+          wrong: ["Bread", "Rice", "Cheese"],
+          hint: "Ancient Egyptians kept it in old pots."
+        },
+        {
+          id: "FC-027", points: 500, cefr: "A2",
+          q: "The orange fruit first came from which country?",
+          a: "China",
+          wrong: ["Spain", "Brazil", "Egypt"],
+          hint: "The same country invented paper."
         }
       ]
     },
@@ -2530,6 +3491,62 @@ const TriviaDB = (() => {
           a: "Villi",
           wrong: ["Alveoli", "Nephrons", "Follicles"],
           hint: "Their name comes from a Latin word meaning 'shaggy hair'."
+        },
+        {
+          id: "HB-018", points: 100, cefr: "A2",
+          q: "How many lungs does a person have?",
+          a: "2",
+          wrong: ["1", "3", "4"],
+          hint: "A person can live with only one of them."
+        },
+        {
+          id: "HB-019", points: 100, cefr: "A2",
+          q: "Which part of the body do you think with?",
+          a: "The brain",
+          wrong: ["The heart", "The lungs", "The stomach"],
+          hint: "Old stories say the heart, but they are wrong."
+        },
+        {
+          id: "HB-020", points: 300, cefr: "A2",
+          q: "How many bones does a baby have at birth?",
+          a: "About 300",
+          wrong: ["About 100", "About 206", "About 500"],
+          hint: "More than an adult has."
+        },
+        {
+          id: "HB-021", points: 300, cefr: "A2",
+          q: "How much of the human body is water?",
+          a: "About 60%",
+          wrong: ["About 10%", "About 30%", "About 90%"],
+          hint: "It is more than half, but not all."
+        },
+        {
+          id: "HB-022", points: 400, cefr: "A2",
+          q: "How many hours a day does a new baby sleep?",
+          a: "About 16 hours",
+          wrong: ["About 8 hours", "About 12 hours", "About 22 hours"],
+          hint: "Much more than a teenager sleeps."
+        },
+        {
+          id: "HB-023", points: 400, cefr: "A2",
+          q: "How many basic tastes can the tongue feel?",
+          a: "5",
+          wrong: ["2", "3", "8"],
+          hint: "One of them is called umami."
+        },
+        {
+          id: "HB-024", points: 500, cefr: "A2",
+          q: "What is the hardest part of the human body?",
+          a: "The teeth",
+          wrong: ["The bones", "The nails", "The hair"],
+          hint: "It is not bone, but it is harder than bone."
+        },
+        {
+          id: "HB-025", points: 500, cefr: "A2",
+          q: "How many small bones are inside one human ear?",
+          a: "3",
+          wrong: ["1", "5", "8"],
+          hint: "One of them is called the hammer."
         }
       ]
     },
@@ -2647,6 +3664,97 @@ const TriviaDB = (() => {
           a: "Eutrophication",
           wrong: ["Desalination", "Sedimentation", "Acidification"],
           hint: "The word comes from Greek and means 'well nourished'."
+        },
+        {
+          id: "EN-016", points: 100, cefr: "A2",
+          q: "Which country has most of the Amazon rainforest?",
+          a: "Brazil",
+          wrong: ["Peru", "Colombia", "Bolivia"],
+          hint: "It is the only one where people do not speak Spanish."
+        },
+        {
+          id: "EN-017", points: 100, cefr: "A2",
+          q: "Which gas do plants put into the air?",
+          a: "Oxygen",
+          wrong: ["Carbon dioxide", "Nitrogen", "Helium"],
+          hint: "We all need this gas when we breathe."
+        },
+        {
+          id: "EN-018", points: 100, cefr: "A2",
+          q: "In Brazil, which color bin is for paper?",
+          a: "Blue",
+          wrong: ["Red", "Green", "Yellow"],
+          hint: "Plastic goes in the red bin and glass in the green one."
+        },
+        {
+          id: "EN-019", points: 200, cefr: "A2",
+          q: "Which gas comes from cows and heats the planet?",
+          a: "Methane",
+          wrong: ["Hydrogen", "Oxygen", "Nitrogen"],
+          hint: "This gas is also found under the ground and in swamps."
+        },
+        {
+          id: "EN-020", points: 200, cefr: "A2",
+          q: "How much of the water on Earth is fresh water?",
+          a: "About 3%",
+          wrong: ["About 25%", "About 50%", "About 70%"],
+          hint: "Almost all the water on Earth is salty sea water."
+        },
+        {
+          id: "EN-021", points: 200, cefr: "A2",
+          q: "Which sea animal often eats plastic bags by mistake?",
+          a: "Sea turtle",
+          wrong: ["Dolphin", "Penguin", "Octopus"],
+          hint: "It is slow, and it has a hard shell on its back."
+        },
+        {
+          id: "EN-022", points: 300, cefr: "A2",
+          q: "In which year was the first Earth Day?",
+          a: "1970",
+          wrong: ["1948", "1963", "1985"],
+          hint: "It started in the United States, over 50 years ago."
+        },
+        {
+          id: "EN-023", points: 300, cefr: "A2",
+          q: "Which Brazilian biome is dry and found only in Brazil?",
+          a: "Caatinga",
+          wrong: ["Cerrado", "Pantanal", "Pampa"],
+          hint: "It is in the northeast, and it rains very little there."
+        },
+        {
+          id: "EN-024", points: 300, cefr: "A2",
+          q: "Which animal is on the logo of the WWF?",
+          a: "Panda",
+          wrong: ["Tiger", "Elephant", "Dolphin"],
+          hint: "This animal lives in the mountains of China."
+        },
+        {
+          id: "EN-025", points: 400, cefr: "A2",
+          q: "In which country do almost all homes use heat from under the ground?",
+          a: "Iceland",
+          wrong: ["Canada", "Norway", "Chile"],
+          hint: "It is a cold island with many volcanoes."
+        },
+        {
+          id: "EN-026", points: 400, cefr: "A2",
+          q: "Which sea in Asia has almost dried up?",
+          a: "Aral Sea",
+          wrong: ["Dead Sea", "Red Sea", "Black Sea"],
+          hint: "It is between Kazakhstan and Uzbekistan."
+        },
+        {
+          id: "EN-027", points: 500, cefr: "A2",
+          q: "Which country was the first to ban plastic bags?",
+          a: "Bangladesh",
+          wrong: ["India", "Kenya", "France"],
+          hint: "It is a country in South Asia, and it did this in 2002."
+        },
+        {
+          id: "EN-028", points: 500, cefr: "A2",
+          q: "Which country keeps a big seed store inside a mountain?",
+          a: "Norway",
+          wrong: ["Sweden", "Canada", "Russia"],
+          hint: "The seeds are safe on a very cold island in Europe."
         }
       ]
     },
@@ -2771,6 +3879,69 @@ const TriviaDB = (() => {
           a: "An anagram",
           wrong: ["A palindrome", "An acronym", "A synonym"],
           hint: "'Listen' and 'silent' use exactly the same letters."
+        },
+        {
+          id: "FF-017", points: 200, cefr: "A2",
+          q: "In which sea is the water so salty that people float easily?",
+          a: "The Dead Sea",
+          wrong: ["The Red Sea", "The Black Sea", "The Caspian Sea"],
+          hint: "No fish can live in this water."
+        },
+        {
+          id: "FF-018", points: 300, cefr: "A2",
+          q: "Which is the biggest desert in the world?",
+          a: "Antarctica",
+          wrong: ["Sahara", "Gobi", "Arabian"],
+          hint: "A desert gets little rain, but it can be very cold."
+        },
+        {
+          id: "FF-019", points: 300, cefr: "A2",
+          q: "Where do peanuts grow on the plant?",
+          a: "Under the ground",
+          wrong: ["On tall trees", "On big leaves", "In water"],
+          hint: "They are not really nuts; they are more like beans."
+        },
+        {
+          id: "FF-020", points: 300, cefr: "A2",
+          q: "How many keys does a standard piano have?",
+          a: "88",
+          wrong: ["76", "61", "102"],
+          hint: "Count both the white keys and the black keys."
+        },
+        {
+          id: "FF-021", points: 400, cefr: "A2",
+          q: "In which season is the Eiffel Tower at its tallest?",
+          a: "Summer",
+          wrong: ["Winter", "Spring", "Fall"],
+          hint: "The tower is made of iron, which changes with the weather."
+        },
+        {
+          id: "FF-022", points: 400, cefr: "A2",
+          q: "What do we call the dot over the letter i?",
+          a: "Tittle",
+          wrong: ["Serif", "Pip", "Nib"],
+          hint: "A capital letter I does not have one."
+        },
+        {
+          id: "FF-023", points: 500, cefr: "A2",
+          q: "How many bones are in a giraffe's neck?",
+          a: "Seven",
+          wrong: ["Fourteen", "Twenty", "Thirty-two"],
+          hint: "It is the same number of bones as in your neck."
+        },
+        {
+          id: "FF-024", points: 500, cefr: "A2",
+          q: "Which country's national animal is the unicorn?",
+          a: "Scotland",
+          wrong: ["Ireland", "Norway", "Portugal"],
+          hint: "This country is in the north of Great Britain."
+        },
+        {
+          id: "FF-025", points: 500, cefr: "A2",
+          q: "Which letter is not in the name of any US state?",
+          a: "Q",
+          wrong: ["Z", "X", "J"],
+          hint: "Arizona, Texas and New Jersey each use one of them."
         }
       ]
     }

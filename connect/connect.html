@@ -571,6 +571,32 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .cbtn-confirm{background:var(--red);border-color:var(--red);color:#fff;}
 .cbtn-confirm:hover{background:transparent;color:var(--red);}
 
+/* ═══ P3: theme chip, line-rule feedback, copy button ═══ */
+.meta-row{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 20px 8px;}
+.theme-chip{
+  display:inline-flex;align-items:center;gap:8px;padding:5px 18px;border-radius:30px;
+  border:1px solid var(--gold);background:var(--gold-dim);color:var(--gold);
+  font-family:'Barlow Condensed',sans-serif;font-size:0.86rem;font-weight:600;
+  letter-spacing:0.14em;text-transform:uppercase;
+}
+.ss-input{
+  width:100%;padding:12px 14px;border-radius:8px;
+  border:2px solid var(--border);background:var(--surface2);color:var(--text);
+  font-family:'Barlow',sans-serif;font-size:0.95rem;
+}
+.ss-input:focus{outline:none;border-color:var(--gold);}
+.ss-input::placeholder{color:var(--text-dim);opacity:0.6;}
+.cell.badpick{animation:badPick 0.4s ease;}
+@keyframes badPick{0%,100%{transform:none;}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
+.sel-coords{
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--gold);
+  white-space:nowrap;letter-spacing:0.02em;
+}
+.stats-theme{
+  text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;
+  letter-spacing:0.14em;color:var(--gold);text-transform:uppercase;margin-bottom:10px;
+}
+
 /* ═══ P2: toasts, rules, active-panel, key hints ═══ */
 #toasts{
   position:fixed;top:88px;left:50%;transform:translateX(-50%);
@@ -710,7 +736,9 @@ body.playing .back-link{display:none;}
     <div class="rules-sec">The idea</div>
     <ul>
       <li>Teams take turns <strong>adding letters</strong> to the board, then race to <strong>build words</strong> out of the letters already on it.</li>
-      <li>A word scores <strong>1 point per letter</strong>. Every word can only be claimed <strong>once per game</strong>.</li>
+      <li>Longer words are worth much more: <strong>3 letters → 3 points · 4 → 5 · 5 → 8 · 6 → 12</strong>, then +3 for every extra letter.</li>
+      <li>Minimum <strong>3 letters</strong>. Every word can only be claimed <strong>once per game</strong>, by anyone.</li>
+      <li>If the teacher has set a <strong>theme</strong>, it shows above the board and every word must fit it.</li>
     </ul>
 
     <div class="rules-sec">On your turn</div>
@@ -718,15 +746,17 @@ body.playing .back-link{display:none;}
       <li><strong>Click an empty square</strong> and type a letter. The dots above the board show how many letters you have left.</li>
       <li><strong>Backspace</strong> removes a letter you just placed. Click a letter twice to retype it.</li>
       <li>Letters lock in your team's colour when the turn ends. They stay on the board for everyone.</li>
-      <li>Read positions aloud using the numbers: the column across the top and the row down the side — <strong>"an S at 34"</strong>.</li>
+      <li>Read positions aloud using the numbers: the row down the side plus the column across the top — <strong>"an S at 34"</strong> is row 30, column 4. Hovering a square shows its number.</li>
+      <li>The <strong>starting team rotates</strong> from game to game, and whoever starts gets one extra letter.</li>
     </ul>
 
     <div class="rules-sec">Claiming a word (any team, any time)</div>
     <ul>
       <li>Choose your panel first — the one outlined in gold receives your clicks. Press <strong>1</strong>, <strong>2</strong> or <strong>3</strong> to switch.</li>
-      <li><strong>Click board letters in order</strong> to spell the word, then press <strong>Claim</strong>. Click a letter again to remove it.</li>
-      <li>Letters can come from anywhere on the board, in any order — but each square can only be used once in a word.</li>
-      <li>Minimum <strong>2 letters</strong>. The teacher decides whether a word counts, and can remove a claimed word with the ✕ on its tag.</li>
+      <li>Words must sit on a <strong>straight line of touching squares</strong> — across, down, or diagonal — and be clicked <strong>in reading order</strong>. Backwards along the line is fine.</li>
+      <li>Click a letter already in your word to <strong>cut the word back</strong> to that point.</li>
+      <li>The panel shows the word's <strong>coordinates</strong> (e.g. 13→15) so it can be read out and checked.</li>
+      <li>The <strong>teacher is the judge</strong> — real words only, no names or abbreviations — and can remove a claimed word with the ✕ on its tag.</li>
     </ul>
 
     <div class="rules-sec">The clock</div>
@@ -816,6 +846,14 @@ body.playing .back-link{display:none;}
     <div class="ss-divider"></div>
 
     <div class="ss-row">
+      <div class="ss-row-label">Theme <span style="opacity:0.6">(optional)</span></div>
+      <input class="ss-input" id="themeInput" type="text" maxlength="40" autocomplete="off"
+             placeholder="e.g. food, animals, past tense verbs…">
+    </div>
+
+    <div class="ss-divider"></div>
+
+    <div class="ss-row">
       <div class="ss-row-label">Fast Finish</div>
       <div class="opt-group" id="snapOpts">
         <button class="opt-btn sel" data-val="1">On<span class="opt-sub">20s after a claim</span></button>
@@ -846,6 +884,8 @@ body.playing .back-link{display:none;}
       <div class="tdot"></div>
     </div>
   </div>
+
+  <div class="meta-row" id="metaRow"></div>
 
   <div class="timer-wrap">
     <div class="timer-num" id="timerNum">2:00</div>
@@ -934,9 +974,11 @@ body.playing .back-link{display:none;}
       <div class="stats-over">GAME OVER</div>
       <div class="stats-winner" id="statsWinner"></div>
     </div>
+    <div class="stats-theme" id="statsTheme" style="display:none"></div>
     <div class="stats-scores" id="statsScores"></div>
     <div class="stats-actions">
       <button class="again-btn" id="againBtn">PLAY AGAIN</button>
+      <button class="again-btn secondary" id="copyBtn">📋 COPY WORD LIST</button>
       <button class="again-btn secondary" id="changeBtn">CHANGE SETTINGS</button>
     </div>
   </div>
@@ -950,6 +992,8 @@ let baseLetter  = 1;  // letters per turn (normal). Turn 1 gets +1.
 let GRID_N      = 7;  // grid size (N×N), set from start screen
 let teamCount   = 2;  // 2 or 3 teams
 let snapEnabled = true; // Fast Finish: claiming with a fresh letter cuts the turn to 20s
+let themeWord   = '';   // optional teacher-set theme; judged by the teacher, not enforced
+const MIN_WORD  = 3;    // 2-letter words were the cheapest points on the board
 
 // ─── TEAMS ───────────────────────────────────────────────
 const ALL_KEYS  = ['red','blue','violet'];
@@ -970,6 +1014,36 @@ function computeGridConfig(){
   COLS = ROWS = GRID_N;
   COL_LABELS = Array.from({length:GRID_N},(_,i)=>String(i+1));
   ROW_LABELS = Array.from({length:GRID_N},(_,i)=>String((i+1)*10));
+}
+
+// ─── GEOMETRY: STRAIGHT-LINE WORDS ───────────────────────
+// A word must sit on one straight line — row, column, or diagonal — on
+// consecutive squares, read in order. This is what makes the grid a board
+// rather than a bag of letters.
+function rc(i){ return {r:Math.floor(i/COLS), c:i%COLS}; }
+function stepOf(a,b){ const A=rc(a), B=rc(b); return {dr:B.r-A.r, dc:B.c-A.c}; }
+function isAdjacent(a,b){
+  const {dr,dc}=stepOf(a,b);
+  return Math.abs(dr)<=1 && Math.abs(dc)<=1 && !(dr===0&&dc===0);
+}
+function canExtend(sel,i){
+  if(sel.length===0) return true;
+  if(sel.length===1) return isAdjacent(sel[0],i);
+  const d=stepOf(sel[0],sel[1]);
+  const n=stepOf(sel[sel.length-1],i);
+  return n.dr===d.dr && n.dc===d.dc;
+}
+// Board coordinate, read aloud as a two-digit number: column across, row down
+function coord(i){ const {r,c}=rc(i); return String((r+1)*10 + (c+1)); }
+
+// ─── SCORING ─────────────────────────────────────────────
+// Tiered, so longer words are worth chasing and short ones aren't free points
+function scoreWord(len){
+  if(len<MIN_WORD) return 0;
+  if(len===3) return 3;
+  if(len===4) return 5;
+  if(len===5) return 8;
+  return 12 + (len-6)*3;
 }
 
 // ─── STATE ───────────────────────────────────────────────
@@ -1034,11 +1108,14 @@ function updateSSNote(){
   const lv = parseInt(document.querySelector('#lettersOpts .opt-btn.sel').dataset.val);
   const tc = parseInt(document.querySelector('#teamsOpts .opt-btn.sel').dataset.val);
   const first = lv + 1;
-  const order = tc===3 ? 'Red → Blue → Violet' : 'Red → Blue';
+  const keys = ALL_KEYS.slice(0,tc);
+  const start = keys[nextStarter()%tc];
+  const order = keys.map((k,i)=>TEAM_DEFS[k].name.split(' ')[0]).join(' → ');
   document.getElementById('ssNote').innerHTML =
     `<span style="color:var(--gold);font-weight:700;">Turn order:</span> ${order}.<br>` +
-    `<span style="color:var(--gold);font-weight:700;">First turn:</span> Red Team places <strong style="color:var(--text);">${first} letter${first>1?'s':''}</strong> (${lv} + 1 bonus). All subsequent turns: <strong style="color:var(--text);">${lv} letter${lv>1?'s':''}</strong>.` +
-    (tc===3 ? `<br><span style="color:var(--gold);font-weight:700;">3 teams:</span> the third team's panel sits under the board. Any team can claim a word at any time.` : '');
+    `<span style="color:var(--gold);font-weight:700;">Starts:</span> <strong style="color:var(--text);">${TEAM_DEFS[start].name}</strong> with <strong style="color:var(--text);">${first} letter${first>1?'s':''}</strong> (${lv} + 1 bonus). Every turn after that: <strong style="color:var(--text);">${lv} letter${lv>1?'s':''}</strong>. The starting team rotates each game.<br>` +
+    `<span style="color:var(--gold);font-weight:700;">Words:</span> a straight line of touching squares — across, down or diagonal. Minimum ${MIN_WORD} letters. 3→3, 4→5, 5→8, 6→12 points.` +
+    (tc===3 ? `<br><span style="color:var(--gold);font-weight:700;">3 teams:</span> the third team's panel sits under the board. Any team can claim at any time.` : '');
 }
 
 function setupOptGroup(groupId, onChange){
@@ -1057,11 +1134,20 @@ setupOptGroup('teamsOpts', updateSSNote);
 setupOptGroup('snapOpts');
 updateSSNote(); // set initial note
 
+// ─── STARTING TEAM ROTATES BETWEEN GAMES ─────────────────
+function nextStarter(){
+  try{ return parseInt(localStorage.getItem('wba-starter')||'0') || 0; }catch(e){ return 0; }
+}
+function bumpStarter(){
+  try{ localStorage.setItem('wba-starter', String((nextStarter()+1)%6)); }catch(e){}
+}
+
 // ─── SETTINGS MEMORY ─────────────────────────────────────
 const SET_KEY='wba-settings';
 function saveSettings(){
   try{ localStorage.setItem(SET_KEY, JSON.stringify({
-    teams:teamCount, grid:GRID_N, timer:maxTurnTime, letters:baseLetter, snap:snapEnabled?1:0
+    teams:teamCount, grid:GRID_N, timer:maxTurnTime, letters:baseLetter,
+    snap:snapEnabled?1:0, theme:themeWord
   })); }catch(e){}
 }
 (function restoreSettings(){
@@ -1071,6 +1157,7 @@ function saveSettings(){
   const pick=(g,v)=>{ const b=document.querySelector(`#${g} .opt-btn[data-val="${v}"]`); if(b) b.click(); };
   pick('teamsOpts',s.teams); pick('gridOpts',s.grid); pick('timerOpts',s.timer);
   pick('lettersOpts',s.letters); pick('snapOpts',s.snap);
+  if(s.theme) document.getElementById('themeInput').value=s.theme;
 })();
 // "Play again" reloads with the same settings and skips the setup screen
 try{
@@ -1091,11 +1178,13 @@ document.getElementById('ssStartBtn').addEventListener('click',()=>{
   GRID_N      = parseInt(gv.dataset.val);
   teamCount   = parseInt(pv.dataset.val);
   snapEnabled = document.querySelector('#snapOpts .opt-btn.sel').dataset.val==='1';
+  themeWord   = document.getElementById('themeInput').value.trim();
   maxLetters  = baseLetter + 1; // first turn gets +1
   timeLeft    = maxTurnTime;
   TEAMS       = ALL_KEYS.slice(0, teamCount);
-  turnIdx     = 0;
-  activeSide  = TEAMS[0];
+  turnIdx     = nextStarter() % teamCount;   // rotates game to game
+  bumpStarter();
+  activeSide  = TEAMS[turnIdx];
   computeGridConfig();
   saveSettings();
 
@@ -1150,6 +1239,7 @@ function buildGrid(){
     // Click on cell div triggers selection (NOT typing focus)
     cell.addEventListener('click', e=>onCellClick(e,i));
 
+    cell.title=`Square ${coord(i)}`;
     cell.appendChild(inp);
     gridEl.appendChild(cell);
     cells.push({cell,inp});
@@ -1230,8 +1320,20 @@ function onCellClick(e, i){
 
   const sel = sels[activeSide];
   const pos = sel.indexOf(i);
-  if(pos!==-1){ sel.splice(pos,1); sfxDesel(); }
-  else        { sel.push(i);       sfxSel();   }
+  if(pos!==-1){
+    // Clicking a letter already in the word cuts it back to there — removing a
+    // middle square would leave a word with a hole in it
+    sel.splice(pos); sfxDesel();
+  } else if(canExtend(sel,i)){
+    sel.push(i); sfxSel();
+  } else {
+    flashReject(i); sfxBad();
+    cells[i].cell.classList.add('badpick');
+    setTimeout(()=>cells[i].cell.classList.remove('badpick'),400);
+    toast(sel.length===1 ? 'Next letter must touch the first one'
+                         : 'Keep going in a straight line', 'bad');
+    return;
+  }
 
   refreshSelUI(activeSide);
   refreshCellStyles();
@@ -1273,18 +1375,23 @@ function refreshSelUI(team){
     prev.appendChild(h);
   } else {
     const w=document.createElement('span'); w.className='sel-word'; w.textContent=word;
-    const info=document.createElement('span'); info.className='sel-info'; info.textContent=`${sel.length} letter${sel.length!==1?'s':''}`;
+    const info=document.createElement('span'); info.className='sel-info';
+    info.textContent = sel.length<MIN_WORD
+      ? `${sel.length}/${MIN_WORD} letters`
+      : `${sel.length} letters · ${scoreWord(sel.length)} pts`;
+    const co=document.createElement('span'); co.className='sel-coords';
+    co.textContent = sel.length>1 ? `${coord(sel[0])}→${coord(sel[sel.length-1])}` : coord(sel[0]);
     const x=document.createElement('button'); x.className='sel-clear'; x.textContent='✕'; x.title='Clear';
     x.addEventListener('click',ev=>{
       ev.stopPropagation();
       sels[team]=[];
       refreshSelUI(team); refreshCellStyles();
     });
-    prev.appendChild(w); prev.appendChild(info); prev.appendChild(x);
+    prev.appendChild(w); prev.appendChild(co); prev.appendChild(info); prev.appendChild(x);
   }
 
-  claimB.disabled = !gameStarted || isPaused || sel.length<2;
-  claimB.textContent = sel.length>=2 ? `＋ Claim  "${word}"` : '＋ Claim Word';
+  claimB.disabled = !gameStarted || isPaused || sel.length<MIN_WORD;
+  claimB.textContent = sel.length>=MIN_WORD ? `＋ Claim  "${word}"` : '＋ Claim Word';
 }
 
 const SEL_CLASSES = ALL_KEYS.map(k=>'sel-'+k);
@@ -1355,7 +1462,7 @@ function rebuildWordLists(){
       const e=document.createElement('div'); e.className='wempty'; e.id=k+'Empty';
       e.textContent='No words claimed yet'; list.appendChild(e); return;
     }
-    teamWords[k].forEach(word=>addTag(k+'WordList',k+'Empty',word,word.length,k));
+    teamWords[k].forEach(word=>addTag(k+'WordList',k+'Empty',word,scoreWord(word.length),k));
   });
 }
 function undo(){
@@ -1385,12 +1492,12 @@ function submitClaim(team){
   if(!gameStarted || isPaused) return;
   const sel=sels[team];
   const word=sel.map(i=>cells[i].inp.value).join('').toUpperCase();
-  if(word.length<2){ showErr(team,'Select at least 2 letters.'); return; }
+  if(word.length<MIN_WORD){ showErr(team,`Words need at least ${MIN_WORD} letters.`); return; }
   if(allClaimedWords.has(word)){ showErr(team,`"${word}" already claimed!`); return; }
 
   pushHistory();
   allClaimedWords.add(word);
-  const pts=word.length;
+  const pts=scoreWord(word.length);
   teamWords[team].push(word); teamPts[team]+=pts;
   document.getElementById(team+'Score').textContent=teamPts[team];
   addTag(team+'WordList',team+'Empty',word,pts,team);
@@ -1620,8 +1727,20 @@ function updateBtns(){
 }
 
 // ─── INIT GAME ───────────────────────────────────────────
+function renderMeta(){
+  const row=document.getElementById('metaRow');
+  row.innerHTML='';
+  if(themeWord){
+    const c=document.createElement('div');
+    c.className='theme-chip';
+    c.textContent=`Theme: ${themeWord}`;
+    row.appendChild(c);
+  }
+}
+
 function initGame(){
   fitBoard();
+  renderMeta();
   buildGrid();
   gameStarted=true;
   document.body.classList.add('playing');
@@ -1629,6 +1748,7 @@ function initGame(){
   updateTimerUI(); updateTurnUI(); updateDots();
   updateGridInputs(); updateBtns();
   startTimer();
+  toast(`${TEAM_DEFS[activeKey()].name} starts`, activeKey());
 }
 
 // ─── PAUSE / RESUME / SHOW BOARD ─────────────────────────
@@ -1750,7 +1870,7 @@ document.addEventListener('keydown', e=>{
   else if(k==='e'){ if(!isPaused && !finalPhase) doEndTurn(); e.preventDefault(); }
   else if(k==='u'){ undo(); e.preventDefault(); }
   else if(k==='enter'){
-    if(!isPaused && sels[activeSide].length>=2) submitClaim(activeSide);
+    if(!isPaused && sels[activeSide].length>=MIN_WORD) submitClaim(activeSide);
     e.preventDefault();
   }
   else if(['1','2','3'].includes(e.key)){
@@ -1794,6 +1914,10 @@ function showEnd(){
     w.style.color='var(--gold)';
   }
 
+  const th=document.getElementById('statsTheme');
+  if(themeWord){ th.style.display=''; th.textContent=`Theme: ${themeWord}`; }
+  else th.style.display='none';
+
   // Build one stats card per active team
   const cont=document.getElementById('statsScores');
   cont.innerHTML='';
@@ -1818,6 +1942,38 @@ function showEnd(){
 
   document.getElementById('statsPanel').classList.add('visible');
   document.getElementById('statsPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// Copy the word list out — the game's real artefact for follow-up work
+function wordListText(){
+  const d=new Date();
+  const lines=[`Word Battle Arena — ${d.toLocaleDateString()}`];
+  if(themeWord) lines.push(`Theme: ${themeWord}`);
+  lines.push('');
+  TEAMS.forEach(k=>{
+    lines.push(`${TEAM_DEFS[k].name} — ${teamPts[k]} points`);
+    lines.push(teamWords[k].length
+      ? teamWords[k].map(w=>`  ${w} (${scoreWord(w.length)})`).join('\n')
+      : '  (no words)');
+    lines.push('');
+  });
+  const all=[...new Set(TEAMS.flatMap(k=>teamWords[k]))].sort();
+  lines.push(`All words (${all.length}): ${all.join(', ')||'—'}`);
+  return lines.join('\n');
+}
+document.getElementById('copyBtn').addEventListener('click',()=>{
+  const text=wordListText();
+  const done=()=>toast('Word list copied');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+  } else fallbackCopy(text,done);
+});
+function fallbackCopy(text,done){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ toast('Copy failed','bad'); }
+  ta.remove();
 }
 
 document.getElementById('againBtn').addEventListener('click',()=>{

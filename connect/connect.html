@@ -289,7 +289,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .cell-inp{
   position:absolute;inset:0;
   display:flex;align-items:center;justify-content:center;
-  font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:0.05em;text-transform:uppercase;
+  font-family:'Bebas Neue',sans-serif;font-size:calc(var(--cell) * 0.56);letter-spacing:0.05em;text-transform:uppercase;
   border:none;background:transparent;text-align:center;width:100%;height:100%;
   color:var(--text);border-radius:3px;
   /* Start with pointer-events off — only enabled when it's the active team's typing turn */
@@ -348,17 +348,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .sel-num.p0{top:2px;right:3px;}
 .sel-num.p1{top:2px;left:3px;}
 .sel-num.p2{bottom:2px;right:3px;}
-
-/* Locked cells carry the owning team's initial — ownership must not rely on hue alone */
-.cell.locked::after{
-  content:attr(data-owner);
-  position:absolute;bottom:1px;left:3px;
-  font-family:'Barlow Condensed',sans-serif;font-size:0.58rem;font-weight:700;
-  letter-spacing:0.04em;line-height:1;opacity:0.9;pointer-events:none;z-index:1;
-}
-.cell.lk-red::after   {color:var(--red);}
-.cell.lk-blue::after  {color:var(--blue);}
-.cell.lk-violet::after{color:var(--violet);}
 
 /* Empty cells are typeable during play */
 #grid.playing .cell:not(.has-letter){cursor:text;}
@@ -490,6 +479,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .stats-actions{
   display:flex;justify-content:center;gap:12px;padding:10px 0 4px;flex-wrap:wrap;
 }
+.again-btn.secondary{background:transparent;color:var(--gold);}
+.again-btn.secondary:hover{background:var(--gold);color:#000;}
 .again-btn{padding:13px 38px;border-radius:8px;border:2px solid var(--gold);background:var(--gold);color:#000;font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:0.12em;cursor:pointer;transition:all 0.2s;}
 .again-btn:hover{background:transparent;color:var(--gold);}
 
@@ -580,6 +571,98 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .cbtn-confirm{background:var(--red);border-color:var(--red);color:#fff;}
 .cbtn-confirm:hover{background:transparent;color:var(--red);}
 
+/* ═══ P2: toasts, rules, active-panel, key hints ═══ */
+#toasts{
+  position:fixed;top:88px;left:50%;transform:translateX(-50%);
+  z-index:430;display:flex;flex-direction:column;align-items:center;gap:8px;
+  pointer-events:none;width:min(92vw,620px);
+}
+.toast{
+  font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.09em;
+  padding:11px 28px;border-radius:40px;border:2px solid var(--gold);
+  background:var(--surface);color:var(--gold);
+  box-shadow:0 10px 30px rgba(0,0,0,0.45);
+  animation:toastIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  max-width:100%;text-align:center;
+}
+.toast.out{animation:toastOut 0.3s ease forwards;}
+@keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(0.94);}to{opacity:1;transform:none;}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(0.96);}}
+.toast.t-red{border-color:var(--red);color:var(--red);}
+.toast.t-blue{border-color:var(--blue);color:var(--blue);}
+.toast.t-violet{border-color:var(--violet);color:var(--violet);}
+.toast.t-bad{border-color:var(--red);color:var(--red);}
+
+/* Which panel is receiving board clicks */
+.pick-tag{
+  display:none;font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;
+  font-weight:700;letter-spacing:0.18em;text-transform:uppercase;
+  padding:2px 8px;border-radius:20px;border:1px solid currentColor;margin-top:3px;
+}
+.team-panel.picking .pick-tag{display:inline-block;}
+.team-panel.picking{outline:2px dashed var(--gold);outline-offset:3px;}
+.t-name-wrap{display:flex;flex-direction:column;align-items:flex-start;}
+.red .pick-tag{color:var(--red);}
+.blue .pick-tag{color:var(--blue);}
+.violet .pick-tag{color:var(--violet);}
+
+/* Keyboard hint strip */
+.keyhint{
+  display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;align-items:center;
+  max-width:1160px;margin:0 auto 26px;padding:0 14px;
+  font-family:'Barlow Condensed',sans-serif;font-size:0.74rem;
+  letter-spacing:0.08em;color:var(--text-dim);text-transform:uppercase;
+}
+.keyhint kbd{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;
+  border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin-right:4px;
+  background:var(--surface2);color:var(--text);
+}
+
+/* Rules overlay */
+#rulesOverlay{
+  position:fixed;inset:0;z-index:480;
+  background:rgba(5,5,10,0.9);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;
+}
+[data-theme="light"] #rulesOverlay{background:rgba(20,24,40,0.7);}
+#rulesOverlay.visible{opacity:1;pointer-events:all;}
+.rules-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:26px 30px 22px;max-width:660px;width:100%;
+  max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.rules-h{
+  font-family:'Bebas Neue',sans-serif;font-size:2.1rem;letter-spacing:0.1em;
+  color:var(--gold);margin-bottom:14px;text-align:center;
+}
+.rules-sec{
+  font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:0.14em;
+  color:var(--text);margin:18px 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px;
+}
+.rules-box ul{margin:0;padding-left:20px;}
+.rules-box li{
+  font-family:'Barlow',sans-serif;font-size:0.92rem;line-height:1.55;
+  color:var(--text-dim);margin-bottom:5px;
+}
+.rules-box li strong{color:var(--text);}
+.rules-close{
+  display:block;margin:22px auto 0;padding:12px 34px;border-radius:8px;
+  border:2px solid var(--gold);background:var(--gold);color:#000;
+  font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:0.12em;cursor:pointer;transition:all 0.2s;
+}
+.rules-close:hover{background:transparent;color:var(--gold);}
+
+/* Corner UI is hidden once play starts — one mis-click shouldn't lose the board */
+body.playing .back-link{display:none;}
+.pause-link{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;letter-spacing:0.12em;
+  color:var(--text-dim);text-decoration:none;text-transform:uppercase;
+  border-bottom:1px solid transparent;transition:all 0.2s;
+}
+.pause-link:hover{color:var(--gold);border-bottom-color:var(--gold);}
+
 @media(max-width:600px){.stats-scores{grid-template-columns:1fr;}}
 
 @media(max-width:900px){
@@ -611,6 +694,55 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="pause-btn-row">
     <button class="pbtn pbtn-resume" id="resumeBtn">▶ Resume</button>
     <button class="pbtn pbtn-show"   id="showBoardBtn">👁 Show Board</button>
+    <button class="pbtn pbtn-show"   id="pauseRulesBtn">📖 Rules</button>
+  </div>
+  <a class="pause-link" href="../">← Leave game and return to the Game Hub</a>
+</div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<!-- RULES -->
+<div id="rulesOverlay">
+  <div class="rules-box">
+    <div class="rules-h">How to Play</div>
+
+    <div class="rules-sec">The idea</div>
+    <ul>
+      <li>Teams take turns <strong>adding letters</strong> to the board, then race to <strong>build words</strong> out of the letters already on it.</li>
+      <li>A word scores <strong>1 point per letter</strong>. Every word can only be claimed <strong>once per game</strong>.</li>
+    </ul>
+
+    <div class="rules-sec">On your turn</div>
+    <ul>
+      <li><strong>Click an empty square</strong> and type a letter. The dots above the board show how many letters you have left.</li>
+      <li><strong>Backspace</strong> removes a letter you just placed. Click a letter twice to retype it.</li>
+      <li>Letters lock in your team's colour when the turn ends. They stay on the board for everyone.</li>
+      <li>Read positions aloud using the numbers: the column across the top and the row down the side — <strong>"an S at 34"</strong>.</li>
+    </ul>
+
+    <div class="rules-sec">Claiming a word (any team, any time)</div>
+    <ul>
+      <li>Choose your panel first — the one outlined in gold receives your clicks. Press <strong>1</strong>, <strong>2</strong> or <strong>3</strong> to switch.</li>
+      <li><strong>Click board letters in order</strong> to spell the word, then press <strong>Claim</strong>. Click a letter again to remove it.</li>
+      <li>Letters can come from anywhere on the board, in any order — but each square can only be used once in a word.</li>
+      <li>Minimum <strong>2 letters</strong>. The teacher decides whether a word counts, and can remove a claimed word with the ✕ on its tag.</li>
+    </ul>
+
+    <div class="rules-sec">The clock</div>
+    <ul>
+      <li>Each turn has a timer. When it runs out the turn ends automatically and any letters placed are locked.</li>
+      <li><strong>Fast Finish:</strong> if the team whose turn it is claims a word using a letter it just placed, the turn drops to 20 seconds. Turn it off in setup.</li>
+    </ul>
+
+    <div class="rules-sec">Teacher controls</div>
+    <ul>
+      <li><strong>⏸</strong> pauses the clock. "Show Board" keeps the board visible with the clock still frozen — nothing can be typed or claimed while paused.</li>
+      <li><strong>↶ Undo</strong> reverses the last claim, turn end, or word removal.</li>
+      <li>Keys: <strong>P</strong> pause · <strong>E</strong> end turn · <strong>U</strong> undo · <strong>1/2/3</strong> pick panel · <strong>Enter</strong> claim · <strong>?</strong> rules · <strong>Esc</strong> close.</li>
+    </ul>
+
+    <button class="rules-close" id="rulesClose">Got it</button>
   </div>
 </div>
 
@@ -681,11 +813,22 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       </div>
     </div>
 
+    <div class="ss-divider"></div>
+
+    <div class="ss-row">
+      <div class="ss-row-label">Fast Finish</div>
+      <div class="opt-group" id="snapOpts">
+        <button class="opt-btn sel" data-val="1">On<span class="opt-sub">20s after a claim</span></button>
+        <button class="opt-btn" data-val="0">Off<span class="opt-sub">full turn</span></button>
+      </div>
+    </div>
+
     <div id="ssNote" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;color:var(--text-dim);letter-spacing:0.05em;line-height:1.5;background:var(--surface2);padding:12px 14px;border-radius:8px;border:1px solid var(--border);"></div>
 
     <div class="ss-divider"></div>
 
     <button class="ss-start" id="ssStartBtn">PLAY</button>
+    <button class="pause-link" id="ssRulesBtn" style="background:none;border:none;cursor:pointer;align-self:center;">📖 How to play</button>
   </div>
 </div>
 
@@ -707,7 +850,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="timer-wrap">
     <div class="timer-num" id="timerNum">2:00</div>
     <div class="tbar-wrap"><div class="tbar" id="tbar"></div></div>
-    <button class="icon-btn" id="pauseBtn" title="Pause/Resume">⏸</button>
+    <button class="icon-btn" id="undoBtn" title="Undo last action (U)" disabled>↶</button>
+    <button class="icon-btn" id="pauseBtn" title="Pause/Resume (P)">⏸</button>
+    <button class="icon-btn" id="rulesBtn" title="How to play (?)">?</button>
     <button class="end-game-btn" id="endGameBtn">END GAME</button>
   </div>
 
@@ -720,7 +865,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <!-- RED -->
     <div class="team-panel red glow-red" id="redPanel">
       <div class="t-head">
-        <div class="t-name">Red Team</div>
+        <div class="t-name-wrap"><div class="t-name">Red Team</div><span class="pick-tag">Selecting</span></div>
         <div><div class="t-score-lbl">POINTS</div><div class="t-score" id="redScore">0</div></div>
       </div>
       <div class="wlist" id="redWordList"><div class="wempty" id="redEmpty">No words claimed yet</div></div>
@@ -744,7 +889,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <!-- BLUE -->
     <div class="team-panel blue" id="bluePanel">
       <div class="t-head">
-        <div class="t-name">Blue Team</div>
+        <div class="t-name-wrap"><div class="t-name">Blue Team</div><span class="pick-tag">Selecting</span></div>
         <div><div class="t-score-lbl">POINTS</div><div class="t-score" id="blueScore">0</div></div>
       </div>
       <div class="wlist" id="blueWordList"><div class="wempty" id="blueEmpty">No words claimed yet</div></div>
@@ -759,7 +904,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <!-- VIOLET (third team — only shown in 3-team games) -->
     <div class="team-panel violet wide" id="violetPanel">
       <div class="t-head">
-        <div class="t-name">Violet Team</div>
+        <div class="t-name-wrap"><div class="t-name">Violet Team</div><span class="pick-tag">Selecting</span></div>
         <div><div class="t-score-lbl">POINTS</div><div class="t-score" id="violetScore">0</div></div>
       </div>
       <div class="wlist" id="violetWordList"><div class="wempty" id="violetEmpty">No words claimed yet</div></div>
@@ -773,6 +918,16 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
   </div>
 
+  <div class="keyhint" id="keyhint">
+    <span><kbd>Click</kbd> empty square to type</span>
+    <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> pick panel</span>
+    <span><kbd>Enter</kbd> claim</span>
+    <span><kbd>E</kbd> end turn</span>
+    <span><kbd>U</kbd> undo</span>
+    <span><kbd>P</kbd> pause</span>
+    <span><kbd>?</kbd> rules</span>
+  </div>
+
   <!-- INLINE STATS PANEL -->
   <div id="statsPanel">
     <div class="stats-banner">
@@ -782,6 +937,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="stats-scores" id="statsScores"></div>
     <div class="stats-actions">
       <button class="again-btn" id="againBtn">PLAY AGAIN</button>
+      <button class="again-btn secondary" id="changeBtn">CHANGE SETTINGS</button>
     </div>
   </div>
 
@@ -793,13 +949,14 @@ let maxTurnTime = 120;
 let baseLetter  = 1;  // letters per turn (normal). Turn 1 gets +1.
 let GRID_N      = 7;  // grid size (N×N), set from start screen
 let teamCount   = 2;  // 2 or 3 teams
+let snapEnabled = true; // Fast Finish: claiming with a fresh letter cuts the turn to 20s
 
 // ─── TEAMS ───────────────────────────────────────────────
 const ALL_KEYS  = ['red','blue','violet'];
 const TEAM_DEFS = {
-  red:    {name:'Red Team',    label:'RED TEAM',    emoji:'🔴', initial:'R'},
-  blue:   {name:'Blue Team',   label:'BLUE TEAM',   emoji:'🔵', initial:'B'},
-  violet: {name:'Violet Team', label:'VIOLET TEAM', emoji:'🟣', initial:'V'}
+  red:    {name:'Red Team',    label:'RED TEAM',    emoji:'🔴'},
+  blue:   {name:'Blue Team',   label:'BLUE TEAM',   emoji:'🔵'},
+  violet: {name:'Violet Team', label:'VIOLET TEAM', emoji:'🟣'}
 };
 let TEAMS   = ['red','blue'];   // active team keys, in turn order
 let turnIdx = 0;
@@ -847,6 +1004,31 @@ const sfxEnd     = ()=>{tone(330,'triangle',0.15,0.25);setTimeout(()=>tone(262,'
 const sfxOver    = ()=>[523,523,523,392].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.3,0.4),i*200));
 const sfxBad     = ()=>tone(200,'sawtooth',0.1,0.2);
 
+// ─── TOASTS ──────────────────────────────────────────────
+// The per-panel error line is 0.76rem and unreadable from the back of a room.
+function toast(msg, kind){
+  const box=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className='toast'+(kind?' t-'+kind:'');
+  t.textContent=msg;
+  box.appendChild(t);
+  while(box.children.length>3) box.firstChild.remove();
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(),300); }, 2100);
+}
+
+// ─── BOARD SCALING ───────────────────────────────────────
+// --cell was pinned at 56px, so an 8x8 board wasted a projector and a
+// 5x5 board floated in it. Fit the board to whatever room it actually has.
+function fitBoard(){
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const wBudget=(vw<900 ? vw*0.90 : vw*0.46)-36;
+  const hBudget=vh*0.58;
+  let c=Math.floor(Math.min(wBudget/GRID_N, hBudget/GRID_N));
+  c=Math.max(34, Math.min(88, c));
+  document.documentElement.style.setProperty('--cell', c+'px');
+}
+window.addEventListener('resize', ()=>{ if(gameStarted) fitBoard(); });
+
 // ─── START SCREEN ────────────────────────────────────────
 function updateSSNote(){
   const lv = parseInt(document.querySelector('#lettersOpts .opt-btn.sel').dataset.val);
@@ -872,7 +1054,31 @@ setupOptGroup('timerOpts');
 setupOptGroup('lettersOpts', updateSSNote);
 setupOptGroup('gridOpts');
 setupOptGroup('teamsOpts', updateSSNote);
+setupOptGroup('snapOpts');
 updateSSNote(); // set initial note
+
+// ─── SETTINGS MEMORY ─────────────────────────────────────
+const SET_KEY='wba-settings';
+function saveSettings(){
+  try{ localStorage.setItem(SET_KEY, JSON.stringify({
+    teams:teamCount, grid:GRID_N, timer:maxTurnTime, letters:baseLetter, snap:snapEnabled?1:0
+  })); }catch(e){}
+}
+(function restoreSettings(){
+  let s=null;
+  try{ s=JSON.parse(localStorage.getItem(SET_KEY)||'null'); }catch(e){}
+  if(!s) return;
+  const pick=(g,v)=>{ const b=document.querySelector(`#${g} .opt-btn[data-val="${v}"]`); if(b) b.click(); };
+  pick('teamsOpts',s.teams); pick('gridOpts',s.grid); pick('timerOpts',s.timer);
+  pick('lettersOpts',s.letters); pick('snapOpts',s.snap);
+})();
+// "Play again" reloads with the same settings and skips the setup screen
+try{
+  if(sessionStorage.getItem('wba-autostart')){
+    sessionStorage.removeItem('wba-autostart');
+    setTimeout(()=>document.getElementById('ssStartBtn').click(),0);
+  }
+}catch(e){}
 
 document.getElementById('ssStartBtn').addEventListener('click',()=>{
   // Read settings
@@ -884,12 +1090,14 @@ document.getElementById('ssStartBtn').addEventListener('click',()=>{
   baseLetter  = parseInt(lv.dataset.val);
   GRID_N      = parseInt(gv.dataset.val);
   teamCount   = parseInt(pv.dataset.val);
+  snapEnabled = document.querySelector('#snapOpts .opt-btn.sel').dataset.val==='1';
   maxLetters  = baseLetter + 1; // first turn gets +1
   timeLeft    = maxTurnTime;
   TEAMS       = ALL_KEYS.slice(0, teamCount);
   turnIdx     = 0;
   activeSide  = TEAMS[0];
   computeGridConfig();
+  saveSettings();
 
   document.getElementById('arena').classList.toggle('three', teamCount===3);
 
@@ -1038,6 +1246,15 @@ function removeFromSels(i){
   refreshCellStyles();
 }
 
+function paintPanels(){
+  const glow = (gameStarted && !finalPhase) ? activeKey() : null;
+  ALL_KEYS.forEach(t=>{
+    document.getElementById(t+'Panel').className =
+      `team-panel ${t}${t==='violet'?' wide':''}${t===glow?' glow-'+t:''}${t===activeSide?' picking':''}`;
+  });
+}
+function setActiveSide(k){ activeSide=k; paintPanels(); }
+
 function refreshSelUI(team){
   const sel    = sels[team];
   const prev   = document.getElementById(team+'Prev');
@@ -1103,6 +1320,66 @@ function refreshCellStyles(){
   });
 }
 
+// ─── UNDO ────────────────────────────────────────────────
+// Snapshots are taken before any irreversible action: a claim, a turn end,
+// or a word removal. Typing is already reversible with Backspace.
+const HISTORY=[], HIST_MAX=25;
+
+function snapshot(){
+  return {
+    cells: cells.map(({cell,inp})=>({v:inp.value, cls:cell.className, dis:inp.disabled, pe:inp.style.pointerEvents})),
+    fresh:[...freshCells],
+    locked:[...lockedCells.entries()],
+    lettersThisTurn, maxLetters, turnIdx, timeLeft, finalPhase, activeSide,
+    pts:{...teamPts},
+    words:{red:[...teamWords.red], blue:[...teamWords.blue], violet:[...teamWords.violet]},
+    claimed:[...allClaimedWords],
+    sels:{red:[...sels.red], blue:[...sels.blue], violet:[...sels.violet]}
+  };
+}
+function pushHistory(){
+  HISTORY.push(snapshot());
+  if(HISTORY.length>HIST_MAX) HISTORY.shift();
+  updateUndoBtn();
+}
+function updateUndoBtn(){
+  const b=document.getElementById('undoBtn');
+  if(b) b.disabled = !HISTORY.length || !gameStarted;
+}
+function rebuildWordLists(){
+  ALL_KEYS.forEach(k=>{
+    const list=document.getElementById(k+'WordList');
+    list.innerHTML='';
+    document.getElementById(k+'Score').textContent=teamPts[k];
+    if(!teamWords[k].length){
+      const e=document.createElement('div'); e.className='wempty'; e.id=k+'Empty';
+      e.textContent='No words claimed yet'; list.appendChild(e); return;
+    }
+    teamWords[k].forEach(word=>addTag(k+'WordList',k+'Empty',word,word.length,k));
+  });
+}
+function undo(){
+  if(!HISTORY.length) return;
+  const s=HISTORY.pop();
+  s.cells.forEach((c,i)=>{
+    cells[i].inp.value=c.v; cells[i].cell.className=c.cls;
+    cells[i].inp.disabled=c.dis; cells[i].inp.style.pointerEvents=c.pe;
+  });
+  freshCells=new Set(s.fresh);
+  lockedCells=new Map(s.locked);
+  lettersThisTurn=s.lettersThisTurn; maxLetters=s.maxLetters;
+  turnIdx=s.turnIdx; timeLeft=s.timeLeft; activeSide=s.activeSide;
+  teamPts={...s.pts};
+  teamWords={red:[...s.words.red], blue:[...s.words.blue], violet:[...s.words.violet]};
+  allClaimedWords=new Set(s.claimed);
+  sels={red:[...s.sels.red], blue:[...s.sels.blue], violet:[...s.sels.violet]};
+  if(finalPhase && !s.finalPhase) exitFinalClaims();
+  finalPhase=s.finalPhase;
+  rebuildWordLists();
+  updateTurnUI(); updateTimerUI(); updateDots(); updateBtns(); refreshCellStyles(); updateUndoBtn();
+  toast('Undone');
+}
+
 // ─── CLAIM ───────────────────────────────────────────────
 function submitClaim(team){
   if(!gameStarted || isPaused) return;
@@ -1111,6 +1388,7 @@ function submitClaim(team){
   if(word.length<2){ showErr(team,'Select at least 2 letters.'); return; }
   if(allClaimedWords.has(word)){ showErr(team,`"${word}" already claimed!`); return; }
 
+  pushHistory();
   allClaimedWords.add(word);
   const pts=word.length;
   teamWords[team].push(word); teamPts[team]+=pts;
@@ -1119,11 +1397,12 @@ function submitClaim(team){
   sels[team]=[]; refreshSelUI(team);
 
   refreshCellStyles(); spawnPop(pts,team); sfxClaim();
+  toast(`${TEAM_DEFS[team].name}: ${word}  +${pts}`, team);
 
   // ── TIMER SNAP ──
   // If the claiming team is the active turn team AND the word uses
   // at least one freshly-placed letter, snap timer to 20s if above that.
-  if(!finalPhase && team === activeKey() && timeLeft > 20){
+  if(snapEnabled && !finalPhase && team === activeKey() && timeLeft > 20){
     const usedFreshLetter = sel.some(i => freshCells.has(i));
     if(usedFreshLetter){
       timeLeft = 20;
@@ -1132,13 +1411,14 @@ function submitClaim(team){
       const fl=document.getElementById('turnFlash');
       fl.className='turn-flash countdown flash';
       setTimeout(()=>{ fl.className='turn-flash'; },300);
+      toast('Fast Finish — 20 seconds left!','bad');
     }
   }
 }
 
 function showErr(team,msg){
   const el=document.getElementById(team+'Err');
-  el.textContent=msg; sfxBad();
+  el.textContent=msg; sfxBad(); toast(msg,'bad');
   setTimeout(()=>{ el.textContent=''; },3000);
 }
 
@@ -1146,10 +1426,10 @@ function showErr(team,msg){
 ALL_KEYS.forEach(k=>{
   [k+'Prev',k+'Claim',k+'End',k+'WordList'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el) el.addEventListener('mousedown',()=>{ activeSide=k; });
+    if(el) el.addEventListener('mousedown',()=>setActiveSide(k));
   });
   const cb=document.getElementById(k+'Claim');
-  if(cb) cb.addEventListener('click',()=>{ activeSide=k; submitClaim(k); });
+  if(cb) cb.addEventListener('click',()=>{ setActiveSide(k); submitClaim(k); });
   const eb=document.getElementById(k+'End');
   if(eb) eb.addEventListener('click',()=>{ if(gameStarted && activeKey()===k) doEndTurn(); });
 });
@@ -1163,6 +1443,7 @@ function addTag(listId,emptyId,word,pts,team){
   // Remove button
   const rm=document.createElement('button'); rm.className='wremove'; rm.textContent='✕'; rm.title='Remove word';
   rm.addEventListener('click',()=>{
+    pushHistory();
     // Remove from allClaimedWords so it can be re-claimed
     allClaimedWords.delete(word);
     teamPts[team]-=pts;
@@ -1172,6 +1453,7 @@ function addTag(listId,emptyId,word,pts,team){
     // Re-show empty state if list is now empty
     const listEl=document.getElementById(listId);
     if(!listEl.querySelector('.wtag')){ const e=document.createElement('div'); e.className='wempty'; e.id=emptyId; e.textContent='No words claimed yet'; listEl.appendChild(e); }
+    toast(`${word} removed`,'bad');
   });
   tag.appendChild(rm);
   list.appendChild(tag); list.scrollTop=list.scrollHeight;
@@ -1241,6 +1523,7 @@ function isBoardFull(){
 }
 
 function doEndTurn(){
+  pushHistory();
   sfxEnd(); doFlash();
 
   // Lock fresh cells to the team that just played
@@ -1249,7 +1532,6 @@ function doEndTurn(){
     lockedCells.set(i,k);
     cells[i].cell.classList.remove(...FRESH_CLASSES);
     cells[i].cell.classList.add(`lk-${k}`,'locked','has-letter');
-    cells[i].cell.dataset.owner=TEAM_DEFS[k].initial;
     cells[i].inp.disabled=true;
     cells[i].inp.style.pointerEvents='none';
   });
@@ -1270,6 +1552,7 @@ function doEndTurn(){
 
   updateTurnUI(); updateTimerUI(); updateGridInputs();
   updateDots(); updateBtns(); refreshCellStyles();
+  toast(`${TEAM_DEFS[activeKey()].name}'s turn`, activeKey());
 }
 
 function enterFinalClaims(){
@@ -1281,14 +1564,26 @@ function enterFinalClaims(){
   document.getElementById('ldots').style.display='none';
   document.getElementById('turnPill').className='turn-pill final-t';
   document.getElementById('turnText').textContent='BOARD FULL — FINAL CLAIMS';
-  ALL_KEYS.forEach(t=>{
-    document.getElementById(t+'Panel').className=`team-panel ${t}${t==='violet'?' wide':''}`;
-    document.getElementById(t+'End').disabled=true;
-  });
+  ALL_KEYS.forEach(t=>{ document.getElementById(t+'End').disabled=true; });
+  paintPanels();
   const eg=document.getElementById('endGameBtn');
   eg.textContent='FINISH GAME'; eg.classList.add('finish');
   ALL_KEYS.forEach(refreshSelUI);
   refreshCellStyles();
+  updateUndoBtn();
+  toast('Board full — last chance to claim!');
+}
+
+function exitFinalClaims(){
+  finalPhase=false;
+  document.getElementById('grid').classList.add('playing');
+  document.getElementById('timerNum').style.display='';
+  document.querySelector('.tbar-wrap').style.display='';
+  document.getElementById('pauseBtn').disabled=false;
+  document.getElementById('ldots').style.display='';
+  const eg=document.getElementById('endGameBtn');
+  eg.textContent='END GAME'; eg.classList.remove('finish');
+  startTimer();
 }
 
 const FLASH_CLASS = {red:'rf', blue:'bf', violet:'vf'};
@@ -1302,10 +1597,7 @@ function updateTurnUI(){
   const k=activeKey();
   document.getElementById('turnPill').className=`turn-pill ${k}-t`;
   document.getElementById('turnText').textContent=`${TEAM_DEFS[k].label}'S TURN`;
-  ALL_KEYS.forEach(t=>{
-    const p=document.getElementById(t+'Panel');
-    p.className=`team-panel ${t}${t==='violet'?' wide':''}${t===k?' glow-'+t:''}`;
-  });
+  paintPanels();
 }
 
 function updateGridInputs(){
@@ -1324,12 +1616,15 @@ function updateBtns(){
     document.getElementById(t+'End').disabled = !gameStarted || finalPhase || activeKey()!==t;
     refreshSelUI(t);
   });
+  updateUndoBtn();
 }
 
 // ─── INIT GAME ───────────────────────────────────────────
 function initGame(){
+  fitBoard();
   buildGrid();
   gameStarted=true;
+  document.body.classList.add('playing');
   document.getElementById('grid').classList.add('playing');
   updateTimerUI(); updateTurnUI(); updateDots();
   updateGridInputs(); updateBtns();
@@ -1357,6 +1652,19 @@ function doResume(){
   document.getElementById('pausedBar').classList.remove('visible');
   document.getElementById('gameScreen').classList.remove('paused');
 }
+
+// ─── RULES ───────────────────────────────────────────────
+function openRules(){ document.getElementById('rulesOverlay').classList.add('visible'); }
+function closeRules(){ document.getElementById('rulesOverlay').classList.remove('visible'); }
+['rulesBtn','ssRulesBtn','pauseRulesBtn'].forEach(id=>{
+  const b=document.getElementById(id); if(b) b.addEventListener('click',openRules);
+});
+document.getElementById('rulesClose').addEventListener('click',closeRules);
+document.getElementById('rulesOverlay').addEventListener('click',e=>{
+  if(e.target.id==='rulesOverlay') closeRules();
+});
+
+document.getElementById('undoBtn').addEventListener('click',undo);
 
 document.getElementById('pauseBtn').addEventListener('click',()=>{
   if(isPaused) doResume(); else doPause();
@@ -1418,16 +1726,48 @@ document.getElementById('confirmEnd').addEventListener('click',()=>{
   gameStarted=false;
   showEnd();
 });
+// ─── KEYBOARD ────────────────────────────────────────────
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape' && document.getElementById('confirmOverlay').classList.contains('visible')){
-    closeConfirm();
+  const tag=(e.target.tagName||'').toLowerCase();
+  const typing = tag==='input' || tag==='textarea';
+  const rulesOpen   = document.getElementById('rulesOverlay').classList.contains('visible');
+  const confirmOpen = document.getElementById('confirmOverlay').classList.contains('visible');
+
+  if(e.key==='Escape'){
+    if(rulesOpen){ closeRules(); e.preventDefault(); }
+    else if(confirmOpen){ closeConfirm(); e.preventDefault(); }
+    else if(isPaused){ doResume(); e.preventDefault(); }
+    return;
+  }
+  if(e.key==='?'){
+    if(!typing){ rulesOpen ? closeRules() : openRules(); e.preventDefault(); }
+    return;
+  }
+  if(typing || rulesOpen || confirmOpen || !gameStarted) return;
+
+  const k=e.key.toLowerCase();
+  if(k==='p'){ isPaused ? doResume() : doPause(); e.preventDefault(); }
+  else if(k==='e'){ if(!isPaused && !finalPhase) doEndTurn(); e.preventDefault(); }
+  else if(k==='u'){ undo(); e.preventDefault(); }
+  else if(k==='enter'){
+    if(!isPaused && sels[activeSide].length>=2) submitClaim(activeSide);
+    e.preventDefault();
+  }
+  else if(['1','2','3'].includes(e.key)){
+    const idx=+e.key-1;
+    if(idx<TEAMS.length) setActiveSide(TEAMS[idx]);
+    e.preventDefault();
   }
 });
 
 function showEnd(){
   sfxOver();
   finalPhase=false;
+  document.body.classList.remove('playing');
   document.getElementById('grid').classList.remove('playing');
+  document.getElementById('keyhint').style.display='none';
+  document.getElementById('undoBtn').disabled=true;
+  HISTORY.length=0;
 
   // Hide turn/timer UI, keep arena visible
   document.getElementById('turnPill').style.display='none';
@@ -1480,7 +1820,11 @@ function showEnd(){
   document.getElementById('statsPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-document.getElementById('againBtn').addEventListener('click',()=>location.reload());
+document.getElementById('againBtn').addEventListener('click',()=>{
+  try{ sessionStorage.setItem('wba-autostart','1'); }catch(e){}
+  location.reload();
+});
+document.getElementById('changeBtn').addEventListener('click',()=>location.reload());
 
 // ─── THEME TOGGLE ────────────────────────────────────────
 (function(){

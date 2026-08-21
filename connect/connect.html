@@ -846,6 +846,7 @@ body.playing .back-link{display:none;}
     <div class="rules-sec">The clock</div>
     <ul>
       <li>Each turn has a timer. When it runs out the turn ends automatically and any letters placed are locked.</li>
+      <li>When the board fills up there's a <strong>final round: one last timed turn each</strong>. No new letters go down, but teams can still claim words — and spend any tokens they've been saving.</li>
       <li><strong>Fast Finish:</strong> if the team whose turn it is claims a word using a letter it just placed, the turn drops to 20 seconds. Turn it off in setup.</li>
     </ul>
 
@@ -1178,6 +1179,7 @@ function scoreWord(len){
 
 // ─── STATE ───────────────────────────────────────────────
 let gameStarted = false, isPaused = false, finalPhase = false;
+let finalTurnsLeft = 0;   // one last turn per team once the board is full
 let timeLeft = 120, lettersThisTurn = 0, maxLetters = 2;
 let freshCells = new Set();
 let lockedCells = new Map();  // index → owning team key (drives the locked-cell initial)
@@ -1508,7 +1510,7 @@ function removeFromSels(i){
 }
 
 function paintPanels(){
-  const glow = (gameStarted && !finalPhase) ? activeKey() : null;
+  const glow = gameStarted ? activeKey() : null;
   ALL_KEYS.forEach(t=>{
     document.getElementById(t+'Panel').className =
       `team-panel ${t}${t==='violet'?' wide':''}${t===glow?' glow-'+t:''}${t===activeSide?' picking':''}`;
@@ -1596,7 +1598,7 @@ function snapshot(){
     cells: cells.map(({cell,inp})=>({v:inp.value, cls:cell.className, dis:inp.disabled, pe:inp.style.pointerEvents})),
     fresh:[...freshCells],
     locked:[...lockedCells.entries()],
-    lettersThisTurn, maxLetters, turnIdx, timeLeft, finalPhase, activeSide,
+    lettersThisTurn, maxLetters, turnIdx, timeLeft, finalPhase, finalTurnsLeft, activeSide,
     tokens:{...tokens}, shielded:[...shielded], powerUsedThisTurn, claimedThisTurn,
     pts:{...teamPts},
     words:{red:[...teamWords.red], blue:[...teamWords.blue], violet:[...teamWords.violet]},
@@ -1653,7 +1655,7 @@ function undo(){
   allClaimedWords=new Set(s.claimed);
   sels={red:[...s.sels.red], blue:[...s.sels.blue], violet:[...s.sels.violet]};
   if(finalPhase && !s.finalPhase) exitFinalClaims();
-  finalPhase=s.finalPhase;
+  finalPhase=s.finalPhase; finalTurnsLeft=s.finalTurnsLeft||0;
   rebuildWordLists();
   updateTurnUI(); updateTimerUI(); updateDots(); updateBtns();
   refreshCellStyles(); updateGridInputs(); updateUndoBtn();
@@ -1839,11 +1841,17 @@ function seedBoard(){
 }
 
 // ─── POWERS ENGINE ───────────────────────────────────────
+function hasEmptySquare(){ return cells.some(({inp})=>!inp.value); }
+
 function powerAvailable(key,team){
   const p=POWERS[key];
-  if(!powersOn || !gameStarted || isPaused || finalPhase) return false;
+  if(!powersOn || !gameStarted || isPaused) return false;
   if(team!==activeKey()) return false;
   if(powerUsedThisTurn) return false;
+  // No letters are placed in the final round, so Extra Letter has nothing to do
+  if(finalPhase && key==='letter') return false;
+  // Move needs somewhere to move to
+  if(key==='move' && !hasEmptySquare()) return false;
   return tokens[team]>=p.cost;
 }
 
@@ -2038,16 +2046,9 @@ function doEndTurn(){
   });
   freshCells.clear(); lettersThisTurn=0;
 
-  // Board full → don't end outright; the letters just placed have never been
-  // claimable. Open a final-claims phase and let the teacher finish manually.
-  if(isBoardFull()){
-    clearInterval(countdownInterval);
-    enterFinalClaims();
-    return;
-  }
-
-  // Tokens go to whoever isn't scoring — the rubber band
-  if(powersOn && !claimedThisTurn){
+  // Tokens go to whoever isn't scoring — the rubber band. No awards in the
+  // final round; there's nothing left to spend a late token on.
+  if(powersOn && !finalPhase && !claimedThisTurn){
     if(tokens[k]<TOKEN_CAP){
       tokens[k]++;
       toast(`${TEAM_DEFS[k].name} earns a token (no word scored)`, k);
@@ -2056,6 +2057,24 @@ function doEndTurn(){
   claimedThisTurn=false; powerUsedThisTurn=false;
   if(pendingPower) cancelPower();
 
+  // Final round: each team gets exactly one turn, then the game is over
+  if(finalPhase){
+    finalTurnsLeft--;
+    if(finalTurnsLeft<=0){
+      clearInterval(countdownInterval);
+      gameStarted=false;
+      toast('Final round over');
+      showEnd();
+      return;
+    }
+  }
+  // Board full → nobody has had a chance to use the letters just placed.
+  // Open a final round rather than ending outright.
+  else if(isBoardFull()){
+    enterFinalClaims();
+    return;
+  }
+
   turnIdx=(turnIdx+1)%TEAMS.length;
   maxLetters=baseLetter;
   activeSide=activeKey();
@@ -2063,36 +2082,36 @@ function doEndTurn(){
 
   updateTurnUI(); updateTimerUI(); updateGridInputs();
   updateDots(); updateBtns(); refreshCellStyles();
-  toast(`${TEAM_DEFS[activeKey()].name}'s turn`, activeKey());
+  toast(finalPhase
+    ? `Final turn — ${TEAM_DEFS[activeKey()].name}`
+    : `${TEAM_DEFS[activeKey()].name}'s turn`, activeKey());
 }
 
 function enterFinalClaims(){
   finalPhase=true;
+  finalTurnsLeft=TEAMS.length;          // one last turn each, in the usual order
   document.getElementById('grid').classList.remove('playing');
-  document.getElementById('timerNum').style.display='none';
-  document.querySelector('.tbar-wrap').style.display='none';
-  document.getElementById('pauseBtn').disabled=true;
-  document.getElementById('ldots').style.display='none';
-  document.getElementById('turnPill').className='turn-pill final-t';
-  document.getElementById('turnText').textContent='BOARD FULL — FINAL CLAIMS';
-  ALL_KEYS.forEach(t=>{ document.getElementById(t+'End').disabled=true; });
-  if(pendingPower) cancelPower();
-  renderPowers();
-  paintPanels();
+  document.getElementById('ldots').style.display='none';   // no letters left to place
   const eg=document.getElementById('endGameBtn');
   eg.textContent='FINISH GAME'; eg.classList.add('finish');
+
+  turnIdx=(turnIdx+1)%TEAMS.length;
+  activeSide=activeKey();
+  timeLeft=maxTurnTime;
+  startTimer();
+
+  updateTurnUI(); updateTimerUI(); updateBtns();
   ALL_KEYS.forEach(refreshSelUI);
   refreshCellStyles();
   updateUndoBtn();
-  toast('Board full — last chance to claim!');
+  toast('Board full — one final turn each!');
+  toast(`Final turn — ${TEAM_DEFS[activeKey()].name}`, activeKey());
 }
 
 function exitFinalClaims(){
-  finalPhase=false;
+  finalPhase=false; finalTurnsLeft=0;
+  clearInterval(countdownInterval);
   document.getElementById('grid').classList.add('playing');
-  document.getElementById('timerNum').style.display='';
-  document.querySelector('.tbar-wrap').style.display='';
-  document.getElementById('pauseBtn').disabled=false;
   document.getElementById('ldots').style.display='';
   const eg=document.getElementById('endGameBtn');
   eg.textContent='END GAME'; eg.classList.remove('finish');
@@ -2108,8 +2127,10 @@ function doFlash(){
 
 function updateTurnUI(){
   const k=activeKey();
-  document.getElementById('turnPill').className=`turn-pill ${k}-t`;
-  document.getElementById('turnText').textContent=`${TEAM_DEFS[k].label}'S TURN`;
+  document.getElementById('turnPill').className=`turn-pill ${finalPhase?'final-t':k+'-t'}`;
+  document.getElementById('turnText').textContent = finalPhase
+    ? `FINAL ROUND — ${TEAM_DEFS[k].label} · ${finalTurnsLeft} TURN${finalTurnsLeft===1?'':'S'} LEFT`
+    : `${TEAM_DEFS[k].label}'S TURN`;
   paintPanels();
 }
 
@@ -2126,7 +2147,7 @@ function updateGridInputs(){
 
 function updateBtns(){
   ALL_KEYS.forEach(t=>{
-    document.getElementById(t+'End').disabled = !gameStarted || finalPhase || activeKey()!==t;
+    document.getElementById(t+'End').disabled = !gameStarted || activeKey()!==t;
     refreshSelUI(t);
   });
   renderPowers();

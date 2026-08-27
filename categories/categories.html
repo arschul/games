@@ -409,8 +409,11 @@
       font-size: clamp(1.3rem, 4.2vw, 2rem);
       letter-spacing: .01em;
       border: 2px solid;
-      animation: popIn .3s cubic-bezier(.34,1.56,.64,1);
+      transition: border-color .25s, background .25s, color .25s;
     }
+    /* Only a category that just arrived pops — otherwise the whole board
+       flickers on every turn once rotation is on. */
+    .cat-pill.fresh { animation: popIn .3s cubic-bezier(.34,1.56,.64,1); }
     @keyframes popIn {
       from { opacity:0; transform:scale(.75); }
       to   { opacity:1; transform:scale(1); }
@@ -864,6 +867,14 @@
             </select>
           </div>
           <div class="field-group">
+            <label for="rotation">Category Rotation</label>
+            <select id="rotation">
+              <option value="one" selected>Swap one each turn</option>
+              <option value="all">Fresh set each turn</option>
+              <option value="fixed">Fixed for the round</option>
+            </select>
+          </div>
+          <div class="field-group">
             <label for="starsToWin">Stars to Win</label>
             <select id="starsToWin">
               <option value="2">2 stars</option>
@@ -875,6 +886,11 @@
         <p class="field-hint">
           Each team gets one clock for the whole round — it only runs on their turn and carries over.
           A correct answer adds 3 seconds, a wrong one costs 5. Run the bank down to zero and you're out.
+          <br><br>
+          <strong>Rotation:</strong> <em>Swap one each turn</em> keeps one category on the board and replaces the other,
+          so the no-repeats pressure builds while the board stays fresh. <em>Fresh set each turn</em> gives every team a
+          clean slate — easier, good for A2. <em>Fixed for the round</em> is the hardest: the same categories until
+          someone is knocked out.
         </p>
       </div>
 
@@ -887,13 +903,14 @@
         <p class="setup-section-title">How to Play</p>
         <ol class="rules-list">
           <li>Two categories are shown on screen — three if a team plays <strong>Extra</strong>.</li>
+          <li>The board <strong>rotates</strong> as you play — one category is swapped out each turn (adjustable in Game Settings).</li>
           <li>On your turn, name one item for <strong>each</strong> category shown.</li>
           <li>The teacher judges. <strong>Correct</strong> adds 3 seconds. <strong>Wrong</strong> costs 5 seconds and a strike.</li>
           <li>No repeats — anything already said this round doesn't count.</li>
           <li>Each team has <strong>one clock for the whole round</strong>. It only runs on their turn and carries over.</li>
           <li>You're out when your clock hits 0:00 or you reach the strike limit.</li>
           <li>Last team standing wins the round and takes a ⭐. First to the star target wins the game.</li>
-          <li>Once per round, each team may use <strong>Switch</strong> (new categories), <strong>Skip</strong> (pass the turn) or <strong>Extra</strong> (opponents get +1 category).</li>
+          <li>Once per round, each team may use <strong>Switch</strong> (reroll the whole board now), <strong>Skip</strong> (pass the turn) or <strong>Extra</strong> (every opponent must answer a third category until the turn comes back around).</li>
         </ol>
       </div>
 
@@ -910,7 +927,7 @@
       <div class="ability-legend">
         <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Switch – swap all categories</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Skip – pass your turn</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div> Extra – others get +1 category</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div> Extra – others must answer a 3rd category</div>
       </div>
 
       <!-- Game center -->
@@ -990,13 +1007,14 @@
       <div class="overlay-title">How to Play</div>
       <ol class="rules-list">
         <li>Two categories are shown on screen — three if a team plays <strong>Extra</strong>.</li>
+        <li>The board <strong>rotates</strong> as you play — one category is swapped out each turn (adjustable in Game Settings).</li>
         <li>On your turn, name one item for <strong>each</strong> category shown.</li>
         <li>The teacher judges. <strong>Correct</strong> adds 3 seconds. <strong>Wrong</strong> costs 5 seconds and a strike.</li>
         <li>No repeats — anything already said this round doesn't count.</li>
         <li>Each team has <strong>one clock for the whole round</strong>. It only runs on their turn and carries over.</li>
         <li>You're out when your clock hits 0:00 or you reach the strike limit.</li>
         <li>Last team standing wins the round and takes a ⭐. First to the star target wins the game.</li>
-        <li>Once per round, each team may use <strong>Switch</strong>, <strong>Skip</strong> or <strong>Extra</strong>.</li>
+        <li>Once per round, each team may use <strong>Switch</strong> (reroll the board), <strong>Skip</strong> (pass) or <strong>Extra</strong> (opponents must answer a third category).</li>
       </ol>
       <button class="btn-primary" id="closeRulesBtn">Got it</button>
     </div>
@@ -1160,6 +1178,7 @@
     const timerDurEl    = document.getElementById('timerDuration');
     const maxStrikesEl  = document.getElementById('maxStrikes');
     const starsToWinEl  = document.getElementById('starsToWin');
+    const rotationEl    = document.getElementById('rotation');
     const teamNamesDiv  = document.getElementById('teamNameInputs');
     const startBtn      = document.getElementById('startGameBtn');
     const teamsContainer= document.getElementById('teams-container');
@@ -1197,6 +1216,11 @@
     let turnDuration = 120;
     let maxStrikes = 3;
     let starsToWin = 3;
+    const BASE_CATS = 2;
+    let rotationMode = 'one';
+    let rotatePtr = 0;
+    let freshBoard = false;
+    let prevCats = [];
     let history = [];
     let pendingTimer = null;
     const MAX_HISTORY = 20;
@@ -1213,7 +1237,7 @@
         currentTeamIndex,
         activeCategories: activeCategories.slice(),
         sessionPool: sessionPool.slice(),
-        extraActive, extraByTeam
+        extraActive, extraByTeam, rotatePtr, freshBoard
       });
       if (history.length > MAX_HISTORY) history.shift();
       paintUndoBtn();
@@ -1252,6 +1276,8 @@
       sessionPool        = snap.sessionPool.slice();
       extraActive        = snap.extraActive;
       extraByTeam        = snap.extraByTeam;
+      rotatePtr          = snap.rotatePtr;
+      freshBoard         = snap.freshBoard;
 
       showScreen(gameScreen);
       renderTeams();
@@ -1292,6 +1318,7 @@
       turnDuration = +timerDurEl.value;
       maxStrikes   = +maxStrikesEl.value;
       starsToWin   = +starsToWinEl.value;
+      rotationMode = rotationEl.value;
 
       const names = [];
       let valid = true;
@@ -1341,9 +1368,12 @@
       activeCategories = [];
       sessionPool = [...ALL_CATEGORIES];
       history = [];
+      rotatePtr = 0;
+      prevCats = [];
       paintUndoBtn();
       renderTeams();
-      regenerateCategories(2);
+      regenerateCategories(BASE_CATS);
+      freshBoard = true;
       showScreen(gameScreen);
       startTurn();
     }
@@ -1564,7 +1594,45 @@
       const retired = activeCategories.slice();
       if (retired.length) sessionPool.push(...retired);
       activeCategories = pickFromPool(n, retired);
+      rotatePtr = 0;
       renderCategories();
+    }
+
+    // Retire one category and deal a replacement into the same slot, so pill
+    // positions stay put on the projector. The pointer walks the board, which
+    // means every category lives exactly as many turns as the board is wide.
+    function rotateBoard() {
+      if (rotationMode === 'fixed' || activeCategories.length === 0) return;
+
+      if (rotationMode === 'all') {
+        regenerateCategories(activeCategories.length);
+        return;
+      }
+
+      const i = rotatePtr % activeCategories.length;
+      const retired = activeCategories[i];
+      sessionPool.push(retired);
+      const [next] = pickFromPool(1, activeCategories);
+      if (next) {
+        activeCategories[i] = next;
+      } else {
+        // Nothing to deal — take the retired one back out rather than leaving
+        // a duplicate sitting in the pool.
+        const at = sessionPool.lastIndexOf(retired);
+        if (at !== -1) sessionPool.splice(at, 1);
+      }
+      rotatePtr++;
+    }
+
+    // Grow or shrink the board without disturbing the categories already on it.
+    // This is what makes Extra an actual attack rather than a full reroll.
+    function resizeBoard(target) {
+      while (activeCategories.length > target) {
+        sessionPool.push(activeCategories.pop());
+      }
+      if (activeCategories.length < target) {
+        activeCategories.push(...pickFromPool(target - activeCategories.length, activeCategories));
+      }
     }
 
     function replaceOneCategory() {
@@ -1575,6 +1643,11 @@
       const [newCat] = pickFromPool(1, activeCategories);
       if (!newCat) return;
       activeCategories[ri] = newCat;
+      // This swap IS the board change for this turn — otherwise the automatic
+      // rotation fires on top of it and a wrong answer wipes the board clean,
+      // handing the offending team a fresh slate instead of a penalty.
+      // In "fresh set each turn" mode the rotation is the point, so let it win.
+      if (rotationMode !== 'all') freshBoard = true;
       renderCategories();
       updatePrompt();
     }
@@ -1587,13 +1660,15 @@
     }
 
     function renderCategories() {
+      const before = prevCats;
       categoriesWrap.innerHTML = '';
       activeCategories.forEach(cat => {
         const pill = document.createElement('div');
-        pill.className = 'cat-pill';
+        pill.className = 'cat-pill' + (before.includes(cat) ? '' : ' fresh');
         pill.textContent = cat;
         categoriesWrap.appendChild(pill);
       });
+      prevCats = activeCategories.slice();
     }
 
     /* ─── TURN MANAGEMENT ───────────────────────────────────────── */
@@ -1601,15 +1676,22 @@
       // Stop any running timer (safety)
       teams.forEach((_, i) => { if (teams[i].timerRunning) stopTeamTimer(i); });
 
-      // Determine category count
-      let catCount = 2;
-      if (extraActive && currentTeamIndex !== extraByTeam) catCount = 3;
-      else if (extraActive && currentTeamIndex === extraByTeam) {
-        extraActive = false; extraByTeam = null;
+      // Extra expires the moment the turn comes back round to whoever played it.
+      if (extraActive && currentTeamIndex === extraByTeam) {
+        extraActive = false;
+        extraByTeam = null;
       }
+      const target = BASE_CATS + (extraActive ? 1 : 0);
 
-      if (activeCategories.length !== catCount) regenerateCategories(catCount);
-      else renderCategories();
+      if (activeCategories.length === 0) {
+        activeCategories = pickFromPool(target);
+        rotatePtr = 0;
+      } else {
+        if (!freshBoard) rotateBoard();
+        resizeBoard(target);
+      }
+      freshBoard = false;
+      renderCategories();
 
       updatePrompt();
       updateAllCards();
@@ -1750,8 +1832,10 @@
       activeCategories = [];
       sessionPool = [...ALL_CATEGORIES];
       currentTeamIndex = 0;
+      rotatePtr = 0;
       renderTeams();
-      regenerateCategories(2);
+      regenerateCategories(BASE_CATS);
+      freshBoard = true;
       toast('🎮 New Round!', 'info', 2000);
       pendingTimer = setTimeout(() => { pendingTimer = null; startTurn(); }, 2200);
     }
@@ -1793,8 +1877,9 @@
       snapshot(`Switch — ${team.name}`);
       team.hasSwitched = true;
       regenerateCategories(activeCategories.length);
+      updatePrompt();
       updateTeamCard(i);
-      toast(`🔄 ${team.name} switched categories!`, 'info', 2000);
+      toast(`🔄 ${team.name} rerolled the whole board!`, 'info', 2000);
     }
 
     function handleSkip(i) {
@@ -1814,13 +1899,14 @@
       const team = teams[i];
       if (!team || team.isOut) return;
       if (team.hasExtra) { toast("Already used Extra this round.", 'warn', 1500); return; }
+      if (extraActive) { toast("An Extra is already running this lap.", 'warn', 1800); return; }
       if (sessionPool.length < 1) { toast("Not enough categories for Extra!", 'warn', 2000); return; }
       snapshot(`Extra — ${team.name}`);
       team.hasExtra = true;
       extraActive = true;
       extraByTeam = i;
       updateTeamCard(i);
-      toast(`➕ ${team.name} activated Extra — others get 3 categories!`, 'warn', 2500);
+      toast(`➕ ${team.name} played Extra — every opponent must answer a 3rd category!`, 'warn', 3000);
     }
 
     /* ─── REFEREE ADJUSTMENTS ───────────────────────────────────── */

@@ -125,6 +125,8 @@
     }
     .back-link:hover { color: var(--text); background: var(--surface2); border-color: var(--hover-border); }
 
+    .field-hint.thin { color: var(--red); font-weight: 600; }
+
     .field-hint {
       font-size: .74rem;
       color: var(--muted);
@@ -414,6 +416,21 @@
     /* Only a category that just arrived pops — otherwise the whole board
        flickers on every turn once rotation is on. */
     .cat-pill.fresh { animation: popIn .3s cubic-bezier(.34,1.56,.64,1); }
+
+    .cat-level {
+      display: inline-block;
+      margin-left: 10px;
+      vertical-align: middle;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .5em;
+      font-weight: 500;
+      letter-spacing: .06em;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--faint);
+      color: inherit;
+      opacity: .75;
+    }
     @keyframes popIn {
       from { opacity:0; transform:scale(.75); }
       to   { opacity:1; transform:scale(1); }
@@ -867,6 +884,21 @@
             </select>
           </div>
           <div class="field-group">
+            <label for="levelCap">Language Level</label>
+            <select id="levelCap">
+              <option value="a2">A1–A2 only</option>
+              <option value="b1">Up to B1</option>
+              <option value="all" selected>All levels</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="catType">Category Type</label>
+            <select id="catType">
+              <option value="v" selected>English vocabulary only</option>
+              <option value="all">Vocabulary + pop culture</option>
+            </select>
+          </div>
+          <div class="field-group">
             <label for="rotation">Category Rotation</label>
             <select id="rotation">
               <option value="one" selected>Swap one each turn</option>
@@ -883,7 +915,12 @@
             </select>
           </div>
         </div>
+        <p class="field-hint" id="availability">— categories available</p>
         <p class="field-hint">
+          <strong>Category Type:</strong> <em>English vocabulary only</em> keeps every category to words students
+          actually produce in English. <em>Vocabulary + pop culture</em> adds brands, apps, films, bands and famous
+          names — good fun as a reward round, but students can win it without speaking any English.
+          <br><br>
           Each team gets one clock for the whole round — it only runs on their turn and carries over.
           A correct answer adds 3 seconds, a wrong one costs 5. Run the bank down to zero and you're out.
           <br><br>
@@ -1028,26 +1065,126 @@
     const TEAM_COLORS = ['#5090f0','#3ecf8e','#f0c040','#e07040','#a060f0','#f05060'];
 
     /* ─── CATEGORY DATA ────────────────────────────────────────── */
+    // l = CEFR level: can a learner at this level name an item in English?
+    // k = "v" produces English vocabulary · "c" pop culture / general knowledge
+    //     (mostly proper nouns — fun, but the students speak no English to play it)
     const ALL_CATEGORIES = [
-      "Fruits","Animals","Movies","TV Series","Brands","Colors","Kitchen Utensils",
-      "Clothing Items","Musical Instruments","Superheroes","Vegetables","Tools",
-      "Professions","Body Parts","Countries","Cities","Famous Landmarks","Mammals","Desserts",
-      "Drinks","Breakfast Foods","Lunch Foods","Dinner Foods","Dairy Products",
-      "Fast Food Chains","Restaurants","School Subjects","Hobbies","Card Games",
-      "Social Media Platforms","Websites","Apps","Musical Genres","Dance Styles","Art Forms",
-      "Famous Artists","Famous Scientists","Historical Figures","Mythological Creatures",
-      "Fairy Tale Characters","Cartoon Characters","Disney Characters","TV Shows","Books",
-      "Authors","Rooms in a House","Furniture","Appliances",
-      "Natural Disasters","Gemstones","Metals","Periodic Table Elements","Units of Measurement",
-      "Shapes","Feelings","Adjectives","Verbs","Nouns","Holidays","Months",
-      "Sports with a Ball","Ice Cream Flavors","Bands","Cars","Video Games",
-      "Sports without a Ball","Boy Names","Girl Names","Things in the Kitchen",
-      "Sports Stars","School Supplies","Brazilian States","Things in the Fridge","Stores",
-      "Four-letter Words","Five-letter Words","Three-letter Words","Things on a Farm",
-      "Things at the Beach","Things in Space","Board Games","Supervillains","Animated Movies",
-      "Pizza Toppings","Dog Breeds",
-      "Reptiles","Birds","Insects","Ocean Creatures"
+      { n: "Fruits", l: "A1", k: "v" },
+      { n: "Vegetables", l: "A1", k: "v" },
+      { n: "Colors", l: "A1", k: "v" },
+      { n: "Animals", l: "A1", k: "v" },
+      { n: "Farm Animals", l: "A1", k: "v" },
+      { n: "Pets", l: "A1", k: "v" },
+      { n: "Body Parts", l: "A1", k: "v" },
+      { n: "Clothing Items", l: "A1", k: "v" },
+      { n: "Drinks", l: "A1", k: "v" },
+      { n: "Breakfast Foods", l: "A1", k: "v" },
+      { n: "Months of the Year", l: "A1", k: "v" },
+      { n: "Days of the Week", l: "A1", k: "v" },
+      { n: "Rooms in a House", l: "A1", k: "v" },
+      { n: "Furniture", l: "A1", k: "v" },
+      { n: "School Supplies", l: "A1", k: "v" },
+      { n: "Things in a Classroom", l: "A1", k: "v" },
+      { n: "Family Members", l: "A1", k: "v" },
+      { n: "Jobs", l: "A1", k: "v" },
+      { n: "Shapes", l: "A1", k: "v" },
+      { n: "Toys", l: "A1", k: "v" },
+      { n: "Kitchen Utensils", l: "A2", k: "v" },
+      { n: "Musical Instruments", l: "A2", k: "v" },
+      { n: "Tools", l: "A2", k: "v" },
+      { n: "Desserts", l: "A2", k: "v" },
+      { n: "Lunch Foods", l: "A2", k: "v" },
+      { n: "Dinner Foods", l: "A2", k: "v" },
+      { n: "Dairy Products", l: "A2", k: "v" },
+      { n: "Things in the Fridge", l: "A2", k: "v" },
+      { n: "Things on a Farm", l: "A2", k: "v" },
+      { n: "Things at the Beach", l: "A2", k: "v" },
+      { n: "Things in Space", l: "A2", k: "v" },
+      { n: "Hobbies", l: "A2", k: "v" },
+      { n: "School Subjects", l: "A2", k: "v" },
+      { n: "Holidays", l: "A2", k: "v" },
+      { n: "Ice Cream Flavors", l: "A2", k: "v" },
+      { n: "Pizza Toppings", l: "A2", k: "v" },
+      { n: "Sports with a Ball", l: "A2", k: "v" },
+      { n: "Sports without a Ball", l: "A2", k: "v" },
+      { n: "Feelings", l: "A2", k: "v" },
+      { n: "Mammals", l: "A2", k: "v" },
+      { n: "Birds", l: "A2", k: "v" },
+      { n: "Insects", l: "A2", k: "v" },
+      { n: "Reptiles", l: "A2", k: "v" },
+      { n: "Ocean Creatures", l: "A2", k: "v" },
+      { n: "Appliances", l: "A2", k: "v" },
+      { n: "Weather Words", l: "A2", k: "v" },
+      { n: "Things in a Backpack", l: "A2", k: "v" },
+      { n: "Winter Clothes", l: "A2", k: "v" },
+      { n: "Ways to Travel", l: "A2", k: "v" },
+      { n: "Places in a Town", l: "A2", k: "v" },
+      { n: "Things in a Supermarket", l: "A2", k: "v" },
+      { n: "Adjectives to Describe People", l: "A2", k: "v" },
+      { n: "Things You Do Every Morning", l: "A2", k: "v" },
+      { n: "Musical Genres", l: "B1", k: "v" },
+      { n: "Dance Styles", l: "B1", k: "v" },
+      { n: "Art Forms", l: "B1", k: "v" },
+      { n: "Natural Disasters", l: "B1", k: "v" },
+      { n: "Metals", l: "B1", k: "v" },
+      { n: "Mythological Creatures", l: "B1", k: "v" },
+      { n: "Dog Breeds", l: "B1", k: "v" },
+      { n: "Irregular Past Tense Verbs", l: "B1", k: "v" },
+      { n: "Phrasal Verbs with GET", l: "B1", k: "v" },
+      { n: "Jobs That Need a Uniform", l: "B1", k: "v" },
+      { n: "Adjectives to Describe Food", l: "B1", k: "v" },
+      { n: "Things in a Hospital", l: "B1", k: "v" },
+      { n: "Things That Are Round", l: "B1", k: "v" },
+      { n: "Things You Can Recycle", l: "B1", k: "v" },
+      { n: "Gemstones", l: "B2", k: "v" },
+      { n: "Units of Measurement", l: "B2", k: "v" },
+      { n: "Words for Walking", l: "B2", k: "v" },
+      { n: "Words for Speaking", l: "B2", k: "v" },
+      { n: "Emotions Beyond Happy and Sad", l: "B2", k: "v" },
+      { n: "Idioms with Body Parts", l: "B2", k: "v" },
+      { n: "Uncountable Nouns", l: "B2", k: "v" },
+      { n: "Things You Cannot Buy", l: "B2", k: "v" },
+      { n: "Movies", l: "A2", k: "c" },
+      { n: "TV Shows", l: "A2", k: "c" },
+      { n: "Brands", l: "A2", k: "c" },
+      { n: "Superheroes", l: "A2", k: "c" },
+      { n: "Countries", l: "A2", k: "c" },
+      { n: "Cities", l: "A2", k: "c" },
+      { n: "Fast Food Chains", l: "A2", k: "c" },
+      { n: "Social Media Platforms", l: "A2", k: "c" },
+      { n: "Apps", l: "A2", k: "c" },
+      { n: "Cartoon Characters", l: "A2", k: "c" },
+      { n: "Disney Characters", l: "A2", k: "c" },
+      { n: "Video Games", l: "A2", k: "c" },
+      { n: "Animated Movies", l: "A2", k: "c" },
+      { n: "Bands", l: "A2", k: "c" },
+      { n: "Cars", l: "A2", k: "c" },
+      { n: "Famous Landmarks", l: "B1", k: "c" },
+      { n: "Restaurants", l: "B1", k: "c" },
+      { n: "Websites", l: "B1", k: "c" },
+      { n: "Fairy Tale Characters", l: "B1", k: "c" },
+      { n: "Books", l: "B1", k: "c" },
+      { n: "Sports Stars", l: "B1", k: "c" },
+      { n: "Stores", l: "B1", k: "c" },
+      { n: "Board Games", l: "B1", k: "c" },
+      { n: "Card Games", l: "B1", k: "c" },
+      { n: "Supervillains", l: "B1", k: "c" },
+      { n: "Famous Artists", l: "B2", k: "c" },
+      { n: "Famous Scientists", l: "B2", k: "c" },
+      { n: "Historical Figures", l: "B2", k: "c" },
+      { n: "Authors", l: "B2", k: "c" },
+      { n: "Periodic Table Elements", l: "B2", k: "c" },
     ];
+
+    const LEVEL_CAPS = { a2: ['A1','A2'], b1: ['A1','A2','B1'], all: ['A1','A2','B1','B2'] };
+    const CAT_LEVEL = Object.fromEntries(ALL_CATEGORIES.map(c => [c.n, c.l]));
+
+    function filterCategories(cap, kind) {
+      const levels = LEVEL_CAPS[cap] || LEVEL_CAPS.all;
+      return ALL_CATEGORIES
+        .filter(c => levels.includes(c.l) && (kind === 'all' || c.k === kind))
+        .map(c => c.n);
+    }
 
     /* ─── SOUNDS ───────────────────────────────────────────────── */
     let muted = false;
@@ -1179,6 +1316,9 @@
     const maxStrikesEl  = document.getElementById('maxStrikes');
     const starsToWinEl  = document.getElementById('starsToWin');
     const rotationEl    = document.getElementById('rotation');
+    const levelCapEl    = document.getElementById('levelCap');
+    const catTypeEl     = document.getElementById('catType');
+    const availabilityEl= document.getElementById('availability');
     const teamNamesDiv  = document.getElementById('teamNameInputs');
     const startBtn      = document.getElementById('startGameBtn');
     const teamsContainer= document.getElementById('teams-container');
@@ -1217,9 +1357,15 @@
     let maxStrikes = 3;
     let starsToWin = 3;
     const BASE_CATS = 2;
+    const MIN_CATEGORIES = 10;   // below this a round runs out of fresh ground
+    let poolSource = [];
     let rotationMode = 'one';
     let rotatePtr = 0;
     let freshBoard = false;
+    // A category pulled off the board by the wrong-answer penalty goes straight
+    // back into the pool, so without this it can be dealt again on the very next
+    // board — which reads as "the punishment did nothing".
+    let recentRetired = [];
     let prevCats = [];
     let history = [];
     let pendingTimer = null;
@@ -1237,7 +1383,8 @@
         currentTeamIndex,
         activeCategories: activeCategories.slice(),
         sessionPool: sessionPool.slice(),
-        extraActive, extraByTeam, rotatePtr, freshBoard
+        extraActive, extraByTeam, rotatePtr, freshBoard,
+        recentRetired: recentRetired.slice()
       });
       if (history.length > MAX_HISTORY) history.shift();
       paintUndoBtn();
@@ -1278,6 +1425,7 @@
       extraByTeam        = snap.extraByTeam;
       rotatePtr          = snap.rotatePtr;
       freshBoard         = snap.freshBoard;
+      recentRetired      = snap.recentRetired.slice();
 
       showScreen(gameScreen);
       renderTeams();
@@ -1310,6 +1458,18 @@
       }
     }
 
+    function updateAvailability() {
+      const n = filterCategories(levelCapEl.value, catTypeEl.value).length;
+      const level = levelCapEl.options[levelCapEl.selectedIndex].textContent;
+      const type  = catTypeEl.value === 'v' ? 'vocabulary' : 'vocabulary + pop culture';
+      availabilityEl.textContent = `${n} categor${n === 1 ? 'y' : 'ies'} available — ${level}, ${type}.` +
+        (n < MIN_CATEGORIES ? '  Too few for a full round — widen the level or the type.' : '');
+      availabilityEl.classList.toggle('thin', n < MIN_CATEGORIES);
+    }
+    levelCapEl.addEventListener('change', updateAvailability);
+    catTypeEl.addEventListener('change', updateAvailability);
+    updateAvailability();
+
     numTeamsEl.addEventListener('change', () => buildTeamInputs(+numTeamsEl.value));
     buildTeamInputs(2);
 
@@ -1319,6 +1479,13 @@
       maxStrikes   = +maxStrikesEl.value;
       starsToWin   = +starsToWinEl.value;
       rotationMode = rotationEl.value;
+
+      const filtered = filterCategories(levelCapEl.value, catTypeEl.value);
+      if (filtered.length < BASE_CATS + 1) {
+        toast('Not enough categories for a game — widen the level or the type.', 'error', 3000);
+        return;
+      }
+      poolSource = filtered;
 
       const names = [];
       let valid = true;
@@ -1366,10 +1533,11 @@
       extraActive = false;
       extraByTeam = null;
       activeCategories = [];
-      sessionPool = [...ALL_CATEGORIES];
+      sessionPool = [...poolSource];
       history = [];
       rotatePtr = 0;
       prevCats = [];
+      recentRetired = [];
       paintUndoBtn();
       renderTeams();
       regenerateCategories(BASE_CATS);
@@ -1567,7 +1735,7 @@
     /* ─── CATEGORIES ────────────────────────────────────────────── */
     function refillPool() {
       const inPlay = new Set(activeCategories);
-      sessionPool = ALL_CATEGORIES.filter(c => !inPlay.has(c));
+      sessionPool = poolSource.filter(c => !inPlay.has(c));
     }
 
     // `exclude` keeps a freshly-returned category from being dealt straight back out.
@@ -1593,7 +1761,8 @@
     function regenerateCategories(n) {
       const retired = activeCategories.slice();
       if (retired.length) sessionPool.push(...retired);
-      activeCategories = pickFromPool(n, retired);
+      activeCategories = pickFromPool(n, retired.concat(recentRetired));
+      recentRetired = [];
       rotatePtr = 0;
       renderCategories();
     }
@@ -1612,7 +1781,8 @@
       const i = rotatePtr % activeCategories.length;
       const retired = activeCategories[i];
       sessionPool.push(retired);
-      const [next] = pickFromPool(1, activeCategories);
+      const [next] = pickFromPool(1, activeCategories.concat(recentRetired));
+      recentRetired = [];
       if (next) {
         activeCategories[i] = next;
       } else {
@@ -1643,6 +1813,7 @@
       const [newCat] = pickFromPool(1, activeCategories);
       if (!newCat) return;
       activeCategories[ri] = newCat;
+      recentRetired = [retired];
       // This swap IS the board change for this turn — otherwise the automatic
       // rotation fires on top of it and a wrong answer wipes the board clean,
       // handing the offending team a fresh slate instead of a penalty.
@@ -1665,7 +1836,14 @@
       activeCategories.forEach(cat => {
         const pill = document.createElement('div');
         pill.className = 'cat-pill' + (before.includes(cat) ? '' : ' fresh');
-        pill.textContent = cat;
+        pill.append(cat);
+        const lvl = CAT_LEVEL[cat];
+        if (lvl) {
+          const tag = document.createElement('span');
+          tag.className = 'cat-level';
+          tag.textContent = lvl;
+          pill.appendChild(tag);
+        }
         categoriesWrap.appendChild(pill);
       });
       prevCats = activeCategories.slice();
@@ -1830,9 +2008,10 @@
       extraActive = false;
       extraByTeam = null;
       activeCategories = [];
-      sessionPool = [...ALL_CATEGORIES];
+      sessionPool = [...poolSource];
       currentTeamIndex = 0;
       rotatePtr = 0;
+      recentRetired = [];
       renderTeams();
       regenerateCategories(BASE_CATS);
       freshBoard = true;

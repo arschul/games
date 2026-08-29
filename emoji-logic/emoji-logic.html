@@ -290,12 +290,12 @@ var CATS=[
 ];
 var ALL={at:1,end:1,same:1,notsame:1,left:1,leftsome:1,next:1,between:1};
 var LEVELS=[
-  {n:3,m:2,pts:1,label:'Warm-up', maxClues:4,  types:{at:1,end:1,same:1,left:1,next:1}},
-  {n:3,m:3,pts:2,label:'Easy',    maxClues:6,  types:{at:1,end:1,same:1,left:1,next:1,notsame:1}},
-  {n:4,m:3,pts:3,label:'Steady',  maxClues:8,  types:{at:1,end:1,same:1,left:1,next:1,notsame:1,leftsome:1}},
-  {n:4,m:4,pts:4,label:'Tricky',  maxClues:10, types:ALL},
-  {n:5,m:3,pts:5,label:'Hard',    maxClues:10, types:ALL},
-  {n:5,m:4,pts:6,label:'Master',  maxClues:13, types:ALL}
+  {n:3,m:2,pts:1,label:'Warm-up', minClues:4,  maxClues:7,  anchors:2, depth:0, types:{at:1,same:1,left:1,next:1}},
+  {n:3,m:3,pts:2,label:'Easy',    minClues:5,  maxClues:9,  anchors:2, depth:0, types:{at:1,same:1,left:1,next:1,notsame:1}},
+  {n:4,m:3,pts:3,label:'Steady',  minClues:6,  maxClues:12, anchors:1, depth:0, types:{at:1,end:1,same:1,left:1,next:1,notsame:1,leftsome:1}},
+  {n:4,m:4,pts:4,label:'Tricky',  minClues:7,  maxClues:14, anchors:1, depth:0, types:ALL},
+  {n:5,m:3,pts:5,label:'Hard',    minClues:7,  maxClues:14, anchors:1, depth:1, types:ALL},
+  {n:5,m:4,pts:6,label:'Master',  minClues:9,  maxClues:17, anchors:1, depth:1, types:ALL}
 ];
 
 /* ---------- HELPERS ---------- */
@@ -448,6 +448,248 @@ function clueText(cl,P){
   return '';
 }
 
+/* ---------- DEDUCTION MODEL ----------
+   A model of what a student can actually do, used to reject puzzles that have
+   a unique answer but no findable path to it. Candidates are booleans:
+   cand[c][i][p] = "item i of category c could be in house p".
+
+   propagate() applies every clue plus the two grid rules to a fixed point.
+   deduce(depth) additionally allows depth hypothesis steps: assume a value,
+   propagate, and if it contradicts, rule that value out. depth 0 = pure
+   forward deduction. depth 1 = one contradiction step, which is as hard as
+   any level is allowed to get. */
+
+function emptyCand(n, M) {
+  var cand = [], c, i, p;
+  for (c = 0; c < M; c++) {
+    var row = [];
+    for (i = 0; i < n; i++) { var s = []; for (p = 0; p < n; p++) s.push(true); row.push(s); }
+    cand.push(row);
+  }
+  return cand;
+}
+function cloneCand(cand) {
+  return cand.map(function (row) { return row.map(function (s) { return s.slice(); }); });
+}
+function vals(s) { var o = [], v; for (v = 0; v < s.length; v++) if (s[v]) o.push(v); return o; }
+
+function propagate(cand, clues, n, M) {
+  var changed = true, guard = 0, k, c, i, p;
+
+  function keep(s, allowed) {           // allowed: array of positions
+    var ch = false, v;
+    for (v = 0; v < n; v++) if (s[v] && allowed.indexOf(v) < 0) { s[v] = false; ch = true; }
+    return ch;
+  }
+  function dead(s) { for (var v = 0; v < n; v++) if (s[v]) return false; return true; }
+
+  while (changed && guard++ < 60) {
+    changed = false;
+
+    for (k = 0; k < clues.length; k++) {
+      var cl = clues[k];
+      var A = cand[cl.c1][cl.i1];
+      var B = (cl.c2 !== undefined) ? cand[cl.c2][cl.i2] : null;
+      var av = vals(A), bv = B ? vals(B) : null, x;
+
+      switch (cl.type) {
+        case 'at':
+          if (keep(A, [cl.pos])) changed = true;
+          break;
+        case 'end':
+          if (keep(A, [0, n - 1])) changed = true;
+          break;
+        case 'same':
+          if (keep(A, bv)) changed = true;
+          if (keep(B, vals(A))) changed = true;
+          break;
+        case 'notsame':
+          if (av.length === 1 && B[av[0]]) { B[av[0]] = false; changed = true; }
+          if (bv.length === 1 && A[bv[0]]) { A[bv[0]] = false; changed = true; }
+          break;
+        case 'left':
+          if (keep(A, bv.map(function (v) { return v - 1; }))) changed = true;
+          if (keep(B, vals(A).map(function (v) { return v + 1; }))) changed = true;
+          break;
+        case 'leftsome': {
+          var maxB = bv.length ? Math.max.apply(null, bv) : -1;
+          if (keep(A, av.filter(function (v) { return v < maxB; }))) changed = true;
+          var av2 = vals(A);
+          var minA = av2.length ? Math.min.apply(null, av2) : n;
+          if (keep(B, bv.filter(function (v) { return v > minA; }))) changed = true;
+          break;
+        }
+        case 'next': {
+          var na = [];
+          for (x = 0; x < bv.length; x++) { na.push(bv[x] - 1); na.push(bv[x] + 1); }
+          if (keep(A, na)) changed = true;
+          var av3 = vals(A), nb = [];
+          for (x = 0; x < av3.length; x++) { nb.push(av3[x] - 1); nb.push(av3[x] + 1); }
+          if (keep(B, nb)) changed = true;
+          break;
+        }
+        case 'between': {
+          var Mid = cand[cl.c2][cl.i2], C = cand[cl.c3][cl.i3];
+          if (keep(Mid, vals(Mid).filter(function (v) {
+            return (A[v - 1] && C[v + 1]) || (A[v + 1] && C[v - 1]);
+          }))) changed = true;
+          if (keep(A, vals(A).filter(function (v) {
+            return (Mid[v + 1] && C[v + 2]) || (Mid[v - 1] && C[v - 2]);
+          }))) changed = true;
+          if (keep(C, vals(C).filter(function (v) {
+            return (Mid[v + 1] && A[v + 2]) || (Mid[v - 1] && A[v - 2]);
+          }))) changed = true;
+          break;
+        }
+      }
+      if (dead(A) || (B && dead(B))) return false;
+    }
+
+    /* Grid rules: one house per item, one item per house, within a category. */
+    for (c = 0; c < M; c++) {
+      for (i = 0; i < n; i++) {
+        var s = cand[c][i], sv = vals(s);
+        if (!sv.length) return false;
+        if (sv.length === 1) {
+          for (var j = 0; j < n; j++) {
+            if (j !== i && cand[c][j][sv[0]]) { cand[c][j][sv[0]] = false; changed = true; }
+          }
+        }
+      }
+      for (p = 0; p < n; p++) {
+        var owners = [];
+        for (i = 0; i < n; i++) if (cand[c][i][p]) owners.push(i);
+        if (!owners.length) return false;
+        if (owners.length === 1 && vals(cand[c][owners[0]]).length > 1) {
+          for (var v2 = 0; v2 < n; v2++) cand[c][owners[0]][v2] = (v2 === p);
+          changed = true;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+function isSolved(cand, n, M) {
+  for (var c = 0; c < M; c++) for (var i = 0; i < n; i++) {
+    if (vals(cand[c][i]).length !== 1) return false;
+  }
+  return true;
+}
+function openCount(cand, n, M) {
+  var t = 0;
+  for (var c = 0; c < M; c++) for (var i = 0; i < n; i++) t += vals(cand[c][i]).length - 1;
+  return t;
+}
+
+function deduce(cand, clues, n, M, depth) {
+  if (!propagate(cand, clues, n, M)) return 'contra';
+  if (isSolved(cand, n, M)) return 'solved';
+  if (depth <= 0) return 'stuck';
+  var progress = true;
+  while (progress) {
+    progress = false;
+    outer:
+    for (var c = 0; c < M; c++) for (var i = 0; i < n; i++) {
+      var opts = vals(cand[c][i]);
+      if (opts.length < 2) continue;
+      for (var k = 0; k < opts.length; k++) {
+        var t = cloneCand(cand);
+        for (var v = 0; v < n; v++) t[c][i][v] = (v === opts[k]);
+        if (deduce(t, clues, n, M, depth - 1) === 'contra') {
+          cand[c][i][opts[k]] = false;
+          if (!propagate(cand, clues, n, M)) return 'contra';
+          if (isSolved(cand, n, M)) return 'solved';
+          progress = true;
+          break outer;
+        }
+      }
+    }
+  }
+  return isSolved(cand, n, M) ? 'solved' : 'stuck';
+}
+
+/* Can this clue set be cracked with at most `depth` contradiction steps? */
+function solvableAt(clues, n, M, depth) {
+  return deduce(emptyCand(n, M), clues, n, M, depth) === 'solved';
+}
+/* How much of the grid pure forward deduction leaves open — the greedy score. */
+function openAfterForward(clues, n, M) {
+  var cand = emptyCand(n, M);
+  if (!propagate(cand, clues, n, M)) return 1e9;
+  return openCount(cand, n, M);
+}
+
+/* ---------- CLUE TOP-UP ----------
+   The minimal clue set the generator finds is, by construction, the hardest
+   possible presentation: nothing is redundant, so nothing can be skipped and
+   the deduction order is forced. Published logic puzzles keep redundant clues
+   on purpose. So: guarantee anchors, then add true-but-redundant clues until
+   the puzzle is solvable inside the level's allowance. */
+
+function clueKey(cl) { return JSON.stringify(cl); }
+
+function topUp(chosen, sol, n, M, L) {
+  var used = {}, i;
+  for (i = 0; i < chosen.length; i++) used[clueKey(chosen[i])] = 1;
+  var pool = buildPool(sol, n, M, L.types).filter(function (cl) { return !used[clueKey(cl)]; });
+  pool = shuffle(pool);
+
+  var clues = chosen.slice();
+
+  /* 1. Anchors. A puzzle with no "X is in house N" has no entry point; nearly
+        half of them had none. Pin at least L.anchors of them, preferring
+        items that aren't already pinned. */
+  function anchorCount() {
+    return clues.filter(function (c) { return c.type === 'at'; }).length;
+  }
+  var pinned = {};
+  clues.forEach(function (c) { if (c.type === 'at') pinned[c.c1 + ':' + c.i1] = 1; });
+  for (i = 0; i < pool.length && anchorCount() < (L.anchors || 1); i++) {
+    var cl = pool[i];
+    if (cl.type !== 'at') continue;
+    if (pinned[cl.c1 + ':' + cl.i1]) continue;
+    pinned[cl.c1 + ':' + cl.i1] = 1;
+    clues.push(cl); used[clueKey(cl)] = 1;
+  }
+  /* "X is in house N" is the strongest clue there is, so left in the pool the
+     greedy step below just keeps picking them and hands the grid over. Anchors
+     are an entry point, not the puzzle — cap them here and let the top-up work
+     with relational clues only. */
+  pool = pool.filter(function (c) { return !used[clueKey(c)] && c.type !== 'at'; });
+
+  /* 2. Add the most informative remaining clue until the puzzle is solvable
+        within the level's hypothesis allowance, then until the clue floor. */
+  var depth = L.depth || 0, cap = L.maxClues, guard = 0;
+  while (guard++ < 40) {
+    var solvable = solvableAt(clues, n, M, depth);
+    if (solvable && clues.length >= (L.minClues || 0)) break;
+    if (!pool.length || clues.length >= cap) break;
+    var sample = pool.slice(0, 48), best = null, bestScore = Infinity;
+    for (i = 0; i < sample.length; i++) {
+      var trial = clues.concat([sample[i]]);
+      var sc = openAfterForward(trial, n, M);
+      if (sc < bestScore) { bestScore = sc; best = sample[i]; }
+    }
+    if (!best) break;
+    clues.push(best); used[clueKey(best)] = 1;
+    pool = pool.filter(function (c) { return !used[clueKey(c)]; });
+  }
+
+  /* 3. Anchors first, so the class has somewhere obvious to start. */
+  clues.sort(function (a, b) {
+    var ra = a.type === 'at' ? 0 : (a.type === 'end' ? 1 : 2);
+    var rb = b.type === 'at' ? 0 : (b.type === 'end' ? 1 : 2);
+    return ra - rb;
+  });
+
+  return {
+    clues: clues,
+    ok: solvableAt(clues, n, M, depth),
+    needsHypothesis: !solvableAt(clues, n, M, 0)
+  };
+}
+
 /* ---------- GENERATION ---------- */
 function generateAt(levelIdx,relaxed){
   var L=LEVELS[levelIdx], n=L.n, M=L.m;
@@ -474,6 +716,9 @@ function generateAt(levelIdx,relaxed){
       if(rr.blown) continue;
       if(rr.count===1) chosen=trial;
     }
+    var tu=topUp(chosen,sol,n,M,L);
+    if(!tu.ok && !relaxed) continue;
+    chosen=tu.clues;
     if(!relaxed && chosen.length>L.maxClues) continue;
     var used={};
     chosen.forEach(function(cl){ used[JSON.stringify(cl)]=1; });
@@ -481,7 +726,7 @@ function generateAt(levelIdx,relaxed){
       return !used[JSON.stringify(cl)] && (cl.type==='at'||cl.type==='same'||cl.type==='left');
     })).slice(0,4);
     var inv=sol.map(function(p){ var iv=new Array(n); for(var pos=0;pos<n;pos++) iv[p[pos]]=pos; return iv; });
-    var P={levelIdx:levelIdx,label:L.label,pts:L.pts,n:n,M:M,cats:cats,sol:sol,inv:inv,clues:chosen,extras:extras};
+    var P={levelIdx:levelIdx,label:L.label,pts:L.pts,n:n,M:M,cats:cats,sol:sol,inv:inv,clues:chosen,extras:extras,needsHypothesis:tu.needsHypothesis};
     P.question=makeQuestion(P);
     return P;
   }

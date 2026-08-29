@@ -5,12 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Word Scramble Party!</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script>
+// Restore the theme before first paint so there is no flash of the wrong palette.
+// Default is dark, matching the Game Hub classroom-projection convention.
+(function(){
+  var t = "dark";
+  try { t = localStorage.getItem("theme") || "dark"; } catch(e) {}
+  document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
 <style>
 :root {
   --bg: #FFF9F0;
   --surface: #FFFFFF;
   --ink: #2D2D2D;
-  --ink-soft: #7A7A7A;
+  --ink-soft: #5F5A52;
   --border: #E8DDD0;
   --shadow: rgba(45,30,10,0.12);
   --blue:   #4A90E2;
@@ -23,7 +32,46 @@
   --orange-l:#FFF0CC;
   --purple: #9B59B6;
   --purple-l:#EDD9F7;
+  --pill:      #2D2D2D;
+  --pill-ink:  #FFFFFF;
+  --glow-1: #FFE4F3;
+  --glow-2: #D6EAFF;
+  --glow-3: #FFFDE0;
+  --success-ink: #1A6B3C;
+  --error-ink:   #8B1A10;
+  --blob-op: .18;
+  --star-op: .50;
+  --logo-l:  45%;
   --bounce-timing: cubic-bezier(.34,1.56,.64,1);
+}
+
+html[data-theme="dark"] {
+  --bg: #171C29;
+  --surface: #252C3E;
+  --ink: #F2F5FA;
+  --ink-soft: #B4BECF;
+  --border: #3C4761;
+  --shadow: rgba(0,0,0,.55);
+  --blue:   #5AA9F5;
+  --blue-l: #1E344F;
+  --red:    #F0705C;
+  --red-l:  #4A2621;
+  --green:  #5CCB8B;
+  --green-l:#1E4030;
+  --orange: #FFB23F;
+  --orange-l:#4A3413;
+  --purple: #C084E0;
+  --purple-l:#3A2547;
+  --pill:      #F2F5FA;
+  --pill-ink:  #171C29;
+  --glow-1: #2A1F38;
+  --glow-2: #16283C;
+  --glow-3: #1F2433;
+  --success-ink: #8FE9B4;
+  --error-ink:   #FFB3A8;
+  --blob-op: .10;
+  --star-op: .28;
+  --logo-l:  66%;
 }
 
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -32,17 +80,53 @@ body {
   font-family: 'Nunito', sans-serif;
   background: var(--bg);
   background-image:
-    radial-gradient(circle at 15% 20%, #FFE4F3 0%, transparent 35%),
-    radial-gradient(circle at 85% 80%, #D6EAFF 0%, transparent 35%),
-    radial-gradient(circle at 50% 50%, #FFFDE0 0%, transparent 50%);
+    radial-gradient(circle at 15% 20%, var(--glow-1) 0%, transparent 35%),
+    radial-gradient(circle at 85% 80%, var(--glow-2) 0%, transparent 35%),
+    radial-gradient(circle at 50% 50%, var(--glow-3) 0%, transparent 50%);
   min-height: 100vh;
   color: var(--ink);
   overflow-x: hidden;
 }
 
+/* ─── BACK LINK / THEME TOGGLE ─── */
+.back-link {
+  position:fixed; top:14px; left:14px; z-index:200;
+  font-family:'Nunito',sans-serif; font-weight:900; font-size:.9rem;
+  text-decoration:none; color:var(--ink);
+  background:var(--surface); border:3px solid var(--border);
+  border-radius:50px; padding:8px 18px;
+  box-shadow:0 4px 0 var(--border);
+  transition:transform .18s var(--bounce-timing);
+}
+.back-link:hover { transform:translateY(-3px); }
+.theme-toggle {
+  position:fixed; top:14px; right:14px; z-index:200;
+  width:46px; height:46px; border-radius:50%;
+  font-size:1.25rem; line-height:1; cursor:pointer;
+  background:var(--surface); border:3px solid var(--border); color:var(--ink);
+  box-shadow:0 4px 0 var(--border);
+  transition:transform .18s var(--bounce-timing);
+}
+.theme-toggle:hover { transform:translateY(-3px) rotate(-12deg); }
+
+/* ─── REDUCED MOTION ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+  }
+  .blob, .star { display:none; }
+}
+
+/* ─── FOCUS VISIBILITY ─── */
+:focus-visible {
+  outline:4px solid var(--blue); outline-offset:3px;
+}
+
 /* ─── DECORATIVE BLOBS ─── */
 .blob {
-  position:fixed; border-radius:50%; opacity:.18; pointer-events:none; z-index:0;
+  position:fixed; border-radius:50%; opacity:var(--blob-op); pointer-events:none; z-index:0;
   animation: blobFloat 8s ease-in-out infinite;
 }
 .blob-1{width:300px;height:300px;background:#FFB3D1;top:-80px;left:-80px;animation-delay:0s;}
@@ -53,7 +137,7 @@ body {
 
 /* ─── STARS / CONFETTI ─── */
 .star {
-  position:fixed; pointer-events:none; z-index:0; opacity:0.5;
+  position:fixed; pointer-events:none; z-index:0; opacity:var(--star-op);
   animation: starSpin 12s linear infinite;
   font-size: 1.4rem;
 }
@@ -131,8 +215,8 @@ body {
 }
 .opt-btn:hover { transform:translateY(-3px) scale(1.04); }
 .opt-btn.active {
-  background: var(--ink); color: #fff;
-  border-color: var(--ink);
+  background: var(--pill); color: var(--pill-ink);
+  border-color: var(--pill);
   box-shadow: 0 4px 0 rgba(0,0,0,.35);
   transform:translateY(-2px);
 }
@@ -157,12 +241,12 @@ body {
 }
 .team-input {
   font-family:'Nunito',sans-serif; font-weight:800; font-size:1rem;
-  border:2px solid rgba(0,0,0,.15); border-radius:10px;
-  padding:7px 12px; background:rgba(255,255,255,.7);
+  border:2px solid var(--border); border-radius:10px;
+  padding:7px 12px; background:var(--bg);
   width:100%; outline:none; color:var(--ink);
   transition: border-color .2s;
 }
-.team-input:focus { border-color:rgba(0,0,0,.4); background:#fff; }
+.team-input:focus { border-color:var(--ink-soft); background:var(--surface); }
 
 /* ─── CATEGORIES ─── */
 .cat-grid {
@@ -180,7 +264,7 @@ body {
 .cat-label:hover { transform:translateY(-2px) scale(1.03); }
 .cat-check { font-size:1.1rem; transition:transform .2s; }
 .cat-checkbox:checked + .cat-label {
-  background:var(--ink); color:#fff; border-color:var(--ink);
+  background:var(--pill); color:var(--pill-ink); border-color:var(--pill);
   box-shadow:0 4px 0 rgba(0,0,0,.25);
   transform:translateY(-2px);
 }
@@ -190,8 +274,8 @@ body {
 .big-btn {
   font-family:'Fredoka One',cursive; font-size:1.5rem; letter-spacing:.5px;
   padding:18px 48px; border-radius:50px; border:none; cursor:pointer;
-  background: var(--ink); color:#fff;
-  box-shadow: 0 6px 0 rgba(0,0,0,.35);
+  background: var(--pill); color:var(--pill-ink);
+  box-shadow: 0 6px 0 var(--shadow);
   transition: all .18s var(--bounce-timing);
   position:relative; top:0;
 }
@@ -211,7 +295,7 @@ body {
 }
 .round-badge {
   display:inline-block; margin-top:4px;
-  background:var(--ink); color:#fff; font-weight:800; font-size:.85rem;
+  background:var(--pill); color:var(--pill-ink); font-weight:800; font-size:.85rem;
   padding:4px 14px; border-radius:50px;
 }
 
@@ -274,8 +358,8 @@ body {
 .points-pill {
   font-family:'Fredoka One',cursive; font-size:1.4rem;
   padding:8px 22px; border-radius:50px;
-  background:var(--ink); color:#fff;
-  box-shadow:0 4px 0 rgba(0,0,0,.3);
+  background:var(--pill); color:var(--pill-ink);
+  box-shadow:0 4px 0 var(--shadow);
   transition:all .3s var(--bounce-timing);
 }
 .category-badge {
@@ -352,6 +436,11 @@ body {
 .answer-slot.t-green.filled { border-color:var(--green); }
 .answer-slot.t-orange.filled{ border-color:var(--orange);}
 
+/* ─── LOCKED BOARD (between turns) ─── */
+.letter-section.locked .letter-tile,
+.letter-section.locked .answer-slot { pointer-events:none; }
+.letter-section.locked { opacity:.75; }
+
 /* ─── HINT BOX ─── */
 .hint-box {
   border-radius:16px; border:3px dashed var(--border);
@@ -381,7 +470,14 @@ body {
 }
 .action-btn:hover { transform:translateY(-3px); box-shadow:0 7px 0 var(--border); }
 .action-btn:active { top:3px; box-shadow:0 1px 0 var(--border); }
-.action-btn.danger { background:#FFF0F0; border-color:var(--red); color:var(--red); }
+.action-btn.danger { background:var(--red-l); border-color:var(--red); color:var(--red); }
+.action-btn.primary { background:var(--green-l); border-color:var(--green); color:var(--success-ink); }
+.action-btn.primary:hover { background:var(--green); color:#fff; }
+.action-btn.primary.ready { animation: checkReady 1.1s ease-in-out infinite; }
+@keyframes checkReady{0%,100%{box-shadow:0 4px 0 var(--green);}50%{box-shadow:0 4px 0 var(--green),0 0 0 6px var(--green-l);}}
+.action-btn:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
+.key-hints { text-align:center; font-size:.8rem; font-weight:700; color:var(--ink-soft); }
+.key-hints b { font-family:'Fredoka One',cursive; font-weight:400; color:var(--ink); }
 .action-btn.danger:hover { background:var(--red); color:#fff; }
 
 /* ─── MESSAGE ─── */
@@ -392,8 +488,8 @@ body {
   animation: popIn .3s var(--bounce-timing);
 }
 @keyframes popIn{from{transform:scale(.7) translateY(10px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
-.message-bubble.success { background:var(--green-l); color:#1a6b3c; border:2px solid var(--green); }
-.message-bubble.error   { background:var(--red-l);   color:#8b1a10; border:2px solid var(--red); }
+.message-bubble.success { background:var(--green-l); color:var(--success-ink); border:2px solid var(--green); }
+.message-bubble.error   { background:var(--red-l);   color:var(--error-ink); border:2px solid var(--red); }
 
 /* ─── LEADERBOARD ─── */
 .lb-table {
@@ -455,6 +551,9 @@ body {
 </style>
 </head>
 <body>
+
+<a class="back-link" href="../">← Game Hub</a>
+<button class="theme-toggle" id="themeToggle" title="Toggle light / dark theme" aria-label="Toggle light or dark theme">🌙</button>
 
 <!-- Blobs -->
 <div class="blob blob-1"></div>
@@ -544,24 +643,29 @@ body {
       <div class="points-pill" id="pointsPill">10 pts</div>
     </div>
 
-    <div class="letter-section">
+    <div class="letter-section" id="letterSection">
       <div class="letters-label">SCRAMBLED LETTERS — tap or type a letter</div>
-      <div class="scrambled-row" id="scrambledRow"></div>
+      <div class="scrambled-row" id="scrambledRow" role="group" aria-label="Scrambled letters"></div>
       <div style="height:16px; display:flex; align-items:center; justify-content:center; margin:8px 0;">
-        <svg width="80" height="16" viewBox="0 0 80 16"><path d="M40 2 L44 8 L40 14 L36 8 Z" fill="none" stroke="#C8BFB0" stroke-width="2"/><line x1="0" y1="8" x2="34" y2="8" stroke="#C8BFB0" stroke-width="2" stroke-dasharray="4,4"/><line x1="46" y1="8" x2="80" y2="8" stroke="#C8BFB0" stroke-width="2" stroke-dasharray="4,4"/></svg>
+        <svg width="80" height="16" viewBox="0 0 80 16" style="color:var(--border)" aria-hidden="true"><path d="M40 2 L44 8 L40 14 L36 8 Z" fill="none" stroke="currentColor" stroke-width="2"/><line x1="0" y1="8" x2="34" y2="8" stroke="currentColor" stroke-width="2" stroke-dasharray="4,4"/><line x1="46" y1="8" x2="80" y2="8" stroke="currentColor" stroke-width="2" stroke-dasharray="4,4"/></svg>
       </div>
-      <div class="answer-row" id="answerRow"></div>
+      <div class="answer-row" id="answerRow" role="group" aria-label="Your answer"></div>
     </div>
 
-    <div class="hint-box" id="hintBox">💡 A hint will appear when points drop to 5...</div>
+    <div class="hint-box" id="hintBox">💡 Stuck? Take the hint for 2 points.</div>
 
     <div class="action-row">
+      <button class="action-btn primary" id="checkBtn">✔️ Check</button>
+      <button class="action-btn" id="hintBtn">💡 Hint (−2)</button>
       <button class="action-btn" id="shuffleBtn">🔀 Shuffle</button>
       <button class="action-btn" id="clearBtn">🧹 Clear</button>
       <button class="action-btn danger" id="giveUpBtn">🏳️ Give Up</button>
+      <button class="action-btn danger" id="skipBtn" title="Teacher: bin this word, nobody is scored">⏭️ Skip Word</button>
     </div>
 
-    <div class="message-area" id="messageArea"></div>
+    <div class="key-hints" id="keyHints">Keys: <b>A–Z</b> place · <b>Backspace</b> undo · <b>Enter</b> check · <b>H</b> hint · <b>R</b> shuffle</div>
+
+    <div class="message-area" id="messageArea" role="status" aria-live="polite"></div>
   </div>
 </div>
 
@@ -698,6 +802,36 @@ let timeLeft = 30;
 let gameHistory = [];
 let usedWords = new Set();
 
+// — P1 additions —
+let turnLocked = false;   // true between turns: board accepts nothing
+let hintTaken  = false;   // hint already paid for / shown this turn
+let revealCount = 0;      // letters auto-revealed this turn
+let inputCooldown = false;// brief lockout after a wrong Check
+
+const MAX_REVEALS   = 5;  // caps a turn at MAX_REVEALS x timerDur
+const WRONG_COST    = 1;  // points lost per wrong Check
+const HINT_COST     = 2;  // points lost when the hint is taken
+const FREE_HINT_AT  = 3;  // points at which the hint is shown for free
+const MIN_POINTS    = 1;  // a correct answer always pays at least this
+const TURN_GAP_MS   = 2200;
+
+// ═══════════════════════════════════════════
+//  THEME
+// ═══════════════════════════════════════════
+function currentTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'dark';
+}
+function paintThemeToggle() {
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = currentTheme() === 'dark' ? '☀' : '🌙';
+}
+function toggleTheme() {
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('theme', next); } catch(e) {}
+  paintThemeToggle();
+}
+
 // ═══════════════════════════════════════════
 //  AUDIO ENGINE (Web Audio API — no files needed)
 // ═══════════════════════════════════════════
@@ -747,7 +881,7 @@ function animateLogo() {
   const text = 'Word Scramble!';
   const el = document.getElementById('logoTitle');
   el.innerHTML = text.split('').map((c,i) =>
-    `<span style="color:hsl(${i*25},80%,45%);animation-delay:${i*0.09}s">${c === ' ' ? '&nbsp;' : c}</span>`
+    `<span style="color:hsl(${i*25},85%,var(--logo-l));animation-delay:${i*0.09}s">${c === ' ' ? '&nbsp;' : c}</span>`
   ).join('');
 }
 
@@ -807,13 +941,27 @@ function setupStartScreen() {
 // ═══════════════════════════════════════════
 //  GAME INIT
 // ═══════════════════════════════════════════
+function showSetupError(text) {
+  let box = document.getElementById('setupError');
+  if(!box) {
+    box = document.createElement('div');
+    box.id = 'setupError';
+    box.className = 'message-bubble error';
+    box.setAttribute('role','alert');
+    const btn = document.getElementById('startBtn');
+    btn.parentNode.insertBefore(box, btn);
+  }
+  box.textContent = '⚠️ ' + text;
+  if(box.scrollIntoView) box.scrollIntoView({block:'nearest'});
+}
+
 function startGame() {
   const numTeams = parseInt(document.querySelector('#teamsOptions .active').dataset.value);
   const difficulty = document.querySelector('#difficultyOptions .active').dataset.value;
   const timerDur = parseInt(document.querySelector('#timerOptions .active').dataset.value);
   const maxRounds = parseInt(document.querySelector('#roundsOptions .active').dataset.value);
   const selectedCats = [...document.querySelectorAll('.cat-checkbox:checked')].map(c=>c.value);
-  if(!selectedCats.length){ alert('Please select at least one category!'); return; }
+  if(!selectedCats.length){ showSetupError('Pick at least one category to play.'); return; }
 
   settings = { numTeams, difficulty, timerDur, maxRounds, selectedCats };
   teams = [];
@@ -870,26 +1018,32 @@ function bumpScore(teamIdx) {
 function startTurn() {
   clearInterval(timerInterval);
   isRevealing = false;
+  turnLocked = false; hintTaken = false; revealCount = 0; inputCooldown = false;
   currentPoints = 10; timeLeft = settings.timerDur;
   revealedPositions.clear(); nextRevealIdx = 0;
   clearMessage();
 
   document.getElementById('roundBadge').textContent=`Round ${currentRound} of ${settings.maxRounds}`;
-  document.getElementById('hintBox').textContent='💡 A hint will appear when points drop to 5...';
+  document.getElementById('hintBox').textContent=`💡 Stuck? Take the hint for ${HINT_COST} points.`;
   document.getElementById('hintBox').classList.remove('active');
   document.getElementById('pointsPill').textContent=`${currentPoints} pts`;
   document.getElementById('timerRing').textContent=timeLeft;
   document.getElementById('timerRing').classList.remove('urgent');
+  document.getElementById('letterSection').classList.remove('locked');
+  document.getElementById('checkBtn').classList.remove('ready');
+  setActionsEnabled(true);
 
   updateScoreboard();
 
-  // Pick word
+  // Pick word. usedWords is keyed on category + word so a title that appears in
+  // two categories (e.g. "apple") is not silently retired from both.
   const cat = settings.selectedCats[Math.floor(Math.random()*settings.selectedCats.length)];
   currentCategory = cat;
-  const pool = WORDS[settings.difficulty][cat].filter(w => !usedWords.has(w.word));
+  const key = w => cat + '|' + w.word;
+  const pool = WORDS[settings.difficulty][cat].filter(w => !usedWords.has(key(w)));
   const src = pool.length ? pool : WORDS[settings.difficulty][cat];
   currentWordData = src[Math.floor(Math.random()*src.length)];
-  usedWords.add(currentWordData.word);
+  usedWords.add(key(currentWordData));
 
   document.getElementById('categoryBadge').textContent=`${CAT_ICONS[cat]} ${CATEGORIES[cat]}`;
 
@@ -905,7 +1059,28 @@ function getTeamHex(color) {
   return {'t-blue':'#4A90E2','t-red':'#E25C4A','t-green':'#4CAF76','t-orange':'#F5A623'}[color]||'#ccc';
 }
 
+function lockTurn() {
+  turnLocked = true;
+  clearInterval(timerInterval);
+  document.getElementById('timerRing').classList.remove('urgent');
+  document.getElementById('letterSection').classList.add('locked');
+  setActionsEnabled(false);
+}
+
+function setActionsEnabled(on) {
+  ['checkBtn','hintBtn','shuffleBtn','clearBtn','giveUpBtn','skipBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.disabled = !on;
+  });
+  const hb = document.getElementById('hintBtn');
+  if(on && hb && hintTaken) hb.disabled = true;
+}
+
 function advanceTurn(result, ptsEarned) {
+  // The board must be dead before the inter-turn pause, or a stray tap during
+  // those 2.2s scores the *next* team and fires advanceTurn a second time.
+  lockTurn();
+
   gameHistory.push({
     round: currentRound,
     team: teams[currentTeamIdx].name,
@@ -919,9 +1094,9 @@ function advanceTurn(result, ptsEarned) {
   if(currentTeamIdx === 0) currentRound++;
 
   if(currentRound > settings.maxRounds) {
-    setTimeout(endGame, 2200);
+    setTimeout(endGame, TURN_GAP_MS);
   } else {
-    setTimeout(startTurn, 2200);
+    setTimeout(startTurn, TURN_GAP_MS);
   }
 }
 
@@ -988,6 +1163,7 @@ function setupBoard() {
 let isRevealing = false; // guard against reveal+click race
 
 function pickLetter(tile) {
+  if(turnLocked || inputCooldown) return;     // board is dead between turns
   if(isRevealing) return;                     // block during reveal
   if(tile.classList.contains('used')) return;
   const letter = tile.textContent.toLowerCase();
@@ -1006,18 +1182,25 @@ function pickLetter(tile) {
   tile.classList.add('used');
   sfxSelect();
 
+  // No auto-submit: a wrong answer now costs a point, so the team decides when
+  // to commit. The Check button pulses once the row is full.
   const full = answerSlots.every(s => s.letter!=='' || s.original===' ');
-  if(full) checkAnswer();
+  const cb = document.getElementById('checkBtn');
+  if(cb) cb.classList.toggle('ready', full);
 }
 
 // Keyboard: type a letter to place it, Backspace to undo last
 function handleKeyboard(e) {
   if(document.getElementById('gameScreen').style.display === 'none') return;
   if(!currentWordData) return;
-  if(isRevealing) return;
+  if(isRevealing || turnLocked || inputCooldown) return;
 
   // Don't intercept when typing in a text input
   if(e.target.tagName === 'INPUT') return;
+
+  if(e.key === 'Enter') { e.preventDefault(); checkAnswer(); return; }
+  if(e.key.toLowerCase() === 'h' && !hintTaken) { e.preventDefault(); takeHint(false); return; }
+  if(e.key.toLowerCase() === 'r') { e.preventDefault(); shuffleScrambled(); return; }
 
   if(e.key === 'Backspace') {
     e.preventDefault();
@@ -1045,6 +1228,7 @@ document.addEventListener('keydown', handleKeyboard);
 
 function clearSlot(slotIdx) {
   if(revealedPositions.has(slotIdx)) return;
+  if(turnLocked && !isRevealing) return;
   const s = answerSlots[slotIdx];
   if(!s || s.letter==='' || s.original===' ') return;
 
@@ -1057,10 +1241,14 @@ function clearSlot(slotIdx) {
 }
 
 function clearAllSlots() {
+  if(turnLocked) return;
   answerSlots.forEach((_,i) => clearSlot(i));
+  const cb = document.getElementById('checkBtn');
+  if(cb) cb.classList.remove('ready');
 }
 
 function shuffleScrambled() {
+  if(turnLocked) return;
   const sr = document.getElementById('scrambledRow');
   const tiles = [...sr.querySelectorAll('.letter-tile:not(.used)')];
   for(let i=tiles.length-1;i>0;i--){
@@ -1081,31 +1269,80 @@ function shuffleScrambled() {
 //  ANSWER CHECK
 // ═══════════════════════════════════════════
 function checkAnswer() {
+  if(turnLocked || inputCooldown) return;
+
+  const full = answerSlots.every(s => s.letter!=='' || s.original===' ');
+  if(!full) { showMessage('☝️ Fill every square first.', 'error'); return; }
+
   let attempt = '';
   answerSlots.forEach(s => attempt += (s.original===' ') ? ' ' : s.letter);
 
   if(attempt === currentWordData.word.toLowerCase()) {
-    clearInterval(timerInterval);
     sfxCorrect();
-    teams[currentTeamIdx].score += currentPoints;
+    const earned = currentPoints;
+    teams[currentTeamIdx].score += earned;
     bumpScore(currentTeamIdx);
-    showMessage(`✅ Correct! +${currentPoints} points!`, 'success');
+    showMessage(`✅ Correct! +${earned} points!`, 'success');
     launchConfetti();
-    advanceTurn('correct', currentPoints);
+    advanceTurn('correct', earned);
   } else {
     sfxWrong();
-    showMessage('❌ Not quite! Try again!', 'error');
+    spendPoints(WRONG_COST);
+    showMessage(`❌ Not quite — that costs ${WRONG_COST} point. Now worth ${currentPoints}.`, 'error');
     answerSlots.forEach((s,i) => {
       if(!revealedPositions.has(i)) clearSlot(i);
     });
+    const cb = document.getElementById('checkBtn');
+    if(cb) cb.classList.remove('ready');
+    // Short lockout so the board cannot be brute-forced by mashing tiles.
+    inputCooldown = true;
+    setTimeout(() => { inputCooldown = false; }, 800);
   }
 }
 
+// Single place that moves currentPoints, so the floor is always respected.
+function spendPoints(n) {
+  currentPoints = Math.max(MIN_POINTS, currentPoints - n);
+  document.getElementById('pointsPill').textContent = `${currentPoints} pts`;
+  if(currentPoints <= FREE_HINT_AT && !hintTaken) takeHint(true);
+}
+
+function takeHint(free) {
+  if(hintTaken || turnLocked) return;
+  hintTaken = true;
+  if(!free) spendPoints(HINT_COST);
+  const hb = document.getElementById('hintBox');
+  hb.innerHTML = `💡 <strong>Hint:</strong> ${currentWordData.hint}`;
+  hb.classList.add('active');
+  const btn = document.getElementById('hintBtn');
+  if(btn) btn.disabled = true;
+  sfxReveal();
+}
+
 function giveUp() {
-  clearInterval(timerInterval);
+  if(turnLocked) return;
   sfxGiveUp();
   showMessage(`🏳️ The answer was: "${currentWordData.word}"`, 'error');
   advanceTurn('giveup', 0);
+}
+
+// Teacher control: bin a broken or unfair word. Nobody is scored and the same
+// team keeps its turn, so a skip is not a disguised surrender.
+function skipWord() {
+  if(turnLocked) return;
+  const skipped = currentWordData.word;
+  lockTurn();
+  sfxReveal();
+  showMessage(`⏭️ Word skipped — no points. (${skipped})`, 'error');
+  gameHistory.push({
+    round: currentRound,
+    team: teams[currentTeamIdx].name,
+    word: skipped,
+    category: CATEGORIES[currentCategory],
+    result: 'skipped',
+    pts: 0
+  });
+  setTimeout(startTurn, TURN_GAP_MS);
 }
 
 // ═══════════════════════════════════════════
@@ -1125,18 +1362,15 @@ function startTimer() {
 }
 
 function onTimerExpire() {
-  if(currentPoints<=1) { giveUp(); return; }
+  // Hard cap on the reveal ladder. Without it a turn ran up to nine timer
+  // cycles — nine minutes at the 60s setting, with the other teams just watching.
+  if(revealCount >= MAX_REVEALS || currentPoints <= MIN_POINTS) { giveUp(); return; }
   timeLeft = settings.timerDur;
   document.getElementById('timerRing').textContent = timeLeft;
   document.getElementById('timerRing').classList.remove('urgent');
-  currentPoints--;
-  document.getElementById('pointsPill').textContent = `${currentPoints} pts`;
+  revealCount++;
+  spendPoints(1);
   sfxReveal();
-  if(currentPoints===5) {
-    const hb = document.getElementById('hintBox');
-    hb.innerHTML = `💡 <strong>Hint:</strong> ${currentWordData.hint}`;
-    hb.classList.add('active');
-  }
   revealNext();
 }
 
@@ -1158,9 +1392,21 @@ function revealNext() {
   s.el.textContent = correctLetter.toUpperCase();
   s.el.classList.add('filled','revealed');
 
-  // Mark a matching scrambled tile as used
-  const tiles = [...document.querySelectorAll('.letter-tile:not(.used)')];
-  const match = tiles.find(t => t.textContent.toLowerCase()===correctLetter);
+  // Mark a matching scrambled tile as used. If every copy of this letter is
+  // already sitting in another slot (possible once the team clears a slot out of
+  // order), free the last one so the rack and the board stay in step.
+  let match = [...document.querySelectorAll('.letter-tile:not(.used)')]
+                .find(t => t.textContent.toLowerCase()===correctLetter);
+  if(!match) {
+    for(let k = answerSlots.length-1; k >= 0; k--) {
+      if(k !== idx && !revealedPositions.has(k) && answerSlots[k].letter === correctLetter) {
+        clearSlot(k);
+        break;
+      }
+    }
+    match = [...document.querySelectorAll('.letter-tile:not(.used)')]
+              .find(t => t.textContent.toLowerCase()===correctLetter);
+  }
   if(match) { match.classList.add('used'); s.el.dataset.srcIdx = match.dataset.idx; }
 
   nextRevealIdx++;
@@ -1170,6 +1416,9 @@ function revealNext() {
   // instead of leaving it complete on screen for extra unscored timer cycles.
   const allRevealed = answerSlots.every((slot,i) => slot.original===' ' || revealedPositions.has(i));
   if(allRevealed) { giveUp(); return; }
+
+  const full = answerSlots.every(sl => sl.letter!=='' || sl.original===' ');
+  document.getElementById('checkBtn').classList.toggle('ready', full);
 }
 
 // ═══════════════════════════════════════════
@@ -1220,20 +1469,14 @@ function endGame() {
   hb.innerHTML='';
   gameHistory.forEach((h,i) => {
     const tr = document.createElement('tr');
-    const resIcon = h.result==='correct'?'✅':h.result==='giveup'?'🏳️':'❌';
+    const resIcon = h.result==='correct' ? '✅'
+                  : h.result==='giveup'  ? '🏳️'
+                  : h.result==='skipped' ? '⏭️' : '❌';
     tr.innerHTML=`<td>${i+1}</td><td>${h.team}</td><td><strong>${h.word}</strong></td>
       <td>${h.category}</td>
       <td class="${h.result==='correct'?'correct':'incorrect'}">${resIcon}</td>
       <td>${h.pts>0?'+'+h.pts:'-'}</td>`;
     hb.appendChild(tr);
-  });
-
-  document.getElementById('toggleHistory').addEventListener('click', ()=>{
-    const wrap=document.getElementById('historyWrap');
-    const btn=document.getElementById('toggleHistory');
-    const hidden = wrap.style.display==='none';
-    wrap.style.display=hidden?'':'none';
-    btn.textContent=hidden?'Hide ▲':'Show ▼';
   });
 
   launchConfetti(120);
@@ -1271,11 +1514,26 @@ function launchConfetti(count=60) {
 document.getElementById('shuffleBtn').addEventListener('click', shuffleScrambled);
 document.getElementById('clearBtn').addEventListener('click', clearAllSlots);
 document.getElementById('giveUpBtn').addEventListener('click', giveUp);
+document.getElementById('checkBtn').addEventListener('click', checkAnswer);
+document.getElementById('hintBtn').addEventListener('click', () => takeHint(false));
+document.getElementById('skipBtn').addEventListener('click', skipWord);
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+// Bound once at boot rather than inside endGame(), which used to stack a new
+// listener every time the end screen was built.
+document.getElementById('toggleHistory').addEventListener('click', ()=>{
+  const wrap=document.getElementById('historyWrap');
+  const btn=document.getElementById('toggleHistory');
+  const hidden = wrap.style.display==='none';
+  wrap.style.display=hidden?'':'none';
+  btn.textContent=hidden?'Hide ▲':'Show ▼';
+});
 
 // ═══════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════
 setupStartScreen();
+paintThemeToggle();
 </script>
 </body>
 </html>

@@ -509,6 +509,82 @@
     color: var(--green);
   }
 
+  /* Category filter */
+  .cat-filter { width: 100%; display: flex; gap: 8px; flex-wrap: wrap; }
+  .cat-toggle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82em;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-muted);
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .cat-toggle:hover { background: var(--surface-hover); }
+  .cat-toggle.on { color: var(--text); border-color: var(--accent); background: rgba(124,92,252,0.12); }
+  .cat-toggle .n { opacity: 0.6; font-size: 0.85em; margin-left: 5px; }
+
+  .pool-note { width: 100%; font-size: 0.78em; color: var(--text-muted); }
+  .pool-note.warn { color: var(--yellow); }
+  .pool-note.bad { color: var(--red); font-weight: 600; }
+
+  /* Vocabulary items in the catalogue */
+  .vocab-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 4px 9px;
+    font-size: 0.82em;
+    transition: opacity 0.2s;
+  }
+  .vocab-item .ve { font-size: 1.35em; line-height: 1; }
+  .vocab-item .vn { color: var(--text); }
+  .vocab-item .vl { font-size: 0.72em; color: var(--text-muted); font-weight: 700; }
+  .vocab-item.off { opacity: 0.22; }
+
+  /* Word recap on the end screen */
+  .word-recap {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .word-recap-title {
+    font-family: 'Fraunces', serif;
+    font-size: 0.8em;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .word-recap-list { display: flex; flex-wrap: wrap; gap: 7px; }
+
+  /* Spelling line on reveal */
+  .spell-line {
+    width: 100%;
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-size: 1.15em;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: var(--accent3);
+    background: rgba(86,204,242,0.08);
+    border: 1px solid rgba(86,204,242,0.25);
+    border-radius: 12px;
+    padding: 10px 16px;
+    animation: fadeSlideUp 0.35s ease;
+  }
+
   .hidden { display: none !important; }
 
   /* Corner UI — hub back-link and theme toggle */
@@ -841,6 +917,35 @@
       </div>
     </div>
     <div class="team-names" id="team-names"></div>
+
+    <div class="divider"></div>
+
+    <div class="settings-row">
+      <div class="setting-group">
+        <label class="setting-label">📚 Word Level</label>
+        <select class="setting-select" id="sel-level">
+          <option value="all" selected>A1 + A2</option>
+          <option value="A1">A1 only</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label class="setting-label">🔤 Name It Rounds</label>
+        <select class="setting-select" id="sel-nameit">
+          <option value="1" selected>On</option>
+          <option value="0">Off</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label class="setting-label">✏️ Spelling Mode</label>
+        <select class="setting-select" id="sel-spelling">
+          <option value="0" selected>Off</option>
+          <option value="1">On — teams must spell it</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="cat-filter" id="cat-filter" role="group" aria-label="Emoji categories in play"></div>
+    <div class="pool-note" id="pool-note"></div>
     <div class="divider"></div>
     <div class="catalogue" id="emoji-catalogue"></div>
   </div>
@@ -888,6 +993,7 @@
         <button class="btn btn-answer" id="btn-answer">Reveal Answer</button>
       </div>
       <div class="answer-reveal hidden" id="answer-display" aria-live="polite"></div>
+      <div class="spell-line hidden" id="spell-line"></div>
       <div class="award-panel hidden" id="award-panel">
         <span class="award-label">Who got it?</span>
         <div class="award-btns" id="award-btns"></div>
@@ -906,6 +1012,10 @@
     <div class="score-display" id="end-score">0</div>
     <div class="score-label" id="end-score-label">rounds completed</div>
     <div class="standings" id="standings"></div>
+    <div class="word-recap hidden" id="word-recap">
+      <div class="word-recap-title">Words from this game</div>
+      <div class="word-recap-list" id="word-recap-list"></div>
+    </div>
     <div class="round-history" id="round-history"></div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
       <button class="btn btn-primary" id="btn-play-again">Play Again</button>
@@ -941,6 +1051,79 @@ const CAT_SINGULAR = {
   vehicles: 'vehicle', sports: 'sports'
 };
 
+// English name + reading level for every emoji in the pool. This is what turns
+// the game from "memory puzzle in an English classroom" into a vocabulary
+// recycler: names are shown on every reveal and recapped at the end.
+const EMOJI_INFO = {
+  // faces
+  "😀": { name: "happy",       cefr: "A1" },
+  "😠": { name: "angry",       cefr: "A1" },
+  "😴": { name: "sleepy",      cefr: "A1" },
+  "😐": { name: "serious",     cefr: "A2" },
+  "😭": { name: "crying",      cefr: "A1" },
+  "😎": { name: "cool",        cefr: "A1" },
+  "🤩": { name: "excited",     cefr: "A2" },
+  "🥹": { name: "proud",       cefr: "A2" },
+  "😤": { name: "annoyed",     cefr: "A2" },
+  "😇": { name: "innocent",    cefr: "A2" },
+  // animals
+  "🐶": { name: "dog",         cefr: "A1" },
+  "🐱": { name: "cat",         cefr: "A1" },
+  "🐔": { name: "chicken",     cefr: "A1" },
+  "🐟": { name: "fish",        cefr: "A1" },
+  "🐦": { name: "bird",        cefr: "A1" },
+  "🐍": { name: "snake",       cefr: "A1" },
+  "🐒": { name: "monkey",      cefr: "A1" },
+  "🐝": { name: "bee",         cefr: "A2" },
+  "🐧": { name: "penguin",     cefr: "A2" },
+  "🦁": { name: "lion",        cefr: "A1" },
+  "🐸": { name: "frog",        cefr: "A2" },
+  "🦊": { name: "fox",         cefr: "A2" },
+  "🐻": { name: "bear",        cefr: "A1" },
+  "🦋": { name: "butterfly",   cefr: "A2" },
+  "🦄": { name: "unicorn",     cefr: "A2" },
+  // fruits
+  "🍓": { name: "strawberry",  cefr: "A2" },
+  "🍌": { name: "banana",      cefr: "A1" },
+  "🍉": { name: "watermelon",  cefr: "A2" },
+  "🍎": { name: "apple",       cefr: "A1" },
+  "🥑": { name: "avocado",     cefr: "A2" },
+  "🍇": { name: "grapes",      cefr: "A2" },
+  "🍑": { name: "peach",       cefr: "A2" },
+  "🥝": { name: "kiwi",        cefr: "A2" },
+  "🍋": { name: "lemon",       cefr: "A1" },
+  "🍒": { name: "cherries",    cefr: "A2" },
+  // vehicles
+  "🚗": { name: "car",         cefr: "A1" },
+  "⛵": { name: "boat",        cefr: "A1" },
+  "✈️": { name: "plane",       cefr: "A1" },
+  "🚲": { name: "bicycle",     cefr: "A1" },
+  "🛴": { name: "scooter",     cefr: "A2" },
+  "🚀": { name: "rocket",      cefr: "A2" },
+  "🚁": { name: "helicopter",  cefr: "A2" },
+  "🚂": { name: "train",       cefr: "A1" },
+  "🚕": { name: "taxi",        cefr: "A1" },
+  "🛸": { name: "UFO",         cefr: "A2" },
+  // sports
+  "⚽": { name: "football",    cefr: "A1" },
+  "⚾": { name: "baseball",    cefr: "A2" },
+  "🏀": { name: "basketball",  cefr: "A1" },
+  "🏐": { name: "volleyball",  cefr: "A2" },
+  "🎱": { name: "pool",        cefr: "A2" },
+  "🎾": { name: "tennis",      cefr: "A1" },
+  "🥊": { name: "boxing",      cefr: "A2" },
+  "🎯": { name: "darts",       cefr: "A2" },
+  "🏆": { name: "trophy",      cefr: "A2" },
+  "🎳": { name: "bowling",     cefr: "A2" }
+};
+
+const emojiName = (e) => (EMOJI_INFO[e] && EMOJI_INFO[e].name) || '';
+const emojiLevel = (e) => (EMOJI_INFO[e] && EMOJI_INFO[e].cefr) || 'A2';
+// "frog" -> "F-R-O-G" for spelling mode
+const spellOut = (w) => (w || '').toUpperCase().split('').map(c => c === ' ' ? '/' : c).join('-');
+// "🐸 frog"
+const withName = (e) => { const n = emojiName(e); return n ? `${e} ${n}` : e; };
+
 // Minimum members of a category that must be on the board before it can be
 // used for a counting question — otherwise the answer is "zero" or "one".
 const MIN_CAT_PRESENT = 2;
@@ -956,6 +1139,14 @@ const btnHard   = document.getElementById('btn-hard');
 const selTimer  = document.getElementById('sel-timer');
 const selRounds = document.getElementById('sel-rounds');
 const selShuffle= document.getElementById('sel-shuffle');
+const selLevel    = document.getElementById('sel-level');
+const selNameIt   = document.getElementById('sel-nameit');
+const selSpelling = document.getElementById('sel-spelling');
+const catFilter   = document.getElementById('cat-filter');
+const poolNote    = document.getElementById('pool-note');
+const spellLine   = document.getElementById('spell-line');
+const wordRecap   = document.getElementById('word-recap');
+const wordRecapList = document.getElementById('word-recap-list');
 const selTeams  = document.getElementById('sel-teams');
 const teamNames = document.getElementById('team-names');
 
@@ -1021,7 +1212,7 @@ function sfxTransition(){ playTone(330,'triangle',0.2,0.15); }
 // ─── State ─────────────────────────────────────────────────────────
 let difficulty = '', numEmojis = 0, timerDuration = 20, totalRounds = 5, shuffleMode = false;
 let round = 0, prevEmojis = [], currEmojis = [];
-let actionType = '', changedEmoji = '', swappedEmojis = [], movedEmoji = '';
+let actionType = '', changedEmoji = '', swappedEmojis = [], movedEmoji = '', nameTargets = [];
 let questionDetails = {}, correctAnswer = '';
 let countdownInterval = null, timerFull = 0;
 let usedCategories = new Set();
@@ -1060,6 +1251,82 @@ function shuffle(arr) {
   return a;
 }
 
+// ─── Vocabulary pool & filters ─────────────────────────────────────
+let activeCats = new Set(Object.keys(CATEGORIES));
+let levelFilter = 'all';
+let nameItOn = true, spellingOn = false;
+let wordsSeen = [];      // English names that came up, for the end-screen recap
+
+// Minimum emojis needed to run a game at all.
+const MIN_POOL = 6;
+
+// Rounds whose answer is one or more emojis — these get the English word
+// prompt, the named reveal, and the spelling line.
+const WORD_ROUNDS = ['add_emoji','remove_emoji','move_emoji','swap_emoji','name_it'];
+
+function inPool(e) {
+  if (levelFilter === 'A1' && emojiLevel(e) !== 'A1') return false;
+  return [...activeCats].some(c => CATEGORIES[c].includes(e));
+}
+function poolEmojis() { return ALL_EMOJIS.filter(inPool); }
+
+function readVocabSettings() {
+  levelFilter = selLevel.value;
+  nameItOn = selNameIt.value === '1';
+  spellingOn = selSpelling.value === '1';
+}
+
+function renderCatFilter() {
+  catFilter.innerHTML = '';
+  Object.keys(CATEGORIES).forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'cat-toggle' + (activeCats.has(c) ? ' on' : '');
+    b.setAttribute('aria-pressed', activeCats.has(c) ? 'true' : 'false');
+    b.append(document.createTextNode(c));
+    const n = document.createElement('span');
+    n.className = 'n';
+    n.textContent = CATEGORIES[c].filter(e => levelFilter !== 'A1' || emojiLevel(e) === 'A1').length;
+    b.appendChild(n);
+    b.addEventListener('click', () => {
+      if (activeCats.has(c)) {
+        if (activeCats.size === 1) return;   // never leave zero categories on
+        activeCats.delete(c);
+      } else activeCats.add(c);
+      refreshVocabUI();
+    });
+    catFilter.appendChild(b);
+  });
+}
+
+// Largest board the current pool can support, leaving room for "add" rounds.
+function maxBoard() { return Math.max(4, poolEmojis().length - 3); }
+
+function refreshVocabUI() {
+  readVocabSettings();
+  renderCatFilter();
+  buildCatalogue();
+  const n = poolEmojis().length;
+  const cap = maxBoard();
+  poolNote.className = 'pool-note';
+  if (n < MIN_POOL) {
+    poolNote.classList.add('bad');
+    poolNote.textContent = `Only ${n} emojis in play — turn a category back on or switch to A1 + A2.`;
+  } else {
+    const minFor = { easy: 8, medium: 13, hard: 17 };
+    const ok = ['easy','medium','hard'].filter(dd => cap >= minFor[dd]);
+    poolNote.textContent = `${n} emojis in play · biggest board ${cap} · ` +
+      (ok.length === 3 ? 'all difficulties available'
+        : ok.length ? `${ok.join(' / ')} at full size, the rest capped`
+        : 'boards will be capped to fit');
+    if (ok.length < 3) poolNote.classList.add('warn');
+  }
+  [btnEasy, btnMedium, btnHard].forEach(b => { if (b) b.disabled = n < MIN_POOL; });
+}
+
+selLevel.addEventListener('change', refreshVocabUI);
+selNameIt.addEventListener('change', readVocabSettings);
+selSpelling.addEventListener('change', readVocabSettings);
+
 // ─── Screens ───────────────────────────────────────────────────────
 function showScreen(el) {
   [screenDiff, screenGame, screenEnd].forEach(s => { s.classList.remove('active'); s.style.display='none'; });
@@ -1071,9 +1338,10 @@ function showScreen(el) {
 function buildCatalogue() {
   const container = document.getElementById('emoji-catalogue');
   if (!container) return;
+  container.innerHTML = '';
   const title = document.createElement('div');
   title.className = 'catalogue-title';
-  title.textContent = 'Emojis in this game';
+  title.textContent = 'Word list — emojis in this game';
   container.appendChild(title);
 
   Object.entries(CATEGORIES).forEach(([name, items]) => {
@@ -1083,10 +1351,18 @@ function buildCatalogue() {
     label.className = 'cat-label';
     label.textContent = name;
     row.appendChild(label);
-    const emojisSpan = document.createElement('span');
-    emojisSpan.className = 'cat-emojis';
-    emojisSpan.textContent = items.map(e => emojiContent(e)).join(' ');
-    row.appendChild(emojisSpan);
+    const wrap = document.createElement('span');
+    wrap.className = 'cat-emojis';
+    items.forEach(e => {
+      const item = document.createElement('span');
+      item.className = 'vocab-item' + (inPool(e) ? '' : ' off');
+      const ve = document.createElement('span'); ve.className = 've'; ve.textContent = emojiContent(e);
+      const vn = document.createElement('span'); vn.className = 'vn'; vn.textContent = emojiName(e);
+      const vl = document.createElement('span'); vl.className = 'vl'; vl.textContent = emojiLevel(e);
+      item.append(ve, vn, vl);
+      wrap.appendChild(item);
+    });
+    row.appendChild(wrap);
     container.appendChild(row);
   });
 }
@@ -1451,8 +1727,9 @@ selTeams.addEventListener('change', renderTeamInputs);
 // ─── Game start ────────────────────────────────────────────────────
 function startGame(diff) {
   difficulty = diff;
-  timerDuration = parseInt(selTimer.value);
-  totalRounds = parseInt(selRounds.value);
+  // Defensive fallbacks: a NaN here would make the game never end.
+  timerDuration = parseInt(selTimer.value) || 20;
+  totalRounds = parseInt(selRounds.value) || 5;
   shuffleMode = selShuffle.value === '1';
   usedCategories = new Set();
   gameHistory = [];
@@ -1463,9 +1740,13 @@ function startGame(diff) {
   btnUndo.disabled = true;
   disarmQuit();
   renderScoreboard();
+  readVocabSettings();
+  wordsSeen = [];
   round = 0;
-  numEmojis = diff === 'easy' ? rand(8,12) : diff === 'medium' ? rand(13,16) : rand(17,22);
-  prevEmojis = shuffle([...ALL_EMOJIS]).slice(0, numEmojis);
+  const pool = poolEmojis();
+  const want = diff === 'easy' ? rand(8,12) : diff === 'medium' ? rand(13,16) : rand(17,22);
+  numEmojis = Math.min(want, maxBoard(), pool.length);
+  prevEmojis = shuffle(pool).slice(0, numEmojis);
   currEmojis = [...prevEmojis];
   showScreen(screenGame);
   prepareRound();
@@ -1476,6 +1757,7 @@ function startGame(diff) {
 // board — otherwise the answer is "zero" or "one", which is no question at all.
 function countableCategories() {
   return Object.keys(CATEGORIES).filter(c =>
+    activeCats.has(c) &&
     !usedCategories.has(c) &&
     prevEmojis.filter(e => CATEGORIES[c].includes(e)).length >= MIN_CAT_PRESENT
   );
@@ -1497,6 +1779,7 @@ function pickActionType() {
     const opts = ['count_total','count_total'];
     if (catOptions.length) opts.push(...catOptions.map(c => 'count_category:'+c));
     if (prevEmojis.length >= 2) opts.push('move_emoji', 'swap_emoji');
+    if (nameItOn && prevEmojis.length >= 3) opts.push('name_it', 'name_it');
     const pick = opts[rand(0, opts.length - 1)];
     if (pick.startsWith('count_category:')) usedCategories.add(pick.split(':')[1]);
     return pick;
@@ -1509,10 +1792,11 @@ function pickActionType() {
 
 function applyAction(type, base) {
   let next = [...base];
-  changedEmoji = ''; swappedEmojis = []; movedEmoji = '';
+  changedEmoji = ''; swappedEmojis = []; movedEmoji = ''; nameTargets = [];
 
   if (type === 'add_emoji') {
-    const avail = ALL_EMOJIS.filter(e => !next.includes(e));
+    // Only ever add a word that is in the current level / category filter.
+    const avail = poolEmojis().filter(e => !next.includes(e));
     if (!avail.length) return { next, fallback: 'count_total' };
     changedEmoji = avail[rand(0, avail.length - 1)];
     next.push(changedEmoji);
@@ -1532,6 +1816,10 @@ function applyAction(type, base) {
     if (next.length < 1) return { next, fallback: 'count_total' };
     movedEmoji = next[rand(0, next.length - 1)];
     // No array change; just a visual reposition
+  } else if (type === 'name_it') {
+    // Pure vocabulary round: pick three emojis on the board to name aloud.
+    if (next.length < 3) return { next, fallback: 'count_total' };
+    nameTargets = shuffle(next).slice(0, 3);
   }
   return { next, fallback: null };
 }
@@ -1547,6 +1835,7 @@ function prepareRound() {
   setPhase('Get ready…');
   questionArea.classList.add('hidden');
   answerDisplay.classList.add('hidden');
+  spellLine.classList.add('hidden');
   awardPanel.classList.add('hidden');
   roundAward = null;
   answerEnabled = false;
@@ -1586,6 +1875,7 @@ function prepareRound() {
       correctAnswer = currEmojis.filter(e => catEmojis.includes(e)).length;
       break;
     }
+    case 'name_it': correctAnswer = nameTargets.map(emojiName).join(', '); break;
   }
 
   // Build stable position map for phase 1 (prevEmojis)
@@ -1660,16 +1950,19 @@ function onFirstTimerEnd() {
     }
     // count_total / count_category: nothing changes at all.
 
-    // No highlights yet — reveal happens on answer button only
-    displayEmojisFromMap(currEmojis, phase2Map, []);
+    // name_it shows its three targets highlighted from the start — it is a
+    // vocabulary round, not a memory one, so the board stays on screen.
+    const isNameIt = actionType === 'name_it';
+    displayEmojisFromMap(currEmojis, phase2Map, isNameIt ? nameTargets : []);
 
     const isVisual = ['add_emoji','remove_emoji','swap_emoji','move_emoji'].includes(actionType);
-    if (isVisual) emojiGrid.classList.remove('invisible');
+    if (isVisual || isNameIt) emojiGrid.classList.remove('invisible');
     else emojiGrid.classList.add('invisible');
 
-    // Show question — counting rounds change nothing, so don't claim they did
+    // Show question — counting and naming rounds change nothing, so don't
+    // claim they did
     const isCount = actionType === 'count_total' || actionType === 'count_category';
-    setPhase(isCount ? 'How many? 🔢' : 'What changed? 🤔', 'phase-question');
+    setPhase(isNameIt ? 'Name them! 🔤' : isCount ? 'How many? 🔢' : 'What changed? 🤔', 'phase-question');
     questionArea.classList.remove('hidden');
     btnAnswer.disabled = false;
     answerEnabled = true;
@@ -1686,8 +1979,15 @@ function setQuestionText() {
     move_emoji:     'WHICH EMOJI MOVED TO A NEW SPOT?',
     count_total:    '🔢 HOW MANY EMOJIS ARE THERE?',
     count_category: `🔢 HOW MANY ${(CAT_SINGULAR[questionDetails.category] || questionDetails.category || '').toUpperCase()} EMOJIS?`,
+    name_it:        '🔤 NAME THESE THREE IN ENGLISH!',
   };
-  questionText.textContent = map[actionType] || 'WHAT CHANGED?';
+  let text = map[actionType] || 'WHAT CHANGED?';
+  // Rounds whose answer is an emoji can also demand the English word, and
+  // with spelling mode on, the spelling too.
+  if (WORD_ROUNDS.includes(actionType)) {
+    text += spellingOn ? ' — SAY IT AND SPELL IT!' : ' — SAY IT IN ENGLISH!';
+  }
+  questionText.textContent = text;
 }
 
 function onSecondTimerEnd() {
@@ -1703,22 +2003,34 @@ btnAnswer.addEventListener('click', () => {
   answerEnabled = false;
   stopTimer();
 
-  let msg = '';
+  let msg = '', spelled = [];
   switch (actionType) {
-    case 'add_emoji':      msg = `${emojiContent(correctAnswer)} was added!`; break;
-    case 'remove_emoji':   msg = `${emojiContent(correctAnswer)} was removed!`; break;
-    case 'swap_emoji':     msg = `${swappedEmojis.map(emojiContent).join(' ↔ ')} swapped!`; break;
-    case 'move_emoji':     msg = `${emojiContent(correctAnswer)} moved position!`; break;
+    case 'add_emoji':      msg = `${withName(correctAnswer)} was added!`; spelled = [correctAnswer]; break;
+    case 'remove_emoji':   msg = `${withName(correctAnswer)} was removed!`; spelled = [correctAnswer]; break;
+    case 'swap_emoji':     msg = `${swappedEmojis.map(withName).join(' ↔ ')} swapped!`; spelled = swappedEmojis; break;
+    case 'move_emoji':     msg = `${withName(movedEmoji)} moved position!`; spelled = [movedEmoji]; break;
     case 'count_total':    msg = `There are ${correctAnswer} emojis!`; break;
     case 'count_category': {
       const noun = CAT_SINGULAR[questionDetails.category] || questionDetails.category;
       msg = `${correctAnswer} ${noun} emoji${correctAnswer !== 1 ? 's' : ''}!`;
       break;
     }
+    case 'name_it':        msg = nameTargets.map(withName).join(' · '); spelled = nameTargets; break;
   }
 
   answerDisplay.textContent = msg;
   answerDisplay.classList.remove('hidden');
+
+  // Spelling mode writes the word out letter by letter for the class to check.
+  if (spellingOn && spelled.length) {
+    spellLine.textContent = spelled.map(e => spellOut(emojiName(e))).join('   ·   ');
+    spellLine.classList.remove('hidden');
+  } else {
+    spellLine.classList.add('hidden');
+  }
+
+  // Collect the vocabulary for the end-of-game recap.
+  spelled.forEach(e => { const n = emojiName(e); if (n && !wordsSeen.includes(n)) wordsSeen.push(n); });
 
   // Reveal with highlights
   let highlight = [], ghosts = [];
@@ -1733,6 +2045,7 @@ btnAnswer.addEventListener('click', () => {
   if (actionType === 'count_category') {
     highlight = currEmojis.filter(e => CATEGORIES[questionDetails.category]?.includes(e));
   }
+  if (actionType === 'name_it') highlight = nameTargets;
 
   displayEmojisFromMap(currEmojis, phase2Map, highlight, ghosts);
   emojiGrid.classList.remove('invisible');
@@ -1792,6 +2105,22 @@ function endGame() {
     endScore.textContent = totalRounds;
   }
 
+  wordRecapList.innerHTML = '';
+  if (wordsSeen.length) {
+    wordRecap.classList.remove('hidden');
+    // Show emoji + word so the list works as a copy-down vocabulary record.
+    ALL_EMOJIS.filter(e => wordsSeen.includes(emojiName(e))).forEach(e => {
+      const item = document.createElement('span');
+      item.className = 'vocab-item';
+      const ve = document.createElement('span'); ve.className = 've'; ve.textContent = e;
+      const vn = document.createElement('span'); vn.className = 'vn'; vn.textContent = emojiName(e);
+      item.append(ve, vn);
+      wordRecapList.appendChild(item);
+    });
+  } else {
+    wordRecap.classList.add('hidden');
+  }
+
   roundHistory.innerHTML = '';
   gameHistory.forEach((h, i) => {
     const row = document.createElement('div');
@@ -1800,7 +2129,8 @@ function endGame() {
     const typeLabel = {
       add_emoji:'Added emoji', remove_emoji:'Removed emoji',
       swap_emoji:'Swapped emojis', move_emoji:'Moved emoji',
-      count_total:'Count total', count_category:'Count category'
+      count_total:'Count total', count_category:'Count category',
+      name_it:'Name it'
     }[h.actionType] || h.actionType;
 
     const num = document.createElement('span');
@@ -1879,7 +2209,7 @@ applyThemeIcon();
 renderTeamInputs();
 btnUndo.disabled = true;
 updatePauseBtn();
-buildCatalogue();
+refreshVocabUI();
 showScreen(screenDiff);
 </script>
 </body>

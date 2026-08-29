@@ -322,6 +322,31 @@ body {
 .teacher-btn.armed { background:var(--red); border-color:var(--red); color:#fff; }
 .teacher-btn.on    { background:var(--orange); border-color:var(--orange); color:#fff; }
 
+/* ─── STEAL ─── */
+.teacher-btn.steal.live { background:var(--purple); border-color:var(--purple); color:#fff; }
+.team-card.pickable {
+  cursor:pointer;
+  animation: pickPulse 1.1s ease-in-out infinite;
+}
+@keyframes pickPulse{0%,100%{box-shadow:0 5px 0 var(--border);}50%{box-shadow:0 5px 0 var(--border),0 0 0 7px var(--purple-l);}}
+.team-card.stealing { border-color:var(--purple) !important; box-shadow:0 5px 0 var(--purple) !important; }
+.steal-banner {
+  font-family:'Fredoka One',cursive; font-size:1.15rem; text-align:center;
+  background:var(--purple-l); color:var(--ink);
+  border:3px solid var(--purple); border-radius:16px; padding:10px 18px;
+}
+.level-pill {
+  font-weight:800; font-size:.8rem; color:var(--ink-soft); flex:0 0 auto;
+  border:2px solid var(--border); border-radius:50px; padding:4px 12px;
+}
+.status-bar { gap:12px; flex-wrap:wrap; }
+
+/* ─── SETUP AVAILABILITY ─── */
+.avail-note {
+  margin-top:12px; font-weight:800; font-size:.85rem; color:var(--ink-soft);
+}
+.avail-note.thin { color:var(--red); }
+
 /* ─── PAUSED STATE ─── */
 .timer-ring.paused { animation:none !important; border-style:dashed; }
 .paused-note {
@@ -642,6 +667,40 @@ body {
   </div>
 
   <div class="card">
+    <div class="section-label"><span class="icon">🎓</span> Language level</div>
+    <div class="options-row" id="levelOptions">
+      <button class="opt-btn active" data-value="ALL">All levels</button>
+      <button class="opt-btn" data-value="B1">Up to B1</button>
+      <button class="opt-btn" data-value="A2">A1–A2 only</button>
+    </div>
+    <div class="avail-note" id="availNote"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-label"><span class="icon">📖</span> Definition</div>
+    <div class="options-row" id="defOptions">
+      <button class="opt-btn active" data-value="first">Show it with the letters</button>
+      <button class="opt-btn" data-value="hint">Hide it — teams pay for a hint</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label"><span class="icon">🔊</span> Speak the answer at the end of each turn</div>
+    <div class="options-row" id="ttsOptions">
+      <button class="opt-btn active" data-value="on">On</button>
+      <button class="opt-btn" data-value="off">Off</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label"><span class="icon">🏴‍☠️</span> Stealing</div>
+    <div class="options-row" id="stealOptions">
+      <button class="opt-btn active" data-value="on">On</button>
+      <button class="opt-btn" data-value="off">Off</button>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="section-label"><span class="icon">📂</span> Categories</div>
     <div class="cat-grid" id="categoryOptions"></div>
   </div>
@@ -679,6 +738,7 @@ body {
   <div class="teacher-bar" id="teacherBar">
     <button class="teacher-btn" id="pauseBtn" title="Freeze the clock (Shift + P)">⏸️ Pause</button>
     <button class="teacher-btn" id="undoBtn" title="Rewind to the previous turn (Shift + U)" disabled>↶ Undo turn</button>
+    <button class="teacher-btn steal" id="stealBtn" title="Open the word to another team (Shift + S)" disabled>🏴‍☠️ Steal</button>
     <button class="teacher-btn" id="endBtn" title="Finish now and show the scores (Shift + E)">⏹️ End Game</button>
   </div>
 
@@ -691,6 +751,7 @@ body {
         <div class="timer-label">SECONDS</div>
       </div>
       <div class="category-badge" id="categoryBadge">Category</div>
+      <div class="level-pill" id="levelPill">—</div>
       <div class="points-pill" id="pointsPill">10 pts</div>
     </div>
 
@@ -702,6 +763,8 @@ body {
       </div>
       <div class="answer-row" id="answerRow" role="group" aria-label="Your answer"></div>
     </div>
+
+    <div class="steal-banner" id="stealBanner" style="display:none;"></div>
 
     <div class="hint-box" id="hintBox">💡 Stuck? Take the hint for 2 points.</div>
 
@@ -716,7 +779,7 @@ body {
 
     <div class="key-hints" id="keyHints">
       Team: <b>A–Z</b> place · <b>Backspace</b> take back · <b>Enter</b> check<br>
-      Teacher: <b>⇧H</b> hint · <b>⇧R</b> shuffle · <b>⇧C</b> clear · <b>⇧K</b> skip word · <b>⇧P</b> pause · <b>⇧U</b> undo · <b>⇧E</b> end
+      Teacher: <b>⇧S</b> steal · <b>⇧H</b> hint · <b>⇧R</b> shuffle · <b>⇧C</b> clear · <b>⇧K</b> skip · <b>⇧P</b> pause · <b>⇧U</b> undo · <b>⇧E</b> end
     </div>
 
     <div class="message-area" id="messageArea" role="status" aria-live="polite"></div>
@@ -748,7 +811,7 @@ body {
     <div id="historyWrap">
       <table class="history-table" id="historyTable">
         <thead><tr>
-          <th>#</th><th>Team</th><th>Word</th><th>Category</th><th>Result</th><th>Pts</th>
+          <th>#</th><th>Team</th><th>Word</th><th>Category</th><th>Level</th><th>Result</th><th>Pts</th>
         </tr></thead>
         <tbody id="historyBody"></tbody>
       </table>
@@ -765,60 +828,492 @@ body {
 const WORDS = {
   easy: {
     "foodAndDrink": [
-      {word:'apple',hint:'A fruit that might keep the doctor away'},{word:'bread',hint:'Baked dough, often sliced for sandwiches'},{word:'juice',hint:'The liquid from a fruit or vegetable'},{word:'salad',hint:'A healthy mix of fresh greens and vegetables'},{word:'pasta',hint:'Italian noodles like spaghetti or macaroni'},{word:'bacon',hint:'Cured pork strips, often for breakfast'},{word:'candy',hint:'A general term for a sugary confection'},{word:'grape',hint:'Small fruit that grows in bunches on a vine'},{word:'lemon',hint:'A sour, yellow citrus fruit'},{word:'mango',hint:'A sweet, tropical stone fruit'},{word:'pizza',hint:'A baked dish with a round base of dough'},{word:'steak',hint:'A thick slice of high-quality beef'},{word:'toast',hint:'Sliced bread that has been browned by heat'},{word:'waffle',hint:'Breakfast food with a grid-like pattern'},{word:'yogurt',hint:'A common fermented milk product'},{word:'sugar',hint:'A common sweetening substance'},{word:'cheese',hint:'A solid dairy product made from milk'},{word:'coffee',hint:'A brewed drink from roasted beans'},{word:'donut',hint:'A fried, often ring-shaped, sweet treat'},{word:'honey',hint:'A sweet, sticky substance made by bees'},{word:'cookie',hint:'A small, sweet baked good'},{word:'butter',hint:'A dairy spread made from cream'},{word:'muffin',hint:'A small, individual quick bread or cake'},{word:'pickle',hint:'A cucumber preserved in brine or vinegar'},{word:'sushi',hint:'A Japanese dish featuring vinegared rice'}
+      {word:"apple",cefr:"A1",hint:"A fruit that might keep the doctor away"},
+      {word:"bread",cefr:"A1",hint:"Baked dough, often sliced for sandwiches"},
+      {word:"juice",cefr:"A1",hint:"The liquid from a fruit or vegetable"},
+      {word:"salad",cefr:"A1",hint:"A healthy mix of fresh greens and vegetables"},
+      {word:"pasta",cefr:"A1",hint:"Italian noodles like spaghetti or macaroni"},
+      {word:"bacon",cefr:"A2",hint:"Cured pork strips, often for breakfast"},
+      {word:"candy",cefr:"A1",hint:"A general term for a sugary confection"},
+      {word:"grape",cefr:"A1",hint:"Small fruit that grows in bunches on a vine"},
+      {word:"lemon",cefr:"A1",hint:"A sour, yellow citrus fruit"},
+      {word:"mango",cefr:"A1",hint:"A sweet, tropical stone fruit"},
+      {word:"pizza",cefr:"A1",hint:"A baked dish with a round base of dough"},
+      {word:"steak",cefr:"A2",hint:"A thick slice of high-quality beef"},
+      {word:"toast",cefr:"A2",hint:"Sliced bread that has been browned by heat"},
+      {word:"waffle",cefr:"A2",hint:"Breakfast food with a grid-like pattern"},
+      {word:"yogurt",cefr:"A1",hint:"A common fermented milk product"},
+      {word:"sugar",cefr:"A1",hint:"A common sweetening substance"},
+      {word:"cheese",cefr:"A1",hint:"A solid dairy product made from milk"},
+      {word:"coffee",cefr:"A1",hint:"A brewed drink from roasted beans"},
+      {word:"donut",cefr:"A2",hint:"A fried, often ring-shaped, sweet treat"},
+      {word:"honey",cefr:"A2",hint:"A sweet, sticky substance made by bees"},
+      {word:"cookie",cefr:"A1",hint:"A small, sweet baked good"},
+      {word:"butter",cefr:"A1",hint:"A dairy spread made from cream"},
+      {word:"muffin",cefr:"A2",hint:"A small, individual quick bread or cake"},
+      {word:"pickle",cefr:"B1",hint:"A cucumber preserved in brine or vinegar"},
+      {word:"sushi",cefr:"A2",hint:"A Japanese dish featuring vinegared rice"}
     ],
     "animals": [
-      {word:'tiger',hint:'A large, striped feline'},{word:'horse',hint:'A domesticated hoofed mammal, often ridden'},{word:'mouse',hint:'A small rodent, often a house pest'},{word:'sheep',hint:'A farm animal known for its woolly fleece'},{word:'eagle',hint:'A large bird of prey with keen eyesight'},{word:'snake',hint:'A long, legless reptile'},{word:'whale',hint:'A very large, air-breathing marine mammal'},{word:'camel',hint:'An animal with a hump that lives in the desert'},{word:'zebra',hint:'An African equine with black-and-white stripes'},{word:'panda',hint:'A bear-like mammal from China that eats bamboo'},{word:'koala',hint:'An Australian marsupial that eats eucalyptus leaves'},{word:'lemur',hint:'A primate from Madagascar with a long tail'},{word:'monkey',hint:'A primate, often found swinging in trees'},{word:'parrot',hint:'A colorful bird that can mimic human speech'},{word:'rabbit',hint:'A hopping mammal with very long ears'},{word:'spider',hint:'An eight-legged arachnid that spins webs'},{word:'turtle',hint:'A slow-moving reptile protected by a shell'},{word:'shark',hint:'A predatory fish with rows of sharp teeth'},{word:'sloth',hint:'A very slow-moving mammal from Central America'},{word:'lizard',hint:'A reptile with scales and a long tail'},{word:'otter',hint:'A playful, semi-aquatic mammal'},{word:'jaguar',hint:'A large, spotted feline from the Americas'},{word:'salmon',hint:'A fish known for swimming upstream to spawn'},{word:'hyena',hint:"A carnivorous mammal known for its 'laugh'"},{word:'ferret',hint:'A domesticated, weasel-like mammal'}
+      {word:"tiger",cefr:"A1",hint:"A large, striped feline"},
+      {word:"horse",cefr:"A1",hint:"A domesticated hoofed mammal, often ridden"},
+      {word:"mouse",cefr:"A1",hint:"A small rodent, often a house pest"},
+      {word:"sheep",cefr:"A1",hint:"A farm animal known for its woolly fleece"},
+      {word:"eagle",cefr:"A2",hint:"A large bird of prey with keen eyesight"},
+      {word:"snake",cefr:"A1",hint:"A long, legless reptile"},
+      {word:"whale",cefr:"A2",hint:"A very large, air-breathing marine mammal"},
+      {word:"camel",cefr:"A2",hint:"An animal with a hump that lives in the desert"},
+      {word:"zebra",cefr:"A1",hint:"An African equine with black-and-white stripes"},
+      {word:"panda",cefr:"A1",hint:"A bear-like mammal from China that eats bamboo"},
+      {word:"koala",cefr:"A2",hint:"An Australian marsupial that eats eucalyptus leaves"},
+      {word:"lemur",cefr:"B1",hint:"A primate from Madagascar with a long tail"},
+      {word:"monkey",cefr:"A1",hint:"A primate, often found swinging in trees"},
+      {word:"parrot",cefr:"A2",hint:"A colorful bird that can mimic human speech"},
+      {word:"rabbit",cefr:"A1",hint:"A hopping mammal with very long ears"},
+      {word:"spider",cefr:"A1",hint:"An eight-legged arachnid that spins webs"},
+      {word:"turtle",cefr:"A1",hint:"A slow-moving reptile protected by a shell"},
+      {word:"shark",cefr:"A2",hint:"A predatory fish with rows of sharp teeth"},
+      {word:"sloth",cefr:"B1",hint:"A very slow-moving mammal from Central America"},
+      {word:"lizard",cefr:"A2",hint:"A reptile with scales and a long tail"},
+      {word:"otter",cefr:"B1",hint:"A playful, semi-aquatic mammal"},
+      {word:"jaguar",cefr:"A2",hint:"A large, spotted feline from the Americas"},
+      {word:"salmon",cefr:"A2",hint:"A fish known for swimming upstream to spawn"},
+      {word:"hyena",cefr:"B1",hint:"A carnivorous mammal known for its 'laugh'"},
+      {word:"ferret",cefr:"B2",hint:"A domesticated, weasel-like mammal"}
     ],
     "objects": [
-      {word:'chair',hint:'An item of furniture for one person to sit on'},{word:'table',hint:'Furniture with a flat top for holding items'},{word:'phone',hint:'A device used for voice communication'},{word:'clock',hint:'An instrument to measure and indicate time'},{word:'spoon',hint:'A utensil for eating liquid food'},{word:'plate',hint:'A flat dish for holding food'},{word:'knife',hint:'A utensil with a blade for cutting'},{word:'couch',hint:'A long upholstered seat for multiple people'},{word:'brush',hint:'An implement with bristles, for cleaning or grooming'},{word:'glass',hint:'A transparent material; also a drinking vessel'},{word:'lamp',hint:'A device for giving light'},{word:'mirror',hint:'A surface that reflects an image'},{word:'pencil',hint:'A writing utensil with a graphite core'},{word:'pillow',hint:'A cushion to support the head during sleep'},{word:'radio',hint:'A device for receiving broadcast signals'},{word:'towel',hint:'An absorbent cloth for drying'},{word:'wallet',hint:'A small case for holding money and cards'},{word:'watch',hint:'A timepiece worn on the wrist'},{word:'bottle',hint:'A container, typically glass or plastic, for liquids'},{word:'candle',hint:'A cylinder of wax with a wick that gives light'},{word:'glove',hint:'A covering for the hand'},{word:'scarf',hint:'A length of fabric worn around the neck'},{word:'remote',hint:'A device to operate an electronic from a distance'},{word:'bucket',hint:'A cylindrical container for carrying things'},{word:'zipper',hint:'A fastening device with interlocking teeth'}
+      {word:"chair",cefr:"A1",hint:"An item of furniture for one person to sit on"},
+      {word:"table",cefr:"A1",hint:"Furniture with a flat top for holding items"},
+      {word:"phone",cefr:"A1",hint:"A device used for voice communication"},
+      {word:"clock",cefr:"A1",hint:"An instrument to measure and indicate time"},
+      {word:"spoon",cefr:"A1",hint:"A utensil for eating liquid food"},
+      {word:"plate",cefr:"A1",hint:"A flat dish for holding food"},
+      {word:"knife",cefr:"A1",hint:"A utensil with a blade for cutting"},
+      {word:"couch",cefr:"A2",hint:"A long upholstered seat for multiple people"},
+      {word:"brush",cefr:"A2",hint:"An implement with bristles, for cleaning or grooming"},
+      {word:"glass",cefr:"A1",hint:"A transparent material; also a drinking vessel"},
+      {word:"lamp",cefr:"A1",hint:"A device for giving light"},
+      {word:"mirror",cefr:"A2",hint:"A surface that reflects an image"},
+      {word:"pencil",cefr:"A1",hint:"A writing utensil with a graphite core"},
+      {word:"pillow",cefr:"A2",hint:"A cushion to support the head during sleep"},
+      {word:"radio",cefr:"A1",hint:"A device for receiving broadcast signals"},
+      {word:"towel",cefr:"A2",hint:"An absorbent cloth for drying"},
+      {word:"wallet",cefr:"A2",hint:"A small case for holding money and cards"},
+      {word:"watch",cefr:"A1",hint:"A timepiece worn on the wrist"},
+      {word:"bottle",cefr:"A1",hint:"A container, typically glass or plastic, for liquids"},
+      {word:"candle",cefr:"A2",hint:"A cylinder of wax with a wick that gives light"},
+      {word:"glove",cefr:"A2",hint:"A covering for the hand"},
+      {word:"scarf",cefr:"A2",hint:"A length of fabric worn around the neck"},
+      {word:"remote",cefr:"A2",hint:"A device to operate an electronic from a distance"},
+      {word:"bucket",cefr:"A2",hint:"A cylindrical container for carrying things"},
+      {word:"zipper",cefr:"B1",hint:"A fastening device with interlocking teeth"}
     ],
     "videoGames": [
-      {word:'mario',hint:'Plumber who saves a princess'},{word:'sonic',hint:'A very fast, blue hedgehog'},{word:'zelda',hint:'Series about a hero named Link in Hyrule'},{word:'crash',hint:'A bandicoot who spins and breaks crates'},{word:'kirby',hint:'A pink puffball who inhales enemies'},{word:'spyro',hint:'A small, purple dragon'},{word:'doom',hint:'Iconic first-person shooter against demons'},{word:'hades',hint:'Roguelike about escaping the Greek underworld'},{word:'halo',hint:'Sci-fi shooter series with Master Chief'},{word:'portal',hint:'A puzzle game involving a gun that creates openings'},{word:'roblox',hint:'An online platform where users create games'},{word:'celeste',hint:'Game about climbing a mountain'},{word:'witcher',hint:'Series about Geralt of Rivia'},{word:'cuphead',hint:'Game with a 1930s cartoon art style'},{word:'persona',hint:'A series of Japanese role-playing games'},{word:'sims',hint:'A popular life simulation game'},{word:'rayman',hint:'A hero with no limbs'},{word:'banjo',hint:'A bear with a bird in his backpack'},{word:'inside',hint:'A dark puzzle-platformer from the makers of Limbo'},{word:'unpack',hint:'A chill game about taking items out of boxes'},{word:'tetris',hint:'Classic puzzle game where you stack falling blocks'},{word:'pacman',hint:'Classic arcade game about eating dots while avoiding ghosts'},{word:'pokemon',hint:'Game series about catching and training creatures'},{word:'splatoon',hint:'Game where teams cover the map in colorful ink'},{word:'terraria',hint:'A 2D sandbox game about digging, building, and exploring'}
+      {word:"mario",cefr:"A1",hint:"Plumber who saves a princess"},
+      {word:"sonic",cefr:"A1",hint:"A very fast, blue hedgehog"},
+      {word:"zelda",cefr:"A2",hint:"Series about a hero named Link in Hyrule"},
+      {word:"crash",cefr:"A2",hint:"A bandicoot who spins and breaks crates"},
+      {word:"kirby",cefr:"A2",hint:"A pink puffball who inhales enemies"},
+      {word:"spyro",cefr:"B1",hint:"A small, purple dragon"},
+      {word:"doom",cefr:"A2",hint:"Iconic first-person shooter against demons"},
+      {word:"hades",cefr:"B1",hint:"Roguelike about escaping the Greek underworld"},
+      {word:"halo",cefr:"A2",hint:"Sci-fi shooter series with Master Chief"},
+      {word:"portal",cefr:"A2",hint:"A puzzle game involving a gun that creates openings"},
+      {word:"roblox",cefr:"A1",hint:"An online platform where users create games"},
+      {word:"celeste",cefr:"B1",hint:"Game about climbing a mountain"},
+      {word:"witcher",cefr:"B1",hint:"Series about Geralt of Rivia"},
+      {word:"cuphead",cefr:"B1",hint:"Game with a 1930s cartoon art style"},
+      {word:"persona",cefr:"B1",hint:"A series of Japanese role-playing games"},
+      {word:"sims",cefr:"A2",hint:"A popular life simulation game"},
+      {word:"rayman",cefr:"B1",hint:"A hero with no limbs"},
+      {word:"banjo",cefr:"B2",hint:"A bear with a bird in his backpack"},
+      {word:"inside",cefr:"B1",hint:"A dark puzzle-platformer from the makers of Limbo"},
+      {word:"unpack",cefr:"B1",hint:"A chill game about taking items out of boxes"},
+      {word:"tetris",cefr:"A2",hint:"Classic puzzle game where you stack falling blocks"},
+      {word:"pacman",cefr:"A1",hint:"Classic arcade game about eating dots while avoiding ghosts"},
+      {word:"pokemon",cefr:"A1",hint:"Game series about catching and training creatures"},
+      {word:"splatoon",cefr:"B1",hint:"Game where teams cover the map in colorful ink"},
+      {word:"terraria",cefr:"B1",hint:"A 2D sandbox game about digging, building, and exploring"}
     ],
     "verbs": [
-      {word:'dance',hint:'To move rhythmically to music'},{word:'write',hint:'To mark letters or symbols on a surface'},{word:'paint',hint:'To apply color to a surface with a brush'},{word:'speak',hint:'To say something in order to convey information'},{word:'drive',hint:'To operate and control a motor vehicle'},{word:'sleep',hint:'To rest your mind and body'},{word:'think',hint:'To use your mind to consider something'},{word:'laugh',hint:'To make sounds of amusement'},{word:'climb',hint:'To go up something, using hands and feet'},{word:'build',hint:'To construct by putting parts together'},{word:'catch',hint:'To intercept and hold a moving object'},{word:'drink',hint:'To take liquid into the body through the mouth'},{word:'float',hint:'To rest on the surface of a liquid'},{word:'guess',hint:'To estimate without sufficient information'},{word:'learn',hint:'To gain knowledge or skill'},{word:'dream',hint:'To experience images and sensations in your sleep'},{word:'smile',hint:"To form one's features into a pleased expression"},{word:'shout',hint:'To speak with a very loud voice'},{word:'throw',hint:'To propel something through the air'},{word:'clean',hint:'To make something free of dirt or mess'},{word:'bring',hint:'To take or go with to a place'},{word:'carry',hint:'To support and move from one place to another'},{word:'create',hint:'To bring something into existence'},{word:'finish',hint:'To bring a task to an end'},{word:'forget',hint:'To fail to remember'}
+      {word:"dance",cefr:"A1",hint:"To move rhythmically to music"},
+      {word:"write",cefr:"A1",hint:"To mark letters or symbols on a surface"},
+      {word:"paint",cefr:"A1",hint:"To apply color to a surface with a brush"},
+      {word:"speak",cefr:"A1",hint:"To say something in order to convey information"},
+      {word:"drive",cefr:"A1",hint:"To operate and control a motor vehicle"},
+      {word:"sleep",cefr:"A1",hint:"To rest your mind and body"},
+      {word:"think",cefr:"A1",hint:"To use your mind to consider something"},
+      {word:"laugh",cefr:"A1",hint:"To make sounds of amusement"},
+      {word:"climb",cefr:"A2",hint:"To go up something, using hands and feet"},
+      {word:"build",cefr:"A1",hint:"To construct by putting parts together"},
+      {word:"catch",cefr:"A1",hint:"To intercept and hold a moving object"},
+      {word:"drink",cefr:"A1",hint:"To take liquid into the body through the mouth"},
+      {word:"float",cefr:"B1",hint:"To rest on the surface of a liquid"},
+      {word:"guess",cefr:"A2",hint:"To estimate without sufficient information"},
+      {word:"learn",cefr:"A1",hint:"To gain knowledge or skill"},
+      {word:"dream",cefr:"A2",hint:"To experience images and sensations in your sleep"},
+      {word:"smile",cefr:"A1",hint:"To form one's features into a pleased expression"},
+      {word:"shout",cefr:"A2",hint:"To speak with a very loud voice"},
+      {word:"throw",cefr:"A1",hint:"To propel something through the air"},
+      {word:"clean",cefr:"A1",hint:"To make something free of dirt or mess"},
+      {word:"bring",cefr:"A1",hint:"To take or go with to a place"},
+      {word:"carry",cefr:"A2",hint:"To support and move from one place to another"},
+      {word:"create",cefr:"A2",hint:"To bring something into existence"},
+      {word:"finish",cefr:"A1",hint:"To bring a task to an end"},
+      {word:"forget",cefr:"A1",hint:"To fail to remember"}
     ],
     "professions": [
-      {word:'actor',hint:'A person who portrays a character in a performance'},{word:'nurse',hint:'A person trained to care for the sick'},{word:'baker',hint:'Someone who makes bread and cakes'},{word:'chef',hint:'A professional cook in a restaurant'},{word:'doctor',hint:'A qualified practitioner of medicine'},{word:'judge',hint:'A public official in a court of law'},{word:'lawyer',hint:'A person who practices or studies law'},{word:'pilot',hint:'A person who operates the flying controls of an aircraft'},{word:'singer',hint:'A person who uses their voice to make music'},{word:'writer',hint:'A person who has written a particular text'},{word:'artist',hint:'A person who creates paintings or drawings'},{word:'coach',hint:'A person who trains a sports team'},{word:'dancer',hint:'A person who moves to music'},{word:'farmer',hint:'A person who cultivates land and raises livestock'},{word:'hunter',hint:'A person who pursues wild animals for sport or food'},{word:'miner',hint:'A person who works underground to extract minerals'},{word:'priest',hint:'An ordained minister of the Catholic church'},{word:'tailor',hint:'A person who makes, mends, or alters clothing'},{word:'butler',hint:'The chief manservant of a house'},{word:'author',hint:'A writer of a book or article'},{word:'sailor',hint:'A person who works on a boat or ship'},{word:'clown',hint:'A comic entertainer, especially in a circus'},{word:'ranger',hint:'A keeper of a park, forest, or area of countryside'},{word:'poet',hint:'A person who writes verses'},{word:'guard',hint:'A person who keeps watch or protects a place'}
+      {word:"actor",cefr:"A1",hint:"A person who portrays a character in a performance"},
+      {word:"nurse",cefr:"A1",hint:"A person trained to care for the sick"},
+      {word:"baker",cefr:"A2",hint:"Someone who makes bread and cakes"},
+      {word:"chef",cefr:"A1",hint:"A professional cook in a restaurant"},
+      {word:"doctor",cefr:"A1",hint:"A qualified practitioner of medicine"},
+      {word:"judge",cefr:"A2",hint:"A public official in a court of law"},
+      {word:"lawyer",cefr:"A2",hint:"A person who practices or studies law"},
+      {word:"pilot",cefr:"A1",hint:"A person who operates the flying controls of an aircraft"},
+      {word:"singer",cefr:"A1",hint:"A person who uses their voice to make music"},
+      {word:"writer",cefr:"A1",hint:"A person who has written a particular text"},
+      {word:"artist",cefr:"A1",hint:"A person who creates paintings or drawings"},
+      {word:"coach",cefr:"A2",hint:"A person who trains a sports team"},
+      {word:"dancer",cefr:"A1",hint:"A person who moves to music"},
+      {word:"farmer",cefr:"A1",hint:"A person who cultivates land and raises livestock"},
+      {word:"hunter",cefr:"A2",hint:"A person who pursues wild animals for sport or food"},
+      {word:"miner",cefr:"B1",hint:"A person who works underground to extract minerals"},
+      {word:"priest",cefr:"B1",hint:"An ordained minister of the Catholic church"},
+      {word:"tailor",cefr:"B1",hint:"A person who makes, mends, or alters clothing"},
+      {word:"butler",cefr:"B2",hint:"The chief manservant of a house"},
+      {word:"author",cefr:"A2",hint:"A writer of a book or article"},
+      {word:"sailor",cefr:"A2",hint:"A person who works on a boat or ship"},
+      {word:"clown",cefr:"A2",hint:"A comic entertainer, especially in a circus"},
+      {word:"ranger",cefr:"B1",hint:"A keeper of a park, forest, or area of countryside"},
+      {word:"poet",cefr:"B1",hint:"A person who writes verses"},
+      {word:"guard",cefr:"A2",hint:"A person who keeps watch or protects a place"}
     ],
     "moviesAndTvShows": [
-      {word:'aliens',hint:'Sci-fi horror sequel directed by James Cameron'},{word:'avatar',hint:'Movie about blue-skinned aliens on Pandora'},{word:'brave',hint:'Pixar film about a Scottish princess and archer'},{word:'frozen',hint:'Disney film about two sisters, one with ice powers'},{word:'grease',hint:'Musical film starring John Travolta and Olivia Newton-John'},{word:'house',hint:'TV series about a brilliant but cynical medical doctor'},{word:'jumanji',hint:'Movie about a magical board game'},{word:'mulan',hint:'Disney film about a woman who joins the army'},{word:'rocky',hint:'Film about a boxer from Philadelphia'},{word:'scrubs',hint:'Sitcom set in a teaching hospital'},{word:'shrek',hint:'Animated film about a green ogre'},{word:'speed',hint:'Action film about a bus that cannot slow down'},{word:'taken',hint:'Action film where Liam Neeson has a particular set of skills'},{word:'tarzan',hint:'Story about a man raised by apes in the jungle'},{word:'titanic',hint:"Film about a famously 'unsinkable' ship"},{word:'venom',hint:'Film about a journalist who bonds with an alien symbiote'},{word:'rango',hint:'Animated film about a chameleon who becomes a sheriff'},{word:'encanto',hint:'Disney film about a magical Colombian family'},{word:'moana',hint:'Disney film about a girl who sails across the ocean to save her island'},{word:'fargo',hint:'Film and TV series set in the Midwest'},{word:'suits',hint:'TV series about lawyers in New York City'},{word:'tangled',hint:'Disney film about a princess with very long magical hair'},{word:'creed',hint:"Movie about Apollo's son, trained by Rocky"},{word:'cobra',hint:'Action film starring Sylvester Stallone'},{word:'bones',hint:'TV series about a forensic anthropologist'}
+      {word:"aliens",cefr:"A2",hint:"Sci-fi horror sequel directed by James Cameron"},
+      {word:"avatar",cefr:"A2",hint:"Movie about blue-skinned aliens on Pandora"},
+      {word:"brave",cefr:"A2",hint:"Pixar film about a Scottish princess and archer"},
+      {word:"frozen",cefr:"A1",hint:"Disney film about two sisters, one with ice powers"},
+      {word:"grease",cefr:"B1",hint:"Musical film starring John Travolta and Olivia Newton-John"},
+      {word:"house",cefr:"A1",hint:"TV series about a brilliant but cynical medical doctor"},
+      {word:"jumanji",cefr:"A2",hint:"Movie about a magical board game"},
+      {word:"mulan",cefr:"A2",hint:"Disney film about a woman who joins the army"},
+      {word:"rocky",cefr:"A2",hint:"Film about a boxer from Philadelphia"},
+      {word:"scrubs",cefr:"B1",hint:"Sitcom set in a teaching hospital"},
+      {word:"shrek",cefr:"A1",hint:"Animated film about a green ogre"},
+      {word:"speed",cefr:"A1",hint:"Action film about a bus that cannot slow down"},
+      {word:"taken",cefr:"A2",hint:"Action film where Liam Neeson has a particular set of skills"},
+      {word:"tarzan",cefr:"A2",hint:"Story about a man raised by apes in the jungle"},
+      {word:"titanic",cefr:"A1",hint:"Film about a famously 'unsinkable' ship"},
+      {word:"venom",cefr:"A2",hint:"Film about a journalist who bonds with an alien symbiote"},
+      {word:"rango",cefr:"B1",hint:"Animated film about a chameleon who becomes a sheriff"},
+      {word:"encanto",cefr:"A2",hint:"Disney film about a magical Colombian family"},
+      {word:"moana",cefr:"A1",hint:"Disney film about a girl who sails across the ocean to save her island"},
+      {word:"fargo",cefr:"B2",hint:"Film and TV series set in the Midwest"},
+      {word:"suits",cefr:"B1",hint:"TV series about lawyers in New York City"},
+      {word:"tangled",cefr:"B1",hint:"Disney film about a princess with very long magical hair"},
+      {word:"creed",cefr:"B1",hint:"Movie about Apollo's son, trained by Rocky"},
+      {word:"cobra",cefr:"B1",hint:"Action film starring Sylvester Stallone"},
+      {word:"bones",cefr:"A2",hint:"TV series about a forensic anthropologist"}
     ],
     "countries": [
-      {word:'brazil',hint:'Largest country in South America'},{word:'china',hint:'The most populous country in the world'},{word:'egypt',hint:'North African country known for pyramids'},{word:'france',hint:'European country known for the Eiffel Tower'},{word:'greece',hint:'Southeastern European country known for ancient philosophers'},{word:'india',hint:'South Asian country known for the Taj Mahal'},{word:'japan',hint:"Island nation in East Asia, the 'Land of the Rising Sun'"},{word:'kenya',hint:'East African country known for its savanna and wildlife'},{word:'mexico',hint:'Country south of the United States'},{word:'nepal',hint:'Country home to Mount Everest'},{word:'peru',hint:'South American country home to Machu Picchu'},{word:'spain',hint:'European country known for flamenco and bullfighting'},{word:'turkey',hint:'Country located in both Europe and Asia'},{word:'chile',hint:'A long, narrow country on the coast of South America'},{word:'cuba',hint:'Caribbean island nation known for cigars'},{word:'ghana',hint:'West African country on the Gulf of Guinea'},{word:'iran',hint:'Country in the Middle East, formerly known as Persia'},{word:'italy',hint:'European country shaped like a boot'},{word:'poland',hint:'A country in Central Europe'},{word:'russia',hint:'The largest country in the world by area'},{word:'qatar',hint:'A small, wealthy country in the Middle East'},{word:'malta',hint:'A small island country in the Mediterranean'},{word:'serbia',hint:'A country in Southeast Europe'},{word:'sudan',hint:'Country in Northeast Africa'},{word:'uganda',hint:'A landlocked country in East Africa'}
+      {word:"brazil",cefr:"A1",hint:"Largest country in South America"},
+      {word:"china",cefr:"A1",hint:"The most populous country in the world"},
+      {word:"egypt",cefr:"A1",hint:"North African country known for pyramids"},
+      {word:"france",cefr:"A1",hint:"European country known for the Eiffel Tower"},
+      {word:"greece",cefr:"A2",hint:"Southeastern European country known for ancient philosophers"},
+      {word:"india",cefr:"A1",hint:"South Asian country known for the Taj Mahal"},
+      {word:"japan",cefr:"A1",hint:"Island nation in East Asia, the 'Land of the Rising Sun'"},
+      {word:"kenya",cefr:"A2",hint:"East African country known for its savanna and wildlife"},
+      {word:"mexico",cefr:"A1",hint:"Country south of the United States"},
+      {word:"nepal",cefr:"A2",hint:"Country home to Mount Everest"},
+      {word:"peru",cefr:"A1",hint:"South American country home to Machu Picchu"},
+      {word:"spain",cefr:"A1",hint:"European country known for flamenco and bullfighting"},
+      {word:"turkey",cefr:"A2",hint:"Country located in both Europe and Asia"},
+      {word:"chile",cefr:"A1",hint:"A long, narrow country on the coast of South America"},
+      {word:"cuba",cefr:"A1",hint:"Caribbean island nation known for cigars"},
+      {word:"ghana",cefr:"A2",hint:"West African country on the Gulf of Guinea"},
+      {word:"iran",cefr:"A2",hint:"Country in the Middle East, formerly known as Persia"},
+      {word:"italy",cefr:"A1",hint:"European country shaped like a boot"},
+      {word:"poland",cefr:"A2",hint:"A country in Central Europe"},
+      {word:"russia",cefr:"A1",hint:"The largest country in the world by area"},
+      {word:"qatar",cefr:"B1",hint:"A small, wealthy country in the Middle East"},
+      {word:"malta",cefr:"B1",hint:"A small island country in the Mediterranean"},
+      {word:"serbia",cefr:"B1",hint:"A country in Southeast Europe"},
+      {word:"sudan",cefr:"B1",hint:"Country in Northeast Africa"},
+      {word:"uganda",cefr:"B1",hint:"A landlocked country in East Africa"}
     ],
     "brandsAndCompanies": [
-      {word:'apple',hint:'Tech company that makes the iPhone'},{word:'google',hint:"The world's most popular search engine"},{word:'nike',hint:'Sportswear company with the slogan "Just Do It"'},{word:'amazon',hint:"The world's largest online retailer"},{word:'disney',hint:'Entertainment company famous for its theme parks and animation'},{word:'ford',hint:'American multinational automaker'},{word:'honda',hint:'Japanese multinational conglomerate known for vehicles'},{word:'lego',hint:'A line of plastic construction toys'},{word:'pepsi',hint:'A major competitor to Coca-Cola'},{word:'sega',hint:'Company that created Sonic the Hedgehog'},{word:'sony',hint:'Japanese multinational conglomerate, makes the PlayStation'},{word:'tesla',hint:'Electric vehicle and clean energy company'},{word:'uber',hint:'A popular ride-hailing service'},{word:'visa',hint:'A multinational financial services corporation'},{word:'atari',hint:'A pioneering video game and home computer company'},{word:'canon',hint:'A multinational corporation specializing in imaging products'},{word:'casio',hint:'An electronics company known for calculators and watches'},{word:'ebay',hint:'An online auction and shopping website'},{word:'intel',hint:'A company that makes microprocessor chips for computers'},{word:'kodak',hint:'A company historically known for photographic film products'},{word:'mattel',hint:'An American multinational toy manufacturing company'},{word:'rolex',hint:'A manufacturer of luxury watches'},{word:'gucci',hint:'An Italian luxury brand of fashion'},{word:'dior',hint:'A luxury goods company from France'},{word:'prada',hint:'An Italian luxury fashion house'}
+      {word:"apple",cefr:"A1",hint:"Tech company that makes the iPhone"},
+      {word:"google",cefr:"A1",hint:"The world's most popular search engine"},
+      {word:"nike",cefr:"A1",hint:"Sportswear company with the slogan \"Just Do It\""},
+      {word:"amazon",cefr:"A1",hint:"The world's largest online retailer"},
+      {word:"disney",cefr:"A1",hint:"Entertainment company famous for its theme parks and animation"},
+      {word:"ford",cefr:"A2",hint:"American multinational automaker"},
+      {word:"honda",cefr:"A1",hint:"Japanese multinational conglomerate known for vehicles"},
+      {word:"lego",cefr:"A1",hint:"A line of plastic construction toys"},
+      {word:"pepsi",cefr:"A1",hint:"A major competitor to Coca-Cola"},
+      {word:"sega",cefr:"A2",hint:"Company that created Sonic the Hedgehog"},
+      {word:"sony",cefr:"A1",hint:"Japanese multinational conglomerate, makes the PlayStation"},
+      {word:"tesla",cefr:"A1",hint:"Electric vehicle and clean energy company"},
+      {word:"uber",cefr:"A1",hint:"A popular ride-hailing service"},
+      {word:"visa",cefr:"A1",hint:"A multinational financial services corporation"},
+      {word:"atari",cefr:"B1",hint:"A pioneering video game and home computer company"},
+      {word:"canon",cefr:"A2",hint:"A multinational corporation specializing in imaging products"},
+      {word:"casio",cefr:"A2",hint:"An electronics company known for calculators and watches"},
+      {word:"ebay",cefr:"A2",hint:"An online auction and shopping website"},
+      {word:"intel",cefr:"A2",hint:"A company that makes microprocessor chips for computers"},
+      {word:"kodak",cefr:"B1",hint:"A company historically known for photographic film products"},
+      {word:"mattel",cefr:"B1",hint:"An American multinational toy manufacturing company"},
+      {word:"rolex",cefr:"A2",hint:"A manufacturer of luxury watches"},
+      {word:"gucci",cefr:"A2",hint:"An Italian luxury brand of fashion"},
+      {word:"dior",cefr:"A2",hint:"A luxury goods company from France"},
+      {word:"prada",cefr:"A2",hint:"An Italian luxury fashion house"}
     ]
   },
   hard: {
     "foodAndDrink": [
-      {word:'spaghetti',hint:'Long, thin Italian pasta'},{word:'pineapple',hint:'A tropical fruit with a tough, spiky exterior'},{word:'broccoli',hint:'A green vegetable with a tree-like shape'},{word:'cappuccino',hint:'An espresso-based coffee with steamed milk foam'},{word:'milkshake',hint:'A thick, cold drink made with milk and ice cream'},{word:'chocolate',hint:'A sweet food made from cacao beans'},{word:'cucumber',hint:'A long, green gourd, often used in salads'},{word:'guacamole',hint:'A popular dip made from mashed avocados'},{word:'lemonade',hint:'A sweet drink made from a yellow citrus fruit'},{word:'macaroni',hint:'A type of small, tube-shaped pasta'},{word:'mozzarella',hint:'A soft, white Italian cheese, great on pizza'},{word:'mushroom',hint:'A type of edible fungus, often used in cooking'},{word:'pepperoni',hint:'A spicy sausage, a very popular pizza topping'},{word:'raspberry',hint:'A small, red, sweet, and slightly tart fruit'},{word:'strawberry',hint:'A red fruit with its seeds on the outside'},{word:'watermelon',hint:'A very large fruit with green rind and red flesh'},{word:'blackberry',hint:'A dark purple, edible soft fruit'},{word:'cranberry',hint:'A small, tart red berry often made into a sauce'},{word:'grapefruit',hint:'A large, somewhat sour citrus fruit'},{word:'espresso',hint:'A strong, concentrated coffee made by forcing steam through beans'},{word:'croissant',hint:'A flaky, crescent-shaped pastry'},{word:'asparagus',hint:'A green vegetable with spear-like stalks'},{word:'cantaloupe',hint:'A type of melon with a netted skin and orange flesh'},{word:'doughnut',hint:'A fried, sweet ring of leavened flour'},{word:'sandwich',hint:'Two slices of bread with a filling in between'}
+      {word:"spaghetti",cefr:"A2",hint:"Long, thin Italian pasta"},
+      {word:"pineapple",cefr:"A2",hint:"A tropical fruit with a tough, spiky exterior"},
+      {word:"broccoli",cefr:"A2",hint:"A green vegetable with a tree-like shape"},
+      {word:"cappuccino",cefr:"A2",hint:"An espresso-based coffee with steamed milk foam"},
+      {word:"milkshake",cefr:"A2",hint:"A thick, cold drink made with milk and ice cream"},
+      {word:"chocolate",cefr:"A1",hint:"A sweet food made from cacao beans"},
+      {word:"cucumber",cefr:"A2",hint:"A long, green gourd, often used in salads"},
+      {word:"guacamole",cefr:"B1",hint:"A popular dip made from mashed avocados"},
+      {word:"lemonade",cefr:"A2",hint:"A sweet drink made from a yellow citrus fruit"},
+      {word:"macaroni",cefr:"B1",hint:"A type of small, tube-shaped pasta"},
+      {word:"mozzarella",cefr:"A2",hint:"A soft, white Italian cheese, great on pizza"},
+      {word:"mushroom",cefr:"A2",hint:"A type of edible fungus, often used in cooking"},
+      {word:"pepperoni",cefr:"A2",hint:"A spicy sausage, a very popular pizza topping"},
+      {word:"raspberry",cefr:"B1",hint:"A small, red, sweet, and slightly tart fruit"},
+      {word:"strawberry",cefr:"A2",hint:"A red fruit with its seeds on the outside"},
+      {word:"watermelon",cefr:"A2",hint:"A very large fruit with green rind and red flesh"},
+      {word:"blackberry",cefr:"B1",hint:"A dark purple, edible soft fruit"},
+      {word:"cranberry",cefr:"B1",hint:"A small, tart red berry often made into a sauce"},
+      {word:"grapefruit",cefr:"B1",hint:"A large, somewhat sour citrus fruit"},
+      {word:"espresso",cefr:"A2",hint:"A strong, concentrated coffee made by forcing steam through beans"},
+      {word:"croissant",cefr:"B1",hint:"A flaky, crescent-shaped pastry"},
+      {word:"asparagus",cefr:"B2",hint:"A green vegetable with spear-like stalks"},
+      {word:"cantaloupe",cefr:"B2",hint:"A type of melon with a netted skin and orange flesh"},
+      {word:"doughnut",cefr:"A2",hint:"A fried, sweet ring of leavened flour"},
+      {word:"sandwich",cefr:"A1",hint:"Two slices of bread with a filling in between"}
     ],
     "animals": [
-      {word:'elephant',hint:'Largest land animal with a long trunk'},{word:'kangaroo',hint:'An Australian marsupial that hops and has a pouch'},{word:'crocodile',hint:'A large amphibious reptile with a long snout'},{word:'chimpanzee',hint:'A highly intelligent great ape'},{word:'dolphin',hint:'An intelligent marine mammal known for its playful behavior'},{word:'gorilla',hint:'The largest and most powerful living primate'},{word:'flamingo',hint:'A tall wading bird with distinct pink feathers'},{word:'alligator',hint:'A large reptile similar to a crocodile, found in the Americas'},{word:'leopard',hint:'A large, spotted feline known for its climbing ability'},{word:'octopus',hint:'A sea creature with eight flexible arms'},{word:'ostrich',hint:'A large, flightless bird known for running at high speeds'},{word:'porcupine',hint:'A rodent covered with sharp quills for defense'},{word:'salamander',hint:'An amphibian that typically resembles a lizard'},{word:'scorpion',hint:'An arachnid with a venomous stinger on its tail'},{word:'squirrel',hint:'A small rodent that climbs trees and gathers nuts'},{word:'tarantula',hint:'A large, hairy type of spider'},{word:'woodpecker',hint:'A bird that pecks holes in trees to find insects'},{word:'armadillo',hint:'A mammal with a leathery armored shell'},{word:'chameleon',hint:'A lizard that can change its skin color to match its surroundings'},{word:'butterfly',hint:'An insect with large, often colorful wings'},{word:'capybara',hint:"The world's largest rodent, native to South America"},{word:'hedgehog',hint:'A small, spiny mammal that curls into a ball for defense'},{word:'platypus',hint:'An egg-laying mammal from Australia with a bill like a duck'},{word:'anaconda',hint:'A very large, non-venomous snake found in South America'},{word:'anteater',hint:'A mammal that has a long snout and feeds on ants'}
+      {word:"elephant",cefr:"A1",hint:"Largest land animal with a long trunk"},
+      {word:"kangaroo",cefr:"A2",hint:"An Australian marsupial that hops and has a pouch"},
+      {word:"crocodile",cefr:"A2",hint:"A large amphibious reptile with a long snout"},
+      {word:"chimpanzee",cefr:"B1",hint:"A highly intelligent great ape"},
+      {word:"dolphin",cefr:"A2",hint:"An intelligent marine mammal known for its playful behavior"},
+      {word:"gorilla",cefr:"A2",hint:"The largest and most powerful living primate"},
+      {word:"flamingo",cefr:"B1",hint:"A tall wading bird with distinct pink feathers"},
+      {word:"alligator",cefr:"B1",hint:"A large reptile similar to a crocodile, found in the Americas"},
+      {word:"leopard",cefr:"A2",hint:"A large, spotted feline known for its climbing ability"},
+      {word:"octopus",cefr:"A2",hint:"A sea creature with eight flexible arms"},
+      {word:"ostrich",cefr:"B1",hint:"A large, flightless bird known for running at high speeds"},
+      {word:"porcupine",cefr:"B2",hint:"A rodent covered with sharp quills for defense"},
+      {word:"salamander",cefr:"B2",hint:"An amphibian that typically resembles a lizard"},
+      {word:"scorpion",cefr:"B1",hint:"An arachnid with a venomous stinger on its tail"},
+      {word:"squirrel",cefr:"A2",hint:"A small rodent that climbs trees and gathers nuts"},
+      {word:"tarantula",cefr:"B1",hint:"A large, hairy type of spider"},
+      {word:"woodpecker",cefr:"B1",hint:"A bird that pecks holes in trees to find insects"},
+      {word:"armadillo",cefr:"B1",hint:"A mammal with a leathery armored shell"},
+      {word:"chameleon",cefr:"B1",hint:"A lizard that can change its skin color to match its surroundings"},
+      {word:"butterfly",cefr:"A1",hint:"An insect with large, often colorful wings"},
+      {word:"capybara",cefr:"A2",hint:"The world's largest rodent, native to South America"},
+      {word:"hedgehog",cefr:"B1",hint:"A small, spiny mammal that curls into a ball for defense"},
+      {word:"platypus",cefr:"B2",hint:"An egg-laying mammal from Australia with a bill like a duck"},
+      {word:"anaconda",cefr:"A2",hint:"A very large, non-venomous snake found in South America"},
+      {word:"anteater",cefr:"B1",hint:"A mammal that has a long snout and feeds on ants"}
     ],
     "objects": [
-      {word:'backpack',hint:"A bag carried on one's back, typically with two straps"},{word:'computer',hint:'An electronic device for storing and processing data'},{word:'calendar',hint:'A chart or series of pages showing the days, weeks, and months'},{word:'dictionary',hint:'A book or electronic resource that lists words and their meanings'},{word:'envelope',hint:'A flat paper container for a letter'},{word:'keyboard',hint:'A panel of keys for operating a computer or typewriter'},{word:'microwave',hint:'An oven that heats and cooks food using high-frequency radiation'},{word:'passport',hint:'An official government document for international travel'},{word:'scissors',hint:'An instrument used for cutting with two pivoted blades'},{word:'telescope',hint:'An optical instrument for making distant objects appear nearer'},{word:'umbrella',hint:'A device used for protection against rain or sun'},{word:'accordion',hint:'A portable musical instrument with bellows and keys'},{word:'binoculars',hint:'An optical instrument for viewing distant objects with both eyes'},{word:'clipboard',hint:'A board with a spring clip at the top for holding paper'},{word:'flashlight',hint:'A battery-operated portable light'},{word:'headphones',hint:'A pair of earphones joined by a band placed over the head'},{word:'lawnmower',hint:'A machine for cutting grass'},{word:'motorcycle',hint:'A two-wheeled automotive vehicle'},{word:'projector',hint:'A device that displays an image onto a surface'},{word:'skateboard',hint:'A short board with two small wheels at each end'},{word:'smartphone',hint:'A mobile device with advanced computing capability'},{word:'submarine',hint:'A warship designed to operate completely submerged in the sea'},{word:'trampoline',hint:'A piece of equipment for jumping, consisting of a taut fabric sheet'},{word:'typewriter',hint:'A machine for producing characters on paper by striking keys'},{word:'xylophone',hint:'A musical instrument played by striking wooden bars with mallets'}
+      {word:"backpack",cefr:"A1",hint:"A bag carried on one's back, typically with two straps"},
+      {word:"computer",cefr:"A1",hint:"An electronic device for storing and processing data"},
+      {word:"calendar",cefr:"A2",hint:"A chart or series of pages showing the days, weeks, and months"},
+      {word:"dictionary",cefr:"A2",hint:"A book or electronic resource that lists words and their meanings"},
+      {word:"envelope",cefr:"A2",hint:"A flat paper container for a letter"},
+      {word:"keyboard",cefr:"A2",hint:"A panel of keys for operating a computer or typewriter"},
+      {word:"microwave",cefr:"A2",hint:"An oven that heats and cooks food using high-frequency radiation"},
+      {word:"passport",cefr:"A2",hint:"An official government document for international travel"},
+      {word:"scissors",cefr:"A2",hint:"An instrument used for cutting with two pivoted blades"},
+      {word:"telescope",cefr:"B1",hint:"An optical instrument for making distant objects appear nearer"},
+      {word:"umbrella",cefr:"A1",hint:"A device used for protection against rain or sun"},
+      {word:"accordion",cefr:"B2",hint:"A portable musical instrument with bellows and keys"},
+      {word:"binoculars",cefr:"B1",hint:"An optical instrument for viewing distant objects with both eyes"},
+      {word:"clipboard",cefr:"B1",hint:"A board with a spring clip at the top for holding paper"},
+      {word:"flashlight",cefr:"A2",hint:"A battery-operated portable light"},
+      {word:"headphones",cefr:"A1",hint:"A pair of earphones joined by a band placed over the head"},
+      {word:"lawnmower",cefr:"B2",hint:"A machine for cutting grass"},
+      {word:"motorcycle",cefr:"A2",hint:"A two-wheeled automotive vehicle"},
+      {word:"projector",cefr:"B1",hint:"A device that displays an image onto a surface"},
+      {word:"skateboard",cefr:"A2",hint:"A short board with two small wheels at each end"},
+      {word:"smartphone",cefr:"A1",hint:"A mobile device with advanced computing capability"},
+      {word:"submarine",cefr:"B1",hint:"A warship designed to operate completely submerged in the sea"},
+      {word:"trampoline",cefr:"B1",hint:"A piece of equipment for jumping, consisting of a taut fabric sheet"},
+      {word:"typewriter",cefr:"B1",hint:"A machine for producing characters on paper by striking keys"},
+      {word:"xylophone",cefr:"B1",hint:"A musical instrument played by striking wooden bars with mallets"}
     ],
     "videoGames": [
-      {word:'minecraft',hint:'A sandbox game about placing blocks and going on adventures'},{word:'fortnite',hint:'A popular battle royale game with building mechanics'},{word:'overwatch',hint:'A team-based multiplayer first-person shooter with hero characters'},{word:'bioshock',hint:'A first-person shooter set in the underwater city of Rapture'},{word:'bloodborne',hint:'A dark action RPG set in the Gothic city of Yharnam'},{word:'cyberpunk',hint:'An action RPG set in the futuristic Night City'},{word:'dark souls',hint:'A notoriously difficult action RPG series'},{word:'dead space',hint:'A survival horror game set on a spaceship'},{word:'dishonored',hint:'A stealth action game where you play as a supernatural assassin'},{word:'battlefield',hint:'A series of large-scale military first-person shooters'},{word:'uncharted',hint:'An action-adventure series following treasure hunter Nathan Drake'},{word:'resident evil',hint:'A long-running survival horror series involving zombies'},{word:'sekiro',hint:'An action-adventure game set in feudal Japan'},{word:'skyrim',hint:'A massive open-world fantasy RPG with dragons'},{word:'spiderman',hint:'A game where you swing through New York as Spider-Man'},{word:'valheim',hint:'A survival and sandbox game with a Viking theme'},{word:'stardew valley',hint:'A popular farming simulation game'},{word:'hollow knight',hint:'A game about a knight in an insect kingdom'},{word:'undertale',hint:'An RPG where you can befriend or fight monsters'},{word:'god of war',hint:'Action series about Kratos, first in Greek then Norse mythology'},{word:'assassins creed',hint:'A historical action-adventure series about a secret order'},{word:'metroid',hint:'A sci-fi action series starring bounty hunter Samus Aran'},{word:'shovel knight',hint:'A knight who fights with a garden tool'},{word:'fallout',hint:'A series of post-apocalyptic role-playing games'},{word:'red dead redemption',hint:'A Western-themed action-adventure series'}
+      {word:"minecraft",cefr:"A1",hint:"A sandbox game about placing blocks and going on adventures"},
+      {word:"fortnite",cefr:"A1",hint:"A popular battle royale game with building mechanics"},
+      {word:"overwatch",cefr:"B1",hint:"A team-based multiplayer first-person shooter with hero characters"},
+      {word:"bioshock",cefr:"B1",hint:"A first-person shooter set in the underwater city of Rapture"},
+      {word:"bloodborne",cefr:"B2",hint:"A dark action RPG set in the Gothic city of Yharnam"},
+      {word:"cyberpunk",cefr:"B1",hint:"An action RPG set in the futuristic Night City"},
+      {word:"dark souls",cefr:"B1",hint:"A notoriously difficult action RPG series"},
+      {word:"dead space",cefr:"B1",hint:"A survival horror game set on a spaceship"},
+      {word:"dishonored",cefr:"B2",hint:"A stealth action game where you play as a supernatural assassin"},
+      {word:"battlefield",cefr:"B1",hint:"A series of large-scale military first-person shooters"},
+      {word:"uncharted",cefr:"B1",hint:"An action-adventure series following treasure hunter Nathan Drake"},
+      {word:"resident evil",cefr:"A2",hint:"A long-running survival horror series involving zombies"},
+      {word:"sekiro",cefr:"B2",hint:"An action-adventure game set in feudal Japan"},
+      {word:"skyrim",cefr:"B1",hint:"A massive open-world fantasy RPG with dragons"},
+      {word:"spiderman",cefr:"A1",hint:"A game where you swing through New York as Spider-Man"},
+      {word:"valheim",cefr:"B2",hint:"A survival and sandbox game with a Viking theme"},
+      {word:"stardew valley",cefr:"B1",hint:"A popular farming simulation game"},
+      {word:"hollow knight",cefr:"B1",hint:"A game about a knight in an insect kingdom"},
+      {word:"undertale",cefr:"B1",hint:"An RPG where you can befriend or fight monsters"},
+      {word:"god of war",cefr:"A2",hint:"Action series about Kratos, first in Greek then Norse mythology"},
+      {word:"assassins creed",cefr:"A2",hint:"A historical action-adventure series about a secret order"},
+      {word:"metroid",cefr:"B1",hint:"A sci-fi action series starring bounty hunter Samus Aran"},
+      {word:"shovel knight",cefr:"B2",hint:"A knight who fights with a garden tool"},
+      {word:"fallout",cefr:"B1",hint:"A series of post-apocalyptic role-playing games"},
+      {word:"red dead redemption",cefr:"B1",hint:"A Western-themed action-adventure series"}
     ],
     "verbs": [
-      {word:'accomplish',hint:'To achieve or complete successfully'},{word:'appreciate',hint:'To recognize the full worth of'},{word:'communicate',hint:'To share or exchange information'},{word:'concentrate',hint:"To focus all one's attention"},{word:'congratulate',hint:'To praise someone for an achievement'},{word:'consider',hint:'To think carefully about something'},{word:'continue',hint:'To persist in an activity or process'},{word:'contribute',hint:'To give in order to help achieve or provide something'},{word:'decorate',hint:'To make something look more attractive'},{word:'demonstrate',hint:'To clearly show the existence or truth of something'},{word:'describe',hint:'To give an account in words of someone or something'},{word:'disappear',hint:'To cease to be visible'},{word:'discover',hint:'To find something unexpectedly'},{word:'distribute',hint:'To give shares of something; deal out'},{word:'encourage',hint:'To give support, confidence, or hope to someone'},{word:'establish',hint:'To set up on a firm or permanent basis'},{word:'exaggerate',hint:'To represent something as being larger or worse than it is'},{word:'experience',hint:'To encounter or undergo an event or an occurrence'},{word:'fascinate',hint:'To draw the powerfully attracting interest of'},{word:'illustrate',hint:'To explain or make clear by using examples or visuals'},{word:'investigate',hint:'To carry out a systematic or formal inquiry'},{word:'negotiate',hint:'To try to reach an agreement or compromise'},{word:'participate',hint:'To take part in an action or event'},{word:'recommend',hint:'To suggest as a course of action'},{word:'celebrate',hint:'To acknowledge a significant event with a social gathering'}
+      {word:"accomplish",cefr:"B2",hint:"To achieve or complete successfully"},
+      {word:"appreciate",cefr:"B1",hint:"To recognize the full worth of"},
+      {word:"communicate",cefr:"B1",hint:"To share or exchange information"},
+      {word:"concentrate",cefr:"B1",hint:"To focus all one's attention"},
+      {word:"congratulate",cefr:"B1",hint:"To praise someone for an achievement"},
+      {word:"consider",cefr:"B1",hint:"To think carefully about something"},
+      {word:"continue",cefr:"A2",hint:"To persist in an activity or process"},
+      {word:"contribute",cefr:"B2",hint:"To give in order to help achieve or provide something"},
+      {word:"decorate",cefr:"B1",hint:"To make something look more attractive"},
+      {word:"demonstrate",cefr:"B2",hint:"To clearly show the existence or truth of something"},
+      {word:"describe",cefr:"A2",hint:"To give an account in words of someone or something"},
+      {word:"disappear",cefr:"B1",hint:"To cease to be visible"},
+      {word:"discover",cefr:"A2",hint:"To find something unexpectedly"},
+      {word:"distribute",cefr:"B2",hint:"To give shares of something; deal out"},
+      {word:"encourage",cefr:"B1",hint:"To give support, confidence, or hope to someone"},
+      {word:"establish",cefr:"B2",hint:"To set up on a firm or permanent basis"},
+      {word:"exaggerate",cefr:"B2",hint:"To represent something as being larger or worse than it is"},
+      {word:"experience",cefr:"B1",hint:"To encounter or undergo an event or an occurrence"},
+      {word:"fascinate",cefr:"B2",hint:"To draw the powerfully attracting interest of"},
+      {word:"illustrate",cefr:"B2",hint:"To explain or make clear by using examples or visuals"},
+      {word:"investigate",cefr:"B1",hint:"To carry out a systematic or formal inquiry"},
+      {word:"negotiate",cefr:"B2",hint:"To try to reach an agreement or compromise"},
+      {word:"participate",cefr:"B1",hint:"To take part in an action or event"},
+      {word:"recommend",cefr:"B1",hint:"To suggest as a course of action"},
+      {word:"celebrate",cefr:"A2",hint:"To acknowledge a significant event with a social gathering"}
     ],
     "professions": [
-      {word:'accountant',hint:'A person who keeps or inspects financial records'},{word:'architect',hint:'A person who designs buildings'},{word:'astronaut',hint:'A person who is trained to travel in a spacecraft'},{word:'bartender',hint:'A person who mixes and serves drinks at a bar'},{word:'biologist',hint:'A scientist who studies living organisms'},{word:'carpenter',hint:'A person who makes and repairs wooden objects'},{word:'chiropractor',hint:'A practitioner of spinal column manipulation'},{word:'consultant',hint:'A person who provides expert advice professionally'},{word:'detective',hint:'A person, especially a police officer, who investigates crimes'},{word:'electrician',hint:'A person who installs and maintains electrical equipment'},{word:'engineer',hint:'A person who designs, builds, or maintains engines or structures'},{word:'geologist',hint:"An expert in the field of the earth's physical structure"},{word:'historian',hint:'An expert in or student of the past'},{word:'journalist',hint:'A person who writes for newspapers, magazines, or news websites'},{word:'librarian',hint:'A person who works professionally in a place with books'},{word:'magician',hint:'A person who performs tricks for entertainment'},{word:'mechanic',hint:'A person who repairs and maintains machinery'},{word:'musician',hint:'A person who plays a musical instrument'},{word:'pharmacist',hint:'A person who is professionally qualified to dispense drugs'},{word:'physicist',hint:'An expert in the science of matter and energy'},{word:'politician',hint:'A person who is professionally involved in government affairs'},{word:'scientist',hint:'A person who conducts scientific research'},{word:'beautician',hint:'A person who gives beauty treatments'},{word:'contractor',hint:'A person who undertakes to provide materials for a job'},{word:'paramedic',hint:'A person trained to give emergency medical care'}
+      {word:"accountant",cefr:"B1",hint:"A person who keeps or inspects financial records"},
+      {word:"architect",cefr:"B1",hint:"A person who designs buildings"},
+      {word:"astronaut",cefr:"A2",hint:"A person who is trained to travel in a spacecraft"},
+      {word:"bartender",cefr:"B1",hint:"A person who mixes and serves drinks at a bar"},
+      {word:"biologist",cefr:"B1",hint:"A scientist who studies living organisms"},
+      {word:"carpenter",cefr:"B1",hint:"A person who makes and repairs wooden objects"},
+      {word:"chiropractor",cefr:"B2",hint:"A practitioner of spinal column manipulation"},
+      {word:"consultant",cefr:"B2",hint:"A person who provides expert advice professionally"},
+      {word:"detective",cefr:"A2",hint:"A person, especially a police officer, who investigates crimes"},
+      {word:"electrician",cefr:"B1",hint:"A person who installs and maintains electrical equipment"},
+      {word:"engineer",cefr:"A2",hint:"A person who designs, builds, or maintains engines or structures"},
+      {word:"geologist",cefr:"B2",hint:"An expert in the field of the earth's physical structure"},
+      {word:"historian",cefr:"B1",hint:"An expert in or student of the past"},
+      {word:"journalist",cefr:"B1",hint:"A person who writes for newspapers, magazines, or news websites"},
+      {word:"librarian",cefr:"B1",hint:"A person who works professionally in a place with books"},
+      {word:"magician",cefr:"A2",hint:"A person who performs tricks for entertainment"},
+      {word:"mechanic",cefr:"A2",hint:"A person who repairs and maintains machinery"},
+      {word:"musician",cefr:"A2",hint:"A person who plays a musical instrument"},
+      {word:"pharmacist",cefr:"B1",hint:"A person who is professionally qualified to dispense drugs"},
+      {word:"physicist",cefr:"B2",hint:"An expert in the science of matter and energy"},
+      {word:"politician",cefr:"B1",hint:"A person who is professionally involved in government affairs"},
+      {word:"scientist",cefr:"A2",hint:"A person who conducts scientific research"},
+      {word:"beautician",cefr:"B2",hint:"A person who gives beauty treatments"},
+      {word:"contractor",cefr:"B2",hint:"A person who undertakes to provide materials for a job"},
+      {word:"paramedic",cefr:"B2",hint:"A person trained to give emergency medical care"}
     ],
     "moviesAndTvShows": [
-      {word:'inception',hint:"A movie about entering people's dreams"},{word:'gladiator',hint:'A historical drama about a Roman general who becomes a slave'},{word:'braveheart',hint:"A film about William Wallace's war against England"},{word:'goodfellas',hint:'A Martin Scorsese film about the mafia'},{word:'seinfeld',hint:'A sitcom famously about "nothing"'},{word:'westworld',hint:'A TV series about a futuristic theme park with androids'},{word:'chernobyl',hint:'A miniseries about a nuclear disaster in the Soviet Union'},{word:'stranger things',hint:'A Netflix series about kids in a small town facing supernatural mysteries'},{word:'succession',hint:'A TV series about a dysfunctional family fighting for control of a media empire'},{word:'anastasia',hint:'An animated film about the lost Russian princess'},{word:'interstellar',hint:'A sci-fi film about astronauts traveling through a wormhole'},{word:'hercules',hint:'A Disney film about the son of Zeus'},{word:'parasite',hint:'A South Korean film that won the Academy Award for Best Picture'},{word:'ratatouille',hint:'An animated film about a rat who wants to be a chef'},{word:'watchmen',hint:'A film and TV series about a group of retired superheroes'},{word:'narnia',hint:'A fantasy series about children who discover a magical wardrobe'},{word:'zoolander',hint:'A comedy film about a male model'},{word:'arrival',hint:'A sci-fi film about a linguist learning an alien language'},{word:'spotlight',hint:'A film about a team of journalists investigating child abuse'},{word:'whiplash',hint:'A film about a young jazz drummer and his abusive instructor'},{word:'black swan',hint:'A psychological thriller about a ballerina'},{word:'entourage',hint:'A TV series about a movie star and his childhood friends'},{word:'madagascar',hint:'An animated film about zoo animals who escape to an island'},{word:'prometheus',hint:'A sci-fi horror film, a prequel to the Alien series'},{word:'underworld',hint:'A film series about a war between vampires and werewolves'}
+      {word:"inception",cefr:"B1",hint:"A movie about entering people's dreams"},
+      {word:"gladiator",cefr:"B1",hint:"A historical drama about a Roman general who becomes a slave"},
+      {word:"braveheart",cefr:"B1",hint:"A film about William Wallace's war against England"},
+      {word:"goodfellas",cefr:"B2",hint:"A Martin Scorsese film about the mafia"},
+      {word:"seinfeld",cefr:"B2",hint:"A sitcom famously about \"nothing\""},
+      {word:"westworld",cefr:"B1",hint:"A TV series about a futuristic theme park with androids"},
+      {word:"chernobyl",cefr:"B1",hint:"A miniseries about a nuclear disaster in the Soviet Union"},
+      {word:"stranger things",cefr:"A2",hint:"A Netflix series about kids in a small town facing supernatural mysteries"},
+      {word:"succession",cefr:"B2",hint:"A TV series about a dysfunctional family fighting for control of a media empire"},
+      {word:"anastasia",cefr:"B1",hint:"An animated film about the lost Russian princess"},
+      {word:"interstellar",cefr:"B1",hint:"A sci-fi film about astronauts traveling through a wormhole"},
+      {word:"hercules",cefr:"A2",hint:"A Disney film about the son of Zeus"},
+      {word:"parasite",cefr:"B1",hint:"A South Korean film that won the Academy Award for Best Picture"},
+      {word:"ratatouille",cefr:"A2",hint:"An animated film about a rat who wants to be a chef"},
+      {word:"watchmen",cefr:"B1",hint:"A film and TV series about a group of retired superheroes"},
+      {word:"narnia",cefr:"A2",hint:"A fantasy series about children who discover a magical wardrobe"},
+      {word:"zoolander",cefr:"B2",hint:"A comedy film about a male model"},
+      {word:"arrival",cefr:"B1",hint:"A sci-fi film about a linguist learning an alien language"},
+      {word:"spotlight",cefr:"B2",hint:"A film about a team of journalists investigating child abuse"},
+      {word:"whiplash",cefr:"B2",hint:"A film about a young jazz drummer and his abusive instructor"},
+      {word:"black swan",cefr:"B1",hint:"A psychological thriller about a ballerina"},
+      {word:"entourage",cefr:"B2",hint:"A TV series about a movie star and his childhood friends"},
+      {word:"madagascar",cefr:"A2",hint:"An animated film about zoo animals who escape to an island"},
+      {word:"prometheus",cefr:"B2",hint:"A sci-fi horror film, a prequel to the Alien series"},
+      {word:"underworld",cefr:"B1",hint:"A film series about a war between vampires and werewolves"}
     ],
     "countries": [
-      {word:'argentina',hint:'South American country known for tango and steak'},{word:'australia',hint:'A country and continent known for kangaroos and koalas'},{word:'bangladesh',hint:'A South Asian country known for its lush greenery and many waterways'},{word:'cameroon',hint:'A country in Central Africa'},{word:'colombia',hint:'A South American country known for its coffee'},{word:'denmark',hint:'A Scandinavian country, home of Lego'},{word:'ethiopia',hint:'A country in the Horn of Africa'},{word:'finland',hint:'A Nordic country known for its many lakes'},{word:'germany',hint:'A major country in Central Europe'},{word:'indonesia',hint:'A Southeast Asian nation made up of thousands of volcanic islands'},{word:'malaysia',hint:'A Southeast Asian country known for its rainforests and beaches'},{word:'morocco',hint:'A North African country bordering the Atlantic Ocean and Mediterranean Sea'},{word:'netherlands',hint:'A country in northwestern Europe, known for its flat landscape of canals and windmills'},{word:'nigeria',hint:'A country in West Africa'},{word:'norway',hint:'A Scandinavian country known for its fjords'},{word:'pakistan',hint:'A country in South Asia'},{word:'portugal',hint:'A southern European country on the Iberian Peninsula'},{word:'romania',hint:'A southeastern European country known for the region of Transylvania'},{word:'scotland',hint:'A country in the United Kingdom, north of England'},{word:'singapore',hint:'An island city-state off southern Malaysia'},{word:'sweden',hint:'A Scandinavian nation with thousands of coastal islands and inland lakes'},{word:'thailand',hint:'A Southeast Asian country known for its tropical beaches and ornate temples'},{word:'tanzania',hint:'An East African country known for its vast wilderness areas'},{word:'ukraine',hint:'A large country in Eastern Europe'},{word:'vietnam',hint:'A Southeast Asian country known for its beaches, rivers, and bustling cities'}
+      {word:"argentina",cefr:"A1",hint:"South American country known for tango and steak"},
+      {word:"australia",cefr:"A1",hint:"A country and continent known for kangaroos and koalas"},
+      {word:"bangladesh",cefr:"B1",hint:"A South Asian country known for its lush greenery and many waterways"},
+      {word:"cameroon",cefr:"B1",hint:"A country in Central Africa"},
+      {word:"colombia",cefr:"A1",hint:"A South American country known for its coffee"},
+      {word:"denmark",cefr:"A2",hint:"A Scandinavian country, home of Lego"},
+      {word:"ethiopia",cefr:"B1",hint:"A country in the Horn of Africa"},
+      {word:"finland",cefr:"A2",hint:"A Nordic country known for its many lakes"},
+      {word:"germany",cefr:"A1",hint:"A major country in Central Europe"},
+      {word:"indonesia",cefr:"A2",hint:"A Southeast Asian nation made up of thousands of volcanic islands"},
+      {word:"malaysia",cefr:"A2",hint:"A Southeast Asian country known for its rainforests and beaches"},
+      {word:"morocco",cefr:"A2",hint:"A North African country bordering the Atlantic Ocean and Mediterranean Sea"},
+      {word:"netherlands",cefr:"B1",hint:"A country in northwestern Europe, known for its flat landscape of canals and windmills"},
+      {word:"nigeria",cefr:"A2",hint:"A country in West Africa"},
+      {word:"norway",cefr:"A2",hint:"A Scandinavian country known for its fjords"},
+      {word:"pakistan",cefr:"A2",hint:"A country in South Asia"},
+      {word:"portugal",cefr:"A1",hint:"A southern European country on the Iberian Peninsula"},
+      {word:"romania",cefr:"A2",hint:"A southeastern European country known for the region of Transylvania"},
+      {word:"scotland",cefr:"A2",hint:"A country in the United Kingdom, north of England"},
+      {word:"singapore",cefr:"A2",hint:"An island city-state off southern Malaysia"},
+      {word:"sweden",cefr:"A2",hint:"A Scandinavian nation with thousands of coastal islands and inland lakes"},
+      {word:"thailand",cefr:"A2",hint:"A Southeast Asian country known for its tropical beaches and ornate temples"},
+      {word:"tanzania",cefr:"B1",hint:"An East African country known for its vast wilderness areas"},
+      {word:"ukraine",cefr:"A2",hint:"A large country in Eastern Europe"},
+      {word:"vietnam",cefr:"A2",hint:"A Southeast Asian country known for its beaches, rivers, and bustling cities"}
     ],
     "brandsAndCompanies": [
-      {word:'microsoft',hint:'A technology company that created Windows'},{word:'starbucks',hint:"The world's largest coffeehouse chain"},{word:'mcdonalds',hint:"The world's largest fast-food restaurant chain"},{word:'volkswagen',hint:'A major German automobile manufacturer'},{word:'instagram',hint:'A photo and video sharing social networking service'},{word:'mastercard',hint:'A global payments and technology company'},{word:'playstation',hint:'A series of video game consoles created by Sony'},{word:'dreamworks',hint:'An animation studio known for Shrek and Madagascar'},{word:'spotify',hint:'A popular music and podcast streaming service'},{word:'panasonic',hint:'A major Japanese multinational electronics corporation'},{word:'converse',hint:'An American shoe company known for its canvas sneakers'},{word:'nespresso',hint:'A brand of coffee machines and capsules'},{word:'pringles',hint:'A brand of potato-based chips sold in a tube'},{word:'new balance',hint:'An American multinational corporation for athletic footwear'},{word:'patagonia',hint:'An American clothing company that markets sustainable outdoor clothing'},{word:'timberland',hint:'An American manufacturer of outdoor wear, particularly footwear'},{word:'universal',hint:'A major American film studio'},{word:'warner bros',hint:'An American film and entertainment company'},{word:'bridgestone',hint:'A Japanese multinational auto and truck parts manufacturer'},{word:'goodyear',hint:'A multinational tire manufacturing company'},{word:'qualcomm',hint:'A company that creates semiconductors and software for wireless technology'},{word:'motorola',hint:'An American multinational telecommunications company'},{word:'champion',hint:'An American manufacturer of clothing, specializing in sportswear'},{word:'columbia',hint:'A company that manufactures and distributes outerwear and sportswear'},{word:'netflix',hint:'A streaming service known for original series and films'}
+      {word:"microsoft",cefr:"A1",hint:"A technology company that created Windows"},
+      {word:"starbucks",cefr:"A1",hint:"The world's largest coffeehouse chain"},
+      {word:"mcdonalds",cefr:"A1",hint:"The world's largest fast-food restaurant chain"},
+      {word:"volkswagen",cefr:"A2",hint:"A major German automobile manufacturer"},
+      {word:"instagram",cefr:"A1",hint:"A photo and video sharing social networking service"},
+      {word:"mastercard",cefr:"A2",hint:"A global payments and technology company"},
+      {word:"playstation",cefr:"A1",hint:"A series of video game consoles created by Sony"},
+      {word:"dreamworks",cefr:"A2",hint:"An animation studio known for Shrek and Madagascar"},
+      {word:"spotify",cefr:"A1",hint:"A popular music and podcast streaming service"},
+      {word:"panasonic",cefr:"B1",hint:"A major Japanese multinational electronics corporation"},
+      {word:"converse",cefr:"A2",hint:"An American shoe company known for its canvas sneakers"},
+      {word:"nespresso",cefr:"A2",hint:"A brand of coffee machines and capsules"},
+      {word:"pringles",cefr:"A2",hint:"A brand of potato-based chips sold in a tube"},
+      {word:"new balance",cefr:"A2",hint:"An American multinational corporation for athletic footwear"},
+      {word:"patagonia",cefr:"B1",hint:"An American clothing company that markets sustainable outdoor clothing"},
+      {word:"timberland",cefr:"B1",hint:"An American manufacturer of outdoor wear, particularly footwear"},
+      {word:"universal",cefr:"A2",hint:"A major American film studio"},
+      {word:"warner bros",cefr:"A2",hint:"An American film and entertainment company"},
+      {word:"bridgestone",cefr:"B2",hint:"A Japanese multinational auto and truck parts manufacturer"},
+      {word:"goodyear",cefr:"B1",hint:"A multinational tire manufacturing company"},
+      {word:"qualcomm",cefr:"B2",hint:"A company that creates semiconductors and software for wireless technology"},
+      {word:"motorola",cefr:"B1",hint:"An American multinational telecommunications company"},
+      {word:"champion",cefr:"A2",hint:"An American manufacturer of clothing, specializing in sportswear"},
+      {word:"columbia",cefr:"B1",hint:"A company that manufactures and distributes outerwear and sportswear"},
+      {word:"netflix",cefr:"A1",hint:"A streaming service known for original series and films"}
     ]
   }
 };
@@ -868,14 +1363,69 @@ let turnStack = [];       // one snapshot per turn, for Undo
 let turnTimeout = null;   // handle for the inter-turn pause
 let endArmed = false;     // End Game is a two-click confirm
 
+// Steal
+let stealArmed = false;    // waiting for the teacher to pick who buzzed
+let stealTeamIdx = -1;     // team currently attempting the steal
+let stealPoints = 0;       // locked in when the steal opens
+let stealBlocked = new Set(); // teams that already failed on this word
+let savedPoints = 0, savedTime = 0;
+
+const CEFR_ORDER = ['A1','A2','B1','B2'];
+const LEVEL_BANDS = {
+  ALL: ['A1','A2','B1','B2'],
+  B1:  ['A1','A2','B1'],
+  A2:  ['A1','A2']
+};
+const LEVEL_LABELS = { ALL:'All levels', B1:'Up to B1', A2:'A1–A2 only' };
+
 const UNDO_DEPTH    = 30;
 const SCORE_STEP    = 1;  // manual +/- per click
 const MAX_REVEALS   = 5;  // caps a turn at MAX_REVEALS x timerDur
-const WRONG_COST    = 1;  // points lost per wrong Check
-const HINT_COST     = 2;  // points lost when the hint is taken
-const FREE_HINT_AT  = 3;  // points at which the hint is shown for free
-const MIN_POINTS    = 1;  // a correct answer always pays at least this
+
+// Scoring. The old 10 -> 1 curve in steps of 1 barely separated a fast solve
+// from a five-reveal crawl. Deliberately NO speed bonus: rewarding whoever reads
+// English fastest is the wrong incentive in an A1-B2 room, so the spread comes
+// from what a team spends, not how quickly it reads.
+const START_POINTS  = 20;
+const REVEAL_COST   = 3;  // per timer cycle: 20 17 14 11 8 5
+const WRONG_COST    = 2;  // per wrong Check
+const HINT_COST     = 5;  // when the definition is hidden
+const FREE_HINT_AT  = 8;  // points at which the hint is shown for free
+const MIN_POINTS    = 2;  // a correct answer always pays at least this
 const TURN_GAP_MS   = 2200;
+
+// Steal gating. Three revealed letters, and at least two still hidden — the
+// second clause is what stops a 4-letter word being handed over with one blank.
+const STEAL_MIN_REVEALS = 3;
+const STEAL_MIN_HIDDEN  = 2;
+const STEAL_SECONDS     = 15;
+
+// ═══════════════════════════════════════════
+//  SPEECH — the answer is spoken once the turn is over, never before.
+//  Hearing it during play would hand the word over.
+// ═══════════════════════════════════════════
+function speakAnswer(word) {
+  if(!settings.speak) return;
+  if(typeof speechSynthesis === 'undefined') return;
+  try {
+    // Chrome wedges if speak() follows cancel() too closely, and the voice list
+    // is empty until it has been fetched at least once.
+    speechSynthesis.cancel();
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(word);
+      const voices = speechSynthesis.getVoices() || [];
+      const en = voices.find(v => /^en[-_]GB/i.test(v.lang))
+              || voices.find(v => /^en/i.test(v.lang));
+      if(en) u.voice = en;
+      u.lang = (en && en.lang) || 'en-GB';
+      u.rate = 0.85;
+      speechSynthesis.speak(u);
+    }, 120);
+  } catch(e) {}
+}
+if(typeof speechSynthesis !== 'undefined' && speechSynthesis.getVoices) {
+  try { speechSynthesis.getVoices(); } catch(e) {}
+}
 
 // ═══════════════════════════════════════════
 //  THEME
@@ -980,6 +1530,39 @@ function getTeamEmoji(color) {
   }[color]||'⚪';
 }
 
+// How many words the current level + difficulty + category selection actually
+// leaves in play. Shown live in setup so a level filter cannot silently starve
+// the game the way an unlabelled DB would.
+function poolSize(diff, level, cats) {
+  const allowed = LEVEL_BANDS[level];
+  let n = 0;
+  cats.forEach(c => {
+    n += WORDS[diff][c].filter(w => allowed.includes(w.cefr)).length;
+  });
+  return n;
+}
+
+function categoriesWithWords(diff, level, cats) {
+  const allowed = LEVEL_BANDS[level];
+  return cats.filter(c => WORDS[diff][c].some(w => allowed.includes(w.cefr)));
+}
+
+function updateAvailability() {
+  const note = document.getElementById('availNote');
+  if(!note) return;
+  const diff  = document.querySelector('#difficultyOptions .active').dataset.value;
+  const level = document.querySelector('#levelOptions .active').dataset.value;
+  const cats  = [...document.querySelectorAll('.cat-checkbox:checked')].map(c=>c.value);
+  if(!cats.length) { note.textContent = 'No categories selected.'; note.classList.add('thin'); return; }
+  const n = poolSize(diff, level, cats);
+  const live = categoriesWithWords(diff, level, cats).length;
+  const dropped = cats.length - live;
+  note.textContent = `${n} words available at ${LEVEL_LABELS[level]}`
+    + ` · ${live} of ${cats.length} categories in play`
+    + (dropped ? ` (${dropped} empty at this level)` : '');
+  note.classList.toggle('thin', n < 20);
+}
+
 function setupStartScreen() {
   animateLogo();
   buildCategoryOptions();
@@ -994,9 +1577,14 @@ function setupStartScreen() {
         if(row.id==='teamsOptions') {
           buildTeamNameInputs(parseInt(btn.dataset.value));
         }
+        updateAvailability();
       });
     });
   });
+
+  document.querySelectorAll('.cat-checkbox').forEach(cb =>
+    cb.addEventListener('change', updateAvailability));
+  updateAvailability();
 
   document.getElementById('startBtn').addEventListener('click', startGame);
 }
@@ -1023,10 +1611,23 @@ function startGame() {
   const difficulty = document.querySelector('#difficultyOptions .active').dataset.value;
   const timerDur = parseInt(document.querySelector('#timerOptions .active').dataset.value);
   const maxRounds = parseInt(document.querySelector('#roundsOptions .active').dataset.value);
-  const selectedCats = [...document.querySelectorAll('.cat-checkbox:checked')].map(c=>c.value);
+  const level     = document.querySelector('#levelOptions .active').dataset.value;
+  const defMode   = document.querySelector('#defOptions .active').dataset.value;
+  const speak     = document.querySelector('#ttsOptions .active').dataset.value === 'on';
+  const stealOn   = document.querySelector('#stealOptions .active').dataset.value === 'on';
+  let selectedCats = [...document.querySelectorAll('.cat-checkbox:checked')].map(c=>c.value);
   if(!selectedCats.length){ showSetupError('Pick at least one category to play.'); return; }
 
-  settings = { numTeams, difficulty, timerDur, maxRounds, selectedCats };
+  // Drop categories that are empty at the chosen level rather than letting
+  // startTurn draw from a category with nothing in it.
+  selectedCats = categoriesWithWords(difficulty, level, selectedCats);
+  if(!selectedCats.length){
+    showSetupError(`Nothing in those categories at ${LEVEL_LABELS[level]}. Widen the level or pick more categories.`);
+    return;
+  }
+
+  settings = { numTeams, difficulty, timerDur, maxRounds, selectedCats,
+               level, definitionFirst: defMode === 'first', speak, stealOn };
   teams = [];
   for(let i=0;i<numTeams;i++){
     const inp = document.getElementById(`tname_${i}`);
@@ -1036,6 +1637,7 @@ function startGame() {
 
   currentTeamIdx = 0; currentRound = 1; gameHistory = []; usedWords.clear();
   turnStack = []; paused = false; endArmed = false;
+  stealArmed = false; stealTeamIdx = -1; stealBlocked.clear();
   clearTimeout(turnTimeout);
 
   document.getElementById('startScreen').style.display='none';
@@ -1062,6 +1664,7 @@ function buildScoreboard() {
         <button class="adjust-btn" data-team="${i}" data-delta="${SCORE_STEP}"
           aria-label="Add ${SCORE_STEP} to ${team.name}">+</button>
       </div>`;
+    card.addEventListener('click', () => { if(stealArmed) beginSteal(i); });
     card.querySelectorAll('.adjust-btn').forEach(b => {
       b.addEventListener('click', ev => {
         ev.stopPropagation();
@@ -1108,8 +1711,10 @@ function startTurn() {
   // usedWords is keyed on category + word so a title that appears in two
   // categories (e.g. "apple") is not silently retired from both.
   const key = w => cat + '|' + w.word;
-  const pool = WORDS[settings.difficulty][cat].filter(w => !usedWords.has(key(w)));
-  const src = pool.length ? pool : WORDS[settings.difficulty][cat];
+  const allowed = LEVEL_BANDS[settings.level];
+  const atLevel = WORDS[settings.difficulty][cat].filter(w => allowed.includes(w.cefr));
+  const pool = atLevel.filter(w => !usedWords.has(key(w)));
+  const src = pool.length ? pool : atLevel;
   currentWordData = src[Math.floor(Math.random()*src.length)];
   usedWords.add(key(currentWordData));
 
@@ -1121,15 +1726,31 @@ function presentTurn() {
   clearInterval(timerInterval);
   clearTimeout(turnTimeout);
   isRevealing = false;
-  turnLocked = false; hintTaken = false; revealCount = 0; inputCooldown = false;
+  turnLocked = false; revealCount = 0; inputCooldown = false;
   paused = false;
-  currentPoints = 10; timeLeft = settings.timerDur;
+  currentPoints = START_POINTS; timeLeft = settings.timerDur;
   revealedPositions.clear(); nextRevealIdx = 0;
+  stealArmed = false; stealTeamIdx = -1; stealBlocked.clear();
+  document.getElementById('stealBanner').style.display = 'none';
   clearMessage();
 
   document.getElementById('roundBadge').textContent=`Round ${currentRound} of ${settings.maxRounds}`;
-  document.getElementById('hintBox').textContent=`💡 Stuck? Take the hint for ${HINT_COST} points.`;
-  document.getElementById('hintBox').classList.remove('active');
+
+  const hb = document.getElementById('hintBox');
+  const hintBtn = document.getElementById('hintBtn');
+  if(settings.definitionFirst) {
+    // Definition-first turns this from "permute the letters" into "recall the
+    // word", which is the version that actually teaches vocabulary.
+    hintTaken = true;
+    hb.innerHTML = `📖 <strong>${currentWordData.hint}</strong>`;
+    hb.classList.add('active');
+    hintBtn.style.display = 'none';
+  } else {
+    hintTaken = false;
+    hb.textContent = `💡 Stuck? Take the hint for ${HINT_COST} points.`;
+    hb.classList.remove('active');
+    hintBtn.style.display = '';
+  }
   document.getElementById('pointsPill').textContent=`${currentPoints} pts`;
   document.getElementById('timerRing').textContent=timeLeft;
   document.getElementById('timerRing').classList.remove('urgent','paused');
@@ -1143,6 +1764,8 @@ function presentTurn() {
 
   document.getElementById('categoryBadge').textContent =
     `${CAT_ICONS[currentCategory]} ${CATEGORIES[currentCategory]}`;
+  document.getElementById('levelPill').textContent = currentWordData.cefr;
+  document.getElementById('stealBtn').style.display = settings.stealOn ? '' : 'none';
 
   document.getElementById('timerRing').style.borderColor =
     getTeamHex(teams[currentTeamIdx].color);
@@ -1205,10 +1828,136 @@ function undoTurn() {
 }
 
 // ═══════════════════════════════════════════
+//  STEAL
+// ═══════════════════════════════════════════
+// Gives the watching teams something to do without turning the game into a
+// buzzer race. The teacher judges who buzzed; the game only handles the scoring.
+function hiddenCount() {
+  return answerSlots.filter((s,i) => s.original !== ' ' && !revealedPositions.has(i)).length;
+}
+
+function stealActive() { return stealTeamIdx >= 0; }
+
+function canSteal() {
+  return settings.stealOn && !turnLocked && !paused && !stealActive() && !stealArmed
+      && revealCount >= STEAL_MIN_REVEALS
+      && hiddenCount() >= STEAL_MIN_HIDDEN
+      && teams.some((t,i) => i !== currentTeamIdx && !stealBlocked.has(i));
+}
+
+function armSteal() {
+  if(stealArmed) { cancelSteal(); return; }
+  if(!canSteal()) return;
+  stealArmed = true;
+  paused = true;                       // the clock waits while the teacher picks
+  document.getElementById('letterSection').classList.add('locked');
+  markPickable(true);
+  showMessage('🏴‍☠️ Click the card of the team that buzzed.', 'error');
+  paintTeacherBar();
+}
+
+function cancelSteal() {
+  stealArmed = false;
+  paused = false;
+  markPickable(false);
+  document.getElementById('letterSection').classList.remove('locked');
+  clearMessage();
+  paintTeacherBar();
+}
+
+function markPickable(on) {
+  teams.forEach((t,i) => {
+    const card = document.getElementById(`tc_${i}`);
+    if(!card) return;
+    const eligible = on && i !== currentTeamIdx && !stealBlocked.has(i);
+    card.classList.toggle('pickable', eligible);
+  });
+}
+
+function beginSteal(idx) {
+  if(!stealArmed) return;
+  if(idx === currentTeamIdx || stealBlocked.has(idx)) return;
+
+  stealArmed = false;
+  markPickable(false);
+  paused = false;
+
+  savedPoints = currentPoints;
+  savedTime   = timeLeft;
+  stealTeamIdx = idx;
+  // Half of what the word is worth right now. The stealing team buys the
+  // current exposure, so the reveal ladder stops for the duration.
+  stealPoints = Math.max(MIN_POINTS, Math.ceil(currentPoints / 2));
+
+  answerSlots.forEach((sl,i) => { if(!revealedPositions.has(i)) clearSlot(i); });
+  document.getElementById('checkBtn').classList.remove('ready');
+  document.getElementById('letterSection').classList.remove('locked');
+  document.getElementById(`tc_${idx}`).classList.add('stealing');
+
+  timeLeft = STEAL_SECONDS;
+  document.getElementById('timerRing').textContent = timeLeft;
+  document.getElementById('timerRing').style.borderColor = getTeamHex(teams[idx].color);
+  document.getElementById('pointsPill').textContent = `${stealPoints} pts`;
+
+  const banner = document.getElementById('stealBanner');
+  banner.style.display = '';
+  banner.textContent = `🏴‍☠️ ${teams[idx].name} is stealing — one attempt, ${STEAL_SECONDS}s, ${stealPoints} points`;
+
+  clearMessage();
+  setActionsEnabled(true);
+  paintTeacherBar();
+  sfxSelect();
+}
+
+function endStealDisplay() {
+  document.getElementById('stealBanner').style.display = 'none';
+  teams.forEach((t,i) => document.getElementById(`tc_${i}`).classList.remove('stealing'));
+}
+
+function stealSucceeded() {
+  const idx = stealTeamIdx;
+  const won = stealPoints;
+  const from = teams[currentTeamIdx].name;
+  teams[idx].score += won;
+  bumpScore(idx);
+  endStealDisplay();
+  sfxCorrect();
+  launchConfetti();
+  showMessage(`🏴‍☠️ Stolen! ${teams[idx].name} +${won}.`, 'success');
+  speakAnswer(currentWordData.word);
+  stealTeamIdx = -1;
+  // The word is gone; the original team's turn is spent either way.
+  advanceTurn('stolen', won, { team: teams[idx].name, from });
+}
+
+function stealFailed(reason) {
+  const idx = stealTeamIdx;
+  stealBlocked.add(idx);
+  stealTeamIdx = -1;
+  endStealDisplay();
+  sfxWrong();
+
+  currentPoints = savedPoints;
+  timeLeft = savedTime;
+  document.getElementById('pointsPill').textContent = `${currentPoints} pts`;
+  document.getElementById('timerRing').textContent = timeLeft;
+  document.getElementById('timerRing').style.borderColor = getTeamHex(teams[currentTeamIdx].color);
+
+  answerSlots.forEach((sl,i) => { if(!revealedPositions.has(i)) clearSlot(i); });
+  document.getElementById('checkBtn').classList.remove('ready');
+
+  showMessage(`🏴‍☠️ ${teams[idx].name} missed it — back to ${teams[currentTeamIdx].name}. (${reason})`, 'error');
+  inputCooldown = true;
+  setTimeout(() => { inputCooldown = false; }, 800);
+  paintTeacherBar();
+}
+
+// ═══════════════════════════════════════════
 //  PAUSE / END
 // ═══════════════════════════════════════════
 function togglePause() {
   if(turnLocked) return;
+  if(stealArmed) { cancelSteal(); return; }
   paused = !paused;
   document.getElementById('timerRing').classList.toggle('paused', paused);
   document.getElementById('letterSection').classList.toggle('locked', paused);
@@ -1237,14 +1986,21 @@ function paintTeacherBar() {
   const u = document.getElementById('undoBtn');
   const e = document.getElementById('endBtn');
   if(p) {
-    p.textContent = paused ? '▶️ Resume' : '⏸️ Pause';
-    p.classList.toggle('on', paused);
-    p.disabled = turnLocked;
+    const reallyPaused = paused && !stealArmed;
+    p.textContent = reallyPaused ? '▶️ Resume' : '⏸️ Pause';
+    p.classList.toggle('on', reallyPaused);
+    p.disabled = turnLocked || stealArmed || stealActive();
   }
   if(u) u.disabled = !canUndo();
   if(e) {
     e.textContent = endArmed ? '⏹️ Sure?' : '⏹️ End Game';
     e.classList.toggle('armed', endArmed);
+  }
+  const st = document.getElementById('stealBtn');
+  if(st) {
+    st.disabled = !(canSteal() || stealArmed);
+    st.classList.toggle('live', stealArmed || stealActive());
+    st.textContent = stealArmed ? '🏴‍☠️ Pick a team' : '🏴‍☠️ Steal';
   }
 }
 
@@ -1260,6 +2016,9 @@ function getTeamHex(color) {
 function lockTurn() {
   turnLocked = true;
   paused = false;
+  stealArmed = false; stealTeamIdx = -1;
+  markPickable(false);
+  endStealDisplay();
   clearInterval(timerInterval);
   document.getElementById('timerRing').classList.remove('paused');
   paintTeacherBar();
@@ -1277,16 +2036,18 @@ function setActionsEnabled(on) {
   if(on && hb && hintTaken) hb.disabled = true;
 }
 
-function advanceTurn(result, ptsEarned) {
+function advanceTurn(result, ptsEarned, override) {
   // The board must be dead before the inter-turn pause, or a stray tap during
   // those 2.2s scores the *next* team and fires advanceTurn a second time.
   lockTurn();
 
   gameHistory.push({
     round: currentRound,
-    team: teams[currentTeamIdx].name,
+    team: (override && override.team) || teams[currentTeamIdx].name,
+    from: override && override.from,
     word: currentWordData.word,
     category: CATEGORIES[currentCategory],
+    level: currentWordData.cefr,
     result,
     pts: ptsEarned
   });
@@ -1421,6 +2182,7 @@ function handleKeyboard(e) {
   if(e.shiftKey && /^[a-zA-Z]$/.test(e.key)) {
     e.preventDefault();
     switch(e.key.toLowerCase()) {
+      case 's': armSteal(); break;
       case 'p': togglePause(); break;
       case 'u': undoTurn(); break;
       case 'k': skipWord(); break;
@@ -1513,14 +2275,17 @@ function checkAnswer() {
   answerSlots.forEach(s => attempt += (s.original===' ') ? ' ' : s.letter);
 
   if(attempt === currentWordData.word.toLowerCase()) {
+    if(stealActive()) { stealSucceeded(); return; }
     sfxCorrect();
     const earned = currentPoints;
     teams[currentTeamIdx].score += earned;
     bumpScore(currentTeamIdx);
     showMessage(`✅ Correct! +${earned} points!`, 'success');
     launchConfetti();
+    speakAnswer(currentWordData.word);
     advanceTurn('correct', earned);
   } else {
+    if(stealActive()) { stealFailed('wrong answer'); return; }
     sfxWrong();
     spendPoints(WRONG_COST);
     showMessage(`❌ Not quite — that costs ${WRONG_COST} point. Now worth ${currentPoints}.`, 'error');
@@ -1545,6 +2310,7 @@ function spendPoints(n) {
 function takeHint(free) {
   if(hintTaken || turnLocked) return;
   if(paused && !free) return;
+  if(stealActive()) return;   // a steal is one clean attempt, no buying help
   hintTaken = true;
   if(!free) spendPoints(HINT_COST);
   const hb = document.getElementById('hintBox');
@@ -1557,15 +2323,22 @@ function takeHint(free) {
 
 function giveUp() {
   if(turnLocked || paused) return;
+  if(stealActive()) { stealFailed('gave up'); return; }
+  endStealDisplay();
   sfxGiveUp();
   showMessage(`🏳️ The answer was: "${currentWordData.word}"`, 'error');
+  speakAnswer(currentWordData.word);
   advanceTurn('giveup', 0);
 }
 
 // Teacher control: bin a broken or unfair word. Nobody is scored and the same
 // team keeps its turn, so a skip is not a disguised surrender.
 function skipWord() {
-  if(turnLocked || paused) return;
+  if(turnLocked) return;
+  if(stealArmed) cancelSteal();
+  stealTeamIdx = -1;
+  endStealDisplay();
+  paused = false;
   const skipped = currentWordData.word;
   lockTurn();
   sfxReveal();
@@ -1599,6 +2372,9 @@ function startTimer() {
 }
 
 function onTimerExpire() {
+  // A steal runs on its own one-shot clock and does not advance the ladder.
+  if(stealActive()) { stealFailed('time'); return; }
+
   // Hard cap on the reveal ladder. Without it a turn ran up to nine timer
   // cycles — nine minutes at the 60s setting, with the other teams just watching.
   if(revealCount >= MAX_REVEALS || currentPoints <= MIN_POINTS) { giveUp(); return; }
@@ -1606,9 +2382,10 @@ function onTimerExpire() {
   document.getElementById('timerRing').textContent = timeLeft;
   document.getElementById('timerRing').classList.remove('urgent');
   revealCount++;
-  spendPoints(1);
+  spendPoints(REVEAL_COST);
   sfxReveal();
   revealNext();
+  paintTeacherBar();
 }
 
 function revealNext() {
@@ -1709,11 +2486,13 @@ function endGame() {
   gameHistory.forEach((h,i) => {
     const tr = document.createElement('tr');
     const resIcon = h.result==='correct' ? '✅'
+                  : h.result==='stolen'  ? '🏴‍☠️'
                   : h.result==='giveup'  ? '🏳️'
                   : h.result==='skipped' ? '⏭️' : '❌';
-    tr.innerHTML=`<td>${i+1}</td><td>${h.team}</td><td><strong>${h.word}</strong></td>
-      <td>${h.category}</td>
-      <td class="${h.result==='correct'?'correct':'incorrect'}">${resIcon}</td>
+    const teamCell = h.from ? `${h.team} <small>← ${h.from}</small>` : h.team;
+    tr.innerHTML=`<td>${i+1}</td><td>${teamCell}</td><td><strong>${h.word}</strong></td>
+      <td>${h.category}</td><td>${h.level||''}</td>
+      <td class="${(h.result==='correct'||h.result==='stolen')?'correct':'incorrect'}">${resIcon}</td>
       <td>${h.pts>0?'+'+h.pts:'-'}</td>`;
     hb.appendChild(tr);
   });
@@ -1760,6 +2539,7 @@ document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 document.getElementById('pauseBtn').addEventListener('click', togglePause);
 document.getElementById('undoBtn').addEventListener('click', undoTurn);
 document.getElementById('endBtn').addEventListener('click', armEnd);
+document.getElementById('stealBtn').addEventListener('click', armSteal);
 
 // Bound once at boot rather than inside endGame(), which used to stack a new
 // listener every time the end screen was built.

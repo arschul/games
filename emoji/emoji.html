@@ -290,6 +290,16 @@
     animation: pulse 1s ease-in-out infinite alternate;
   }
 
+  /* Removed emoji, shown ghosted at its old position on reveal */
+  .emoji.ghost {
+    opacity: 0.32;
+    filter: grayscale(1);
+    border: 2px dashed var(--red);
+    border-radius: 50%;
+    box-sizing: border-box;
+    animation: none;
+  }
+
   @keyframes pulse {
     from { transform: scale(1); }
     to { transform: scale(1.2); }
@@ -683,6 +693,16 @@ const CATEGORIES = {
   sports:   ["⚽","⚾","🏀","🏐","🎱","🎾","🥊","🎯","🏆","🎳"]
 };
 
+// Singular forms — used as a noun modifier ("how many vehicle emojis?")
+const CAT_SINGULAR = {
+  faces: 'face', animals: 'animal', fruits: 'fruit',
+  vehicles: 'vehicle', sports: 'sports'
+};
+
+// Minimum members of a category that must be on the board before it can be
+// used for a counting question — otherwise the answer is "zero" or "one".
+const MIN_CAT_PRESENT = 2;
+
 // ─── Elements ──────────────────────────────────────────────────────
 const screenDiff = document.getElementById('screen-difficulty');
 const screenGame = document.getElementById('screen-game');
@@ -752,9 +772,19 @@ let questionDetails = {}, correctAnswer = '';
 let countdownInterval = null, timerFull = 0;
 let usedCategories = new Set();
 let gameHistory = [];
+let openers = ['add_emoji','remove_emoji'];
 
-const EMOJI_W = 56, EMOJI_H = 56, PAD = 12;
 const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+
+// Fisher-Yates — returns a new array, never mutates the input
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 // ─── Screens ───────────────────────────────────────────────────────
 function showScreen(el) {
@@ -781,61 +811,127 @@ function buildCatalogue() {
     row.appendChild(label);
     const emojisSpan = document.createElement('span');
     emojisSpan.className = 'cat-emojis';
-    emojisSpan.innerHTML = items.map(e => emojiContent(e)).join(' ');
+    emojisSpan.textContent = items.map(e => emojiContent(e)).join(' ');
     row.appendChild(emojisSpan);
     container.appendChild(row);
   });
 }
 
-// ─── Position map — stable across both phases of a round ───────────
-let positionMap = {}; // emoji -> {x, y}
-let phase2Map = {};   // preserved for answer reveal
+// ─── Layout engine ─────────────────────────────────────────────────
+// Emojis sit in jittered slots on an invisible grid. Slots guarantee no
+// overlap at any board size, and the jitter keeps the board looking scattered.
+// A position is {x, y, slot} — the slot index is what lets a new emoji claim
+// a free spot without disturbing anything already on the board.
 
-function genPositions(n) {
-  const W = emojiGrid.offsetWidth, H = emojiGrid.offsetHeight;
-  const placed = [], out = [];
-  const sz = EMOJI_W + PAD;
-  for (let i = 0; i < n; i++) {
-    let x, y, ok = false, tries = 0;
-    while (!ok && tries < 800) {
-      x = rand(0, W - EMOJI_W); y = rand(0, H - EMOJI_H);
-      ok = !placed.some(p => x < p.x+sz && x+sz > p.x && y < p.y+sz && y+sz > p.y);
-      tries++;
+let positionMap = {}; // emoji -> {x, y, slot}   (phase 1)
+let phase2Map = {};   // emoji -> {x, y, slot}   (phase 2, kept for the reveal)
+let layout = null;    // current round's slot geometry
+
+// Measure the emoji box as the stylesheet actually renders it, so the
+// mobile breakpoint (46px) isn't laid out with desktop numbers (56px).
+function measureEmoji() {
+  const probe = document.createElement('span');
+  probe.className = 'emoji';
+  probe.textContent = '😀';
+  probe.style.visibility = 'hidden';
+  probe.style.animation = 'none';
+  emojiGrid.appendChild(probe);
+  const cs = getComputedStyle(probe);
+  const size = probe.offsetWidth || parseFloat(cs.width) || 56;
+  const fs = parseFloat(cs.fontSize) || 41;
+  probe.remove();
+  return { size, fs };
+}
+
+// Work out a slot grid that fits `n` items, shrinking the emojis if the
+// board is too small to hold them at full size.
+function computeLayout(n) {
+  const W = emojiGrid.clientWidth  || 700;
+  const H = emojiGrid.clientHeight || 420;
+  const base = measureEmoji();
+  const need = Math.max(1, n);
+  let scale = 1, cols = 1, rows = 1, cell = base.size * 1.2;
+
+  // Prefer the LARGEST cell that still fits `need` slots: a coarse grid with a
+  // lot of jitter looks scattered, a fine grid with none looks like a lattice.
+  // Only shrink the emojis once even the tightest grid can't hold them.
+  outer:
+  for (let i = 0; i < 40; i++) {
+    const item = base.size * scale;
+    for (let m = 2.0; m >= 1.15; m -= 0.05) {
+      const c = item * m;
+      const cc = Math.max(1, Math.floor(W / c));
+      const rr = Math.max(1, Math.floor(H / c));
+      if (cc * rr >= need) { cell = c; cols = cc; rows = rr; break outer; }
     }
-    out.push({x, y}); placed.push({x, y});
+    // tightest grid at this scale, in case we run out of shrink room
+    cell = item * 1.15;
+    cols = Math.max(1, Math.floor(W / cell));
+    rows = Math.max(1, Math.floor(H / cell));
+    if (scale < 0.4) break;
+    scale *= 0.93;
   }
-  return out;
+
+  const item = base.size * scale;
+  return {
+    W, H, cols, rows, cell, scale, item,
+    fontSize: base.fs * scale,
+    total: cols * rows,
+    offX: Math.max(0, (W - cols * cell) / 2),
+    offY: Math.max(0, (H - rows * cell) / 2)
+  };
 }
 
-// Display emojis using a provided posMap {emoji -> {x,y}}
-function displayEmojisFromMap(list, posMap, highlight = []) {
-  emojiGrid.innerHTML = '';
-  list.forEach((e, i) => {
-    const span = document.createElement('span');
-    span.className = 'emoji';
-    if (highlight.includes(e)) span.classList.add('highlighted');
-    span.innerHTML = emojiContent(e);
-    span.style.left = posMap[e].x + 'px';
-    span.style.top  = posMap[e].y + 'px';
-    span.style.animationDelay = (i * 0.03) + 's';
-    emojiGrid.appendChild(span);
-  });
+function slotToXY(slot, L) {
+  const c = slot % L.cols, r = Math.floor(slot / L.cols);
+  const slack = Math.max(0, L.cell - L.item);
+  return {
+    x: L.offX + c * L.cell + Math.random() * slack,
+    y: L.offY + r * L.cell + Math.random() * slack,
+    slot
+  };
 }
 
-// Build a fresh positionMap for a list of emojis
-function buildPositionMap(list) {
-  const pos = genPositions(list.length);
+// Assign every emoji in `list` a distinct random slot.
+function buildPositionMap(list, L) {
+  const slots = shuffle(Array.from({ length: L.total }, (_, i) => i));
   const map = {};
-  list.forEach((e, i) => { map[e] = pos[i]; });
+  list.forEach((e, i) => { map[e] = slotToXY(slots[i], L); });
   return map;
 }
 
-// ─── Display emojis (legacy wrapper — only used for answer reveal) ──
-function displayEmojis(list, highlight = []) {
-  const pos = genPositions(list.length);
-  const map = {};
-  list.forEach((e, i) => { map[e] = pos[i]; });
-  displayEmojisFromMap(list, map, highlight);
+// Slots not currently claimed in `map`.
+function freeSlots(map, L) {
+  const taken = new Set(Object.values(map).map(p => p.slot));
+  const out = [];
+  for (let i = 0; i < L.total; i++) if (!taken.has(i)) out.push(i);
+  return out;
+}
+
+// Render `list` from `posMap`. Render order is randomised and the entry
+// stagger is decorrelated from array index, so a newly added emoji is not
+// given away by being the last one to pop in.
+function displayEmojisFromMap(list, posMap, highlight = [], ghosts = []) {
+  emojiGrid.innerHTML = '';
+  const L = layout;
+  const paint = (e, cls, pos) => {
+    const p = pos || posMap[e];
+    if (!p) return;
+    const span = document.createElement('span');
+    span.className = 'emoji' + (cls ? ' ' + cls : '');
+    span.textContent = emojiContent(e);
+    span.style.left = p.x + 'px';
+    span.style.top  = p.y + 'px';
+    if (L) {
+      span.style.width = L.item + 'px';
+      span.style.height = L.item + 'px';
+      span.style.fontSize = L.fontSize + 'px';
+    }
+    span.style.animationDelay = (Math.random() * 0.22).toFixed(3) + 's';
+    emojiGrid.appendChild(span);
+  };
+  ghosts.forEach(g => paint(g.emoji, 'ghost', g.pos));
+  shuffle(list).forEach(e => paint(e, highlight.includes(e) ? 'highlighted' : ''));
 }
 
 // ─── Timer ─────────────────────────────────────────────────────────
@@ -858,13 +954,20 @@ function startCountdown(duration, onEnd) {
   countdownInterval = setInterval(() => {
     t--;
     setTimerDisplay(t, duration);
+    // Only the last few seconds make a sound — a beep every second is
+    // ~190 beeps across a default game.
     if (t <= 3 && t > 0) sfxUrgent();
-    else if (t > 0) sfxBeep();
+    else if (t <= 5 && t > 0) sfxBeep();
     if (t <= 0) { clearInterval(countdownInterval); countdownInterval = null; onEnd(); }
   }, 1000);
 }
 
-function stopTimer() { if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; } timerText.textContent = '—'; timerRing.style.strokeDashoffset = 0; }
+function stopTimer() {
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  timerText.textContent = '—';
+  timerRing.style.strokeDashoffset = CIRC;   // empty ring, not a full one
+  timerRing.style.stroke = 'url(#timerGrad)';
+}
 
 // ─── Phase banner ──────────────────────────────────────────────────
 function setPhase(text, cls) {
@@ -880,6 +983,7 @@ function startGame(diff) {
   shuffleMode = selShuffle.value === '1';
   usedCategories = new Set();
   gameHistory = [];
+  openers = ['add_emoji','remove_emoji'];
   round = 0;
   numEmojis = diff === 'easy' ? rand(8,12) : diff === 'medium' ? rand(13,16) : rand(17,22);
   prevEmojis = shuffle([...ALL_EMOJIS]).slice(0, numEmojis);
@@ -888,29 +992,34 @@ function startGame(diff) {
   prepareRound();
 }
 
-function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
-
 // ─── Round logic ───────────────────────────────────────────────────
+// A category is only worth asking about if enough of it is actually on the
+// board — otherwise the answer is "zero" or "one", which is no question at all.
+function countableCategories() {
+  return Object.keys(CATEGORIES).filter(c =>
+    !usedCategories.has(c) &&
+    prevEmojis.filter(e => CATEGORIES[c].includes(e)).length >= MIN_CAT_PRESENT
+  );
+}
+
 function pickActionType() {
   const addRemove = ['add_emoji','remove_emoji'];
-  const counting  = ['count_total'];
-  const catOptions = Object.keys(CATEGORIES).filter(c => !usedCategories.has(c));
+  const catOptions = countableCategories();
 
-  if (round === 1) return 'add_emoji';
-  if (round === 2) return 'remove_emoji';
+  // Rounds 1 and 2 are the gentle opening: one add and one remove, but in a
+  // random order so the game isn't identical every time.
+  if (round === 1) { openers = shuffle(addRemove); return openers[0]; }
+  if (round === 2) return openers[1];
 
   // Odd rounds: observational or move/swap
   if (round % 2 !== 0) {
-    const opts = [...counting];
+    // count_total is listed twice so it doesn't get drowned out by up to
+    // five category options (it was firing in under 6% of rounds).
+    const opts = ['count_total','count_total'];
     if (catOptions.length) opts.push(...catOptions.map(c => 'count_category:'+c));
-    // Include move/swap
     if (prevEmojis.length >= 2) opts.push('move_emoji', 'swap_emoji');
     const pick = opts[rand(0, opts.length - 1)];
-    if (pick.startsWith('count_category:')) {
-      const cat = pick.split(':')[1];
-      usedCategories.add(cat);
-      return pick;
-    }
+    if (pick.startsWith('count_category:')) usedCategories.add(pick.split(':')[1]);
     return pick;
   }
 
@@ -957,7 +1066,7 @@ function prepareRound() {
 
   stopTimer();
   setPhase('Get ready…');
-  questionArea.style.display = 'none'; questionArea.classList.add('hidden');
+  questionArea.classList.add('hidden');
   answerDisplay.classList.add('hidden');
   btnNext.classList.add('hidden');
   goWrap.style.display = 'flex';
@@ -997,10 +1106,13 @@ function prepareRound() {
   }
 
   // Build stable position map for phase 1 (prevEmojis)
-  // Use requestAnimationFrame so grid has layout dimensions
+  // Use requestAnimationFrame so grid has layout dimensions.
+  // Size the slot grid for the larger of the two phases plus two spare slots,
+  // so an added or moved emoji always has somewhere free to land.
   emojiGrid.innerHTML = '';
   requestAnimationFrame(() => {
-    positionMap = buildPositionMap(prevEmojis);
+    layout = computeLayout(Math.max(prevEmojis.length, currEmojis.length) + 2);
+    positionMap = buildPositionMap(prevEmojis, layout);
     displayEmojisFromMap(prevEmojis, positionMap);
     emojiGrid.classList.add('invisible');
   });
@@ -1024,39 +1136,45 @@ function onFirstTimerEnd() {
   timerText.textContent = '—';
 
   setTimeout(() => {
-    // Build phase 2 position map — adjust per action, stored for answer reveal
-    phase2Map = {};
+    // Build the phase 2 position map, stored for the answer reveal.
+    //
+    // Every unchanged emoji keeps its exact position, whatever the action is.
+    // Re-scattering the board for add/remove/count told students the question
+    // type before they had even read it: an identical layout meant move/swap,
+    // a rearranged one meant everything else.
+    phase2Map = Object.assign({}, positionMap);
 
     if (actionType === 'swap_emoji') {
-      // Preserve all positions, swap only the two targets
-      Object.assign(phase2Map, positionMap);
       const [a, b] = swappedEmojis;
-      phase2Map[a] = positionMap[b];
-      phase2Map[b] = positionMap[a];
+      phase2Map[a] = { ...positionMap[b] };
+      phase2Map[b] = { ...positionMap[a] };
 
     } else if (actionType === 'move_emoji') {
-      // Preserve all positions, generate a clearly different spot for the moved emoji
-      Object.assign(phase2Map, positionMap);
-      const W = emojiGrid.offsetWidth, H = emojiGrid.offsetHeight;
-      const sz = EMOJI_W + PAD;
+      // Claim a free slot far enough away to be noticeable.
       const oldPos = positionMap[movedEmoji];
-      const placed = Object.entries(positionMap)
-        .filter(([e]) => e !== movedEmoji).map(([,p]) => p);
-      let x, y, tries = 0, minDist = 100;
-      do {
-        x = rand(0, W - EMOJI_W); y = rand(0, H - EMOJI_H);
-        const dist = Math.hypot(x - oldPos.x, y - oldPos.y);
-        const noOverlap = !placed.some(p => x < p.x+sz && x+sz > p.x && y < p.y+sz && y+sz > p.y);
-        if (dist >= minDist && noOverlap) break;
-        tries++;
-        if (tries > 600) minDist = 60;
-      } while (tries < 800);
-      phase2Map[movedEmoji] = {x, y};
+      const free = freeSlots(phase2Map, layout).filter(s => s !== oldPos.slot);
+      if (free.length) {
+        const minDist = layout.cell * 1.5;
+        const far = free.filter(s => {
+          const p = slotToXY(s, layout);
+          return Math.hypot(p.x - oldPos.x, p.y - oldPos.y) >= minDist;
+        });
+        const pool = far.length ? far : free;
+        phase2Map[movedEmoji] = slotToXY(pool[rand(0, pool.length - 1)], layout);
+      }
 
-    } else {
-      // add, remove, count — fresh random positions
-      phase2Map = buildPositionMap(currEmojis);
+    } else if (actionType === 'add_emoji') {
+      // The new emoji takes a free slot; nothing else moves.
+      const free = freeSlots(phase2Map, layout);
+      const slot = free.length ? free[rand(0, free.length - 1)] : rand(0, layout.total - 1);
+      phase2Map[changedEmoji] = slotToXY(slot, layout);
+
+    } else if (actionType === 'remove_emoji') {
+      // Leave the gap where it was. positionMap still holds the old spot,
+      // which is what the ghost on the reveal screen uses.
+      delete phase2Map[changedEmoji];
     }
+    // count_total / count_category: nothing changes at all.
 
     // No highlights yet — reveal happens on answer button only
     displayEmojisFromMap(currEmojis, phase2Map, []);
@@ -1065,9 +1183,10 @@ function onFirstTimerEnd() {
     if (isVisual) emojiGrid.classList.remove('invisible');
     else emojiGrid.classList.add('invisible');
 
-    // Show question
-    setPhase('What changed? 🤔', 'phase-question');
-    questionArea.style.display = 'flex'; questionArea.classList.remove('hidden');
+    // Show question — counting rounds change nothing, so don't claim they did
+    const isCount = actionType === 'count_total' || actionType === 'count_category';
+    setPhase(isCount ? 'How many? 🔢' : 'What changed? 🤔', 'phase-question');
+    questionArea.classList.remove('hidden');
     btnAnswer.disabled = false;
     setQuestionText();
     startCountdown(timerDuration, onSecondTimerEnd);
@@ -1081,7 +1200,7 @@ function setQuestionText() {
     swap_emoji:     'WHICH TWO EMOJIS SWAPPED POSITIONS?',
     move_emoji:     'WHICH EMOJI MOVED TO A NEW SPOT?',
     count_total:    '🔢 HOW MANY EMOJIS ARE THERE?',
-    count_category: `🔢 HOW MANY ${(questionDetails.category || '').toUpperCase()} EMOJIS?`,
+    count_category: `🔢 HOW MANY ${(CAT_SINGULAR[questionDetails.category] || questionDetails.category || '').toUpperCase()} EMOJIS?`,
   };
   questionText.textContent = map[actionType] || 'WHAT CHANGED?';
 }
@@ -1104,24 +1223,33 @@ btnAnswer.addEventListener('click', () => {
     case 'swap_emoji':     msg = `${swappedEmojis.map(emojiContent).join(' ↔ ')} swapped!`; break;
     case 'move_emoji':     msg = `${emojiContent(correctAnswer)} moved position!`; break;
     case 'count_total':    msg = `There are ${correctAnswer} emojis!`; break;
-    case 'count_category': msg = `${correctAnswer} ${questionDetails.category} emoji${correctAnswer !== 1 ? 's' : ''}!`; break;
+    case 'count_category': {
+      const noun = CAT_SINGULAR[questionDetails.category] || questionDetails.category;
+      msg = `${correctAnswer} ${noun} emoji${correctAnswer !== 1 ? 's' : ''}!`;
+      break;
+    }
   }
 
-  answerDisplay.innerHTML = msg;
+  answerDisplay.textContent = msg;
   answerDisplay.classList.remove('hidden');
 
   // Reveal with highlights
-  let highlight = [];
+  let highlight = [], ghosts = [];
   if (actionType === 'add_emoji') highlight = [changedEmoji];
-  if (actionType === 'remove_emoji') highlight = [];
+  if (actionType === 'remove_emoji') {
+    // Show it ghosted where it used to be — seeing the gap filled in is the
+    // feedback that actually trains the memory.
+    ghosts = [{ emoji: changedEmoji, pos: positionMap[changedEmoji] }];
+  }
   if (actionType === 'swap_emoji') highlight = swappedEmojis;
   if (actionType === 'move_emoji') highlight = [movedEmoji];
   if (actionType === 'count_category') {
     highlight = currEmojis.filter(e => CATEGORIES[questionDetails.category]?.includes(e));
   }
 
-  displayEmojisFromMap(currEmojis, phase2Map, highlight);
+  displayEmojisFromMap(currEmojis, phase2Map, highlight, ghosts);
   emojiGrid.classList.remove('invisible');
+  progressFill.style.width = (round / totalRounds * 100) + '%';
 
   gameHistory.push({ round, actionType, answer: msg });
 

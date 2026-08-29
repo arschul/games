@@ -140,6 +140,41 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
 .loading .spin{font-size:3rem;display:inline-block;animation:spin 1.1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- shared grid editor ---- */
+.cell.edit-cell{cursor:pointer;user-select:none}
+.cell.edit-cell:hover{border-color:var(--gold)}
+.cell.sel{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,176,58,.28)}
+.cell.bad{border-color:var(--rose);background:rgba(255,107,129,.16)}
+.cell.masked{color:var(--muted);font-size:1.5rem}
+.rowhead .bank .bnum{font-size:.62rem;opacity:.75;vertical-align:super;margin-right:2px;font-weight:800}
+.rowhead .bank.numbered{opacity:.85;letter-spacing:.02em}
+.pkbox{position:fixed;z-index:200;display:none;gap:6px;padding:8px;border-radius:14px;background:var(--panel);border:1px solid var(--gold);box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.pkbox.on{display:flex}
+.pk{font-size:1.9rem;line-height:1;padding:7px 9px;border-radius:10px;background:var(--panel2);border:2px solid var(--line);color:var(--text);cursor:pointer;font-family:inherit;transition:.12s}
+.pk:hover{border-color:var(--gold)}
+.pk.cur{border-color:var(--gold);background:rgba(255,176,58,.2)}
+.pk.elsewhere{opacity:.42}
+.pk.clr{font-size:1.1rem;color:var(--rose)}
+.editnote{font-size:.8rem;color:var(--dim);text-align:center;margin:10px 0 0}
+/* ---- multi-question answering ---- */
+.qblock{border:1px solid var(--line);border-radius:14px;padding:14px 14px 4px;margin-bottom:14px;background:var(--panel2)}
+.qblock h3{margin:0 0 12px;font-size:1.02rem;font-weight:700;display:flex;align-items:center;gap:9px}
+.qblock h3 .qn{flex:none;width:24px;height:24px;border-radius:999px;background:var(--gold);color:#151515;font-size:.78rem;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
+.qblock .opts{margin-bottom:14px}
+.qblock .opt{min-width:78px;padding:11px 14px;font-size:1.9rem}
+.qblock.done{border-color:var(--gold)}
+/* ---- teams ---- */
+.team .tries{font-size:.72rem;color:var(--gold);font-weight:700}
+.team.locked{opacity:.55}
+.team.locked .tstat{color:var(--rose)}
+/* ---- solo ---- */
+.solobar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.steppanel{margin-top:14px;border:1px dashed var(--line);border-radius:var(--r);padding:14px 18px;background:var(--panel);font-size:.95rem;line-height:1.55}
+.steppanel:empty{display:none}
+.steppanel b{color:var(--gold)}
+.steppanel .ce{font-size:1.35rem;vertical-align:-.15em}
+.setup-hide{display:none}
 </style>
 </head>
 <body>
@@ -152,23 +187,58 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
   <div class="hero">
     <div class="marks">🐢🍕🚲🎸</div>
     <h1>Emoji <em>Logic</em></h1>
-    <p>Read the clues. Work out which emoji lives in which house. One guess per team.</p>
+    <p>Read the clues. Work out which emoji lives in which house.</p>
   </div>
   <div class="setup-grid">
     <div class="panel">
-      <h2>Teams</h2>
-      <div class="field"><label>How many teams</label><div class="seg" id="segTeams"></div></div>
-      <div class="field" style="margin-bottom:0"><label>Team names</label><div class="names" id="nameInputs"></div></div>
+      <h2>Mode</h2>
+      <div class="field">
+        <label>Who is playing</label>
+        <div class="seg" id="segGameMode">
+          <button data-v="teams" class="sel">Teams</button>
+          <button data-v="solo">Solo / whole class</button>
+        </div>
+        <p class="hint" id="gmHint">Groups work on paper. Click a team when they want to answer.</p>
+      </div>
+      <div id="teamSetup">
+        <div class="field"><label>How many teams</label><div class="seg" id="segTeams"></div></div>
+        <div class="field" style="margin-bottom:0"><label>Team names</label><div class="names" id="nameInputs"></div></div>
+      </div>
+      <div id="soloSetup" class="setup-hide">
+        <div class="field" style="margin-bottom:0">
+          <label>When you press Check</label>
+          <div class="seg" id="segCheck">
+            <button data-v="which" class="sel">Show which cells are wrong</button>
+            <button data-v="count">Only say how many</button>
+          </div>
+          <p class="hint">"How many" keeps the class thinking; "which" is quicker to correct.</p>
+        </div>
+      </div>
     </div>
     <div class="panel">
       <h2>Game options</h2>
-      <div class="field">
-        <label>How teams answer</label>
-        <div class="seg" id="segMode">
-          <button data-v="target" class="sel">One question</button>
-          <button data-v="grid">Full grid</button>
+      <div id="answerOpts">
+        <div class="field">
+          <label>How teams answer</label>
+          <div class="seg" id="segMode">
+            <button data-v="target" class="sel">Questions</button>
+            <button data-v="grid">Full grid</button>
+          </div>
+          <p class="hint" id="modeHint">A few questions about the solution &mdash; fast, and all of them must be right.</p>
         </div>
-        <p class="hint" id="modeHint">The team answers a single question about the solution — fast, one tap.</p>
+        <div class="field" id="fieldAnswers">
+          <label>Answers per attempt</label>
+          <div class="seg" id="segAnswers">
+            <button data-v="0" class="sel">Auto</button><button data-v="1">1</button>
+            <button data-v="2">2</button><button data-v="3">3</button>
+          </div>
+          <p class="hint">Auto asks enough questions to keep a blind guess under 5% &mdash; 3 on small grids, 2 on five houses.</p>
+        </div>
+        <div class="field" id="fieldMask">
+          <label>Hide answers as you type them</label>
+          <div class="seg" id="segMask"><button data-v="0" class="sel">Off</button><button data-v="1">On</button></div>
+          <p class="hint">Stops the rest of the class reading a team&rsquo;s grid off the projector. Type 1&ndash;5 to fill cells.</p>
+        </div>
       </div>
       <div class="field"><label>Starting difficulty</label><div class="seg" id="segLevel"></div></div>
       <div class="field">
@@ -181,7 +251,7 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
       <div class="field" style="margin-bottom:0">
         <label>Wrong answer reveals a bonus clue</label>
         <div class="seg" id="segBonus"><button data-v="1" class="sel">On</button><button data-v="0">Off</button></div>
-        <p class="hint">Keeps the game moving — a wrong guess helps everyone still in.</p>
+        <p class="hint">Once per round, to help everyone still working.</p>
       </div>
     </div>
   </div>
@@ -226,6 +296,18 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
     <div class="teambar" id="teamBar">
       <div class="panel"><h2>Who wants to answer?</h2><div class="teams" id="teamList"></div></div>
     </div>
+    <div class="teambar setup-hide" id="soloBar">
+      <div class="panel">
+        <h2>Your answer</h2>
+        <p class="hint" id="soloHint">Click a cell and pick an emoji. Arrow keys move, 1&ndash;5 fill, Backspace clears.</p>
+        <div class="solobar">
+          <button class="btn primary" onclick="soloCheck()">Check answer</button>
+          <button class="btn ghost" onclick="nextStep()">Next step</button>
+          <button class="btn ghost" onclick="clearDraft()">Clear grid</button>
+        </div>
+      </div>
+    </div>
+    <div class="steppanel" id="stepPanel"></div>
     <div id="bannerSlot"></div>
   </div>
 </div>
@@ -237,6 +319,8 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
 </div>
 
 </div>
+
+<div class="pkbox" id="cellPicker"></div>
 
 <div class="modal" id="modal">
   <div class="modal-box">
@@ -740,7 +824,7 @@ function generateAt(levelIdx,relaxed){
     })).slice(0,4);
     var inv=sol.map(function(p){ var iv=new Array(n); for(var pos=0;pos<n;pos++) iv[p[pos]]=pos; return iv; });
     var P={levelIdx:levelIdx,label:L.label,pts:L.pts,n:n,M:M,cats:cats,sol:sol,inv:inv,clues:chosen,extras:extras,needsHypothesis:tu.needsHypothesis};
-    P.question=makeQuestion(P);
+    P.questions=makeQuestions(P,3);
     return P;
   }
   return null;
@@ -752,38 +836,367 @@ function generatePuzzle(levelIdx){
   while(!P && idx>0){ idx--; P=generateAt(idx,true); }
   return P;
 }
-function makeQuestion(P){
-  var n=P.n, M=P.M, cands=[], c,i,c2;
-  for(c=0;c<M;c++) for(i=0;i<n;i++){
-    (function(cc,ii){
-      var given=P.clues.some(function(cl){ return cl.type==='at' && cl.c1===cc && cl.i1===ii; });
-      if(!given) cands.push({kind:'pos',c1:cc,i1:ii});
-    })(c,i);
+/* ---------- QUESTIONS ----------
+   A single question is a 1-in-n guess: 33% on a three-house grid, which is
+   well inside "just say house 2 and hope". Asking several at once and marking
+   all-or-nothing takes that to n^-k. questionsFor() picks the smallest k that
+   keeps a blind guess under 5%: 3 on three or four houses, 2 on five. */
+function questionsFor(P) {
+  if (G.answerCount > 0) return G.answerCount;
+  return P.n <= 4 ? 3 : 2;
+}
+function makeQuestions(P, want) {
+  var n = P.n, M = P.M, cands = [], c, i, c2;
+  for (c = 0; c < M; c++) for (i = 0; i < n; i++) {
+    (function (cc, ii) {
+      var given = P.clues.some(function (cl) { return cl.type === 'at' && cl.c1 === cc && cl.i1 === ii; });
+      if (!given) cands.push({ kind: 'pos', c1: cc, i1: ii });
+    })(c, i);
   }
-  if(M>=2){
-    for(c=0;c<M;c++) for(i=0;i<n;i++) for(c2=0;c2<M;c2++){
-      if(c2===c) continue;
-      (function(cc,ii,cd){
-        var paired=P.clues.some(function(cl){
-          if(cl.type!=='same') return false;
-          return (cl.c1===cc&&cl.i1===ii&&cl.c2===cd)||(cl.c2===cc&&cl.i2===ii&&cl.c1===cd);
+  if (M >= 2) {
+    for (c = 0; c < M; c++) for (i = 0; i < n; i++) for (c2 = 0; c2 < M; c2++) {
+      if (c2 === c) continue;
+      (function (cc, ii, cd) {
+        var paired = P.clues.some(function (cl) {
+          if (cl.type !== 'same') return false;
+          return (cl.c1 === cc && cl.i1 === ii && cl.c2 === cd) || (cl.c2 === cc && cl.i2 === ii && cl.c1 === cd);
         });
-        if(!paired) cands.push({kind:'pair',c1:cc,i1:ii,c2:cd});
-      })(c,i,c2);
+        if (!paired) cands.push({ kind: 'pair', c1: cc, i1: ii, c2: cd });
+      })(c, i, c2);
     }
   }
-  if(!cands.length) cands.push({kind:'pos',c1:0,i1:0});
-  return cands[Math.floor(Math.random()*cands.length)];
+  if (!cands.length) cands.push({ kind: 'pos', c1: 0, i1: 0 });
+
+  /* Two questions about the same emoji are one question wearing two hats, so
+     each target cell can only be asked about once. */
+  var picked = [], seen = {};
+  shuffle(cands).forEach(function (q) {
+    if (picked.length >= want) return;
+    var key = q.c1 + ':' + q.i1;
+    if (seen[key]) return;
+    seen[key] = 1; picked.push(q);
+  });
+  return picked;
 }
-function questionText(P){
-  var q=P.question, em=P.cats[q.c1].items[q.i1];
-  if(q.kind==='pos') return 'Which house has <span class="ce">'+em+'</span>?';
-  return 'Which <b style="color:var(--gold)">'+esc(P.cats[q.c2].name.toLowerCase())+'</b> is in the same house as <span class="ce">'+em+'</span>?';
+function questionText(P, q) {
+  var em = P.cats[q.c1].items[q.i1];
+  if (q.kind === 'pos') return 'Which house has <span class="ce">' + em + '</span>?';
+  return 'Which <b style="color:var(--gold)">' + esc(P.cats[q.c2].name.toLowerCase()) +
+         '</b> is in the same house as <span class="ce">' + em + '</span>?';
+}
+function questionCorrect(P, q, pick) {
+  if (q.kind === 'pos') return pick === P.inv[q.c1][q.i1];
+  return P.inv[q.c2][pick] === P.inv[q.c1][q.i1];
+}
+
+/* ---------- SHARED GRID EDITOR ----------
+   One editor, used both for a team dictating its grid and for solo play.
+   The old version cycled a cell one emoji per tap — up to 120 taps to enter a
+   5x4 answer while the class waited. Now: click for a picker, or select and
+   type 1-n. Placing an emoji clears it from wherever else it sat in that row,
+   so the draft can never hold a duplicate. */
+var EDIT = { mount: null, masked: false };
+
+function blankDraft(P) {
+  var d = [], c, p;
+  for (c = 0; c < P.M; c++) { var r = []; for (p = 0; p < P.n; p++) r.push(-1); d.push(r); }
+  return d;
+}
+function clearDraft() {
+  if (!G.puzzle) return;
+  G.draft = blankDraft(G.puzzle);
+  G.sel = null; closePicker(); sfx.click();
+  renderEditGrid(); onDraftChange();
+}
+function setCell(c, p, i) {
+  if (i >= 0) {
+    for (var q = 0; q < G.puzzle.n; q++) if (q !== p && G.draft[c][q] === i) G.draft[c][q] = -1;
+  }
+  G.draft[c][p] = i;
+  renderEditGrid(); onDraftChange();
+}
+function onDraftChange() {
+  if (G.gameMode === 'solo') return;
+  var full = G.draft.every(function (r) { return r.every(function (v) { return v >= 0; }); });
+  var b = document.getElementById('mSubmit');
+  if (b) b.disabled = !full;
+}
+
+function bankHtml(cat, numbered) {
+  if (!numbered) return '<span class="bank">' + cat.items.join('') + '</span>';
+  var s = '<span class="bank numbered">';
+  cat.items.forEach(function (e, i) { s += '<span class="bnum">' + (i + 1) + '</span>' + e; });
+  return s + '</span>';
+}
+
+function renderEditGrid() {
+  var P = G.puzzle, tbl = EDIT.mount ? document.getElementById(EDIT.mount) : null;
+  if (!tbl || !P) return;
+  var masked = EDIT.masked && !G.peek;
+  tbl.innerHTML = '';
+  var cols = '150px repeat(' + P.n + ',minmax(78px,1fr))';
+  var head = document.createElement('div');
+  head.className = 'row'; head.style.gridTemplateColumns = cols;
+  var hh = '<div class="rowhead"><span class="cname">House</span></div>';
+  for (var p = 0; p < P.n; p++) hh += '<div class="house"><div class="hnum">' + (p + 1) + '</div></div>';
+  head.innerHTML = hh;
+  tbl.appendChild(head);
+
+  P.cats.forEach(function (cat, c) {
+    var row = document.createElement('div');
+    row.className = 'row'; row.style.gridTemplateColumns = cols;
+    var rh = document.createElement('div');
+    rh.className = 'rowhead';
+    rh.innerHTML = '<span class="cname">' + esc(cat.name) + '</span>' + bankHtml(cat, masked);
+    row.appendChild(rh);
+    for (var pp = 0; pp < P.n; pp++) {
+      (function (cc, pos) {
+        var v = G.draft[cc][pos];
+        var cell = document.createElement('div');
+        cell.className = 'cell edit-cell' + (v < 0 ? ' empty' : ' filled') +
+          (masked && v >= 0 ? ' masked' : '') +
+          (G.sel && G.sel.c === cc && G.sel.p === pos ? ' sel' : '') +
+          (G.badCells && G.badCells[cc + ':' + pos] ? ' bad' : '');
+        cell.textContent = v < 0 ? '' : (masked ? '\u25cf' : cat.items[v]);
+        cell.onclick = function () {
+          G.sel = { c: cc, p: pos };
+          if (masked) { closePicker(); renderEditGrid(); }
+          else openPicker(cc, pos, cell);
+        };
+        row.appendChild(cell);
+      })(c, pp);
+    }
+    tbl.appendChild(row);
+  });
+}
+
+function openPicker(c, p, anchor) {
+  var P = G.puzzle, pk = document.getElementById('cellPicker'), html = '', i;
+  for (i = 0; i < P.n; i++) {
+    var where = G.draft[c].indexOf(i);
+    html += '<button class="pk' + (G.draft[c][p] === i ? ' cur' : '') +
+            (where >= 0 && where !== p ? ' elsewhere' : '') + '" data-i="' + i + '">' +
+            P.cats[c].items[i] + '</button>';
+  }
+  html += '<button class="pk clr" data-i="-1">\u2715</button>';
+  pk.innerHTML = html;
+  pk.classList.add('on');
+  pk.onclick = function (ev) {
+    var b = ev.target.closest('.pk'); if (!b) return;
+    setCell(c, p, parseInt(b.getAttribute('data-i'), 10));
+    sfx.click(); closePicker();
+  };
+  var r = anchor.getBoundingClientRect();
+  var w = pk.offsetWidth, hgt = pk.offsetHeight;
+  var left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+  var top = r.bottom + 8;
+  if (top + hgt > window.innerHeight - 8) top = Math.max(8, r.top - hgt - 8);
+  pk.style.left = left + 'px'; pk.style.top = top + 'px';
+  renderEditGrid();
+}
+function closePicker() {
+  var pk = document.getElementById('cellPicker');
+  if (pk) { pk.classList.remove('on'); pk.onclick = null; }
+}
+function pickerOpen() {
+  var pk = document.getElementById('cellPicker');
+  return !!(pk && pk.classList.contains('on'));
+}
+function editKey(e) {
+  var P = G.puzzle;
+  if (!P || !EDIT.mount || !G.draft) return false;
+  if (!G.sel) {
+    if (e.key.indexOf('Arrow') === 0) { G.sel = { c: 0, p: 0 }; renderEditGrid(); return true; }
+    return false;
+  }
+  var c = G.sel.c, p = G.sel.p;
+  if (e.key === 'ArrowLeft') { G.sel.p = (p + P.n - 1) % P.n; }
+  else if (e.key === 'ArrowRight') { G.sel.p = (p + 1) % P.n; }
+  else if (e.key === 'ArrowUp') { G.sel.c = (c + P.M - 1) % P.M; }
+  else if (e.key === 'ArrowDown') { G.sel.c = (c + 1) % P.M; }
+  else if (e.key === 'Backspace' || e.key === 'Delete') { setCell(c, p, -1); closePicker(); return true; }
+  else if (/^[1-9]$/.test(e.key)) {
+    var i = parseInt(e.key, 10) - 1;
+    if (i >= P.n) return true;
+    setCell(c, p, i); closePicker(); sfx.click(); return true;
+  } else return false;
+  closePicker(); renderEditGrid(); return true;
+}
+
+/* ---------- ATTEMPTS ---------- */
+var LOCK_MS = 60000;
+function awardFor(tries, pts) {
+  if (tries <= 1) return pts;
+  if (tries === 2) return Math.max(1, Math.ceil(pts / 2));
+  return 1;
+}
+function lockLeft(i) {
+  var t = G.lockUntil[i] || 0;
+  return Math.max(0, Math.ceil((t - Date.now()) / 1000));
+}
+function fmtSecs(s) { return Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60); }
+function startLockTicker() {
+  if (G.lockTicker) return;
+  G.lockTicker = setInterval(function () {
+    var any = G.teams.some(function (_, i) { return lockLeft(i) > 0; });
+    renderTeams();
+    if (!any) { clearInterval(G.lockTicker); G.lockTicker = null; }
+  }, 1000);
+}
+function stopLockTicker() {
+  if (G.lockTicker) { clearInterval(G.lockTicker); G.lockTicker = null; }
+}
+
+/* ---------- NEXT STEP ----------
+   Reuses the deduction model that gates puzzle generation: run propagation
+   from what is currently on the board, then find the single clue that pins a
+   new cell. This is the teaching tool — it names the clue, not just the answer. */
+function stepSay(html) {
+  var el = document.getElementById('stepPanel');
+  if (el) { el.innerHTML = html; el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+function stepClear() {
+  var el = document.getElementById('stepPanel');
+  if (el) el.innerHTML = '';
+}
+function recordWalk(hit) {
+  if (G.gameMode === 'solo' || !G.walk) return;
+  G.walk[hit.c][hit.p] = hit.i;
+}
+function clueCells(cl) {
+  var a = [{ c: cl.c1, i: cl.i1 }];
+  if (cl.c2 !== undefined) a.push({ c: cl.c2, i: cl.i2 });
+  if (cl.c3 !== undefined) a.push({ c: cl.c3, i: cl.i3 });
+  return a;
+}
+/* A clue can pin its own emoji and, by knock-on elimination, a different one
+   in the same row. Reporting the second reads as a non-sequitur next to the
+   clue text, so prefer a cell the clue actually names. */
+function newSingleton(base, after, P, prefer) {
+  var fallback = null;
+  for (var c = 0; c < P.M; c++) for (var i = 0; i < P.n; i++) {
+    if (vals(base[c][i]).length > 1) {
+      var v = vals(after[c][i]);
+      if (v.length === 1 && v[0] === P.inv[c][i]) {
+        var hit = { c: c, i: i, p: v[0] };
+        if (prefer && prefer.some(function (x) { return x.c === c && x.i === i; })) return hit;
+        if (!fallback) fallback = hit;
+      }
+    }
+  }
+  return fallback;
+}
+function nextStep() {
+  var P = G.puzzle; if (!P) return;
+  var base = emptyCand(P.n, P.M), c, i, p, k;
+
+  /* In solo the board is the student's own draft. In teams the walk-through
+     keeps its own board, so repeated clicks move forward through the puzzle
+     instead of replaying the first step. */
+  var solo = (G.gameMode === 'solo');
+  if (!solo && !G.walk) G.walk = blankDraft(P);
+  var fills = solo ? G.draft : G.walk;
+  if (fills) {
+    for (c = 0; c < P.M; c++) for (p = 0; p < P.n; p++) {
+      var it = fills[c][p];
+      if (it >= 0) for (var v = 0; v < P.n; v++) base[c][it][v] = (v === p);
+    }
+  }
+  if (!propagate(base, [], P.n, P.M)) {
+    return stepSay('Two of your rows clash \u2014 the same emoji is in two houses, or a house has two of the same kind. Clear one and try again.');
+  }
+  if (isSolved(base, P.n, P.M)) {
+    var right = true, blanks = 0;
+    for (c = 0; c < P.M; c++) for (i = 0; i < P.n; i++) if (vals(base[c][i])[0] !== P.inv[c][i]) right = false;
+    if (fills) for (c = 0; c < P.M; c++) for (p = 0; p < P.n; p++) if (fills[c][p] < 0) blanks++;
+    if (!right) return stepSay('The grid is full, but something in it is wrong. Press <b>Check answer</b>.');
+    return stepSay(blanks
+      ? 'Everything else falls out on its own now \u2014 the remaining ' + blanks + ' house' + (blanks === 1 ? '' : 's') + ' can only go one way.'
+      : 'The grid is complete and correct.');
+  }
+
+  for (k = 0; k < P.clues.length; k++) {
+    var t = cloneCand(base);
+    if (!propagate(t, [P.clues[k]], P.n, P.M)) continue;
+    var cl = P.clues[k];
+    var hit = newSingleton(base, t, P, clueCells(cl));
+    if (hit) {
+      /* An "X is in house N" clue about the very cell it pins isn't a deduction,
+         it's a given \u2014 "nothing else fits" would read as nonsense there. */
+      var given = (cl.type === 'at' && hit.c === cl.c1 && hit.i === cl.i1);
+      recordWalk(hit);
+      return stepSay('<b>Clue ' + (k + 1) + '</b> \u2014 ' + clueText(cl, P) +
+        (given
+          ? '<br>That one is handed to you: <span class="ce">' + P.cats[hit.c].items[hit.i] +
+            '</span> goes straight into <b>house ' + (hit.p + 1) + '</b>.'
+          : '<br>That puts <span class="ce">' + P.cats[hit.c].items[hit.i] +
+            '</span> in <b>house ' + (hit.p + 1) + '</b>, because nothing else fits.'));
+    }
+  }
+
+  var t2 = cloneCand(base);
+  propagate(t2, P.clues, P.n, P.M);
+  var hit2 = newSingleton(base, t2, P);
+  if (hit2) {
+    recordWalk(hit2);
+    return stepSay('No single clue does it here. Read the clues together and you can pin <span class="ce">' +
+      P.cats[hit2.c].items[hit2.i] + '</span> to <b>house ' + (hit2.p + 1) + '</b>.');
+  }
+
+  var t3 = cloneCand(base);
+  if (deduce(t3, P.clues, P.n, P.M, 1) !== 'stuck') {
+    var h3 = newSingleton(base, t3, P);
+    var target = h3 ? ('<span class="ce">' + P.cats[h3.c].items[h3.i] + '</span> is in <b>house ' + (h3.p + 1) + '</b>') : 'the next cell';
+    return stepSay('This one needs a test. Pick a cell, assume an answer, and follow the clues until something breaks \u2014 then you know it was the other option. Doing that shows ' + target + '.');
+  }
+  stepSay('Nothing more can be worked out from what is on the board yet. Fill in what you are sure of first.');
+}
+
+/* ---------- SOLO ---------- */
+function soloCheck() {
+  var P = G.puzzle; if (!P || G.answered) return;
+  var blanks = 0, wrong = 0, bad = {}, c, p;
+  for (c = 0; c < P.M; c++) for (p = 0; p < P.n; p++) {
+    var v = G.draft[c][p];
+    if (v < 0) blanks++;
+    else if (v !== P.sol[c][p]) { wrong++; bad[c + ':' + p] = 1; }
+  }
+  if (blanks && !wrong) {
+    G.badCells = null; renderEditGrid(); sfx.click();
+    return stepSay('Nothing wrong so far \u2014 but <b>' + blanks + '</b> cell' + (blanks === 1 ? ' is' : 's are') + ' still empty.');
+  }
+  if (wrong) {
+    sfx.wrong();
+    G.badCells = (G.checkStyle === 'which') ? bad : null;
+    renderEditGrid();
+    var msg = '<b>' + wrong + '</b> cell' + (wrong === 1 ? ' is' : 's are') + ' wrong';
+    msg += (G.checkStyle === 'which') ? ' \u2014 marked in red.' : '. Work out which.';
+    if (blanks) msg += ' ' + blanks + ' still empty.';
+    return stepSay(msg);
+  }
+  G.badCells = null; sfx.right();
+  G.soloSolved++;
+  stepClear();
+  revealSolution('solo');
+}
+
+/* ---------- ROUND SUMMARY ---------- */
+function attemptSummary() {
+  if (G.gameMode === 'solo') return '';
+  var parts = [];
+  G.teams.forEach(function (t, i) {
+    var n = G.tries[i] || 0;
+    if (n) parts.push(esc(t.name) + ' \u00d7' + n);
+  });
+  return parts.length ? '<br><span style="font-size:.82rem;opacity:.75">Attempts: ' + parts.join(' \u00b7 ') + '</span>' : '';
 }
 
 /* ---------- STATE ---------- */
-var G={teams:[],round:0,levelIdx:0,puzzle:null,mode:'target',timerSecs:0,bonusOn:true,
-       out:{},answered:false,timerId:null,timeLeft:0,pending:null,gridDraft:null,activeTeam:-1,
+var G={teams:[],round:0,levelIdx:0,puzzle:null,gameMode:'teams',mode:'target',
+       timerSecs:0,bonusOn:true,answerCount:0,maskEntry:false,checkStyle:'which',
+       answered:false,timerId:null,timeLeft:0,activeTeam:-1,
+       draft:null,sel:null,peek:false,badCells:null,qs:[],picks:[],
+       tries:{},lockUntil:{},lockTicker:null,bonusGiven:false,soloSolved:0,
        cache:{},locked:false,levelTouched:false};
 
 function segHandler(id,cb){
@@ -829,11 +1242,27 @@ function renderNameInputs(count){
     sl.appendChild(x);
   });
   segHandler('segLevel',function(){});
-  segHandler('segMode',function(v){
-    document.getElementById('modeHint').textContent = v==='target'
-      ? 'The team answers a single question about the solution — fast, one tap.'
-      : 'The team dictates the whole grid. Tap each cell to cycle through the emoji.';
+  segHandler('segGameMode',function(v){
+    var teams=v==='teams';
+    document.getElementById('teamSetup').classList.toggle('setup-hide',!teams);
+    document.getElementById('soloSetup').classList.toggle('setup-hide',teams);
+    document.getElementById('answerOpts').classList.toggle('setup-hide',!teams);
+    document.getElementById('gmHint').textContent = teams
+      ? 'Groups work on paper. Click a team when they want to answer.'
+      : 'No teams — you fill the grid on the board as the class works it out.';
   });
+  segHandler('segMode',function(v){
+    var q=v==='target';
+    document.getElementById('modeHint').textContent = q
+      ? 'A few questions about the solution — fast, and all of them must be right.'
+      : 'The team dictates the whole grid. Every cell must match.';
+    document.getElementById('fieldAnswers').classList.toggle('setup-hide',!q);
+    document.getElementById('fieldMask').classList.toggle('setup-hide',q);
+  });
+  segHandler('segAnswers',function(){});
+  segHandler('segMask',function(){});
+  segHandler('segCheck',function(){});
+  document.getElementById('fieldMask').classList.add('setup-hide');
   segHandler('segTimer',function(){});
   segHandler('segBonus',function(){});
   renderNameInputs(3);
@@ -845,12 +1274,19 @@ function startGame(){
   Array.prototype.forEach.call(document.getElementById('nameInputs').querySelectorAll('input'),function(x,i){
     names.push(x.value.trim()||('Team '+(i+1)));
   });
-  G.teams=names.map(function(n){ return {name:n,score:0}; });
+  G.gameMode=segVal('segGameMode');
+  G.teams = G.gameMode==='solo' ? [] : names.map(function(n){ return {name:n,score:0}; });
   G.mode=segVal('segMode');
+  G.answerCount=parseInt(segVal('segAnswers'),10)||0;
+  G.maskEntry=segVal('segMask')==='1';
+  G.checkStyle=segVal('segCheck')||'which';
   G.levelIdx=parseInt(segVal('segLevel'),10);
   G.timerSecs=parseInt(segVal('segTimer'),10);
   G.bonusOn=segVal('segBonus')==='1';
-  G.round=0; G.cache={}; G.locked=false; G.levelTouched=false;
+  G.round=0; G.cache={}; G.locked=false; G.levelTouched=false; G.soloSolved=0;
+  var solo=G.gameMode==='solo';
+  document.getElementById('teamBar').classList.toggle('setup-hide',solo);
+  document.getElementById('soloBar').classList.toggle('setup-hide',!solo);
   show('scPlay');
   nextPuzzle();
 }
@@ -896,7 +1332,9 @@ function toggleLock(){ G.locked=!G.locked; sfx.click(); updateLevelChip(); }
 
 function nextPuzzle(){
   stopTimer();
-  G.round++; G.out={}; G.answered=false; G.levelTouched=false;
+  G.round++; G.answered=false; G.levelTouched=false;
+  G.tries={}; G.lockUntil={}; G.bonusGiven=false; G.badCells=null; G.sel=null; G.peek=false;
+  stopLockTicker(); closePicker(); stepClear(); G.walk=null;
   document.getElementById('bannerSlot').innerHTML='';
   document.getElementById('playBody').style.display='none';
   document.getElementById('genBox').style.display='block';
@@ -944,7 +1382,12 @@ function renderPuzzle(){
   updateLevelChip();
   document.getElementById('tPts').textContent=P.pts+(P.pts===1?' point':' points');
   document.getElementById('btnBonus').disabled = P.extras.length===0;
-  renderClues(); renderGrid(false); renderTeams();
+  renderClues();
+  if(G.gameMode==='solo'){
+    G.draft=blankDraft(P); EDIT.mount='gridTbl'; EDIT.masked=false; renderEditGrid();
+  }else{
+    EDIT.mount=null; renderGrid(false); renderTeams();
+  }
 }
 function renderClues(){
   var P=G.puzzle, box=document.getElementById('clueList');
@@ -981,16 +1424,23 @@ function renderGrid(reveal){
 }
 function renderTeams(){
   var box=document.getElementById('teamList');
+  if(!box || G.gameMode==='solo') return;
+  var pts=G.puzzle?G.puzzle.pts:1;
   box.innerHTML='';
   G.teams.forEach(function(t,i){
-    var isOut=!!G.out[i];
+    var left=lockLeft(i), tries=G.tries[i]||0;
     var b=document.createElement('button');
-    b.className='team'+(isOut?' out':'');
-    b.disabled=isOut||G.answered;
+    b.className='team'+(left>0?' locked':'');
+    b.disabled=G.answered||left>0;
     b.onclick=function(){ openAnswer(i); };
+    var stat;
+    if(G.answered) stat='Round over';
+    else if(left>0) stat='Locked '+fmtSecs(left);
+    else stat='Ready \u00b7 worth '+awardFor(tries+1,pts)+' pt'+(awardFor(tries+1,pts)===1?'':'s');
     b.innerHTML='<span class="tname"><span class="dot"></span>'+esc(t.name)+'</span>'+
                 '<span class="tscore">'+t.score+'</span>'+
-                '<span class="tstat">'+(isOut?'Out this round':'Ready')+'</span>';
+                (tries?'<span class="tries">'+tries+' attempt'+(tries>1?'s':'')+' this round</span>':'')+
+                '<span class="tstat">'+stat+'</span>';
     box.appendChild(b);
   });
 }
@@ -1030,138 +1480,153 @@ function giveBonusClue(){
 }
 
 function openAnswer(teamIdx){
-  if(G.answered||G.out[teamIdx]) return;
-  G.activeTeam=teamIdx; G.pending=null;
+  if(G.answered || lockLeft(teamIdx)>0) return;
   var P=G.puzzle;
-  document.getElementById('mWho').textContent=G.teams[teamIdx].name+' — one attempt only';
+  G.activeTeam=teamIdx; G.picks=[]; G.qs=[]; G.peek=false; G.badCells=null;
+  var tries=(G.tries[teamIdx]||0)+1, worth=awardFor(tries,P.pts);
+  document.getElementById('mWho').textContent =
+    G.teams[teamIdx].name+' \u2014 attempt '+tries+', worth '+worth+' point'+(worth===1?'':'s');
   document.getElementById('mSubmit').disabled=true;
   var body=document.getElementById('mBody');
+
+  /* The clock is the class's thinking time, not the teacher's typing time. */
+  if(G.timerId) pauseTimerForAnswer();
+
   if(G.mode==='target'){
-    document.getElementById('mQ').innerHTML=questionText(P);
-    var q=P.question, html='<div class="opts" id="optBox">', p, i;
-    if(q.kind==='pos'){
-      for(p=0;p<P.n;p++) html+='<button class="opt" data-v="'+p+'">🏠<small>House '+(p+1)+'</small></button>';
-    }else{
-      for(i=0;i<P.n;i++) html+='<button class="opt" data-v="'+i+'">'+P.cats[q.c2].items[i]+'</button>';
-    }
-    html+='</div>';
-    body.innerHTML=html;
-    document.getElementById('optBox').addEventListener('click',function(ev){
-      var b=ev.target.closest('.opt'); if(!b) return;
-      Array.prototype.forEach.call(this.querySelectorAll('.opt'),function(x){ x.classList.remove('sel'); });
-      b.classList.add('sel');
-      G.pending=parseInt(b.getAttribute('data-v'),10);
-      document.getElementById('mSubmit').disabled=false;
-      sfx.click();
+    var k=Math.min(questionsFor(P), P.questions.length);
+    G.qs=P.questions.slice(0,k);
+    G.picks=new Array(k).fill(null);
+    document.getElementById('mQ').innerHTML = k>1
+      ? 'Answer all '+k+' \u2014 every one has to be right.'
+      : 'One question.';
+    var html='';
+    G.qs.forEach(function(q,qi){
+      html+='<div class="qblock" id="qb'+qi+'"><h3><span class="qn">'+(qi+1)+'</span>'+questionText(P,q)+'</h3>'+
+            '<div class="opts" data-q="'+qi+'">';
+      if(q.kind==='pos'){
+        for(var p=0;p<P.n;p++) html+='<button class="opt" data-v="'+p+'">\ud83c\udfe0<small>House '+(p+1)+'</small></button>';
+      }else{
+        for(var i=0;i<P.n;i++) html+='<button class="opt" data-v="'+i+'">'+P.cats[q.c2].items[i]+'</button>';
+      }
+      html+='</div></div>';
     });
+    body.innerHTML=html;
+    body.addEventListener('click',qPick);
   }else{
-    document.getElementById('mQ').innerHTML='Fill in every house. Tap a cell to change it.';
-    G.gridDraft=[];
-    for(var c=0;c<P.M;c++){ var rowd=[]; for(var p2=0;p2<P.n;p2++) rowd.push(-1); G.gridDraft.push(rowd); }
-    body.innerHTML='<div class="street"><div class="grid-tbl" id="draftTbl"></div></div><p class="hint">Every emoji is used exactly once per row.</p>';
-    renderDraft();
+    EDIT.mount='draftTbl'; EDIT.masked=G.maskEntry;
+    G.draft=blankDraft(P); G.sel=null;
+    document.getElementById('mQ').innerHTML='Fill in every house.';
+    body.innerHTML='<div class="street"><div class="grid-tbl" id="draftTbl"></div></div>'+
+      '<p class="editnote">'+(G.maskEntry
+        ? 'Answers are hidden. Click a cell, then type the emoji number shown in the row on the left.'
+        : 'Click a cell to pick an emoji. Arrow keys move, 1\u20135 fill, Backspace clears.')+
+      (G.maskEntry?' <button class="btn ghost" style="padding:4px 10px;font-size:.8rem" onclick="togglePeek()" id="peekBtn">\ud83d\udc41 Peek</button>':'')+'</p>';
+    renderEditGrid();
   }
   document.getElementById('modal').classList.add('on');
 }
-function renderDraft(){
-  var P=G.puzzle, tbl=document.getElementById('draftTbl');
-  if(!tbl) return;
-  tbl.innerHTML='';
-  var cols='130px repeat('+P.n+',minmax(78px,1fr))';
-  var head=document.createElement('div');
-  head.className='row'; head.style.gridTemplateColumns=cols;
-  var h='<div class="rowhead"><span class="cname">House</span></div>';
-  for(var p=0;p<P.n;p++) h+='<div class="house"><div class="hnum">'+(p+1)+'</div></div>';
-  head.innerHTML=h;
-  tbl.appendChild(head);
-  P.cats.forEach(function(cat,c){
-    var row=document.createElement('div');
-    row.className='row'; row.style.gridTemplateColumns=cols;
-    var rh=document.createElement('div');
-    rh.className='rowhead';
-    rh.innerHTML='<span class="cname">'+esc(cat.name)+'</span><span class="bank">'+cat.items.join('')+'</span>';
-    row.appendChild(rh);
-    for(var p=0;p<P.n;p++){
-      (function(cc,pp){
-        var cell=document.createElement('div');
-        var v=G.gridDraft[cc][pp];
-        cell.className='cell edit-cell'+(v<0?' empty':' filled');
-        cell.textContent = v<0 ? '' : cat.items[v];
-        cell.onclick=function(){
-          var cur=G.gridDraft[cc][pp];
-          G.gridDraft[cc][pp] = (cur+1 >= P.n) ? -1 : cur+1;
-          sfx.click(); renderDraft(); checkDraftReady();
-        };
-        row.appendChild(cell);
-      })(c,p);
-    }
-    tbl.appendChild(row);
-  });
+function qPick(ev){
+  var b=ev.target.closest('.opt'); if(!b) return;
+  var box=b.parentNode, qi=parseInt(box.getAttribute('data-q'),10);
+  Array.prototype.forEach.call(box.querySelectorAll('.opt'),function(x){ x.classList.remove('sel'); });
+  b.classList.add('sel');
+  G.picks[qi]=parseInt(b.getAttribute('data-v'),10);
+  document.getElementById('qb'+qi).classList.add('done');
+  document.getElementById('mSubmit').disabled = G.picks.some(function(v){ return v===null; });
+  sfx.click();
 }
-function checkDraftReady(){
-  var full=G.gridDraft.every(function(r){ return r.every(function(v){ return v>=0; }); });
-  document.getElementById('mSubmit').disabled=!full;
-  if(full) G.pending='grid';
+function togglePeek(){
+  G.peek=!G.peek; sfx.click(); renderEditGrid();
+  var b=document.getElementById('peekBtn');
+  if(b) b.innerHTML = G.peek ? '\ud83d\ude48 Hide' : '\ud83d\udc41 Peek';
 }
 function closeModal(){
   document.getElementById('modal').classList.remove('on');
-  G.activeTeam=-1; G.pending=null;
+  closePicker();
+  var body=document.getElementById('mBody');
+  if(body) body.removeEventListener('click',qPick);
+  if(G.mode!=='target') EDIT.mount=null;
+  G.activeTeam=-1; G.picks=[]; G.qs=[]; G.sel=null; G.peek=false;
+  resumeTimerAfterAnswer();
+}
+function pauseTimerForAnswer(){
+  if(G.timerId){ clearInterval(G.timerId); G.timerId=null; G.timerHeld=true; }
+}
+function resumeTimerAfterAnswer(){
+  if(G.timerHeld && !G.answered && G.timeLeft>0){ G.timerHeld=false; startTimer(G.timeLeft); }
+  else G.timerHeld=false;
 }
 function submitAnswer(){
-  var P=G.puzzle, t=G.activeTeam, correct=false;
+  var P=G.puzzle, t=G.activeTeam, correct;
+  if(t<0) return;
   if(G.mode==='target'){
-    var q=P.question;
-    if(q.kind==='pos') correct = (G.pending===P.inv[q.c1][q.i1]);
-    else correct = (P.inv[q.c2][G.pending]===P.inv[q.c1][q.i1]);
+    correct = G.qs.every(function(q,i){ return questionCorrect(P,q,G.picks[i]); });
   }else{
-    correct = G.gridDraft.every(function(r,c){
-      return r.every(function(v,p){ return v===P.sol[c][p]; });
-    });
+    correct = G.draft.every(function(r,c){ return r.every(function(v,p){ return v===P.sol[c][p]; }); });
   }
+  G.tries[t]=(G.tries[t]||0)+1;
   closeModal();
   if(correct) handleCorrect(t); else handleWrong(t);
 }
 function handleCorrect(t){
-  G.teams[t].score += G.puzzle.pts;
-  G.answered=true; stopTimer(); sfx.right();
+  var award=awardFor(G.tries[t], G.puzzle.pts);
+  G.teams[t].score += award;
+  G.lastAward=award;
+  G.answered=true; stopTimer(); stopLockTicker(); sfx.right();
   revealSolution('win', t);
 }
 function handleWrong(t){
-  G.out[t]=true; sfx.wrong();
-  var alive=G.teams.filter(function(_,i){ return !G.out[i]; }).length;
-  if(G.bonusOn && alive>0 && G.puzzle.extras.length) giveBonusClue();
-  renderTeams();
-  if(alive===0){ G.answered=true; stopTimer(); revealSolution('allout'); }
-  else flashBanner('bad','❌ '+G.teams[t].name+' is out',
-    alive+' team'+(alive===1?'':'s')+' still in.'+(G.bonusOn?' A bonus clue was added.':''), false);
+  sfx.wrong();
+  G.lockUntil[t]=Date.now()+LOCK_MS;
+  var gotBonus=false;
+  if(G.bonusOn && !G.bonusGiven && G.puzzle.extras.length){ giveBonusClue(); G.bonusGiven=true; gotBonus=true; }
+  renderTeams(); startLockTicker();
+  var next=awardFor((G.tries[t]||0)+1, G.puzzle.pts);
+  flashBanner('bad','\u274c '+G.teams[t].name+' \u2014 not quite',
+    'Locked out for one minute, so nobody can work through the options by guessing. '+
+    'Their next attempt this round would be worth '+next+' point'+(next===1?'':'s')+'.'+
+    (gotBonus?' A bonus clue has been added.':''), false);
 }
 function flashBanner(kind,title,sub,withNext){
   document.getElementById('bannerSlot').innerHTML=
     '<div class="banner '+kind+'"><h2>'+esc(title)+'</h2><p>'+sub+'</p>'+
-    (withNext?'<button class="btn primary big" onclick="nextPuzzle()">Next puzzle →</button>':'')+'</div>';
+    (withNext?'<button class="btn primary big" onclick="nextPuzzle()">Next puzzle \u2192</button>'+
+      (G.gameMode==='teams'?' <button class="btn ghost" onclick="nextStep()">Walk through it</button>':'')
+      :'')+'</div>';
 }
 function revealSolution(reason,t){
-  G.answered=true; stopTimer();
+  G.answered=true; stopTimer(); stopLockTicker(); closePicker(); G.sel=null;
+  EDIT.mount=null;
   renderGrid(true); renderTeams();
   if(reason!=='win') sfx.reveal();
   var title,sub;
-  if(reason==='win'){ title='✅ '+G.teams[t].name+' scores '+G.puzzle.pts+'!'; sub='Nailed it. Here is the full street.'; }
-  else if(reason==='allout'){ title='😬 Nobody got it'; sub='Every team is out. No points this round — here is the answer.'; }
-  else { title='🔍 Answer revealed'; sub='No points awarded this round.'; }
+  if(reason==='win'){
+    var tr=G.tries[t]||1;
+    title='\u2705 '+G.teams[t].name+' scores '+G.lastAward+'!';
+    sub='Nailed it'+(tr>1?' on attempt '+tr:'')+'. Here is the full street.'+attemptSummary();
+  }
+  else if(reason==='solo'){ title='\u2705 Solved!'; sub='Every house is right. That is '+G.soloSolved+' puzzle'+(G.soloSolved===1?'':'s')+' so far.'; }
+  else { title='\ud83d\udd0d Answer revealed'; sub='No points awarded this round.'+attemptSummary(); }
   /* Up on a win only. A teacher reveal or an all-out round holds the level so
      a class that is struggling doesn't get pushed further; the lock stops even
      a win from moving it, and the teacher's own arrows always take priority. */
-  if(reason==='win' && !G.locked && !G.levelTouched){
+  if((reason==='win'||reason==='solo') && !G.locked && !G.levelTouched){
     G.levelIdx = Math.min(LEVELS.length-1, G.puzzle.levelIdx+1);
   }
   updateLevelChip();
   if(G.levelIdx!==G.puzzle.levelIdx) sub+=' Next puzzle: <b>'+LEVELS[G.levelIdx].label+'</b>.';
   else if(reason!=='win') sub+=' Difficulty stays at <b>'+LEVELS[G.levelIdx].label+'</b>.';
-  flashBanner(reason==='win'?'good':'bad',title,sub,true);
+  flashBanner((reason==='win'||reason==='solo')?'good':'bad',title,sub,true);
   document.getElementById('bannerSlot').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function endGame(){
-  stopTimer();
+  stopTimer(); stopLockTicker(); closePicker();
+  if(G.gameMode==='solo'){
+    document.getElementById('podium').innerHTML=
+      '<div class="prow first"><span class="rank">\ud83e\udde9</span>'+
+      '<span class="pname">Puzzles solved</span><span class="pts">'+G.soloSolved+'</span></div>';
+    sfx.reveal(); show('scFinal'); return;
+  }
   var sorted=G.teams.slice().sort(function(a,b){ return b.score-a.score; });
   var box=document.getElementById('podium');
   box.innerHTML='';
@@ -1174,12 +1639,31 @@ function endGame(){
   });
   sfx.reveal(); show('scFinal');
 }
+document.addEventListener('mousedown',function(e){
+  if(!pickerOpen()) return;
+  if(e.target.closest('#cellPicker')||e.target.closest('.edit-cell')) return;
+  closePicker();
+},true);
+window.addEventListener('resize',function(){ closePicker(); });
+
 document.addEventListener('keydown',function(e){
   var t=e.target;
   if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return;
-  if(e.key==='Escape'){ closeModal(); return; }
+  if(e.key==='Escape'){
+    if(pickerOpen()){ closePicker(); renderEditGrid(); return; }
+    closeModal(); return;
+  }
   if(!document.getElementById('scPlay').classList.contains('on')) return;
-  if(document.getElementById('modal').classList.contains('on')) return;
+  var modalOn=document.getElementById('modal').classList.contains('on');
+  /* Cell editing owns the keyboard whenever an editable grid is on screen. */
+  if(EDIT.mount && (modalOn || G.gameMode==='solo') && editKey(e)){ e.preventDefault(); return; }
+  if(modalOn){
+    if(e.key==='Enter'){
+      var sb=document.getElementById('mSubmit');
+      if(sb && !sb.disabled){ e.preventDefault(); submitAnswer(); }
+    }
+    return;
+  }
   if(e.key==='['){ e.preventDefault(); stepLevel(-1); return; }
   if(e.key===']'){ e.preventDefault(); stepLevel(1); return; }
   if(e.key==='l'||e.key==='L'){ e.preventDefault(); toggleLock(); return; }

@@ -316,19 +316,38 @@
     to { opacity: 1; transform: scale(1) rotate(0deg); }
   }
 
+  /* Highlight carries a solid ring as well as the glow, so it does not depend
+     on colour alone — and the ghost's ring is dashed, so the two states are
+     told apart by shape at projector distance. */
   .emoji.highlighted {
-    filter: drop-shadow(0 0 16px rgba(124,92,252,0.8));
+    box-shadow: 0 0 0 3px var(--accent), 0 0 18px 2px rgba(124,92,252,0.45);
+    border-radius: 50%;
+    background: rgba(124,92,252,0.14);
     animation: pulse 1s ease-in-out infinite alternate;
   }
 
   /* Removed emoji, shown ghosted at its old position on reveal */
   .emoji.ghost {
-    opacity: 0.32;
+    opacity: 0.4;
     filter: grayscale(1);
+    box-shadow: 0 0 0 3px var(--red);
     border: 2px dashed var(--red);
     border-radius: 50%;
     box-sizing: border-box;
     animation: none;
+  }
+
+  /* Respect the OS "reduce motion" setting: no pulsing, no pop-in, no
+     confetti, no floating blobs. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+    .bg-blob { animation: none !important; }
+    .emoji.highlighted { animation: none !important; }
+    .confetti-piece { display: none !important; }
   }
 
   @keyframes pulse {
@@ -865,17 +884,17 @@
       <button class="diff-btn easy" id="btn-easy">
         <span class="diff-btn-icon">🟢</span>
         <span class="diff-btn-label">Easy</span>
-        <span class="diff-btn-sub">8–12 emojis</span>
+        <span class="diff-btn-sub">10 emojis</span>
       </button>
       <button class="diff-btn medium" id="btn-medium">
         <span class="diff-btn-icon">🟡</span>
         <span class="diff-btn-label">Medium</span>
-        <span class="diff-btn-sub">13–16 emojis</span>
+        <span class="diff-btn-sub">15 emojis</span>
       </button>
       <button class="diff-btn hard" id="btn-hard">
         <span class="diff-btn-icon">🔴</span>
         <span class="diff-btn-label">Hard</span>
-        <span class="diff-btn-sub">17–22 emojis</span>
+        <span class="diff-btn-sub">20 emojis</span>
       </button>
     </div>
     <div class="settings-row">
@@ -1218,6 +1237,7 @@ let countdownInterval = null, timerFull = 0;
 let usedCategories = new Set();
 let gameHistory = [];
 let openers = ['add_emoji','remove_emoji'];
+let nameItDone = false;
 
 // ─── Teams ─────────────────────────────────────────────────────────
 const TEAM_COLOURS = ['#7c5cfc','#fc5c7d','#43e97b','#56ccf2','#f9cb28','#ff8f4d'];
@@ -1263,6 +1283,18 @@ const MIN_POOL = 6;
 // Rounds whose answer is one or more emojis — these get the English word
 // prompt, the named reveal, and the spelling line.
 const WORD_ROUNDS = ['add_emoji','remove_emoji','move_emoji','swap_emoji','name_it'];
+
+// Fixed board sizes so a difficulty label is reproducible between classes.
+const BOARD_SIZE = { easy: 10, medium: 15, hard: 20 };
+
+// Distances in slot-cell units, used to close the gap between "move" (was
+// trivially obvious) and "swap" (was nearly invisible). Both are bands, not
+// minimums: taking "any pair far enough apart" made swaps the easiest round
+// of all, because distant pairs vastly outnumber near ones.
+// Swap sits slightly above move because exchanging two emojis reads as a
+// smaller change than one emoji moving into empty space.
+const MOVE_BAND = { easy: [1.6, 3.2], medium: [1.2, 2.4], hard: [1.0, 1.9] };
+const SWAP_BAND = { easy: [2.2, 3.6], medium: [1.8, 3.0], hard: [1.4, 2.4] };
 
 function inPool(e) {
   if (levelFilter === 'A1' && emojiLevel(e) !== 'A1') return false;
@@ -1734,6 +1766,7 @@ function startGame(diff) {
   usedCategories = new Set();
   gameHistory = [];
   openers = ['add_emoji','remove_emoji'];
+  nameItDone = false;
   buildTeams();
   roundAward = null;
   undoStack = [];
@@ -1744,7 +1777,9 @@ function startGame(diff) {
   wordsSeen = [];
   round = 0;
   const pool = poolEmojis();
-  const want = diff === 'easy' ? rand(8,12) : diff === 'medium' ? rand(13,16) : rand(17,22);
+  // Fixed, not a random range — two classes playing "Medium" get the same
+  // sized board, so the difficulty label means something.
+  const want = BOARD_SIZE[diff] || BOARD_SIZE.medium;
   numEmojis = Math.min(want, maxBoard(), pool.length);
   prevEmojis = shuffle(pool).slice(0, numEmojis);
   currEmojis = [...prevEmojis];
@@ -1763,25 +1798,37 @@ function countableCategories() {
   );
 }
 
+// How many odd-numbered rounds remain after this one.
+function oddRoundsLeft() {
+  let c = 0;
+  for (let r = round + 1; r <= totalRounds; r++) if (r % 2 !== 0) c++;
+  return c;
+}
+
 function pickActionType() {
   const addRemove = ['add_emoji','remove_emoji'];
   const catOptions = countableCategories();
-
   // Rounds 1 and 2 are the gentle opening: one add and one remove, but in a
   // random order so the game isn't identical every time.
   if (round === 1) { openers = shuffle(addRemove); return openers[0]; }
   if (round === 2) return openers[1];
 
-  // Odd rounds: observational or move/swap
+  // Odd rounds: observational, move/swap, or vocabulary
   if (round % 2 !== 0) {
     // count_total is listed twice so it doesn't get drowned out by up to
     // five category options (it was firing in under 6% of rounds).
+    const canName = nameItOn && prevEmojis.length >= 3;
+    // Name It is the game's one real language-production round, so guarantee
+    // it happens: if this is the last odd round and none has come up, force it.
+    if (canName && !nameItDone && oddRoundsLeft() === 0) { nameItDone = true; return 'name_it'; }
+
     const opts = ['count_total','count_total'];
     if (catOptions.length) opts.push(...catOptions.map(c => 'count_category:'+c));
     if (prevEmojis.length >= 2) opts.push('move_emoji', 'swap_emoji');
-    if (nameItOn && prevEmojis.length >= 3) opts.push('name_it', 'name_it');
+    if (canName) opts.push('name_it', 'name_it', 'name_it');
     const pick = opts[rand(0, opts.length - 1)];
     if (pick.startsWith('count_category:')) usedCategories.add(pick.split(':')[1]);
+    if (pick === 'name_it') nameItDone = true;
     return pick;
   }
 
@@ -1807,11 +1854,8 @@ function applyAction(type, base) {
     next.splice(idx, 1);
   } else if (type === 'swap_emoji') {
     if (next.length < 2) return { next, fallback: 'count_total' };
-    const i = rand(0, next.length - 1);
-    let j = rand(0, next.length - 2); if (j >= i) j++;
-    swappedEmojis = [next[i], next[j]];
-    // Swap is visual-only (positions swap), content unchanged
-    // We represent it as: in display, we re-render with highlight
+    // The actual pair is chosen once positions exist (see prepareRound's rAF),
+    // because a good swap depends on how far apart the two emojis are.
   } else if (type === 'move_emoji') {
     if (next.length < 1) return { next, fallback: 'count_total' };
     movedEmoji = next[rand(0, next.length - 1)];
@@ -1822,6 +1866,34 @@ function applyAction(type, base) {
     nameTargets = shuffle(next).slice(0, 3);
   }
   return { next, fallback: null };
+}
+
+// A swap of two neighbours is invisible; a swap right across the board is
+// louder than any other round type. Pick a pair inside the difficulty's band.
+function pickSwapPair(list) {
+  if (list.length < 2) return [];
+  const anyPair = () => {
+    const i = rand(0, list.length - 1);
+    let j = rand(0, list.length - 2); if (j >= i) j++;
+    return [list[i], list[j]];
+  };
+  if (!layout || !positionMap) return anyPair();
+  const band = SWAP_BAND[difficulty] || SWAP_BAND.medium;
+  const lo = band[0] * layout.cell, hi = band[1] * layout.cell;
+  const pairs = [];
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length; j++) {
+      const a = positionMap[list[i]], b = positionMap[list[j]];
+      if (!a || !b) continue;
+      pairs.push({ p: [list[i], list[j]], d: Math.hypot(a.x - b.x, a.y - b.y) });
+    }
+  }
+  if (!pairs.length) return anyPair();
+  const inBand = pairs.filter(x => x.d >= lo && x.d <= hi);
+  if (inBand.length) return inBand[rand(0, inBand.length - 1)].p;
+  // Nothing in band (small or crowded board): take the closest fit to it.
+  pairs.sort((x, y) => Math.abs(x.d - lo) - Math.abs(y.d - lo));
+  return pairs[rand(0, Math.min(2, pairs.length - 1))].p;
 }
 
 function prepareRound() {
@@ -1886,6 +1958,11 @@ function prepareRound() {
   requestAnimationFrame(() => {
     layout = computeLayout(Math.max(prevEmojis.length, currEmojis.length) + 2);
     positionMap = buildPositionMap(prevEmojis, layout);
+    // Now that positions exist, choose a swap pair far enough apart to notice.
+    if (actionType === 'swap_emoji') {
+      swappedEmojis = pickSwapPair(prevEmojis);
+      correctAnswer = swappedEmojis.join(' ↔ ');
+    }
     displayEmojisFromMap(prevEmojis, positionMap);
     emojiGrid.classList.add('invisible');
   });
@@ -1924,16 +2001,21 @@ function onFirstTimerEnd() {
       phase2Map[b] = { ...positionMap[a] };
 
     } else if (actionType === 'move_emoji') {
-      // Claim a free slot far enough away to be noticeable.
+      // A hop inside a band rather than "as far as possible": a huge jump made
+      // move_emoji trivial next to swap_emoji.
       const oldPos = positionMap[movedEmoji];
       const free = freeSlots(phase2Map, layout).filter(s => s !== oldPos.slot);
       if (free.length) {
-        const minDist = layout.cell * 1.5;
-        const far = free.filter(s => {
+        const band = MOVE_BAND[difficulty] || MOVE_BAND.medium;
+        const lo = band[0] * layout.cell, hi = band[1] * layout.cell;
+        const dist = s => {
           const p = slotToXY(s, layout);
-          return Math.hypot(p.x - oldPos.x, p.y - oldPos.y) >= minDist;
-        });
-        const pool = far.length ? far : free;
+          return Math.hypot(p.x - oldPos.x, p.y - oldPos.y);
+        };
+        const inBand = free.filter(s => { const d = dist(s); return d >= lo && d <= hi; });
+        // If nothing sits in the band, take whatever is closest to it.
+        const pool = inBand.length ? inBand
+          : free.slice().sort((a, b) => Math.abs(dist(a) - lo) - Math.abs(dist(b) - lo)).slice(0, 3);
         phase2Map[movedEmoji] = slotToXY(pool[rand(0, pool.length - 1)], layout);
       }
 
@@ -2150,6 +2232,8 @@ function endGame() {
 
 // ─── Confetti ──────────────────────────────────────────────────────
 function spawnConfetti() {
+  // Don't even build the nodes if the OS asks for reduced motion.
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const colors = ['#7c5cfc','#fc5c7d','#43e97b','#56ccf2','#f9cb28','#fff'];
   for (let i = 0; i < 80; i++) {
     const c = document.createElement('div');

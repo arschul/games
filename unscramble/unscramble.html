@@ -2295,19 +2295,30 @@ function handleKeyboard(e) {
 
 document.addEventListener('keydown', handleKeyboard);
 
+// Unconditional: empties a slot and returns its tile to the rack. Internal use
+// only — callers reacting to a click must go through clearSlot(), which applies
+// the turn/pause/revealed guards first.
+function releaseSlot(slotIdx) {
+  const s = answerSlots[slotIdx];
+  if(!s || s.fixed) return;
+
+  const srcIdx = s.el.dataset.srcIdx;
+  if(srcIdx !== undefined) {
+    const tile = document.querySelector(`.letter-tile[data-idx="${srcIdx}"]`);
+    if(tile) tile.classList.remove('used');
+  }
+
+  s.letter=''; s.el.textContent=''; s.el.classList.remove('filled');
+  s.el.setAttribute('aria-label', `Answer position ${slotIdx+1}, empty`);
+  delete s.el.dataset.srcIdx;
+}
+
 function clearSlot(slotIdx) {
   if(revealedPositions.has(slotIdx)) return;
   if((turnLocked || paused) && !isRevealing) return;
   const s = answerSlots[slotIdx];
   if(!s || s.letter==='' || s.fixed) return;
-
-  const srcIdx = s.el.dataset.srcIdx;
-  const tile = document.querySelector(`.letter-tile[data-idx="${srcIdx}"]`);
-  if(tile) tile.classList.remove('used');
-
-  s.letter=''; s.el.textContent=''; s.el.classList.remove('filled');
-  s.el.setAttribute('aria-label', `Answer position ${slotIdx+1}, empty`);
-  delete s.el.dataset.srcIdx;
+  releaseSlot(slotIdx);
 }
 
 function clearAllSlots() {
@@ -2469,11 +2480,16 @@ function revealNext() {
   const s = answerSlots[idx];
   const correctLetter = currentWordData.word.toLowerCase()[idx];
 
-  // Lock the slot FIRST before any DOM mutation so a simultaneous click can't sneak in
+  // Lock the board first so a click landing in the same tick can't sneak in.
   isRevealing = true;
-  revealedPositions.add(idx);
 
-  if(s.letter!=='' ) clearSlot(idx);   // clearSlot is now safe — revealedPositions already has idx
+  // Give the team's tile back BEFORE marking the slot revealed. Order matters:
+  // clearSlot() refuses to touch a revealed slot, so calling it after
+  // revealedPositions.add(idx) was a silent no-op and the tile sitting in that
+  // slot stayed struck through forever — unrecoverable, and with sequential fill
+  // it hit any team that had put a single letter down before the first reveal.
+  releaseSlot(idx);
+  revealedPositions.add(idx);
 
   s.letter = correctLetter;
   s.el.textContent = correctLetter.toUpperCase();
@@ -2487,7 +2503,7 @@ function revealNext() {
   if(!match) {
     for(let k = answerSlots.length-1; k >= 0; k--) {
       if(k !== idx && !revealedPositions.has(k) && answerSlots[k].letter === correctLetter) {
-        clearSlot(k);
+        releaseSlot(k);
         break;
       }
     }

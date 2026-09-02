@@ -622,6 +622,12 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;
 }
 .target-cancel:hover{background:var(--gold);color:#000;}
+/* Clock is frozen while a power is being targeted */
+.timer-num.frozen{color:var(--gold);opacity:0.6;animation:none;}
+.target-freeze{
+  padding:4px 12px;border-radius:20px;background:rgba(0,0,0,0.25);
+  font-size:0.76rem;letter-spacing:0.08em;opacity:0.9;
+}
 
 /* Shielded squares */
 .cell.shielded{box-shadow:inset 0 0 0 3px var(--gold);}
@@ -841,6 +847,7 @@ body.playing .back-link{display:none;}
       <li><strong>⇄ Swap (2)</strong> — exchange two locked letters' positions.</li>
       <li>Shielded squares are immune to Move, Remove and Swap — defence is deliberately the cheapest option.</li>
       <li>Words already claimed keep their points. Wrecking the board can't take a score away.</li>
+      <li><strong>The clock stops while you aim.</strong> From the moment you pick Shield, Move, Remove or Swap until you've chosen your square(s), the timer is frozen — so deciding where to strike doesn't eat your turn. Press <strong>Esc</strong> or <strong>Cancel</strong> to back out and the clock starts again.</li>
     </ul>
 
     <div class="rules-sec">The clock</div>
@@ -1753,13 +1760,23 @@ function spawnPop(pts,team){
 }
 
 // ─── TIMER ───────────────────────────────────────────────
+// Colour/state classes only — safe to call without advancing the clock or
+// firing a countdown tick. A power being targeted freezes the clock, so the
+// danger blink is suppressed: a blinking number would imply time is running.
+function paintTimerState(){
+  const pct=timeLeft/maxTurnTime;
+  const frozen=!!pendingPower;
+  document.getElementById('timerNum').className='timer-num'
+    +(frozen?' frozen':(pct<=0.15?' danger':pct<=0.33?' warn':''));
+  document.getElementById('tbar').style.background=
+    frozen?'var(--gold)':pct<=0.15?'var(--red)':pct<=0.33?'#ff6600':'var(--gold)';
+}
+
 function updateTimerUI(){
   const m=Math.floor(timeLeft/60), s=timeLeft%60;
   document.getElementById('timerNum').textContent=`${m}:${s.toString().padStart(2,'0')}`;
   document.getElementById('tbar').style.width=`${(timeLeft/maxTurnTime)*100}%`;
-  const pct=timeLeft/maxTurnTime;
-  document.getElementById('timerNum').className='timer-num'+(pct<=0.15?' danger':pct<=0.33?' warn':'');
-  document.getElementById('tbar').style.background=pct<=0.15?'var(--red)':pct<=0.33?'#ff6600':'var(--gold)';
+  paintTimerState();
   // Countdown sfx: every second when ≤20s left
   if(timeLeft>0 && timeLeft<=20){
     if(timeLeft<=10){
@@ -1778,7 +1795,9 @@ function updateTimerUI(){
 function startTimer(){
   clearInterval(countdownInterval);
   countdownInterval=setInterval(()=>{
-    if(isPaused) return;
+    // Targeting a power (shield / move / remove / swap) freezes the clock —
+    // choosing a square is a decision, not part of the team's playing time.
+    if(isPaused || pendingPower) return;
     timeLeft--; updateTimerUI();
     if(timeLeft<=0) doEndTurn();
   },1000);
@@ -1913,6 +1932,7 @@ function cancelPower(){
   cells.forEach(({cell})=>cell.classList.remove('targetable'));
   renderMeta();
   renderPowers();
+  paintTimerState();
 }
 
 function isTarget(i){
@@ -1930,6 +1950,7 @@ function paintTargets(){
   const grid=document.getElementById('grid');
   grid.classList.add('targeting');
   cells.forEach(({cell},i)=>cell.classList.toggle('targetable', isTarget(i)));
+  paintTimerState();
   const p=POWERS[pendingPower.key];
   let msg=p.prompt;
   if(pendingPower.key==='move'  && pendingPower.stage===2) msg='Choose an empty square';
@@ -1939,6 +1960,9 @@ function paintTargets(){
   const banner=document.createElement('div');
   banner.className='target-banner';
   banner.textContent=`${p.ico} ${p.name} — ${msg}`;
+  const fz=document.createElement('span');
+  fz.className='target-freeze'; fz.textContent='⏸ Clock paused';
+  banner.appendChild(fz);
   const x=document.createElement('button');
   x.className='target-cancel'; x.textContent='Cancel (Esc)';
   x.addEventListener('click',cancelPower);

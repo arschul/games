@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TRUE OR FALSE?</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<script>
+// Restore the saved theme before first paint so there is no flash of the wrong palette.
+(function () {
+  try {
+    var saved = localStorage.getItem('theme');
+    document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : 'dark');
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+</script>
 <style>
   :root {
     --bg: #0d0d1a;
@@ -21,6 +32,32 @@
     --fire: #ff4422;
     --radius: 16px;
   }
+
+  html[data-theme="light"] {
+    --bg: #f4f5fb;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --border: #d6d9ea;
+    --accent-true: #00a06f;
+    --accent-false: #d81e46;
+    --accent-gold: #b8860b;
+    --accent-orange: #d97706;
+    --text: #16162a;
+    --text-dim: #5f6280;
+    --hot: #d97706;
+    --fire: #dc2626;
+  }
+  html[data-theme="light"] body::before {
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(0,160,111,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(216,30,70,0.07) 0%, transparent 60%);
+  }
+  html[data-theme="light"] .card-shadow,
+  html[data-theme="light"] .setup-card,
+  html[data-theme="light"] .fact-card,
+  html[data-theme="light"] .team-panel,
+  html[data-theme="light"] .result-row { box-shadow: 0 1px 3px rgba(20,20,50,0.07); }
+  html[data-theme="light"] .logo h1 { filter: none; }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -662,6 +699,180 @@
   .cefr-chip.lvl-B1 { color: var(--accent-gold); border-color: rgba(255,215,0,0.4); }
   .cefr-chip.lvl-B2 { color: var(--accent-false); border-color: rgba(255,75,110,0.4); }
 
+  /* ═══ P3: TEACHER CONTROLS & CHROME ═══ */
+
+  .corner-ui {
+    position: fixed;
+    top: 14px;
+    z-index: 60;
+    display: flex;
+    gap: 8px;
+  }
+  .corner-left { left: 14px; }
+  .corner-right { right: 14px; }
+  body.playing .corner-ui { display: none; }
+
+  .chrome-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 16px;
+    color: var(--text-dim);
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .chrome-btn:hover { border-color: var(--accent-true); color: var(--accent-true); }
+
+  .teacher-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    padding-top: 2px;
+  }
+  .tbtn {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 7px 12px;
+    color: var(--text-dim);
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tbtn:hover:not(:disabled) { border-color: #5555aa; color: var(--text); }
+  .tbtn:disabled { opacity: 0.3; cursor: default; }
+  .tbtn.on { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(255,215,0,0.08); }
+  .tbtn.paused-on { border-color: var(--hot); color: var(--hot); background: rgba(255,140,0,0.1); }
+
+  .shortcut-strip {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    opacity: 0.65;
+    padding-bottom: 4px;
+  }
+  .shortcut-strip kbd {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin: 0 1px;
+  }
+
+  .adjust-btns { display: flex; gap: 4px; margin-left: 6px; }
+  .adj {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    width: 30px;
+    padding: 3px 0;
+    color: var(--text-dim);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .adj:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+
+  .paused-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8,8,18,0.72);
+    backdrop-filter: blur(3px);
+  }
+  html[data-theme="light"] .paused-veil { background: rgba(244,245,251,0.8); }
+  body.is-paused .paused-veil { display: flex; }
+  .paused-veil div {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 9vw, 76px);
+    letter-spacing: 8px;
+    color: var(--hot);
+  }
+
+  .help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(8,8,18,0.82);
+  }
+  html[data-theme="light"] .help-overlay { background: rgba(244,245,251,0.9); }
+  body.help-open .help-overlay { display: flex; }
+  .help-box {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 18px;
+    padding: 26px;
+    max-width: 460px;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+  }
+  .help-box h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 3px;
+    margin-bottom: 14px;
+    color: var(--accent-true);
+  }
+  .help-row {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .help-row:last-of-type { border-bottom: none; }
+  .help-key {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1px;
+    color: var(--accent-gold);
+    min-width: 74px;
+    flex-shrink: 0;
+  }
+  .help-note { font-size: 12px; color: var(--text-dim); margin-top: 14px; line-height: 1.5; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    z-index: 90;
+    background: var(--card);
+    border: 1.5px solid var(--accent-gold);
+    border-radius: 12px;
+    padding: 11px 22px;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .toast.show { opacity: 1; }
+
   /* ═══ P1: HOT SEAT + BETTING ═══ */
 
   .hot-banner {
@@ -946,6 +1157,33 @@
 </head>
 <body>
 
+<div class="corner-ui corner-left">
+  <a class="chrome-btn" href="../">← Game Hub</a>
+</div>
+<div class="corner-ui corner-right">
+  <button class="chrome-btn" id="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
+</div>
+
+<div class="paused-veil"><div>PAUSED</div></div>
+
+<div class="help-overlay" onclick="closeHelp()">
+  <div class="help-box" onclick="event.stopPropagation()">
+    <h3>KEYBOARD SHORTCUTS</h3>
+    <div class="help-row"><span class="help-key">T / F</span><span>Hot team answers True or False</span></div>
+    <div class="help-row"><span class="help-key">SPACE</span><span>Reveal the answer, then move on</span></div>
+    <div class="help-row"><span class="help-key">E</span><span>Award the Good English bonus</span></div>
+    <div class="help-row"><span class="help-key">P</span><span>Pause and resume the clock</span></div>
+    <div class="help-row"><span class="help-key">U</span><span>Undo the last action</span></div>
+    <div class="help-row"><span class="help-key">ESC</span><span>Throw this question away, draw another</span></div>
+    <div class="help-row"><span class="help-key">A</span><span>Show the manual score adjust buttons</span></div>
+    <div class="help-row"><span class="help-key">D</span><span>Switch between dark and light</span></div>
+    <div class="help-row"><span class="help-key">H / ?</span><span>Open and close this list</span></div>
+    <div class="help-note">Undo steps back through everything — a bet, a hot-seat answer, a reveal, a manual adjustment — and pauses the clock so you can sort things out before carrying on.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <!-- ═══ SETUP SCREEN ═══ -->
 <div id="setup-screen" class="screen active">
   <div class="logo">
@@ -1041,6 +1279,20 @@
     <button class="eng-btn hidden" id="eng-btn" onclick="awardEnglish()">⭐ GOOD ENGLISH +100</button>
     <button class="reveal-btn hidden" id="reveal-btn" onclick="revealAnswer()">REVEAL</button>
     <button class="next-btn hidden" id="next-btn" onclick="nextQuestion()">NEXT →</button>
+  </div>
+
+  <div class="teacher-bar">
+    <button class="tbtn" id="pause-btn" onclick="togglePause()">⏸ Pause</button>
+    <button class="tbtn" id="undo-btn" onclick="undo()">↶ Undo</button>
+    <button class="tbtn" onclick="skipQuestion()">⤼ New question</button>
+    <button class="tbtn" id="adjust-btn" onclick="toggleAdjust()">± Adjust</button>
+    <button class="tbtn" onclick="toggleTheme()">🎨 Theme</button>
+    <button class="tbtn" onclick="openHelp()">? Keys</button>
+    <button class="tbtn" onclick="quitToSetup()">✕ End game</button>
+  </div>
+
+  <div class="shortcut-strip">
+    <kbd>T</kbd><kbd>F</kbd> answer · <kbd>Space</kbd> reveal / next · <kbd>E</kbd> English · <kbd>P</kbd> pause · <kbd>U</kbd> undo · <kbd>Esc</kbd> new question · <kbd>H</kbd> help
   </div>
 </div>
 
@@ -1149,6 +1401,10 @@ let timeLeft = 0;
 let timerMax = 45;
 let usedPairIds = new Set();
 let maxLevel = '';   // '' = every level
+let paused = false;
+let adjustMode = false;
+let history = [];
+const HISTORY_DEPTH = 40;
 let circumference = 2 * Math.PI * 27;
 
 // ──────────────────────────────────────────────
@@ -1160,6 +1416,9 @@ function init() {
   renderTeamPills();
   updateRoundsLabel();
   updateLevelCount();
+  syncThemeBtn();
+  refreshUndoBtn();
+  document.addEventListener('keydown', onKey);
 }
 
 function addTeam(nameOverride) {
@@ -1222,6 +1481,242 @@ function updateRoundsLabel() {
   if (note) note.innerHTML = `${v} × ${teams.length} teams = <b>${v * teams.length} rounds</b>`;
 }
 
+// ──────────────────────────────────────────────
+// TEACHER CONTROLS
+// ──────────────────────────────────────────────
+function snapshot() {
+  return JSON.stringify({
+    teams: teams,
+    currentRound: currentRound,
+    hotIdx: hotIdx,
+    phase: phase,
+    hotAnswer: hotAnswer,
+    hotWasRight: hotWasRight,
+    engAwarded: engAwarded,
+    currentFact: currentFact,
+    usedPairIds: [...usedPairIds],
+    timeLeft: timeLeft,
+    timerMax: timerMax
+  });
+}
+
+function pushHistory() {
+  history.push(snapshot());
+  if (history.length > HISTORY_DEPTH) history.shift();
+  refreshUndoBtn();
+}
+
+function refreshUndoBtn() {
+  const b = document.getElementById('undo-btn');
+  if (b) b.disabled = history.length === 0;
+}
+
+function undo() {
+  if (!history.length) { refreshUndoBtn(); toast('Nothing left to undo'); return; }
+  const st = JSON.parse(history.pop());
+  teams        = st.teams;
+  currentRound = st.currentRound;
+  hotIdx       = st.hotIdx;
+  phase        = st.phase;
+  hotAnswer    = st.hotAnswer;
+  hotWasRight  = st.hotWasRight;
+  engAwarded   = st.engAwarded;
+  currentFact  = st.currentFact;
+  usedPairIds  = new Set(st.usedPairIds);
+  timeLeft     = st.timeLeft;
+  timerMax     = st.timerMax;
+
+  clearInterval(timerInterval);
+  setPaused(true);              // undo always pauses, so the room can sort it out
+  if (!document.getElementById('game-screen').classList.contains('active')) showScreen('game-screen');
+  redrawRound();
+  refreshUndoBtn();
+  sounds.click();
+  toast('Undone');
+}
+
+// Rebuild the whole round view from current state, whatever phase we are in.
+function redrawRound() {
+  document.getElementById('round-display').textContent = currentRound;
+  document.getElementById('rounds-total').textContent = totalRounds;
+
+  const hot = teams[hotIdx];
+  document.getElementById('hot-team-dot').style.background = hot.color;
+  document.getElementById('hot-team-name').lastElementChild.textContent = hot.name;
+
+  const chip = document.getElementById('cefr-chip');
+  chip.textContent = currentFact ? currentFact.cefr : '';
+  chip.className = 'cefr-chip' + (currentFact ? ' lvl-' + currentFact.cefr : '');
+  document.getElementById('fact-text').textContent = currentFact ? currentFact.fact : '';
+
+  const said = document.getElementById('hot-said');
+  const answerRow = document.getElementById('hot-answer-row');
+  const banner = document.getElementById('answer-banner');
+  const revealBtn = document.getElementById('reveal-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const eng = document.getElementById('eng-btn');
+
+  revealBtn.classList.remove('all-in-pulse');
+
+  if (phase === PHASE.DELIBERATE) {
+    answerRow.classList.remove('hidden');
+    document.getElementById('hc-true').disabled = false;
+    document.getElementById('hc-false').disabled = false;
+    said.classList.add('hidden');
+    banner.style.display = 'none';
+    revealBtn.classList.add('hidden');
+    nextBtn.classList.add('hidden');
+    eng.classList.add('hidden');
+  } else {
+    answerRow.classList.add('hidden');
+    said.className = 'hot-said ' + (hotAnswer ? 'said-true' : 'said-false');
+    said.innerHTML = `<small>${escapeHtml(hot.name)} SAYS</small>${hotAnswer ? '✅ TRUE' : '❌ FALSE'}`;
+    eng.classList.remove('hidden');
+    if (phase === PHASE.BETTING) {
+      banner.style.display = 'none';
+      revealBtn.classList.remove('hidden');
+      nextBtn.classList.add('hidden');
+    } else {
+      renderVerdict();
+      revealBtn.classList.add('hidden');
+      nextBtn.classList.remove('hidden');
+    }
+  }
+
+  eng.disabled = engAwarded || phase === PHASE.REVEALED;
+  eng.classList.toggle('awarded', engAwarded);
+  eng.textContent = engAwarded ? `⭐ +${ENGLISH_BONUS} AWARDED` : `⭐ GOOD ENGLISH +${ENGLISH_BONUS}`;
+
+  updatePhaseStrip();
+  renderTeamPanels();
+  updateTimerDisplay();
+  if (phase === PHASE.BETTING) checkAllBetsIn();
+}
+
+function renderVerdict() {
+  const banner = document.getElementById('answer-banner');
+  banner.style.display = 'block';
+  const note = currentFact.note ? `<span class="truth-note">${escapeHtml(currentFact.note)}</span>` : '';
+  banner.className = 'answer-banner ' + (currentFact.isTrue ? 'true-answer' : 'false-answer');
+  banner.innerHTML = (currentFact.isTrue ? '✅ THIS IS TRUE' : '❌ THIS IS FALSE') + note;
+}
+
+function setPaused(v) {
+  paused = v;
+  document.body.classList.toggle('is-paused', paused);
+  const b = document.getElementById('pause-btn');
+  if (b) {
+    b.textContent = paused ? '▶ Resume' : '⏸ Pause';
+    b.classList.toggle('paused-on', paused);
+  }
+  updateTimerDisplay();
+}
+
+function togglePause() {
+  setPaused(!paused);
+  sounds.click();
+}
+
+function toggleAdjust() {
+  adjustMode = !adjustMode;
+  const b = document.getElementById('adjust-btn');
+  if (b) b.classList.toggle('on', adjustMode);
+  renderTeamPanels();
+  sounds.click();
+}
+
+function adjustScore(i, amount) {
+  pushHistory();
+  teams[i].score = Math.max(0, teams[i].score + amount);
+  renderSinglePanel(i);
+  sounds.click();
+  toast(`${teams[i].name} ${amount > 0 ? '+' : '−'}${Math.abs(amount)}`);
+}
+
+// Throw the current question away and draw a replacement for the same hot team.
+function skipQuestion() {
+  if (!document.getElementById('game-screen').classList.contains('active')) return;
+  pushHistory();
+  if (currentFact) usedPairIds.delete(currentFact.id);
+  currentRound--;              // loadQuestion will put it straight back
+  loadQuestion(true);
+  toast('New question drawn');
+}
+
+function quitToSetup() {
+  if (!confirm('End the game and go back to setup?')) return;
+  clearInterval(timerInterval);
+  setPaused(false);
+  showScreen('setup-screen');
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  try { localStorage.setItem('theme', next); } catch (e) {}
+  syncThemeBtn();
+  sounds.click();
+}
+
+function syncThemeBtn() {
+  const b = document.getElementById('theme-btn');
+  if (!b) return;
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  b.textContent = dark ? '🌙 Dark' : '☀️ Light';
+}
+
+function openHelp()  { document.body.classList.add('help-open'); }
+function closeHelp() { document.body.classList.remove('help-open'); }
+function toggleHelp() { document.body.classList.toggle('help-open'); sounds.click(); }
+
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ──────────────────────────────────────────────
+// KEYBOARD
+// ──────────────────────────────────────────────
+function onKey(e) {
+  const tag = (e.target.tagName || '').toUpperCase();
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  const k = e.key.toLowerCase();
+
+  if (k === 'escape') {
+    if (document.body.classList.contains('help-open')) { closeHelp(); e.preventDefault(); return; }
+    if (inPlay()) { skipQuestion(); e.preventDefault(); }
+    return;
+  }
+  if (k === 'h' || e.key === '?') { toggleHelp(); e.preventDefault(); return; }
+  if (document.body.classList.contains('help-open')) return;
+  if (k === 'd') { toggleTheme(); e.preventDefault(); return; }
+  if (!inPlay()) return;
+
+  if (k === 'p') { togglePause(); e.preventDefault(); return; }
+  if (k === 'u') { undo(); e.preventDefault(); return; }
+  if (k === 'a') { toggleAdjust(); e.preventDefault(); return; }
+  if (k === 'e') { awardEnglish(); e.preventDefault(); return; }
+  if (k === 't') { setHotAnswer(true); e.preventDefault(); return; }
+  if (k === 'f') { setHotAnswer(false); e.preventDefault(); return; }
+  if (k === ' ' || k === 'enter') {
+    e.preventDefault();
+    if (phase === PHASE.BETTING) revealAnswer();
+    else if (phase === PHASE.REVEALED) nextQuestion();
+  }
+}
+
+function inPlay() {
+  return document.getElementById('game-screen').classList.contains('active');
+}
+
 function selectLevel(lvl) {
   maxLevel = lvl;
   document.querySelectorAll('.timer-opt[data-lvl]').forEach(el => el.classList.toggle('active', el.dataset.lvl === lvl));
@@ -1263,6 +1758,12 @@ function startGame() {
   });
   currentRound = 0;
   usedPairIds.clear();
+  history = [];
+  adjustMode = false;
+  setPaused(false);
+  const ab = document.getElementById('adjust-btn');
+  if (ab) ab.classList.remove('on');
+  refreshUndoBtn();
   sounds.start();
   showScreen('game-screen');
   loadQuestion();
@@ -1283,9 +1784,11 @@ function getRandomFact() {
   return factsDatabase.buildItem(pair, Math.random() < 0.5);
 }
 
-function loadQuestion() {
+function loadQuestion(isRedraw) {
+  if (!isRedraw) pushHistory();
   currentRound++;
   if (currentRound > totalRounds) { endGame(); return; }
+  setPaused(false);
 
   phase = PHASE.DELIBERATE;
   hotIdx = (currentRound - 1) % teams.length;
@@ -1348,6 +1851,8 @@ function updatePhaseStrip() {
 
 function setHotAnswer(val) {
   if (phase !== PHASE.DELIBERATE) return;
+  if (paused) { toast('Paused — resume to answer'); return; }
+  pushHistory();
   hotAnswer = val;
   phase = PHASE.BETTING;
   sounds.vote();
@@ -1368,8 +1873,10 @@ function setHotAnswer(val) {
 function placeBet(teamIdx, dir, amt) {
   if (phase !== PHASE.BETTING) return;
   if (teamIdx === hotIdx) return;
+  if (paused) { toast('Paused — resume to bet'); return; }
   const t = teams[teamIdx];
   if (amt > t.score) return;
+  pushHistory();
   t.bet = { dir, amt };
   sounds.vote();
   renderSinglePanel(teamIdx);
@@ -1380,6 +1887,8 @@ function placeBet(teamIdx, dir, amt) {
 function skipBet(teamIdx) {
   if (phase !== PHASE.BETTING) return;
   if (teamIdx === hotIdx) return;
+  if (paused) { toast('Paused — resume to bet'); return; }
+  pushHistory();
   teams[teamIdx].bet = { dir: 'skip', amt: 0 };
   sounds.click();
   renderSinglePanel(teamIdx);
@@ -1399,6 +1908,7 @@ function checkAllBetsIn() {
 function awardEnglish() {
   if (engAwarded) return;
   if (phase === PHASE.DELIBERATE) return;
+  pushHistory();
   engAwarded = true;
   const hot = teams[hotIdx];
   hot.score += ENGLISH_BONUS;
@@ -1414,17 +1924,14 @@ function awardEnglish() {
 function revealAnswer() {
   if (phase === PHASE.REVEALED) return;
   if (phase === PHASE.DELIBERATE) return;
+  pushHistory();
   phase = PHASE.REVEALED;
   clearInterval(timerInterval);
   sounds.reveal();
 
   hotWasRight = (hotAnswer === currentFact.isTrue);
 
-  const banner = document.getElementById('answer-banner');
-  banner.style.display = 'block';
-  const note = currentFact.note ? `<span class="truth-note">${escapeHtml(currentFact.note)}</span>` : '';
-  banner.className = 'answer-banner ' + (currentFact.isTrue ? 'true-answer' : 'false-answer');
-  banner.innerHTML = (currentFact.isTrue ? '✅ THIS IS TRUE' : '❌ THIS IS FALSE') + note;
+  renderVerdict();
 
   // Hot team
   const hot = teams[hotIdx];
@@ -1483,6 +1990,7 @@ function startTimer(duration, onExpire) {
   timeLeft = duration;
   updateTimerDisplay();
   timerInterval = setInterval(() => {
+    if (paused) return;
     timeLeft--;
     updateTimerDisplay();
     if (timeLeft <= 5 && timeLeft > 0) sounds.tick();
@@ -1494,7 +2002,7 @@ function startTimer(duration, onExpire) {
 }
 
 function updateTimerDisplay() {
-  document.getElementById('timer-num').textContent = Math.max(0, timeLeft);
+  document.getElementById('timer-num').textContent = paused ? '❚❚' : Math.max(0, timeLeft);
   const arc = document.getElementById('timer-arc');
   const pct = Math.max(0, timeLeft) / timerMax;
   arc.style.strokeDashoffset = circumference * (1 - pct);
@@ -1551,9 +2059,19 @@ function renderSinglePanel(i) {
         <span class="bank-label">BANK</span>
         <span class="team-bank">${t.score}</span>${delta}
       </div>
+      ${adjustMode ? `<div class="adjust-btns">
+        <button class="adj" data-adj="${i}" data-amt="-100">−</button>
+        <button class="adj" data-adj="${i}" data-amt="100">+</button>
+      </div>` : ''}
     </div>`;
 
   panel.innerHTML = head + panelBody(i, isHot, t);
+
+  panel.querySelectorAll('.adj').forEach(btn => {
+    btn.addEventListener('click', function () {
+      adjustScore(parseInt(this.dataset.adj, 10), parseInt(this.dataset.amt, 10));
+    });
+  });
 
   panel.querySelectorAll('.bet-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -1606,6 +2124,7 @@ function panelBody(i, isHot, t) {
 // ──────────────────────────────────────────────
 function endGame() {
   clearInterval(timerInterval);
+  setPaused(false);
   const sorted = [...teams].sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     if (b.hotCorrect !== a.hotCorrect) return b.hotCorrect - a.hotCorrect;
@@ -1676,6 +2195,8 @@ function playAgain() {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  document.body.classList.toggle('playing', id === 'game-screen');
+  if (id !== 'game-screen') setPaused(false);
 }
 
 init();

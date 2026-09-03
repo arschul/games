@@ -645,6 +645,23 @@
     .vote-btn { font-size: 16px; padding: 10px 4px; }
   }
 
+  .cefr-chip {
+    position: absolute;
+    top: 12px; right: 14px;
+    z-index: 2;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    opacity: 0.75;
+  }
+  .cefr-chip.lvl-A2 { color: var(--accent-true); border-color: rgba(0,229,160,0.4); }
+  .cefr-chip.lvl-B1 { color: var(--accent-gold); border-color: rgba(255,215,0,0.4); }
+  .cefr-chip.lvl-B2 { color: var(--accent-false); border-color: rgba(255,75,110,0.4); }
+
   /* ═══ P1: HOT SEAT + BETTING ═══ */
 
   .hot-banner {
@@ -952,6 +969,16 @@
   </div>
 
   <div class="setup-card">
+    <h2>🎓 Language Level</h2>
+    <div class="timer-opts">
+      <div class="timer-opt" data-lvl="A2" onclick="selectLevel('A2')">A1–A2<span>easiest reading</span></div>
+      <div class="timer-opt" data-lvl="B1" onclick="selectLevel('B1')">B1<span>up to B1</span></div>
+      <div class="timer-opt active" data-lvl="" onclick="selectLevel('')">ALL<span>every level</span></div>
+    </div>
+    <div class="phase-strip" id="level-count" style="text-align:left;margin-top:10px"></div>
+  </div>
+
+  <div class="setup-card">
     <h2>⏱ Hot Seat Timer</h2>
     <div class="timer-opts">
       <div class="timer-opt" data-val="30" onclick="selectTimer(30)">30<span>seconds</span></div>
@@ -993,6 +1020,7 @@
   <div class="phase-strip" id="phase-strip"></div>
 
   <div class="fact-card" id="fact-card">
+    <div class="cefr-chip" id="cefr-chip"></div>
     <div class="fact-text" id="fact-text">Loading...</div>
   </div>
 
@@ -1119,7 +1147,8 @@ let currentFact = null;
 let timerInterval = null;
 let timeLeft = 0;
 let timerMax = 45;
-let usedFactIds = new Set();
+let usedPairIds = new Set();
+let maxLevel = '';   // '' = every level
 let circumference = 2 * Math.PI * 27;
 
 // ──────────────────────────────────────────────
@@ -1130,6 +1159,7 @@ function init() {
   addTeam(); addTeam();
   renderTeamPills();
   updateRoundsLabel();
+  updateLevelCount();
 }
 
 function addTeam(nameOverride) {
@@ -1192,6 +1222,22 @@ function updateRoundsLabel() {
   if (note) note.innerHTML = `${v} × ${teams.length} teams = <b>${v * teams.length} rounds</b>`;
 }
 
+function selectLevel(lvl) {
+  maxLevel = lvl;
+  document.querySelectorAll('.timer-opt[data-lvl]').forEach(el => el.classList.toggle('active', el.dataset.lvl === lvl));
+  updateLevelCount();
+  sounds.click();
+}
+
+function updateLevelCount() {
+  const el = document.getElementById('level-count');
+  if (!el) return;
+  const n = factsDatabase.countByLevel(maxLevel || null);
+  const label = maxLevel === 'A2' ? 'A1–A2' : maxLevel === 'B1' ? 'A1–B1' : 'all levels';
+  el.innerHTML = `<b>${n}</b> questions available at ${label}`;
+  el.style.color = n < 20 ? 'var(--accent-false)' : '';
+}
+
 function selectTimer(val) {
   hotDuration = val;
   document.querySelectorAll('.timer-opt[data-val]').forEach(el => el.classList.toggle('active', +el.dataset.val === val));
@@ -1216,7 +1262,7 @@ function startGame() {
     t.engBonus = 0; t.bet = null; t.lastDelta = 0;
   });
   currentRound = 0;
-  usedFactIds.clear();
+  usedPairIds.clear();
   sounds.start();
   showScreen('game-screen');
   loadQuestion();
@@ -1225,16 +1271,16 @@ function startGame() {
 // ──────────────────────────────────────────────
 // GAME LOGIC
 // ──────────────────────────────────────────────
+// Draws a PAIR, then flips a coin for which half to serve. Only one half of a
+// pair is ever shown in a game — showing both would give the answer away.
 function getRandomFact() {
-  const allFacts = [
-    ...factsDatabase.trueFacts.map(f => ({...f, isTrue: true})),
-    ...factsDatabase.falseFacts.map(f => ({...f, isTrue: false}))
-  ];
-  const pool = allFacts.filter(f => !usedFactIds.has(`${f.isTrue?'t':'f'}_${f.id}`));
-  if (!pool.length) { usedFactIds.clear(); return getRandomFact(); }
-  const fact = pool[Math.floor(Math.random() * pool.length)];
-  usedFactIds.add(`${fact.isTrue?'t':'f'}_${fact.id}`);
-  return fact;
+  const levelPool = factsDatabase.getByLevel(maxLevel || null);
+  let pool = levelPool.filter(p => !usedPairIds.has(p.id));
+  if (!pool.length) { usedPairIds.clear(); pool = levelPool.slice(); }
+  if (!pool.length) pool = factsDatabase.pairs.slice();   // last resort
+  const pair = pool[Math.floor(Math.random() * pool.length)];
+  usedPairIds.add(pair.id);
+  return factsDatabase.buildItem(pair, Math.random() < 0.5);
 }
 
 function loadQuestion() {
@@ -1255,6 +1301,10 @@ function loadQuestion() {
   const hot = teams[hotIdx];
   document.getElementById('hot-team-dot').style.background = hot.color;
   document.getElementById('hot-team-name').lastElementChild.textContent = hot.name;
+
+  const chip = document.getElementById('cefr-chip');
+  chip.textContent = currentFact.cefr;
+  chip.className = 'cefr-chip lvl-' + currentFact.cefr;
 
   const factEl = document.getElementById('fact-text');
   factEl.textContent = currentFact.fact;
@@ -1372,14 +1422,9 @@ function revealAnswer() {
 
   const banner = document.getElementById('answer-banner');
   banner.style.display = 'block';
-  if (currentFact.isTrue) {
-    banner.className = 'answer-banner true-answer';
-    banner.textContent = '✅ THIS IS TRUE';
-  } else {
-    banner.className = 'answer-banner false-answer';
-    banner.innerHTML = '❌ THIS IS FALSE' +
-      (currentFact.truth ? `<span class="truth-note">${escapeHtml(currentFact.truth)}</span>` : '');
-  }
+  const note = currentFact.note ? `<span class="truth-note">${escapeHtml(currentFact.note)}</span>` : '';
+  banner.className = 'answer-banner ' + (currentFact.isTrue ? 'true-answer' : 'false-answer');
+  banner.innerHTML = (currentFact.isTrue ? '✅ THIS IS TRUE' : '❌ THIS IS FALSE') + note;
 
   // Hot team
   const hot = teams[hotIdx];
@@ -1625,6 +1670,7 @@ function playAgain() {
   showScreen('setup-screen');
   renderTeamPills();
   updateRoundsLabel();
+  updateLevelCount();
 }
 
 function showScreen(id) {

@@ -391,7 +391,12 @@
             function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
 
             function tierIndexToLabel(idx) { return currentMode === 'money' ? formatMoney(moneyValues[idx]) : prizeTiers[idx].label; }
-            function tierIndexToClass(idx) { return currentMode === 'money' ? '' : (prizeTiers[idx].tier === 'bad' ? 'bad' : (prizeTiers[idx].tier === 'great' ? 'good' : '')); }
+            function tierIndexToClass(idx) {
+                if (currentMode === 'money') return idx <= 9 ? 'bad' : (idx >= 21 ? 'good' : '');
+                return prizeTiers[idx].tier === 'bad' ? 'bad' : (prizeTiers[idx].tier === 'great' ? 'good' : '');
+            }
+            // Prize labels read as phrases and want quotes; money amounts don't.
+            function tierIndexToQuoted(idx) { return currentMode === 'money' ? tierIndexToLabel(idx) : `"${tierIndexToLabel(idx)}"`; }
 
             function initGame() {
                 gameState = 'pick-case';
@@ -427,7 +432,7 @@
                     const div = document.createElement('div');
                     div.id = `prize-${idx}`;
                     div.className = `prize-amount text-center font-bold text-xs md:text-sm py-1 px-2 my-1 rounded-md w-full ${tierIndexToClass(idx)}`;
-                    div.textContent = p.label;
+                    div.textContent = tierIndexToLabel(idx);
                     const panel = idx < prizeTiers.length / 2 ? prizePanelLeft : prizePanelRight;
                     panel.appendChild(div);
                 });
@@ -614,19 +619,34 @@
             }
 
             function makeBankerOffer() {
-                const avgRank = averageRemainingRank(); // 0-25 scale
-                // Map the remaining average (whatever it is) onto the good/great band (16-24),
-                // then nudge it down a bit with some randomness so it reads as "slightly worse
-                // than what's actually left" instead of landing on the same tier every time.
-                const bandFloor = 16, bandCeil = 24;
-                const normalized = avgRank / 25; // 0-1
-                let offerTierIdx = Math.round(bandFloor + normalized * (bandCeil - bandFloor));
-                offerTierIdx -= (1 + Math.floor(Math.random() * 2)); // shave off 1-2 tiers, varies each offer
-                offerTierIdx = Math.max(bandFloor, Math.min(bandCeil, offerTierIdx));
+                let offerTierIdx;
+                if (currentMode === 'money') {
+                    // Real banker maths: average of what's still in play, lowballed early and
+                    // creeping toward fair value late, then snapped to the nearest board value.
+                    const remaining = briefcases.filter(b => !b.isOpen);
+                    const avg = remaining.reduce((s, b) => s + moneyValues[b.tierIdx], 0) / remaining.length;
+                    const factors = [0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9, 0.92, 0.95];
+                    const factor = factors[Math.min(currentRound, factors.length - 1)];
+                    const target = avg * factor * (0.9 + Math.random() * 0.2);
+                    offerTierIdx = moneyValues.reduce((best, v, i) =>
+                        Math.abs(v - target) < Math.abs(moneyValues[best] - target) ? i : best, 0);
+                } else {
+                    const avgRank = averageRemainingRank(); // 0-25 scale
+                    // Map the remaining average (whatever it is) onto the good/great band (16-24),
+                    // then nudge it down a bit with some randomness so it reads as "slightly worse
+                    // than what's actually left" instead of landing on the same tier every time.
+                    const bandFloor = 16, bandCeil = 24;
+                    const normalized = avgRank / 25; // 0-1
+                    offerTierIdx = Math.round(bandFloor + normalized * (bandCeil - bandFloor));
+                    offerTierIdx -= (1 + Math.floor(Math.random() * 2)); // shave off 1-2 tiers, varies each offer
+                    offerTierIdx = Math.max(bandFloor, Math.min(bandCeil, offerTierIdx));
+                }
+                if (!Number.isFinite(offerTierIdx)) offerTierIdx = 16; // never let a NaN reach the label lookup
+                offerTierIdx = Math.max(0, Math.min(25, offerTierIdx));
                 offerAmount.textContent = tierIndexToLabel(offerTierIdx);
                 offerAmount.dataset.tierIdx = offerTierIdx;
                 offerDisplay.classList.remove('hidden');
-                updateMessage(`The Banker offers you: "${tierIndexToLabel(offerTierIdx)}"`);
+                updateMessage(`The Banker offers you: ${tierIndexToQuoted(offerTierIdx)}`);
             }
 
             function openDoubleOrNothing() {
@@ -648,11 +668,11 @@
                     const newTier = Math.max(0, Math.min(25, playerCase.tierIdx + shift));
                     coinResult.classList.remove('hidden');
                     if (win) {
-                        coinResult.textContent = `🎉 Heads! Your case is upgraded toward: "${tierIndexToLabel(newTier)}"`;
+                        coinResult.textContent = `🎉 Heads! Your case is upgraded toward: ${tierIndexToQuoted(newTier)}`;
                         coinResult.className = 'text-xl font-black mt-4 text-green-400';
                         sfxGoodReveal();
                     } else {
-                        coinResult.textContent = `😬 Tails! Your case drops toward: "${tierIndexToLabel(newTier)}"`;
+                        coinResult.textContent = `😬 Tails! Your case drops toward: ${tierIndexToQuoted(newTier)}`;
                         coinResult.className = 'text-xl font-black mt-4 text-red-400';
                         sfxBadReveal();
                     }
@@ -704,11 +724,11 @@
 
                 let finalMessage = '';
                 if (reason === 'deal') {
-                    finalMessage = `You took the deal and won: "${tierIndexToLabel(finalTierIdx)}"! Your case had "${tierIndexToLabel(playerCase.tierIdx)}".`;
+                    finalMessage = `You took the deal and won: ${tierIndexToQuoted(finalTierIdx)}! Your case had ${tierIndexToQuoted(playerCase.tierIdx)}.`;
                 } else if (reason === 'swap') {
-                    finalMessage = `You swapped and won: "${tierIndexToLabel(finalTierIdx)}"! Your original case had "${tierIndexToLabel(playerCase.tierIdx)}".`;
+                    finalMessage = `You swapped and won: ${tierIndexToQuoted(finalTierIdx)}! Your original case had ${tierIndexToQuoted(playerCase.tierIdx)}.`;
                 } else {
-                    finalMessage = `You won: "${tierIndexToLabel(finalTierIdx)}"! Your case had "${tierIndexToLabel(playerCase.tierIdx)}".`;
+                    finalMessage = `You won: ${tierIndexToQuoted(finalTierIdx)}! Your case had ${tierIndexToQuoted(playerCase.tierIdx)}.`;
                 }
 
                 updateMessage(finalMessage);

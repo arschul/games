@@ -36,7 +36,7 @@ There is growing interest among architects and planners in learning from traditi
   },
   {
     id: 123, title: "The Psychology of Money", topic: "business and money", level: "B1", wordCount: 308,
-    text: `Our relationship with money is rarely as rational as we like to believe. Economists have traditionally modelled human beings as rational agents who carefully calculate costs and benefits and make decisions that maximize their long-term wellbeing. Decades of research in behavioral economics and psychology have demonstrated, repeatedly and convincingly, that this is not how people actually behave.
+    text: `Our relationship with money is rarely as rational as we like to believe. Economists have traditionally modeled human beings as rational agents who carefully calculate costs and benefits and make decisions that maximize their long-term wellbeing. Decades of research in behavioral economics and psychology have demonstrated, repeatedly and convincingly, that this is not how people actually behave.
 
 One of the most robust findings is that losses feel psychologically more painful than equivalent gains feel pleasurable. Losing twenty euros feels significantly worse than finding twenty euros feels good. This asymmetry — called loss aversion — influences a wide range of financial decisions, often in ways that are not in the person's best interest. Investors hold onto losing stocks too long because selling would mean accepting a loss. People reject perfectly fair gambles because the potential loss looms larger than the equivalent potential gain.
 

@@ -47,11 +47,11 @@ She also has a video call with her team every morning to stay connected. She thi
     topic: "travel",
     level: "A2",
     wordCount: 210,
-    text: `Travelling to another country requires more preparation than a simple weekend trip. You need to think about several things before you leave.
+    text: `Traveling to another country requires more preparation than a simple weekend trip. You need to think about several things before you leave.
 
 First, you have to check whether you need a visa. This depends on your nationality and the country you are visiting. Some countries allow tourists to enter without a visa for a limited period, while others require you to apply in advance. The application process can take a few weeks, so it is important to plan early.
 
-Second, you should think about travel insurance. This can cover medical expenses if you get sick or have an accident while abroad. It can also protect you if your flight is cancelled or your luggage is lost.
+Second, you should think about travel insurance. This can cover medical expenses if you get sick or have an accident while abroad. It can also protect you if your flight is canceled or your luggage is lost.
 
 Third, it is a good idea to learn a few basic phrases in the local language. Even simple expressions like "hello," "please," and "thank you" are appreciated by local people and can make your experience much more pleasant.
 

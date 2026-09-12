@@ -1674,7 +1674,7 @@ const TriviaDB = (() => {
           q: "In the ancient Olympic Games, athletes originally competed in how many events?",
           a: "One (the stadion footrace)",
           wrong: ["Five", "Ten", "Three"],
-          hint: "The Games started with just a single sprint of about 192 metres."
+          hint: "The Games started with just a single sprint of about 192 meters."
         },
         {
           id: "SM-012", points: 500, cefr: "B2",
@@ -2491,7 +2491,7 @@ const TriviaDB = (() => {
           id: "TI-010", points: 300, cefr: "B2",
           q: "A hacker who tests systems with permission to find vulnerabilities is called what?",
           a: "White hat hacker",
-          wrong: ["Black hat hacker", "Grey hat hacker", "Script kiddie"],
+          wrong: ["Black hat hacker", "Gray hat hacker", "Script kiddie"],
           hint: "The 'good' kind of hacker — hired to find weaknesses."
         },
         {
@@ -2734,7 +2734,7 @@ const TriviaDB = (() => {
           id: "AN-018", points: 500, cefr: "A2",
           q: "What color is the skin of a polar bear, under its fur?",
           a: "Black",
-          wrong: ["White", "Pink", "Grey"],
+          wrong: ["White", "Pink", "Gray"],
           hint: "Look at the color of its nose."
         },
         {

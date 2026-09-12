@@ -36,7 +36,7 @@ I like to read in bed before I sleep. My bedroom is my special place.`
     id: 83, title: "My Clothes", topic: "clothing and fashion", level: "A1", wordCount: 110,
     text: `I do not have many clothes, but I like the clothes I have. I usually wear simple and comfortable things.
 
-For school, I wear jeans and a T-shirt. I have five T-shirts in different colors: white, blue, grey, red, and black. I also have two pairs of jeans.
+For school, I wear jeans and a T-shirt. I have five T-shirts in different colors: white, blue, gray, red, and black. I also have two pairs of jeans.
 
 In winter, I wear a warm jacket and a scarf. My jacket is dark green. I love it because it is very warm.
 
@@ -235,7 +235,7 @@ I think a good book is like a friend. It is always there for you.`
 
 I put on my warmest clothes: thick socks, a heavy jumper, and my long coat. I also wore gloves and a hat.
 
-On the way to school, I walked carefully because the pavement was slippery. The sky was grey and there were no clouds, just cold blue air.
+On the way to school, I walked carefully because the pavement was slippery. The sky was gray and there were no clouds, just cold blue air.
 
 At school, the heating was on and it was warm inside. We drank hot chocolate at break time.
 

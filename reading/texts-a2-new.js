@@ -102,9 +102,9 @@ Carlos, who is twelve, saves half of his pocket money every week. He is saving f
     id: 108, title: "A Day in Court", topic: "crime and justice", level: "A2", wordCount: 194,
     text: `Last year, I was selected for jury duty. I had to go to the local court and help decide a case. It was a new and interesting experience.
 
-The case was about a person accused of stealing from a shop. In court, there was a judge, a lawyer for the prosecution, a lawyer for the defence, and twelve members of the jury, including me.
+The case was about a person accused of stealing from a shop. In court, there was a judge, a lawyer for the prosecution, a lawyer for the defense, and twelve members of the jury, including me.
 
-The prosecution presented evidence: a security camera video and the statements of two shop workers. The defence lawyer argued that the video was not clear enough to be certain.
+The prosecution presented evidence: a security camera video and the statements of two shop workers. The defense lawyer argued that the video was not clear enough to be certain.
 
 Both lawyers asked questions to witnesses. The judge made sure the proceedings were fair and orderly.
 

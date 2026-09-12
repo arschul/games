@@ -227,7 +227,7 @@ Shopping usually takes about forty-five minutes. She goes home, puts everything 
     topic: "animals and pets",
     level: "A1",
     wordCount: 112,
-    text: `I have a cat. Her name is Luna. She is two years old and she has grey and white fur.
+    text: `I have a cat. Her name is Luna. She is two years old and she has gray and white fur.
 
 Luna sleeps a lot. She usually sleeps on the sofa or on my bed. She wakes up when she is hungry. Her favorite food is tuna.
 
@@ -265,7 +265,7 @@ I started this class three months ago. At first, I was shy. Now I feel more conf
     topic: "weather",
     level: "A1",
     wordCount: 113,
-    text: `Today it is raining. The sky is grey and it is cold outside. I do not want to go out.
+    text: `Today it is raining. The sky is gray and it is cold outside. I do not want to go out.
 
 I stay at home and drink hot tea. I look out the window and watch the rain fall on the street. The trees move in the wind.
 

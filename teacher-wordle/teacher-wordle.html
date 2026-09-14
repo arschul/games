@@ -10,6 +10,7 @@ v=v||"dark";localStorage.setItem(k,v);}
 var m=(v==="system")?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):v;
 document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
 <script defer src="https://arschul.github.io/assets/leaf.v1.js"></script>
+<script defer src="../shared/wordlist.js"></script>
 <!-- HUBGEN:leaf end -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -762,7 +763,7 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
 
 <a class="back-link" href="../">← Game Hub</a>
 <div class="top-controls">
-  <div id="offline-badge">⚠ OFFLINE MODE</div>
+  <div id="offline-badge">⚠ DEFINITIONS OFFLINE</div>
   <button class="icon-btn" id="btn-cb"    title="Color-blind friendly mode" aria-label="Color-blind friendly mode" aria-pressed="false">👓</button>
   <button class="icon-btn" id="btn-mute"  title="Mute sounds"  aria-label="Mute sounds">🔊</button>
   <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle light or dark theme">🌙</button>
@@ -899,6 +900,19 @@ const LEVEL_INFO = {
   B2: 'Advanced and abstract — <b>5–8 letters</b>. Argument, nuance, academic use.'
 };
 
+// Guess validation runs against shared/wordlist.js — offline and instant.
+// The dictionary API is still needed for DEFINITIONS, which a word list
+// cannot provide, so it stays wired up for the hint and the word card only.
+let WORDSET = null;
+function buildWordSet() {
+  if (WORDSET) return WORDSET;
+  const raw = (typeof window !== 'undefined') ? window.WORDLIST : null;
+  if (typeof raw === 'string' && raw.length > 1000) {
+    WORDSET = new Set(raw.split('\n').map(w => w.trim()).filter(Boolean));
+  }
+  return WORDSET;
+}
+
 const DICT_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
 const DICT_TIMEOUT = 3000;      // never let a hung fetch lock the game
 const DICT_FAIL_LIMIT = 2;      // two strikes → stop waiting for the rest of the session
@@ -967,7 +981,15 @@ async function lookupWord(word) {
 // Returns true (real word), false (not found), or null (unknown — allow it through)
 async function isRealWord(word) {
   const key = word.toLowerCase();
+  const set = buildWordSet();
+  // Local hit: instant, no network, works with the wifi off.
+  if (set && set.has(key.toUpperCase())) return true;
   if (key in wordCache) return wordCache[key];
+  // Local miss. The list holds 50k common forms, so a miss may still be a real
+  // (rarer) word — ask the API before rejecting. Unlike Lexicon Duel there is no
+  // one-click override on the student guess path, so a wrong rejection costs a
+  // turn. If the API is already offline this returns undefined immediately and
+  // the guess is allowed through rather than blocked.
   const entry = await lookupWord(word);
   if (entry === undefined) return null;
   return entry !== null;
@@ -984,6 +1006,10 @@ function maskWord(text, word) {
     return text;
   }
 }
+
+(function () {
+  if (!buildWordSet()) console.warn('[Word Quest] shared/wordlist.js did not load — falling back to the dictionary API for validation.');
+})();
 
 // ── State ──
 let screen = 'setup';   // 'setup' | 'game' — never infer this from DOM styles
@@ -1072,7 +1098,10 @@ secretInput.addEventListener('input', () => {
 
   if (len < 2) return;
 
-  if (bypassCheck.checked || dictOffline) {
+  // Skip only when the teacher asked to, or when there is nothing left to
+  // check with — a dead API is no longer a reason to stop checking, because
+  // the local list still works.
+  if (bypassCheck.checked || (dictOffline && !buildWordSet())) {
     btnStart.disabled = false;
     return;
   }

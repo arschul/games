@@ -10,6 +10,7 @@ v=v||"dark";localStorage.setItem(k,v);}
 var m=(v==="system")?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):v;
 document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
 <script defer src="https://arschul.github.io/assets/leaf.v1.js"></script>
+<script defer src="../shared/wordlist.js"></script>
 <!-- HUBGEN:leaf end -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -679,7 +680,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       <div class="timer-group">
         <label>Word Check</label>
         <div class="dict-pills">
-          <div class="timer-pill dict-pill active" data-dict="on">📖 Dictionary</div>
+          <div class="timer-pill dict-pill active" data-dict="on">📖 Word list</div>
           <div class="timer-pill dict-pill" data-dict="off">✋ Teacher</div>
         </div>
       </div>
@@ -855,7 +856,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       <button class="btn btn-override" id="override-btn">Accept anyway</button>
       <button class="btn btn-override alt" id="dictoff-btn" style="display:none">Turn off checks</button>
     </div>
-    <div class="dict-flag" id="dict-flag" style="display:none">✋ No dictionary — teacher judges</div>
+    <div class="dict-flag" id="dict-flag" style="display:none">✋ No word check — teacher judges</div>
   </div>
 
   <!-- LOG — two-column -->
@@ -965,11 +966,27 @@ function genTilePowers(gridLen){
   return powers;
 }
 
+let WORDSET=null;
+function buildWordSet(){
+  if(WORDSET)return WORDSET;
+  const raw=(typeof window!=='undefined')?window.WORDLIST:null;
+  if(typeof raw==='string'&&raw.length>1000){
+    WORDSET=new Set(raw.split('\n').map(w=>w.trim()).filter(Boolean));
+  }
+  return WORDSET;
+}
+
 async function isValid(word, signal){
   if(word.length<2)return false;
   if(!dictCheck)return true;
+  const set=buildWordSet();
+  // Local list is authoritative — a miss goes straight to the teacher, no
+  // network round-trip. Accept anyway is one click away.
+  if(set)return set.has(word.toUpperCase());
+  // The list failed to load. Fall back to the dictionary API rather than
+  // breaking validation outright.
   try{return(await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`,{signal})).ok;}
-  catch(e){return word.length>=3;}
+  catch(e){return false;}
 }
 
 /* ═══════════ GAME STATE ═══════════ */
@@ -1781,6 +1798,8 @@ async function submitWord(){
   let ok,timedOut=false;
   if(G._forceAccept||!dictCheck){
     ok=true;
+  }else if(buildWordSet()){
+    ok=await isValid(word);   // local lookup, no timer, no network
   }else{
     const controller=new AbortController();
     const slowTimer=setTimeout(()=>{
@@ -1807,7 +1826,7 @@ async function submitWord(){
     // Show invalid bar — timer keeps running, player can override
     const bar=$$('invalid-bar');
     if(bar){
-      $$('invalid-msg').textContent=`❌ "${word}" not recognized`;
+      $$('invalid-msg').textContent=`❌ "${word}" not in the word list`;
       const off=$$('dictoff-btn');if(off)off.style.display='none';
       bar.style.display='flex';
     }
@@ -2501,6 +2520,12 @@ function updateWarriorHP(){
   if(img1) img1.classList.toggle('low-hp', G.p1HP/G.maxHP < 0.3);
   if(img2) img2.classList.toggle('low-hp', G.p2HP/G.maxHP < 0.3);
 }
+
+/* ═════ WORD LIST WARM-UP ═════ */
+(function(){
+  const set=buildWordSet();
+  if(!set)console.warn('[Lexicon Duel] shared/wordlist.js did not load — falling back to the dictionary API.');
+})();
 
 /* ═════ DICTIONARY TOGGLE ═════ */
 function syncDictUI(){

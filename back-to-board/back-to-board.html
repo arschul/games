@@ -122,6 +122,7 @@ body.playing .corner{opacity:0;pointer-events:none}
 }
 .round-tag{font-size:.85rem;font-weight:700;color:var(--muted)}
 .round-tag b{color:var(--text)}
+#leftTag.low{color:var(--accent)}
 .top-actions{display:flex;gap:8px;flex-wrap:wrap}
 .mini{
   background:var(--panel);border:1px solid var(--line);border-radius:999px;
@@ -187,6 +188,7 @@ body.playing .corner{opacity:0;pointer-events:none}
   padding:11px 20px;font-size:.88rem;font-weight:600;color:var(--muted);
 }
 .ghost:hover{border-color:var(--accent);color:var(--accent)}
+.ghost.hidden{display:none}
 
 .keyhint{
   text-align:center;color:var(--muted);font-size:.74rem;
@@ -338,6 +340,7 @@ html[data-theme="light"] .overlay{background:rgba(240,244,249,.95)}
         <div class="pcat" id="pvCat">Aquatic animals</div>
         <div class="pex" id="pvEx">Teams shout: shark, dolphin, octopus…</div>
         <div class="pcount" id="pvCount"><b>100</b> categories in play</div>
+        <button class="ghost hidden" id="resetDeck" style="margin-top:14px;width:100%" onclick="resetDeck()">Reset the deck</button>
       </div>
     </div>
   </div>
@@ -348,7 +351,7 @@ html[data-theme="light"] .overlay{background:rgba(240,244,249,.95)}
   <div class="timebar hidden" id="timebar"><div class="fill" id="timefill"></div></div>
 
   <div class="topbar">
-    <div class="round-tag">Round <b id="roundNum">1</b></div>
+    <div class="round-tag">Round <b id="roundNum">1</b> &nbsp;·&nbsp; <span id="leftTag">99 categories left</span></div>
     <div class="top-actions">
       <button class="mini" id="exBtn" onclick="toggleExamples()">👁 Examples</button>
       <button class="mini" id="pauseBtn" onclick="togglePause()">⏸ Pause</button>
@@ -590,6 +593,8 @@ var G = {
   swapEvery: 5,
   pool: [],
   seen: [],
+  spent: [],
+  deckOut: false,
   current: null,
   round: 1,
   completed: 0,
@@ -609,18 +614,39 @@ function shuffle(a){
   }
   return a;
 }
+/* A category is spent the moment it appears on the board and never comes back
+   for the rest of the session — Play Again keeps spending the same deck. */
 function poolFor(level){
-  return CATEGORIES.filter(function(c){ return level === 'all' || c.l === level; });
+  return CATEGORIES.filter(function(c){
+    return (level === 'all' || c.l === level) && G.spent.indexOf(c.n) === -1;
+  });
+}
+function totalFor(level){
+  return CATEGORIES.filter(function(c){ return level === 'all' || c.l === level; }).length;
 }
 
 /* ======================= SETUP ======================= */
 function refreshPreview(){
   var lvl = document.getElementById('lvl').value;
   var list = poolFor(lvl);
-  var pick = list[Math.floor(Math.random() * list.length)];
-  document.getElementById('pvCat').textContent = pick.n;
-  document.getElementById('pvEx').textContent = 'Teams shout: ' + pick.e.join(', ') + '…';
-  document.getElementById('pvCount').innerHTML = '<b>' + list.length + '</b> categories in play';
+  var total = totalFor(lvl);
+  var used = total - list.length;
+  var pick = list.length ? list[Math.floor(Math.random() * list.length)] : null;
+  document.getElementById('pvCat').textContent = pick ? pick.n : 'Deck spent';
+  document.getElementById('pvEx').textContent = pick
+    ? 'Teams shout: ' + pick.e.join(', ') + '…'
+    : 'Every category at this level has been used. Reset the deck or pick another level.';
+  document.getElementById('pvCount').innerHTML = used === 0
+    ? '<b>' + total + '</b> categories in play'
+    : '<b>' + list.length + '</b> left · ' + used + ' already used this session';
+  document.getElementById('resetDeck').classList.toggle('hidden', G.spent.length === 0);
+  document.getElementById('resetDeck').textContent = 'Reset the deck (' + G.spent.length + ' used)';
+}
+
+function resetDeck(){
+  G.spent = [];
+  refreshPreview();
+  toast('Deck reset — all 100 categories are back in play');
 }
 
 function startGame(){
@@ -635,11 +661,19 @@ function startGame(){
 }
 
 function beginRun(){
+  if (!poolFor(G.level).length){
+    show('setupScreen');
+    document.body.classList.remove('playing');
+    refreshPreview();
+    toast('Every category at this level is spent — reset the deck or pick another level');
+    return;
+  }
   G.pool = shuffle(poolFor(G.level).slice());
   G.seen = [];
   G.round = 1;
   G.completed = 0;
   G.over = false;
+  G.deckOut = false;
   G.history = [];
   G.current = null;
   G.showEx = false;
@@ -653,14 +687,9 @@ function beginRun(){
 
 /* ======================= ROUND FLOW ======================= */
 function drawCategory(){
-  if (!G.pool.length){
-    G.pool = shuffle(poolFor(G.level).filter(function(c){
-      return !G.current || c.n !== G.current.n;
-    }));
-    G.seen = [];
-    toast('All categories used — reshuffling the deck');
-  }
+  if (!G.pool.length){ deckSpent(); return; }
   G.current = G.pool.pop();
+  G.spent.push(G.current.n);
   G.seen.push(G.current);
   G.expired = false;
   G.paused = false;
@@ -674,8 +703,24 @@ function drawCategory(){
   document.getElementById('pausedFlag').classList.add('hidden');
   paintExamples();
   paintPauseBtn();
+  paintRemaining();
   document.getElementById('undoBtn').disabled = G.history.length === 0;
   startTimer();
+}
+
+function paintRemaining(){
+  var left = G.pool.length;
+  var el = document.getElementById('leftTag');
+  el.textContent = left === 0
+    ? 'last category'
+    : left + (left === 1 ? ' category left' : ' categories left');
+  el.classList.toggle('low', left <= 5);
+}
+
+function deckSpent(){
+  G.deckOut = true;
+  stopTimer();
+  endGame();
 }
 
 function advance(){
@@ -700,6 +745,7 @@ function snapshot(){
     current: G.current,
     pool: G.pool.slice(),
     seen: G.seen.slice(),
+    spent: G.spent.slice(),
     showEx: G.showEx
   });
   if (G.history.length > 40) G.history.shift();
@@ -742,6 +788,7 @@ function undo(){
   G.current = h.current;
   G.pool = h.pool;
   G.seen = h.seen;
+  G.spent = h.spent;
   G.showEx = h.showEx;
   G.expired = false;
   G.paused = false;
@@ -757,6 +804,7 @@ function undo(){
   paintScores();
   paintExamples();
   paintPauseBtn();
+  paintRemaining();
   startTimer();
   sUndo();
   toast('Last round undone');
@@ -866,11 +914,13 @@ function endGame(){
   document.getElementById('f1').classList.toggle('win', a.score > b.score);
   document.getElementById('f2').classList.toggle('win', b.score > a.score);
   var noWin = rounds - a.score - b.score;
-  document.getElementById('endStats').textContent = rounds === 0
-    ? 'No rounds were played.'
-    : (noWin > 0
-        ? noWin + (noWin === 1 ? ' round' : ' rounds') + ' ended with nobody guessing.'
-        : 'Every round had a winner.');
+  var bits = [];
+  if (G.deckOut) bits.push('The deck ran out — every category at this level has been used.');
+  if (rounds === 0) bits.push('No rounds were played.');
+  else if (noWin > 0) bits.push(noWin + (noWin === 1 ? ' round' : ' rounds') + ' ended with nobody guessing.');
+  else bits.push('Every round had a winner.');
+  bits.push(G.spent.length + ' of ' + totalFor(G.level) + ' categories spent this session.');
+  document.getElementById('endStats').textContent = bits.join(' ');
   show('endScreen');
   sWin();
 }

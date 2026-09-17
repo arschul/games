@@ -317,6 +317,24 @@ body{
 /* ============ RIGHT COLUMN: WHEEL ============ */
 .stage-right{display:flex;flex-direction:column;align-items:center;gap:1rem;position:sticky;top:1rem;}
 .wheel-shell{position:relative;width:280px;height:280px;}
+.pressure{width:100%;max-width:280px;margin:0.5rem 0 0.2rem;}
+.pressure-head{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-faint);margin-bottom:0.3rem;}
+.pressure-odds{font-family:'JetBrains Mono',monospace;font-size:0.68rem;
+  letter-spacing:0;text-transform:none;color:var(--pc,#4fd8b0);font-weight:700;}
+.pressure-track{display:flex;gap:3px;}
+.pressure-track i{flex:1;height:9px;border-radius:3px;background:rgba(255,255,255,0.10);
+  transition:background 0.35s ease,box-shadow 0.35s ease;}
+[data-theme="light"] .pressure-track i{background:rgba(0,0,0,0.10);}
+.pressure-track i.on{background:var(--pc);box-shadow:0 0 8px -2px var(--pc);}
+.team-heat{height:4px;border-radius:2px;background:rgba(255,255,255,0.10);
+  margin-top:0.35rem;overflow:hidden;}
+[data-theme="light"] .team-heat{background:rgba(0,0,0,0.10);}
+.team-heat i{display:block;height:100%;width:0;border-radius:2px;
+  background:var(--pc,#4fd8b0);transition:width 0.35s ease,background 0.35s ease;}
+@keyframes segFlip{0%{opacity:1;}35%{opacity:0.15;}100%{opacity:1;}}
+.seg-flip{animation:segFlip 0.6s ease-out;}
 .wheel-pointer{
   position:absolute;top:-14px;left:50%;transform:translateX(-50%);
   width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;
@@ -416,6 +434,15 @@ body{
         </div>
       </div>
       <div>
+        <label class="field-label">Pressure</label>
+        <select class="timer-select" id="pressure-select" onchange="setPressureMode()">
+          <option value="off">Off — classic wheel</option>
+          <option value="gentle">Gentle</option>
+          <option value="normal" selected>Normal</option>
+          <option value="ruthless">Ruthless</option>
+        </select>
+      </div>
+      <div>
         <label class="field-label">Turn Timer</label>
         <select class="timer-select" id="timer-select">
           <option value="0">Off</option>
@@ -489,6 +516,14 @@ body{
       </div>
       <div id="spin-result">—</div>
 
+      <div class="pressure" id="pressure-wrap">
+        <div class="pressure-head">
+          <span>Pressure</span>
+          <span class="pressure-odds" id="pressure-odds">Safe</span>
+        </div>
+        <div class="pressure-track" id="pressure-track"></div>
+      </div>
+
       <div class="timer-wrap" id="timer-wrap" style="display:none">
         <div class="timer-ring-box">
           <svg class="timer-ring" viewBox="0 0 88 88" width="88" height="88">
@@ -506,7 +541,7 @@ body{
       </div>
 
       <div class="instructions-mini">
-        Spin for points → guess a consonant. Landing on a number lets you guess; Bankrupt wipes your round points; Lose a Turn passes. Buy a vowel for 250 anytime you have enough. Solve whenever you're ready — or Pass Turn to move the game on. When no consonants are left the wheel closes and each team gets one free vowel per turn.
+        Spin for points → guess a consonant. Landing on a number lets you guess; Bankrupt wipes your round points; Lose a Turn passes. Buy a vowel for 250 anytime you have enough. Solve whenever you're ready — or Pass Turn to move the game on. When no consonants are left the wheel closes and each team gets one free vowel per turn. Every safe spin raises the Pressure: hazard wedges appear on the wheel itself, so the odds you see are the odds you get.
       </div>
     </div>
   </div>
@@ -783,30 +818,134 @@ let solveCountdown = null;   // hoisted so it can be cleared
 let pendingTimer = 0;        // clock stashed while a solve is armed
 let lastSource = null;       // {mode:'bank'|'custom', level, category}
 
-// wheel segments (label, type, value)
-const WHEEL_SEGMENTS = [
-  {label:'300',  type:'points',   value:300,  color:'#e8b04b'},
-  {label:'800',  type:'points',   value:800,  color:'#5fb8ff'},
-  {label:'500',  type:'points',   value:500,  color:'#ff6f61'},
-  {label:'LOSE\nTURN', type:'lose', value:null, color:'#3a3260'},
-  {label:'400',  type:'points',   value:400,  color:'#4fd8b0'},
-  {label:'900',  type:'points',   value:900,  color:'#b98cff'},
-  {label:'200',  type:'points',   value:200,  color:'#e8b04b'},
-  {label:'600',  type:'points',   value:600,  color:'#5fb8ff'},
-  {label:'700',  type:'points',   value:700,  color:'#ff6f61'},
-  {label:'BANKRUPT', type:'bankrupt', value:null, color:'#ff5470'},
-  {label:'300',  type:'points',   value:300,  color:'#4fd8b0'},
-  {label:'1000', type:'points',   value:1000, color:'#b98cff'},
-  {label:'500',  type:'points',   value:500,  color:'#e8b04b'},
-  {label:'400',  type:'points',   value:400,  color:'#5fb8ff'},
-  {label:'600',  type:'points',   value:600,  color:'#ff6f61'},
-  {label:'800',  type:'points',   value:800,  color:'#4fd8b0'}
+// ═══════════════════════════════════════════════════════════
+// PRESSURE SYSTEM
+// ═══════════════════════════════════════════════════════════
+// The pick stays uniform over 16 slots. What rises with Pressure is how many
+// of those slots ARE hazards — and they are drawn on the wheel, so the odds
+// on screen are the real odds. No hidden weighting.
+
+// 16 point slots. Positions never move; only their type/label/colour changes.
+const BASE_SEGMENTS = [
+  {label:'300',  value:300,  color:'#e8b04b'},   // 0
+  {label:'800',  value:800,  color:'#5fb8ff'},   // 1
+  {label:'500',  value:500,  color:'#ff6f61'},   // 2
+  {label:'350',  value:350,  color:'#3a3260'},   // 3
+  {label:'400',  value:400,  color:'#4fd8b0'},   // 4
+  {label:'900',  value:900,  color:'#b98cff'},   // 5
+  {label:'200',  value:200,  color:'#e8b04b'},   // 6
+  {label:'600',  value:600,  color:'#5fb8ff'},   // 7
+  {label:'700',  value:700,  color:'#ff6f61'},   // 8
+  {label:'650',  value:650,  color:'#ff5470'},   // 9
+  {label:'300',  value:300,  color:'#4fd8b0'},   // 10
+  {label:'1000', value:1000, color:'#b98cff'},   // 11
+  {label:'500',  value:500,  color:'#e8b04b'},   // 12
+  {label:'400',  value:400,  color:'#5fb8ff'},   // 13
+  {label:'600',  value:600,  color:'#ff6f61'},   // 14
+  {label:'800',  value:800,  color:'#4fd8b0'}    // 15
 ];
+
+// Conversion order: lowest point value first, no two adjacent slots until the
+// wheel is too crowded to avoid it. A slot's rank is fixed, so a wedge never
+// flips from LOSE to BANKRUPT as Pressure climbs — it only ever appears.
+const HAZARD_ORDER   = [6, 0, 10, 3, 13, 8, 4, 2, 12, 7, 14];
+const BANKRUPT_RANKS = new Set([2, 7, 10]);
+
+// Total hazard wedges by heat (index 0-8). Heat 0 is always clean in every
+// mode: no team is ever bankrupted on the opening spin of its turn.
+const PRESSURE_MODES = {
+  off:      null,                             // classic fixed 14/1/1 wheel
+  gentle:   [0, 0, 1, 2, 3, 4, 5, 6, 6],
+  normal:   [0, 1, 2, 3, 4, 5, 6, 8, 9],
+  ruthless: [0, 2, 3, 4, 5, 6, 8, 9, 11]
+};
+const HAZARD_LOSE = {label:'LOSE\nTURN', type:'lose',     value:null, color:'#3a3260'};
+const HAZARD_BANK = {label:'BANKRUPT',   type:'bankrupt', value:null, color:'#ff5470'};
+
+let heat = 0;
+let pressureMode = 'normal';
+let WHEEL_SEGMENTS = [];   // live layout, rebuilt whenever heat or mode changes
+
+function hazardSlots(h){
+  if(pressureMode === 'off') return { lose:[3], bank:[9] };
+  const table = PRESSURE_MODES[pressureMode] || PRESSURE_MODES.normal;
+  const total = table[Math.max(0, Math.min(h, table.length - 1))];
+  const lose = [], bank = [];
+  for(let rank = 0; rank < total; rank++){
+    (BANKRUPT_RANKS.has(rank) ? bank : lose).push(HAZARD_ORDER[rank]);
+  }
+  return { lose, bank };
+}
+
+function computeSegments(h){
+  const { lose, bank } = hazardSlots(h);
+  return BASE_SEGMENTS.map((seg, i) => {
+    if(lose.includes(i)) return Object.assign({}, HAZARD_LOSE);
+    if(bank.includes(i)) return Object.assign({}, HAZARD_BANK);
+    return {label:seg.label, type:'points', value:seg.value, color:seg.color};
+  });
+}
+
+function pressureOdds(h){
+  const { lose, bank } = hazardSlots(h);
+  const n = BASE_SEGMENTS.length;
+  return {
+    lose: Math.round(lose.length / n * 100),
+    bank: Math.round(bank.length / n * 100),
+    hazards: lose.length + bank.length
+  };
+}
+
+function setHeat(next){
+  const before = WHEEL_SEGMENTS.map(x => x.type);
+  heat = Math.max(0, Math.min(next, 8));
+  applyPressure(before);
+}
+
+function bumpHeat(){ setHeat(heat + 1); }
+
+function applyPressure(before){
+  WHEEL_SEGMENTS = computeSegments(heat);
+  const flipped = [];
+  if(before && before.length === WHEEL_SEGMENTS.length){
+    WHEEL_SEGMENTS.forEach((seg, i) => { if(seg.type !== before[i]) flipped.push(i); });
+  }
+  buildWheel(flipped);
+  renderPressure();
+}
+
+function setPressureMode(){
+  pressureMode = document.getElementById('pressure-select').value;
+  setHeat(pressureMode === 'off' ? 0 : heat);
+}
+
+function renderPressure(){
+  const wrap  = document.getElementById('pressure-wrap');
+  const track = document.getElementById('pressure-track');
+  const odds  = document.getElementById('pressure-odds');
+  if(pressureMode === 'off' || finalStretch){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const o = pressureOdds(heat);
+  const color = o.hazards === 0 ? '#4fd8b0' : (o.hazards <= 3 ? '#e8b04b' : '#ff5470');
+  wrap.style.setProperty('--pc', color);
+  if(track.children.length !== 8){
+    track.innerHTML = '';
+    for(let i = 0; i < 8; i++) track.appendChild(document.createElement('i'));
+  }
+  [...track.children].forEach((el, i) => el.classList.toggle('on', i < heat));
+  odds.textContent = o.hazards === 0
+    ? 'Safe spin'
+    : `Lose ${o.lose}%` + (o.bank ? ` · Bankrupt ${o.bank}%` : '');
+  const bar = document.querySelector('.team-card.active .team-heat i');
+  document.querySelectorAll('.team-heat i').forEach(el => { el.style.width = '0'; });
+  if(bar){ bar.style.width = Math.round(heat / 8 * 100) + '%'; bar.style.background = color; }
+}
 
 // ═══════════════════════════════════════════════════════════
 // BUILD WHEEL SVG
 // ═══════════════════════════════════════════════════════════
-function buildWheel(){
+function buildWheel(flipped){
+  flipped = flipped || [];
   const n = WHEEL_SEGMENTS.length;
   const anglePer = 360 / n;
   const r = 140, cx = 140, cy = 140;
@@ -819,14 +958,15 @@ function buildWheel(){
     const x2 = cx + r * Math.cos(endAngle * Math.PI/180);
     const y2 = cy + r * Math.sin(endAngle * Math.PI/180);
     const largeArc = anglePer > 180 ? 1 : 0;
-    svg += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${largeArc} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${seg.color}" stroke="#141022" stroke-width="1.5"/>`;
+    const flipCls = flipped.includes(i) ? ' class="seg-flip"' : '';
+    svg += `<path${flipCls} d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${largeArc} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${seg.color}" stroke="#141022" stroke-width="1.5"/>`;
     // label
     const midAngle = startAngle + anglePer/2;
     const labelR = r * 0.68;
     const lx = cx + labelR * Math.cos(midAngle * Math.PI/180);
     const ly = cy + labelR * Math.sin(midAngle * Math.PI/180);
     const lines = seg.label.split('\n');
-    svg += `<g transform="translate(${lx.toFixed(2)},${ly.toFixed(2)}) rotate(${midAngle+90})">`;
+    svg += `<g${flipCls} transform="translate(${lx.toFixed(2)},${ly.toFixed(2)}) rotate(${midAngle+90})">`;
     lines.forEach((line, li) => {
       const dy = (li - (lines.length-1)/2) * 11;
       svg += `<text x="0" y="${dy}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="${seg.type==='bankrupt'?9:12}" fill="${seg.type==='bankrupt'?'#fff':'#141022'}">${line}</text>`;
@@ -918,7 +1058,8 @@ function renderTeams(){
     card.innerHTML = `
       <div class="team-name">${TEAM_NAMES[i]}</div>
       <div class="team-score" id="score-${i}">${scores[i]}</div>
-      <div class="team-temp">Round: $<span id="temp-${i}">${temporaryScores[i]}</span></div>
+      <div class="team-temp">Round: <span id="temp-${i}">${temporaryScores[i]}</span></div>
+      <div class="team-heat"><i></i></div>
     `;
     grid.appendChild(card);
   }
@@ -1075,6 +1216,7 @@ function beginPuzzle(text, hint, level, category){
 function startNewRound(){
   clearInterval(solveCountdown); solveCountdown = null;
   finalStretch = false;
+  setHeat(0);
   freeVowelUsed = false;
   pendingTimer = 0;
   puzzle = [];
@@ -1107,6 +1249,7 @@ function resetGame(){
   currentTeam = 0;
   usedIndices = {};
   lastSource = null;
+  setHeat(0);
   clearInterval(solveCountdown); solveCountdown = null;
   stopTimer();
   document.getElementById('round-display').textContent = round;
@@ -1126,6 +1269,7 @@ function passTurn(){
   stopTimer();
   disarmSolve();
   currentTeam = (currentTeam + 1) % numTeams;
+  setHeat(0);
   freeVowelUsed = false;
   hasSpun = false;
   spinValue = null;
@@ -1193,6 +1337,7 @@ function enterFinalStretch(){
   const sr = document.getElementById('spin-result');
   sr.textContent = 'VOWELS ONLY';
   sr.className = '';
+  setHeat(0);
   showMessage('No consonants left — Final Stretch! Reveal one vowel, then solve or pass.', 'info');
   startTimer();   // give the team a fair window, not the tail of the last one
   renderAlphabet();
@@ -1327,6 +1472,7 @@ function handleLetter(letter){
   } else if(isVowel){
     temporaryScores[currentTeam] -= VOWEL_COST;
     buyingVowel = false;
+    bumpHeat();
     if(!found){
       playBuzz();
       flashColor('#ff6f61');
@@ -1559,6 +1705,7 @@ function spinWheel(){
       hasSpun = true;
       showMessage(`Landed on ${seg.value} — guess a consonant!`, 'info', 4000);
       startTimer();
+      bumpHeat();   // the wheel this team faces next is more dangerous
     }
     renderAlphabet();
     updateDisplay();
@@ -1597,6 +1744,7 @@ function updateDisplay(){
   const passBtn = document.getElementById('pass-btn');
   passBtn.disabled = !puzzle.length || spinning;
   passBtn.classList.toggle('pulse', stuck);
+  renderPressure();
   if(stuck) showMessage('Nothing to guess — solve or pass.', 'warn');
 
   renderHintBar();
@@ -1605,6 +1753,7 @@ function updateDisplay(){
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
+WHEEL_SEGMENTS = computeSegments(0);
 buildWheel();
 renderTeams();
 renderPuzzle();

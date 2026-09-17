@@ -85,6 +85,8 @@ body{
   background:var(--panel);transition:all 0.2s;
 }
 .back-link:hover{border-color:var(--brass);color:var(--brass);}
+@keyframes passPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,84,112,0);}50%{box-shadow:0 0 0 6px rgba(255,84,112,0.28);}}
+.btn.pulse{animation:passPulse 1.1s ease-in-out infinite;}
 .topbar-actions{display:flex;gap:0.6rem;align-items:center;}
 .icon-btn{
   width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
@@ -473,6 +475,7 @@ body{
       <div class="solve-row">
         <input id="solve-input" type="text" placeholder="Solve the puzzle…" />
         <button class="btn btn-mint" id="solve-btn" onclick="handleSolveClick()" disabled>🙋 I Want To Solve It</button>
+        <button class="btn btn-ghost" id="solve-cancel-btn" onclick="cancelSolve()" style="display:none">✕</button>
       </div>
 
       <div class="message" id="message"></div>
@@ -499,10 +502,11 @@ body{
       <div class="action-stack">
         <button class="btn btn-brass" id="spin-btn" onclick="spinWheel()">🎡 Spin the Wheel</button>
         <button class="btn btn-ghost" id="buy-vowel-btn" onclick="buyVowel()" disabled>Buy a Vowel (250)</button>
+        <button class="btn btn-ghost" id="pass-btn" onclick="manualPass()" disabled>&#9197; Pass Turn</button>
       </div>
 
       <div class="instructions-mini">
-        Spin for points → guess a consonant. Landing on a number lets you guess; Bankrupt wipes your round points; Lose a Turn passes. Buy a vowel for 250 anytime you have enough. Solve whenever you're ready.
+        Spin for points → guess a consonant. Landing on a number lets you guess; Bankrupt wipes your round points; Lose a Turn passes. Buy a vowel for 250 anytime you have enough. Solve whenever you're ready — or Pass Turn to move the game on. When no consonants are left the wheel closes and each team gets one free vowel per turn.
       </div>
     </div>
   </div>
@@ -768,6 +772,17 @@ let timerRemaining = 0;
 let timerInterval = null;
 let wheelRotation = 0;
 
+// Tier 1 additions
+const CONSONANTS = 'BCDFGHJKLMNPQRSTVWXYZ';
+const CONSONANT_RE = /[B-DF-HJ-NP-TV-Z]/;
+const VOWEL_COST = 250;
+const MAX_LINE = 14;
+let finalStretch = false;    // latches for the round once consonants run out
+let freeVowelUsed = false;   // per turn, Final Stretch only
+let solveCountdown = null;   // hoisted so it can be cleared
+let pendingTimer = 0;        // clock stashed while a solve is armed
+let lastSource = null;       // {mode:'bank'|'custom', level, category}
+
 // wheel segments (label, type, value)
 const WHEEL_SEGMENTS = [
   {label:'300',  type:'points',   value:300,  color:'#e8b04b'},
@@ -921,18 +936,33 @@ function startTimer(){
   timerRemaining = timerDuration;
   document.getElementById('timer-wrap').style.display = 'block';
   updateTimerDisplay();
-  timerInterval = setInterval(() => {
-    timerRemaining--;
-    updateTimerDisplay();
-    if(timerRemaining <= 5 && timerRemaining > 0) playTimerWarn();
-    if(timerRemaining <= 0){
-      stopTimer();
-      playBuzz();
-      showMessage("⏰ Time's up! Turn passes.", 'error', 3000);
-      flashColor('#ff5470');
-      setTimeout(() => passTurn(), 1500);
-    }
-  }, 1000);
+  timerInterval = setInterval(tickTimer, 1000);
+}
+
+function tickTimer(){
+  timerRemaining--;
+  updateTimerDisplay();
+  if(timerRemaining <= 5 && timerRemaining > 0) playTimerWarn();
+  if(timerRemaining <= 0){
+    stopTimer();
+    playBuzz();
+    showMessage("⏰ Time's up! Turn passes.", 'error', 3000);
+    flashColor('#ff5470');
+    setTimeout(() => passTurn(), 1500);
+  }
+}
+
+// Resume from the stashed value, not from full, so arming and cancelling
+// a solve repeatedly can't be used to farm extra time.
+function resumeTimer(){
+  stopTimer();
+  if(!getTimerDuration() || !puzzle.length) return;
+  timerDuration = getTimerDuration();
+  timerRemaining = pendingTimer > 0 ? Math.min(pendingTimer, timerDuration) : timerDuration;
+  pendingTimer = 0;
+  document.getElementById('timer-wrap').style.display = 'block';
+  updateTimerDisplay();
+  timerInterval = setInterval(tickTimer, 1000);
 }
 function stopTimer(){ clearInterval(timerInterval); timerInterval = null; }
 
@@ -988,16 +1018,38 @@ function startFromBank(){
   beginPuzzle(text, hint, selectedLevel, selectedCategory);
 }
 
+// NFD-folds accents (Ç→C, Ã→A, É→E) so Portuguese input survives instead of
+// producing tiles no alphabet button can ever reach. Anything left that isn't
+// A-Z or basic punctuation is rejected by name.
+function sanitizePuzzleText(raw){
+  const up = String(raw).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const allowed = new Set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').concat(ALWAYS_REVEALED));
+  const bad = [...new Set(up.split('').filter(c => !allowed.has(c)))];
+  return { text: up.replace(/\s+/g, ' ').trim(), bad };
+}
+
 function startFromCustom(){
-  const text = document.getElementById('custom-input').value.toUpperCase().trim();
+  const raw = document.getElementById('custom-input').value;
   const hint = document.getElementById('custom-hint').value.trim();
+  if(!raw.trim()) return showMessage('Type a word or phrase first.', 'warn', 3000);
+  const { text, bad } = sanitizePuzzleText(raw);
+  if(bad.length){
+    return showMessage(`Can't use: ${bad.join(', ')} — letters and basic punctuation only.`, 'warn', 5000);
+  }
   if(!text) return showMessage('Type a word or phrase first.', 'warn', 3000);
+  if(text.length > 60) return showMessage('Too long — keep it under 60 characters.', 'warn', 4000);
+  if(!/[A-Z]/.test(text)) return showMessage('Needs at least one letter.', 'warn', 3000);
+  const longWord = text.split(' ').find(w => w.length > MAX_LINE);
+  if(longWord) showMessage(`Heads up: "${longWord}" is too long to fit one line.`, 'warn', 5000);
   playClick();
   beginPuzzle(text, hint || 'No hint provided', 'Custom', 'Your Own');
 }
 
 function beginPuzzle(text, hint, level, category){
   startNewRound();
+  lastSource = (level === 'Custom')
+    ? { mode:'custom' }
+    : { mode:'bank', level, category };
   puzzle = text.split('');
   currentHint = hint;
   hintRevealed = false;
@@ -1014,12 +1066,17 @@ function beginPuzzle(text, hint, level, category){
   renderHintBar();
   updateDisplay();
   startTimer();
+  refreshPhase();   // a custom sentence may contain no consonants at all
 }
 
 // ═══════════════════════════════════════════════════════════
 // CORE GAME
 // ═══════════════════════════════════════════════════════════
 function startNewRound(){
+  clearInterval(solveCountdown); solveCountdown = null;
+  finalStretch = false;
+  freeVowelUsed = false;
+  pendingTimer = 0;
   puzzle = [];
   currentHint = '';
   hintRevealed = false;
@@ -1049,6 +1106,8 @@ function resetGame(){
   round = 1;
   currentTeam = 0;
   usedIndices = {};
+  lastSource = null;
+  clearInterval(solveCountdown); solveCountdown = null;
   stopTimer();
   document.getElementById('round-display').textContent = round;
   startNewRound();
@@ -1056,10 +1115,18 @@ function resetGame(){
   showMessage('Scores reset. Ready for a new game!', 'info', 3000);
 }
 
+function manualPass(){
+  if(!puzzle.length || spinning) return;
+  playClick();
+  showMessage(`${TEAM_NAMES[currentTeam]} passes.`, 'info', 2500);
+  passTurn();
+}
+
 function passTurn(){
   stopTimer();
   disarmSolve();
   currentTeam = (currentTeam + 1) % numTeams;
+  freeVowelUsed = false;
   hasSpun = false;
   spinValue = null;
   buyingVowel = false;
@@ -1101,6 +1168,45 @@ function revealHint(){
   hintRevealed = true;
   playHint();
   renderHintBar();
+}
+
+// ═══════════════════════════════════════════════════════════
+// FINAL STRETCH — no unrevealed consonants remain
+// ═══════════════════════════════════════════════════════════
+function consonantsLeft(){
+  return puzzle.some((ch, i) => !revealed[i] && CONSONANT_RE.test(ch));
+}
+
+function refreshPhase(){
+  if(!finalStretch && puzzle.length && !revealed.every(r => r) && !consonantsLeft()){
+    enterFinalStretch();
+  }
+}
+
+function enterFinalStretch(){
+  finalStretch = true;
+  freeVowelUsed = false;
+  hasSpun = false;
+  spinValue = null;
+  buyingVowel = false;
+  playHint();
+  const sr = document.getElementById('spin-result');
+  sr.textContent = 'VOWELS ONLY';
+  sr.className = '';
+  showMessage('No consonants left — Final Stretch! Reveal one vowel, then solve or pass.', 'info');
+  startTimer();   // give the team a fair window, not the tail of the last one
+  renderAlphabet();
+  updateDisplay();
+}
+
+// Cheap assertion: with Final Stretch in place this should never fire, but if
+// it ever does the teacher gets a visible route forward instead of a dead board.
+function noLegalMove(){
+  if(!puzzle.length || spinning || finalStretch) return false;
+  const consUnused = CONSONANTS.split('').some(l => !usedLetters.includes(l));
+  const canBuy = temporaryScores[currentTeam] >= VOWEL_COST
+              && VOWELS.some(l => !usedLetters.includes(l));
+  return !consUnused && !canBuy;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1165,14 +1271,18 @@ function renderAlphabet(){
     const btn = document.createElement('button');
     btn.textContent = letter;
     btn.className = `letter-btn${isVowel ? ' vowel' : ''}${isUsed ? ' used' : ''}`;
-    btn.disabled = isUsed || spinning || !puzzle.length ||
-      (isVowel ? !buyingVowel : (buyingVowel || !hasSpun));
+    btn.disabled = isUsed || spinning || !puzzle.length || (
+      finalStretch ? (!isVowel || freeVowelUsed)
+                   : (isVowel ? !buyingVowel : (buyingVowel || !hasSpun))
+    );
     btn.onclick = () => handleLetter(letter);
     div.appendChild(btn);
   });
 
-  document.getElementById('buy-vowel-btn').disabled =
-    buyingVowel || !puzzle.length || temporaryScores[currentTeam] < 250 || spinning;
+  const bv = document.getElementById('buy-vowel-btn');
+  bv.style.display = finalStretch ? 'none' : '';
+  bv.disabled = finalStretch || buyingVowel || !puzzle.length ||
+    temporaryScores[currentTeam] < VOWEL_COST || spinning;
   document.getElementById('solve-btn').disabled = !puzzle.length || spinning;
 }
 
@@ -1180,60 +1290,79 @@ function renderAlphabet(){
 // LETTER HANDLER
 // ═══════════════════════════════════════════════════════════
 function handleLetter(letter){
-  if(usedLetters.includes(letter) || spinning) return;
-  playClick();
+  if(spinning || !puzzle.length || usedLetters.includes(letter)) return;
   const isVowel = VOWELS.includes(letter);
-  let found = false;
+
+  // ── legality gate — NO state is mutated above this line ──
+  if(finalStretch){
+    if(!isVowel || freeVowelUsed) return;
+  } else if(isVowel){
+    if(!buyingVowel || temporaryScores[currentTeam] < VOWEL_COST) return;
+  } else {
+    if(!hasSpun) return;
+  }
+
+  // ── commit ──
+  playClick();
   const indices = [];
   revealed = revealed.map((r, i) => {
-    if(puzzle[i] === letter){ indices.push(i); found = true; return true; }
+    if(puzzle[i] === letter){ indices.push(i); return true; }
     return r;
   });
   usedLetters.push(letter);
   lastRevealedIndices = indices;
+  const found = indices.length > 0;
+  const sr = document.getElementById('spin-result');
 
-  if(isVowel){
-    if(!buyingVowel || temporaryScores[currentTeam] < 250) return;
-    temporaryScores[currentTeam] -= 250;
+  if(finalStretch){
+    freeVowelUsed = true;
+    if(found){
+      playCorrect();
+      flashColor('#4fd8b0', 400);
+      showMessage(`'${letter}' revealed — solve it or pass!`, 'success');
+    } else {
+      playBuzz();
+      showMessage(`'${letter}' isn't in the puzzle — solve it or pass!`, 'warn');
+    }
+  } else if(isVowel){
+    temporaryScores[currentTeam] -= VOWEL_COST;
     buyingVowel = false;
     if(!found){
       playBuzz();
       flashColor('#ff6f61');
       showMessage(`'${letter}' not in puzzle — turn passes!`, 'error', 3000);
+      renderPuzzle(); renderAlphabet(); updateDisplay();
       setTimeout(() => passTurn(), 2000);
       return;
-    } else {
-      playCorrect();
-      flashColor('#5fb8ff', 400);
-      showMessage(`'${letter}' found! Keep guessing!`, 'success', 3000);
-      hasSpun = false; spinValue = null;
-      const sr = document.getElementById('spin-result');
-      sr.textContent = '—'; sr.className = '';
     }
+    playCorrect();
+    flashColor('#5fb8ff', 400);
+    showMessage(`'${letter}' found! Keep guessing!`, 'success', 3000);
+    hasSpun = false; spinValue = null;
+    sr.textContent = '—'; sr.className = '';
   } else {
-    if(!hasSpun) return;
     if(!found){
       playBuzz();
       flashColor('#ff6f61');
       showMessage(`'${letter}' not in puzzle — turn passes!`, 'error', 3000);
+      renderPuzzle(); renderAlphabet(); updateDisplay();
       setTimeout(() => passTurn(), 2000);
       return;
-    } else {
-      const earned = indices.length * spinValue;
-      temporaryScores[currentTeam] += earned;
-      playCorrect();
-      flashColor('#e8b04b', 400);
-      showMessage(`'${letter}' ×${indices.length} = +${earned}! Keep going!`, 'success', 3000);
-      hasSpun = false; spinValue = null;
-      const sr = document.getElementById('spin-result');
-      sr.textContent = '—'; sr.className = '';
     }
+    const earned = indices.length * spinValue;
+    temporaryScores[currentTeam] += earned;
+    playCorrect();
+    flashColor('#e8b04b', 400);
+    showMessage(`'${letter}' ×${indices.length} = +${earned}! Keep going!`, 'success', 3000);
+    hasSpun = false; spinValue = null;
+    sr.textContent = '—'; sr.className = '';
   }
 
   if(revealed.every(r => r)){
     handlePuzzleSolved();
     return;
   }
+  refreshPhase();
   renderPuzzle();
   renderAlphabet();
   updateDisplay();
@@ -1255,26 +1384,42 @@ function handleSolveClick(){
 
 function armSolve(){
   solveArmed = true;
+  pendingTimer = timerRemaining;
   stopTimer();
   document.getElementById('timer-wrap').style.display = 'none';
-  const btn = document.getElementById('solve-btn');
-  btn.textContent = '✔ Submit Answer';
+  document.getElementById('solve-btn').textContent = '✔ Submit Answer';
+  document.getElementById('solve-cancel-btn').style.display = '';
   showMessage('Timer paused — type the answer and submit!', 'info');
-  const input = document.getElementById('solve-input');
-  input.focus();
+  document.getElementById('solve-input').focus();
 }
 
 function disarmSolve(){
   solveArmed = false;
-  const btn = document.getElementById('solve-btn');
-  btn.textContent = '🙋 I Want To Solve It';
+  document.getElementById('solve-btn').textContent = '🙋 I Want To Solve It';
+  document.getElementById('solve-cancel-btn').style.display = 'none';
+}
+
+function cancelSolve(){
+  if(!solveArmed) return;
+  playClick();
+  disarmSolve();
+  document.getElementById('solve-input').value = '';
+  showMessage('Solve cancelled — clock resumes.', 'info', 2500);
+  resumeTimer();
+}
+
+// Case-folded, punctuation- and space-insensitive so a missing comma or a
+// double space doesn't cost the turn.
+function normalizeGuess(str){
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 function attemptSolve(){
   if(!puzzle.length) return;
-  const guess = document.getElementById('solve-input').value.toUpperCase().trim();
+  const guess = document.getElementById('solve-input').value.trim();
   if(!guess) return showMessage('Enter your guess first!', 'warn', 3000);
-  if(guess === puzzle.join('')){
+  if(normalizeGuess(guess) === normalizeGuess(puzzle.join(''))){
     disarmSolve();
     handlePuzzleSolved();
   } else {
@@ -1298,16 +1443,24 @@ function handlePuzzleSolved(){
   flashColor('#4fd8b0', 800);
   const winner = currentTeam;
   showMessage(`🏆 ${TEAM_NAMES[winner]} solved it!`, 'success');
+  const src = lastSource;
+  clearInterval(solveCountdown);
   let cd = 6;
-  const iv = setInterval(() => {
+  solveCountdown = setInterval(() => {
     cd--;
     showMessage(`🏆 ${TEAM_NAMES[winner]} solved it! Next round in ${cd}s…`, 'success');
     if(cd <= 0){
-      clearInterval(iv);
+      clearInterval(solveCountdown); solveCountdown = null;
       round++;
       document.getElementById('round-display').textContent = round;
       currentTeam = (winner + 1) % numTeams;
-      startNewRound();
+      if(src && src.mode === 'bank' && BANK[src.level] && BANK[src.level][src.category]){
+        const [text, hint] = pickFromBank(src.level, src.category);
+        beginPuzzle(text, hint, src.level, src.category);
+      } else {
+        startNewRound();
+        showMessage('Enter your next sentence, or pick a level and category.', 'info');
+      }
     }
   }, 1000);
   document.getElementById('spin-btn').disabled = true;
@@ -1332,7 +1485,7 @@ function buyVowel(){
 // SPIN WHEEL
 // ═══════════════════════════════════════════════════════════
 function spinWheel(){
-  if(spinning || !puzzle.length) return;
+  if(spinning || !puzzle.length || finalStretch) return;
   if(hasSpun && !buyingVowel){
     return showMessage('Guess a consonant, buy a vowel, or solve first!', 'warn', 3000);
   }
@@ -1428,11 +1581,24 @@ function updateDisplay(){
       cards[i].style.setProperty('--tc', TEAM_COLORS[i]);
     }
   }
-  document.getElementById('spin-btn').disabled =
-    spinning || !puzzle.length || (hasSpun && !buyingVowel);
-  document.getElementById('buy-vowel-btn').disabled =
-    spinning || !puzzle.length || temporaryScores[currentTeam] < 250 || buyingVowel;
+  const stuck = noLegalMove();
+  const spinBtn = document.getElementById('spin-btn');
+  spinBtn.disabled = spinning || !puzzle.length || finalStretch || stuck ||
+    (hasSpun && !buyingVowel);
+  spinBtn.textContent = finalStretch ? '🚫 Wheel closed — vowels only' : '🎡 Spin the Wheel';
+
+  const bv = document.getElementById('buy-vowel-btn');
+  bv.style.display = finalStretch ? 'none' : '';
+  bv.disabled = finalStretch || spinning || !puzzle.length ||
+    temporaryScores[currentTeam] < VOWEL_COST || buyingVowel;
+
   document.getElementById('solve-btn').disabled = spinning || !puzzle.length;
+
+  const passBtn = document.getElementById('pass-btn');
+  passBtn.disabled = !puzzle.length || spinning;
+  passBtn.classList.toggle('pulse', stuck);
+  if(stuck) showMessage('Nothing to guess — solve or pass.', 'warn');
+
   renderHintBar();
 }
 
@@ -1449,6 +1615,7 @@ setLevel('A1');
 
 document.getElementById('solve-input').addEventListener('keydown', (e) => {
   if(e.key === 'Enter') handleSolveClick();
+  if(e.key === 'Escape') cancelSolve();
 });
 
 document.addEventListener('click', () => { try{ getAudio(); }catch(e){} }, { once:true });

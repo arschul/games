@@ -93,6 +93,64 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   }
   #wrongSkipBtn:hover { border-color: var(--accent); color: var(--accent); }
 
+  /* ── TEACHER CONTROLS ── */
+  #teamNames { display: grid; gap: 6px; margin-top: 10px; }
+  #teamNames input {
+    width: 100%; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--hair); background: var(--bg); color: var(--text);
+    font: 600 0.9rem 'Nunito', sans-serif;
+  }
+  #teamNames input:focus { outline: none; border-color: var(--accent); }
+
+  #teacherBar {
+    width: 100%; display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: center; gap: 8px; padding: 8px 0 2px;
+  }
+  .tb-btn {
+    padding: 6px 13px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--hair); background: var(--surface); color: var(--muted);
+    font: 700 0.78rem 'Nunito', sans-serif; letter-spacing: 0.5px;
+  }
+  .tb-btn:hover { color: var(--text); border-color: var(--accent); }
+  .tb-btn.on { color: var(--accent); border-color: var(--accent); }
+  #keyHints {
+    width: 100%; text-align: center; color: var(--muted);
+    font-size: 0.68rem; letter-spacing: 0.5px; opacity: 0.75;
+  }
+  @media (max-width: 640px) { #keyHints { display: none; } }
+
+  .ts-adjust { display: flex; gap: 4px; justify-content: center; margin-top: 5px; }
+  .ts-adjust button {
+    flex: 1; padding: 2px 0; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--hair); background: transparent; color: var(--muted);
+    font: 700 0.68rem 'Nunito', sans-serif;
+  }
+  .ts-adjust button:hover { color: var(--text); border-color: var(--accent); }
+  #scoreboard.scores-hidden .ts-pts,
+  #scoreboard.scores-hidden .ts-bar-wrap,
+  #scoreboard.scores-hidden .ts-adjust { visibility: hidden; }
+
+  #pausedOverlay {
+    display: none; position: fixed; inset: 0; z-index: 210;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: var(--overlay); font-family: 'Fredoka One', cursive; text-align: center;
+  }
+  #pausedOverlay.show { display: flex; }
+
+  #toast {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%) translateY(-24px);
+    z-index: 320; padding: 9px 20px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--hair); color: var(--text);
+    font: 700 0.82rem 'Nunito', sans-serif; box-shadow: var(--shadow);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .chip-key {
+    display: inline-block; min-width: 1.1em; margin-right: 7px;
+    opacity: 0.45; font-size: 0.8em; font-weight: 800;
+  }
+
   /* ── SCREENS ── */
   .screen { position: relative; z-index: 1; display: none; min-height: 100vh; padding: 24px; }
   .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -665,6 +723,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
         <div id="teamsDisplay">2</div>
         <button class="teams-btn" id="teamsUp">+</button>
       </div>
+      <div id="teamNames"></div>
     </div>
     <button class="start-btn" id="startBtn">▶ START GAME</button>
   </div>
@@ -682,6 +741,19 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
     <div class="sentence-text" id="sentenceText"></div>
   </div>
   <div id="wordArea"></div>
+  <div id="teacherBar">
+    <button class="tb-btn" id="tbPause" title="P">&#9208; Pause</button>
+    <button class="tb-btn" id="tbUndo"  title="U">&#8630; Undo</button>
+    <button class="tb-btn" id="tbSkip"  title="K">&#8677; Skip</button>
+    <button class="tb-btn" id="tbScores" title="S">&#128065; Scores</button>
+    <button class="tb-btn" id="tbEnd">&#9632; End game</button>
+    <span id="keyHints">1&ndash;6 answer &middot; Space next &middot; Esc cancel &middot; P pause &middot; U undo &middot; K skip &middot; S scores</span>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="pausedOverlay">
+  <div style="font-size:clamp(2rem,8vw,4rem);color:var(--accent)">&#9208; PAUSED</div>
+  <div style="font-size:0.85rem;color:var(--muted);margin-top:14px;letter-spacing:2px;font-family:'Nunito',sans-serif">press P or click to resume</div>
 </div>
 
 <canvas id="confettiCanvas"></canvas>
@@ -962,9 +1034,14 @@ let state = {
   teamRoundCount: 0,      // how many questions current team has played this stint
   phase: 'main',          // 'main' | 'final'
   finalTeams: [],         // indices of the 2 finalists
+  paused: false,
+  scoresVisible: true,
 };
 
 // chip physics particles
+let undoStack = [];
+let motionArea = null;
+let wrongTick = null;
 let particles = [];
 let animFrame = null;
 let timerInterval = null;
@@ -1012,9 +1089,24 @@ document.querySelectorAll('.timer-btn').forEach(btn=>{
   });
 });
 
+function renderTeamNameInputs() {
+  const wrap = document.getElementById('teamNames');
+  const existing = [...wrap.querySelectorAll('input')].map(i=>i.value);
+  wrap.innerHTML = '';
+  for(let i=0;i<teamsCount;i++) {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.maxLength = 18;
+    inp.placeholder = `Team ${i+1}`;
+    inp.value = existing[i] || '';
+    wrap.appendChild(inp);
+  }
+}
+
 let teamsCount = 2;
-document.getElementById('teamsDown').onclick=()=>{ if(teamsCount>1){teamsCount--;document.getElementById('teamsDisplay').textContent=teamsCount; playSound('click');} };
-document.getElementById('teamsUp').onclick=()=>{ if(teamsCount<6){teamsCount++;document.getElementById('teamsDisplay').textContent=teamsCount; playSound('click');} };
+document.getElementById('teamsDown').onclick=()=>{ if(teamsCount>1){teamsCount--;document.getElementById('teamsDisplay').textContent=teamsCount; renderTeamNameInputs(); playSound('click');} };
+document.getElementById('teamsUp').onclick=()=>{ if(teamsCount<6){teamsCount++;document.getElementById('teamsDisplay').textContent=teamsCount; renderTeamNameInputs(); playSound('click');} };
+renderTeamNameInputs();
 
 document.getElementById('startBtn').onclick = startGame;
 document.getElementById('fbNext').onclick = nextQuestion;
@@ -1027,13 +1119,19 @@ function startGame() {
   const totalNeeded = mainRounds + finalRounds;
 
   state.teams = N;
-  state.scores = Array.from({length:N},(_,i)=>({name:`Team ${i+1}`,score:0,correct:0,timeUsed:0}));
+  const nameInputs = [...document.querySelectorAll('#teamNames input')];
+  state.scores = Array.from({length:N},(_,i)=>({
+    name: (nameInputs[i] && nameInputs[i].value.trim()) || `Team ${i+1}`,
+    score:0, correct:0, timeUsed:0
+  }));
   state.currentTeam = 0;
   state.phase = 'main';
   state.finalTeams = [];
   state.teamRoundCount = 0;
   state.finalDone = new Set();
   state.history = [];
+  state.paused = false;
+  undoStack = [];
 
   const pool = [...SENTENCES[state.level]];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
@@ -1058,8 +1156,50 @@ function buildScoreboard() {
       <div class="ts-name" style="color:${colors[i]}">${t.name}</div>
       <div class="ts-pts" style="color:${colors[i]}" id="ts-pts-${i}">${t.score}</div>
       <div class="ts-bar-wrap"><div class="ts-bar" id="ts-bar-${i}" style="background:${colors[i]}"></div></div>
+      <div class="ts-adjust">
+        <button data-adj="-50" data-team="${i}">&minus;50</button>
+        <button data-adj="50"  data-team="${i}">+50</button>
+      </div>
     </div>
   `).join('');
+  sb.classList.toggle('scores-hidden', !state.scoresVisible);
+  sb.querySelectorAll('.ts-adjust button').forEach(b=>{
+    b.onclick = () => {
+      const t = state.scores[+b.dataset.team];
+      t.score = Math.max(0, t.score + (+b.dataset.adj));
+      updateScoreboard();
+      playSound('click');
+    };
+  });
+}
+
+function toggleScores() {
+  state.scoresVisible = !state.scoresVisible;
+  document.getElementById('scoreboard').classList.toggle('scores-hidden', !state.scoresVisible);
+  document.getElementById('tbScores').classList.toggle('on', !state.scoresVisible);
+  toast(state.scoresVisible ? 'Scores shown' : 'Scores hidden');
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 1600);
+}
+
+function closeOverlays() {
+  if(wrongCountdownTimeout) { clearTimeout(wrongCountdownTimeout); wrongCountdownTimeout = null; }
+  if(wrongTick) { clearInterval(wrongTick); wrongTick = null; }
+  document.getElementById('feedbackOverlay').classList.remove('show');
+  document.getElementById('wrongCountdown').style.display = 'none';
+  document.getElementById('wrongSkipBtn').style.display = 'none';
+  document.getElementById('wrongCountdownLabel').textContent = '';
+  document.getElementById('pausedOverlay').classList.remove('show');
+  state.paused = false;
+  const pb = document.getElementById('tbPause');
+  if(pb) { pb.textContent = '\u23F8 Pause'; pb.classList.remove('on'); }
 }
 
 function updateScoreboard(ptsEarned, teamIdx) {
@@ -1090,10 +1230,68 @@ function updateScoreboard(ptsEarned, teamIdx) {
   }
 }
 
+function snapshot() {
+  return JSON.stringify({
+    scores: state.scores, sentenceIdx: state.sentenceIdx,
+    currentTeam: state.currentTeam, teamRoundCount: state.teamRoundCount,
+    phase: state.phase, finalTeams: state.finalTeams,
+    finalDone: [...state.finalDone], historyLen: state.history.length,
+  });
+}
+
+function restore(snap) {
+  const s = JSON.parse(snap);
+  state.scores = s.scores;
+  state.sentenceIdx = s.sentenceIdx;
+  state.currentTeam = s.currentTeam;
+  state.teamRoundCount = s.teamRoundCount;
+  state.phase = s.phase;
+  state.finalTeams = s.finalTeams;
+  state.finalDone = new Set(s.finalDone);
+  state.history.length = s.historyLen;
+}
+
+// Step back one whole question: drop the snapshot for the question on screen,
+// then reload from the snapshot taken before the one that came before it.
+function undoLast() {
+  if(state.paused) togglePause();
+  if(undoStack.length < 2) { toast('Nothing to undo yet'); return; }
+  undoStack.pop();
+  restore(undoStack.pop());
+  closeOverlays();
+  buildScoreboard();
+  loadQuestion();
+  toast('Undone');
+}
+
+function skipQuestion() {
+  if(state.paused) togglePause();
+  if(state.answered) return;
+  state.answered = true;
+  stopTimer();
+  stopMotion();
+  const q = state.sentences[state.sentenceIdx];
+  state.history.push({ word: q.w, sentence: q.s, teamIdx: state.currentTeam,
+                       pts: 0, correct: false, skipped: true, phase: state.phase });
+  toast('Question skipped');
+  nextQuestion();
+}
+
+// Esc on an unanswered question: put it back untouched, same team, same turn.
+function cancelQuestion() {
+  if(state.answered) return;
+  if(state.paused) togglePause();
+  undoStack.pop();
+  loadQuestion();
+  toast('Question cancelled');
+}
+
 function loadQuestion() {
   stopTimer();
   stopMotion();
   if(state.sentenceIdx >= state.sentences.length) { showEnd(); return; }
+  undoStack.push(snapshot());
+  if(undoStack.length > 40) undoStack.shift();
   const q = state.sentences[state.sentenceIdx];
   state.correctWord = q.w;
   state.answered = false;
@@ -1134,8 +1332,10 @@ function placeWords(words) {
   words.forEach((word, idx) => {
     const chip = document.createElement('div');
     chip.className = 'word-chip';
-    chip.textContent = word;
+    chip.innerHTML = `<span class="chip-key">${idx+1}</span>`;
+    chip.appendChild(document.createTextNode(word));
     chip.dataset.word = word;
+    chip.dataset.idx = idx + 1;
 
     let x, y, attempts = 0;
     do {
@@ -1172,6 +1372,7 @@ function placeWords(words) {
     });
   });
 
+  motionArea = area;
   startMotion(area);
 }
 
@@ -1246,6 +1447,31 @@ function startMotion(area) {
   animFrame = requestAnimationFrame(tick);
 }
 
+function pauseMotion() {
+  if(animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+}
+
+function togglePause() {
+  if(!document.getElementById('gameScreen').classList.contains('active')) return;
+  if(state.answered && !state.paused) return;   // nothing to pause between questions
+  state.paused = !state.paused;
+  const btn = document.getElementById('tbPause');
+  const ov  = document.getElementById('pausedOverlay');
+  if(state.paused) {
+    if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    pauseMotion();
+    ov.classList.add('show');
+    btn.textContent = '\u25B6 Resume';
+    btn.classList.add('on');
+  } else {
+    ov.classList.remove('show');
+    btn.textContent = '\u23F8 Pause';
+    btn.classList.remove('on');
+    if(motionArea) startMotion(motionArea);
+    if(!state.answered) runTimer();
+  }
+}
+
 function stopMotion() {
   if(animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
   particles = [];
@@ -1260,7 +1486,13 @@ function startTimer() {
   fill.style.width = '100%';
   num.textContent = timerRemaining;
   num.className = '';
+  runTimer();
+}
 
+function runTimer() {
+  const fill = document.getElementById('timerFill');
+  const num = document.getElementById('timerNum');
+  if(timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(()=>{
     timerRemaining--;
     num.textContent = timerRemaining;
@@ -1311,7 +1543,7 @@ function timeOut() {
 }
 
 function handleAnswer(chip, word) {
-  if(state.answered) return;
+  if(state.answered || state.paused) return;
   state.answered = true;
   stopTimer();
   stopMotion();
@@ -1382,10 +1614,11 @@ function showWrongCountdown(headerMsg) {
   fill.style.width = '100%';
 
   let secs = 4;
-  const tick = setInterval(()=>{
+  if(wrongTick) clearInterval(wrongTick);
+  wrongTick = setInterval(()=>{
     label.textContent = prefix + `Moving on in ${secs}…`;
     secs--;
-    if(secs < 0) clearInterval(tick);
+    if(secs < 0) { clearInterval(wrongTick); wrongTick = null; }
   }, 1000);
 
   wrongCountdownTimeout = setTimeout(()=>{
@@ -1393,21 +1626,14 @@ function showWrongCountdown(headerMsg) {
     fill.style.transition = 'none';
     fill.style.width = '0%';
     label.textContent = '';
-    clearInterval(tick);
     nextQuestion();
   }, 5000);
 
-  const skip = () => {
-    document.removeEventListener('keydown', onKey);
-    clearInterval(tick);
-    nextQuestion();
-  };
-  const onKey = (e) => { if(e.key===' '||e.key==='Enter'){ e.preventDefault(); skip(); } };
-  document.getElementById('wrongSkipBtn').onclick = skip;
-  document.addEventListener('keydown', onKey, {once:true});
+  document.getElementById('wrongSkipBtn').onclick = nextQuestion;
 }
 
 function nextQuestion() {
+  if(wrongTick) { clearInterval(wrongTick); wrongTick = null; }
   if(wrongCountdownTimeout) { clearTimeout(wrongCountdownTimeout); wrongCountdownTimeout = null; }
   document.getElementById('feedbackOverlay').classList.remove('show');
   document.getElementById('wrongCountdown').style.display = 'none';
@@ -1624,13 +1850,14 @@ function showEnd() {
 
     const renderRows = (rows) => rows.map(h => {
       const sentenceDisplay = h.sentence.replace('___', `<strong style="color:${col}">${h.word}</strong>`);
+      const mark = h.correct ? '✓' : (h.skipped ? '⤳' : '✗');
       return `<div class="breakdown-row ${h.correct?'':'breakdown-miss'}">
-        <span class="breakdown-word" style="color:${h.correct?col:'var(--wrong)'}">
-          ${h.correct?'✓':'✗'} ${h.word}
+        <span class="breakdown-word" style="color:${h.correct?col:'var(--muted)'}">
+          ${mark} ${h.word}
         </span>
         <span class="breakdown-sentence">${sentenceDisplay}</span>
         <span class="breakdown-pts" style="color:${h.correct?col:'var(--muted)'}">
-          ${h.correct?'+'+h.pts+' pts':'—'}
+          ${h.correct?'+'+h.pts+' pts':(h.skipped?'skipped':'—')}
         </span>
       </div>`;
     }).join('');
@@ -1783,7 +2010,81 @@ function launchConfetti() {
   draw();
 }
 
+let endArmed = false, endArmTimer = null;
+function endGameEarly() {
+  const btn = document.getElementById('tbEnd');
+  if(!endArmed) {                      // two taps, so a stray click can't end the game
+    endArmed = true;
+    btn.textContent = '\u25A0 Sure?';
+    btn.classList.add('on');
+    clearTimeout(endArmTimer);
+    endArmTimer = setTimeout(()=>{
+      endArmed = false;
+      btn.textContent = '\u25A0 End game';
+      btn.classList.remove('on');
+    }, 3000);
+    return;
+  }
+  clearTimeout(endArmTimer);
+  endArmed = false;
+  btn.textContent = '\u25A0 End game';
+  btn.classList.remove('on');
+  if(state.paused) togglePause();
+  closeOverlays();
+  stopTimer();
+  stopMotion();
+  if(!state.history.length) { showStart(); return; }
+  showEnd();
+}
+
+// ── CONTROL WIRING ──
+document.getElementById('tbPause').onclick  = togglePause;
+document.getElementById('tbUndo').onclick   = undoLast;
+document.getElementById('tbSkip').onclick   = skipQuestion;
+document.getElementById('tbScores').onclick = toggleScores;
+document.getElementById('tbEnd').onclick    = endGameEarly;
+document.getElementById('pausedOverlay').onclick = togglePause;
+
+document.addEventListener('keydown', (e) => {
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const playing = document.getElementById('gameScreen').classList.contains('active');
+  if(!playing) return;
+
+  const feedbackUp = document.getElementById('feedbackOverlay').classList.contains('show');
+  const countdownUp = document.getElementById('wrongCountdown').style.display === 'block';
+  const getReadyUp = !!document.getElementById('getReadyBanner');
+  const k = e.key.toLowerCase();
+
+  if(k === 'p') { e.preventDefault(); togglePause(); return; }
+  if(state.paused) return;
+  if(k === 's') { e.preventDefault(); toggleScores(); return; }
+  if(k === 'u') { e.preventDefault(); undoLast(); return; }
+
+  if(e.key === ' ' || e.key === 'Enter') {
+    if(getReadyUp) { e.preventDefault(); document.getElementById('getReadyBanner').click(); return; }
+    if(feedbackUp || countdownUp) { e.preventDefault(); nextQuestion(); return; }
+    return;
+  }
+  if(e.key === 'Escape') {
+    e.preventDefault();
+    if(feedbackUp || countdownUp) { nextQuestion(); return; }
+    cancelQuestion();
+    return;
+  }
+  if(feedbackUp || countdownUp || getReadyUp) return;
+  if(k === 'k') { e.preventDefault(); skipQuestion(); return; }
+
+  const n = 'abcdef'.indexOf(k) >= 0 ? 'abcdef'.indexOf(k) + 1 : parseInt(e.key, 10);
+  if(n >= 1 && n <= 6) {
+    const chip = document.querySelector(`.word-chip[data-idx="${n}"]`);
+    if(chip && !state.answered) { e.preventDefault(); chip.click(); }
+  }
+});
+
 function showStart() {
+  closeOverlays();
   stopMotion();
   stopTimer();
   showScreen('startScreen');

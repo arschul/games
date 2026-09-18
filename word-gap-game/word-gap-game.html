@@ -93,6 +93,19 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   }
   #wrongSkipBtn:hover { border-color: var(--accent); color: var(--accent); }
 
+  #gameSize {
+    text-align: center; color: var(--muted);
+    font: 600 0.76rem 'Nunito', sans-serif; letter-spacing: 0.5px; margin-top: -4px;
+  }
+  #gameSize.tight { color: var(--accent2); }
+
+  #stealBanner {
+    position: fixed; inset: 0; z-index: 205; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: var(--overlay); font-family: 'Fredoka One', cursive; text-align: center;
+  }
+  #stealBanner.show { display: flex; }
+
   #sentenceEmoji {
     display: none;
     font-size: clamp(2.6rem, 9vw, 4.4rem);
@@ -215,7 +228,7 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
     text-align: center;
   }
   .cefr-btn:hover { border-color: var(--muted); transform: translateY(-2px); }
-  .cefr-btn.selected, .cefr-btn.selected-speed, .cefr-btn.selected-timer, .cefr-btn.selected-chips, .cefr-btn.selected-score { border-color: var(--accent); background: rgba(255,204,0,0.12); color: var(--accent); }
+  .cefr-btn.selected, .cefr-btn.selected-speed, .cefr-btn.selected-timer, .cefr-btn.selected-chips, .cefr-btn.selected-score, .cefr-btn.selected-motion, .cefr-btn.selected-rounds, .cefr-btn.selected-steal { border-color: var(--accent); background: rgba(255,204,0,0.12); color: var(--accent); }
 
   .teams-row {
     display: flex;
@@ -727,6 +740,30 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       </div>
     </div>
     <div>
+      <div class="field-label">Motion</div>
+      <div class="cefr-grid" style="grid-template-columns:repeat(3,1fr)">
+        <button class="cefr-btn motion-btn" data-motion="still">⏹ Still</button>
+        <button class="cefr-btn motion-btn selected-motion" data-motion="drift">🫧 Drift</button>
+        <button class="cefr-btn motion-btn" data-motion="orbit">🌀 Orbit</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Questions per Team</div>
+      <div class="cefr-grid" style="grid-template-columns:repeat(4,1fr)">
+        <button class="cefr-btn rounds-btn" data-rounds="2">2</button>
+        <button class="cefr-btn rounds-btn selected-rounds" data-rounds="3">3</button>
+        <button class="cefr-btn rounds-btn" data-rounds="5">5</button>
+        <button class="cefr-btn rounds-btn" data-rounds="8">8</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Steal</div>
+      <div class="cefr-grid" style="grid-template-columns:repeat(2,1fr)">
+        <button class="cefr-btn steal-btn selected-steal" data-steal="off">Off</button>
+        <button class="cefr-btn steal-btn" data-steal="on">🏴 On — next team can steal</button>
+      </div>
+    </div>
+    <div>
       <div class="field-label">Words on Screen</div>
       <div class="cefr-grid" style="grid-template-columns:repeat(2,1fr)">
         <button class="cefr-btn chips-btn" data-chips="4">4 words</button>
@@ -749,6 +786,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       </div>
       <div id="teamNames"></div>
     </div>
+    <div id="gameSize"></div>
     <button class="start-btn" id="startBtn">▶ START GAME</button>
   </div>
 </div>
@@ -776,6 +814,11 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
   </div>
 </div>
 <div id="toast"></div>
+<div id="stealBanner">
+  <div style="font-size:clamp(2rem,8vw,3.6rem);color:var(--accent2)">🏴 STEAL!</div>
+  <div id="stealTeamName" style="font-size:clamp(1.1rem,4vw,1.8rem);color:var(--text);margin-top:10px"></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin-top:12px;letter-spacing:2px;font-family:'Nunito',sans-serif">worth half points</div>
+</div>
 <div id="pausedOverlay">
   <div style="font-size:clamp(2rem,8vw,4rem);color:var(--accent)">&#9208; PAUSED</div>
   <div style="font-size:0.85rem;color:var(--muted);margin-top:14px;letter-spacing:2px;font-family:'Nunito',sans-serif">press P or click to resume</div>
@@ -1115,12 +1158,23 @@ let state = {
   scoresVisible: true,
   chipCount: 6,
   scoring: 'speed',       // 'speed' | 'flat'
+  motion: 'drift',        // 'still' | 'drift' | 'orbit'
+  steal: false,
+  stealTeam: null,        // team currently attempting a steal
+  stealUsed: false,
 };
 
 // chip physics particles
 let undoStack = [];
 let motionArea = null;
 let wrongTick = null;
+let timerLimit = 20;
+
+// Whoever is actually on the hook right now — the team whose turn it is,
+// or the team that has taken the steal.
+function activeTeam() {
+  return state.stealTeam != null ? state.stealTeam : state.currentTeam;
+}
 let particles = [];
 let animFrame = null;
 let timerInterval = null;
@@ -1161,9 +1215,55 @@ document.querySelectorAll('.cefr-btn[data-level]').forEach(btn=>{
     pick('.cefr-btn[data-level]', 'selected', btn);
     state.level = btn.dataset.level;
     if(state.level === 'KIDS') applyKidsDefaults();
+    updateGameSize();
     playSound('select');
   });
 });
+
+document.querySelectorAll('.motion-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    pick('.motion-btn', 'selected-motion', btn);
+    state.motion = btn.dataset.motion;
+    playSound('select');
+  });
+});
+
+document.querySelectorAll('.rounds-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    pick('.rounds-btn', 'selected-rounds', btn);
+    state.roundsPerTeam = +btn.dataset.rounds;
+    updateGameSize();
+    playSound('select');
+  });
+});
+
+document.querySelectorAll('.steal-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    pick('.steal-btn', 'selected-steal', btn);
+    state.steal = btn.dataset.steal === 'on';
+    playSound('select');
+  });
+});
+
+// How many questions the settings actually add up to, and whether the
+// level's bank can cover them.
+function plannedQuestions(N) {
+  const main = N * state.roundsPerTeam;
+  const fin  = N >= 3 ? 2 * state.roundsPerTeam : 0;
+  return main + fin;
+}
+
+function updateGameSize() {
+  const el = document.getElementById('gameSize');
+  if(!el) return;
+  const want = plannedQuestions(teamsCount);
+  const have = (SENTENCES[state.level] || []).length;
+  const n = Math.min(want, have);
+  el.textContent = want > have
+    ? `${n} questions — the ${state.level === 'KIDS' ? 'Kids' : state.level} bank runs out before ${want}`
+    : `${n} questions in this game`;
+  el.classList.toggle('tight', want > have);
+}
 
 document.querySelectorAll('.chips-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
@@ -1214,19 +1314,17 @@ function renderTeamNameInputs() {
 }
 
 let teamsCount = 2;
-document.getElementById('teamsDown').onclick=()=>{ if(teamsCount>1){teamsCount--;document.getElementById('teamsDisplay').textContent=teamsCount; renderTeamNameInputs(); playSound('click');} };
-document.getElementById('teamsUp').onclick=()=>{ if(teamsCount<6){teamsCount++;document.getElementById('teamsDisplay').textContent=teamsCount; renderTeamNameInputs(); playSound('click');} };
+document.getElementById('teamsDown').onclick=()=>{ if(teamsCount>1){teamsCount--;document.getElementById('teamsDisplay').textContent=teamsCount; renderTeamNameInputs(); updateGameSize(); playSound('click');} };
+document.getElementById('teamsUp').onclick=()=>{ if(teamsCount<6){teamsCount++;document.getElementById('teamsDisplay').textContent=teamsCount; renderTeamNameInputs(); updateGameSize(); playSound('click');} };
 renderTeamNameInputs();
+updateGameSize();
 
 document.getElementById('startBtn').onclick = startGame;
 document.getElementById('fbNext').onclick = nextQuestion;
 
 function startGame() {
   const N = teamsCount;
-  // total sentences needed: N teams × 3 rounds, plus if N>=3: 2 finalists × 3 rounds
-  const mainRounds = N * 3;
-  const finalRounds = N >= 3 ? 6 : 0;
-  const totalNeeded = mainRounds + finalRounds;
+  const totalNeeded = plannedQuestions(N);
 
   state.teams = N;
   const nameInputs = [...document.querySelectorAll('#teamNames input')];
@@ -1241,11 +1339,13 @@ function startGame() {
   state.finalDone = new Set();
   state.history = [];
   state.paused = false;
+  state.stealTeam = null;
+  state.stealUsed = false;
   undoStack = [];
 
   const pool = [...SENTENCES[state.level]];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
-  state.sentences = pool.slice(0, totalNeeded);
+  state.sentences = pool.slice(0, Math.min(totalNeeded, pool.length));
   state.sentenceIdx = 0;
 
   showScreen('gameScreen');
@@ -1262,7 +1362,7 @@ function buildScoreboard() {
   const sb = document.getElementById('scoreboard');
   const colors = teamColors();
   sb.innerHTML = state.scores.map((t,i)=>`
-    <div class="team-score ${i===state.currentTeam?'active-team':''}" id="ts-${i}">
+    <div class="team-score ${i===activeTeam()?'active-team':''}" id="ts-${i}">
       <div class="ts-name" style="color:${colors[i]}">${t.name}</div>
       <div class="ts-pts" style="color:${colors[i]}" id="ts-pts-${i}">${t.score}</div>
       <div class="ts-bar-wrap"><div class="ts-bar" id="ts-bar-${i}" style="background:${colors[i]}"></div></div>
@@ -1307,6 +1407,7 @@ function closeOverlays() {
   document.getElementById('wrongSkipBtn').style.display = 'none';
   document.getElementById('wrongCountdownLabel').textContent = '';
   document.getElementById('pausedOverlay').classList.remove('show');
+  document.getElementById('stealBanner').classList.remove('show');
   state.paused = false;
   const pb = document.getElementById('tbPause');
   if(pb) { pb.textContent = '\u23F8 Pause'; pb.classList.remove('on'); }
@@ -1322,7 +1423,7 @@ function updateScoreboard(ptsEarned, teamIdx) {
     const inFinal = state.phase === 'final';
     const isFinalist = state.finalTeams.includes(i);
     el.className = 'team-score' +
-      (i===state.currentTeam?' active-team':'') +
+      (i===activeTeam()?' active-team':'') +
       (inFinal && !isFinalist?' team-eliminated':'');
     const bar = document.getElementById('ts-bar-'+i);
     if(bar) bar.style.width = Math.round(t.score / maxScore * 100)+'%';
@@ -1345,6 +1446,7 @@ function snapshot() {
     scores: state.scores, sentenceIdx: state.sentenceIdx,
     currentTeam: state.currentTeam, teamRoundCount: state.teamRoundCount,
     phase: state.phase, finalTeams: state.finalTeams,
+    stealTeam: state.stealTeam, stealUsed: state.stealUsed,
     finalDone: [...state.finalDone], historyLen: state.history.length,
   });
 }
@@ -1357,6 +1459,8 @@ function restore(snap) {
   state.teamRoundCount = s.teamRoundCount;
   state.phase = s.phase;
   state.finalTeams = s.finalTeams;
+  state.stealTeam = s.stealTeam;
+  state.stealUsed = s.stealUsed;
   state.finalDone = new Set(s.finalDone);
   state.history.length = s.historyLen;
 }
@@ -1381,6 +1485,7 @@ function skipQuestion() {
   stopTimer();
   stopMotion();
   const q = state.sentences[state.sentenceIdx];
+  document.getElementById('stealBanner').classList.remove('show');
   state.history.push({ word: q.w, sentence: q.s, teamIdx: state.currentTeam,
                        pts: 0, correct: false, skipped: true, phase: state.phase });
   toast('Question skipped');
@@ -1405,9 +1510,14 @@ function loadQuestion() {
   const q = state.sentences[state.sentenceIdx];
   state.correctWord = q.w;
   state.answered = false;
+  state.stealTeam = null;
+  state.stealUsed = false;
+  document.getElementById('stealBanner').classList.remove('show');
 
   const teamName = state.scores[state.currentTeam].name;
-  const roundLabel = state.phase === 'final' ? '⚡ FINAL' : `ROUND ${state.teamRoundCount+1} OF ${state.roundsPerTeam}`;
+  const roundLabel = state.phase === 'final'
+    ? '⚡ FINAL — DOUBLE POINTS'
+    : `ROUND ${state.teamRoundCount+1} OF ${state.roundsPerTeam}`;
   document.getElementById('roundInfo').textContent =
     `${roundLabel}  ·  ${teamName}'s TURN`;
 
@@ -1446,6 +1556,11 @@ function placeWords(words) {
   }
 
   const spd = SPEED_MAP[state.speed];
+  const orbit = state.motion === 'orbit';
+  const cx = areaW / 2, cy = areaH / 2;
+  const rx = Math.max(50, areaW / 2 - chipW / 2 - 12);
+  const ry = Math.max(36, areaH / 2 - chipH / 2 - 12);
+  const omega = spd * 0.012;
 
   words.forEach((word, idx) => {
     const chip = document.createElement('div');
@@ -1455,17 +1570,26 @@ function placeWords(words) {
     chip.dataset.word = word;
     chip.dataset.idx = idx + 1;
 
-    let x, y, attempts = 0;
-    do {
-      x = Math.random()*(areaW - chipW - 20) + 10;
-      y = Math.random()*(areaH - chipH - 20) + 10;
-      attempts++;
-    } while(overlaps(x,y) && attempts < 100);
+    let x, y, theta = 0;
+    if(orbit) {
+      // evenly spaced on one ring, so nothing overlaps and nothing collides
+      theta = (idx / words.length) * Math.PI * 2 - Math.PI / 2;
+      x = cx + Math.cos(theta) * rx - chipW / 2;
+      y = cy + Math.sin(theta) * ry - chipH / 2;
+    } else {
+      let attempts = 0;
+      do {
+        x = Math.random()*(areaW - chipW - 20) + 10;
+        y = Math.random()*(areaH - chipH - 20) + 10;
+        attempts++;
+      } while(overlaps(x,y) && attempts < 100);
+    }
 
     placed.push({x,y});
 
+    const still = state.motion === 'still';
     const angle = Math.random() * Math.PI * 2;
-    const speed = spd * (0.6 + Math.random() * 0.8);
+    const speed = (still || orbit) ? 0 : spd * (0.6 + Math.random() * 0.8);
     const vx = Math.cos(angle) * speed;
     const vy = Math.sin(angle) * speed;
 
@@ -1480,7 +1604,7 @@ function placeWords(words) {
     requestAnimationFrame(()=>{ chip.style.opacity='1'; });
 
     // Use real rendered size once available, fall back to estimate
-    const p = { el: chip, x, y, vx, vy, w: chipW, h: chipH };
+    const p = { el: chip, x, y, vx, vy, w: chipW, h: chipH, theta, omega, cx, cy, rx, ry };
     particles.push(p);
 
     // Measure real size after layout
@@ -1491,7 +1615,7 @@ function placeWords(words) {
   });
 
   motionArea = area;
-  startMotion(area);
+  if(state.motion !== 'still') startMotion(area);
 }
 
 function startMotion(area) {
@@ -1501,6 +1625,19 @@ function startMotion(area) {
     const aW = area.clientWidth;
     const aH = area.clientHeight;
     const n = particles.length;
+
+    // Orbit: one carousel, no collisions needed — O(n) rather than O(n²)
+    if(state.motion === 'orbit') {
+      for(const p of particles) {
+        p.theta += p.omega;
+        p.x = p.cx + Math.cos(p.theta) * p.rx - p.w / 2;
+        p.y = p.cy + Math.sin(p.theta) * p.ry - p.h / 2;
+        p.el.style.left = p.x + 'px';
+        p.el.style.top  = p.y + 'px';
+      }
+      animFrame = requestAnimationFrame(tick);
+      return;
+    }
 
     // Move all particles
     for(const p of particles) {
@@ -1585,7 +1722,7 @@ function togglePause() {
     ov.classList.remove('show');
     btn.textContent = '\u23F8 Pause';
     btn.classList.remove('on');
-    if(motionArea) startMotion(motionArea);
+    if(motionArea && state.motion !== 'still') startMotion(motionArea);
     if(!state.answered) runTimer();
   }
 }
@@ -1596,8 +1733,9 @@ function stopMotion() {
 }
 
 // ── TIMER ──
-function startTimer() {
-  timerRemaining = state.timerSecs;
+function startTimer(secs) {
+  timerLimit = secs || state.timerSecs;
+  timerRemaining = timerLimit;
   const fill = document.getElementById('timerFill');
   const num = document.getElementById('timerNum');
   fill.style.transition = 'none';
@@ -1615,10 +1753,10 @@ function runTimer() {
     timerRemaining--;
     num.textContent = timerRemaining;
     fill.style.transition = 'width 1s linear';
-    fill.style.width = (timerRemaining / state.timerSecs * 100) + '%';
+    fill.style.width = (timerRemaining / timerLimit * 100) + '%';
 
     // color shifts
-    const pct = timerRemaining / state.timerSecs;
+    const pct = timerRemaining / timerLimit;
     if(pct <= 0.3) {
       fill.style.background = 'var(--wrong)';
       num.className = 'urgent';
@@ -1648,16 +1786,53 @@ function timeOut() {
   stopMotion();
   playSound('timeout');
 
+  document.querySelectorAll('.word-chip').forEach(c=>c.style.pointerEvents='none');
+
+  const stealer = stealerFor(state.currentTeam);
+  if(stealer != null) { offerSteal(stealer, null); return; }
+
   document.querySelectorAll('.word-chip').forEach(c=>{
-    c.style.pointerEvents='none';
     if(c.dataset.word===state.correctWord) c.classList.add('revealed');
     else c.classList.add('disabled');
   });
 
   const q = state.sentences[state.sentenceIdx];
-  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts: 0, correct: false, phase: state.phase });
+  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: activeTeam(), pts: 0, correct: false,
+                       stolen: state.stealTeam != null, phase: state.phase });
 
   showWrongCountdown('⏰ Time\'s up!');
+}
+
+// Who picks the question up if the team on turn misses it.
+function stealerFor(teamIdx) {
+  if(!state.steal || state.stealUsed || state.teams < 2) return null;
+  if(state.phase === 'final') return state.finalTeams.find(i => i !== teamIdx);
+  return (teamIdx + 1) % state.teams;
+}
+
+function offerSteal(teamIdx, missedChip) {
+  state.stealUsed = true;
+  state.stealTeam = teamIdx;
+  state.history.push({ word: state.correctWord, sentence: state.sentences[state.sentenceIdx].s,
+                       teamIdx: state.currentTeam, pts: 0, correct: false, phase: state.phase });
+
+  const banner = document.getElementById('stealBanner');
+  document.getElementById('stealTeamName').textContent = state.scores[teamIdx].name + "'s chance";
+  banner.classList.add('show');
+  playSound('select');
+
+  setTimeout(()=>{
+    banner.classList.remove('show');
+    state.answered = false;
+    document.querySelectorAll('.word-chip').forEach(c=>{
+      if(c === missedChip) return;          // the miss stays struck out
+      c.classList.remove('disabled');
+      c.style.pointerEvents = '';
+    });
+    updateScoreboard();
+    if(state.motion !== 'still' && motionArea) startMotion(motionArea);
+    startTimer(Math.max(10, Math.round(state.timerSecs / 2)));
+  }, 1600);
 }
 
 function handleAnswer(chip, word) {
@@ -1669,6 +1844,17 @@ function handleAnswer(chip, word) {
   const correct = word === state.correctWord;
   chip.classList.add(correct ? 'correct-flash' : 'wrong-flash');
 
+  // A miss that can still be stolen must not reveal the answer yet.
+  const stealer = correct ? null : stealerFor(state.currentTeam);
+  if(stealer != null) {
+    chip.classList.add('disabled');
+    document.querySelectorAll('.word-chip').forEach(c=>c.style.pointerEvents='none');
+    playSound('wrong');
+    state.scores[activeTeam()].timeUsed += (1 - Math.max(0, timerRemaining / timerLimit));
+    offerSteal(stealer, chip);
+    return;
+  }
+
   if(!correct) {
     document.querySelectorAll('.word-chip').forEach(c=>{
       if(c.dataset.word===state.correctWord) c.classList.add('revealed');
@@ -1678,23 +1864,28 @@ function handleAnswer(chip, word) {
   }
   document.querySelectorAll('.word-chip').forEach(c=>c.style.pointerEvents='none');
   let pts = 0;
-  const pct = Math.max(0, timerRemaining / state.timerSecs);
-  state.scores[state.currentTeam].timeUsed += (1 - pct);
+  const team = activeTeam();
+  const stealing = state.stealTeam != null;
+  const pct = Math.max(0, timerRemaining / timerLimit);
+  state.scores[team].timeUsed += (1 - pct);
   if(correct) {
     pts = state.scoring === 'flat'
       ? BASE_POINTS + SPEED_POINTS
       : BASE_POINTS + Math.round(SPEED_POINTS * pct);
-    state.scores[state.currentTeam].score += pts;
-    state.scores[state.currentTeam].correct++;
+    if(state.phase === 'final') pts *= 2;       // the final is worth double
+    if(stealing) pts = Math.round(pts / 2);     // a steal is worth half
+    state.scores[team].score += pts;
+    state.scores[team].correct++;
     state._lastPts = pts;
     playSound('correct');
   } else {
     state._lastPts = 0;
   }
   const q = state.sentences[state.sentenceIdx];
-  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: state.currentTeam, pts, correct, phase: state.phase });
+  state.history.push({ word: state.correctWord, sentence: q.s, teamIdx: team,
+                       pts, correct, stolen: stealing, phase: state.phase });
 
-  updateScoreboard(pts || null, correct ? state.currentTeam : null);
+  updateScoreboard(pts || null, correct ? team : null);
   setTimeout(()=>showFeedback(correct, word), 500);
 }
 
@@ -1753,6 +1944,9 @@ function showWrongCountdown(headerMsg) {
 }
 
 function nextQuestion() {
+  state.stealTeam = null;
+  state.stealUsed = false;
+  document.getElementById('stealBanner').classList.remove('show');
   if(wrongTick) { clearInterval(wrongTick); wrongTick = null; }
   if(wrongCountdownTimeout) { clearTimeout(wrongCountdownTimeout); wrongCountdownTimeout = null; }
   document.getElementById('feedbackOverlay').classList.remove('show');
@@ -1824,6 +2018,7 @@ function showFinalBanner(name1, name2) {
     font-family:'Fredoka One',cursive;text-align:center;animation:fadeInOut 2.5s ease forwards`;
   banner.innerHTML = `
     <div style="font-size:clamp(1.4rem,5vw,2.2rem);color:var(--text);letter-spacing:2px;margin-bottom:12px">⚡ FINAL ROUND ⚡</div>
+    <div style="font-size:0.8rem;color:var(--muted);letter-spacing:2px;margin-bottom:10px;font-family:'Nunito',sans-serif">EVERY ANSWER IS WORTH DOUBLE</div>
     <div style="font-size:clamp(1rem,4vw,1.6rem)">
       <span style="color:${c1}">${name1}</span>
       <span style="color:var(--text);margin:0 12px">vs</span>
@@ -1970,7 +2165,8 @@ function showEnd() {
 
     const renderRows = (rows) => rows.map(h => {
       const sentenceDisplay = h.sentence.replace('___', `<strong style="color:${col}">${h.word}</strong>`);
-      const mark = h.correct ? '✓' : (h.skipped ? '⤳' : '✗');
+      const mark = (h.phase === 'final' ? '⚡' : '') + (h.stolen ? '🏴' : '') +
+                   (h.correct ? '✓' : (h.skipped ? '⤳' : '✗'));
       return `<div class="breakdown-row ${h.correct?'':'breakdown-miss'}">
         <span class="breakdown-word" style="color:${h.correct?col:'var(--muted)'}">
           ${mark} ${h.word}

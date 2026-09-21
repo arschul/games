@@ -400,6 +400,8 @@ function succeed(w, idx){
   setMsg(`${w}! Point to ${G.names[t]}.`, "good");
   if (checkEnd()) return;
   G.turn = 1 - t;
+  const note = endgameNote();
+  if (note) setMsg(`${w}! Point to ${G.names[t]}. ${note}`, "good");
   const n = neighbors(w);
   if (n && n.length === 0){
     busy = true; save();
@@ -424,6 +426,8 @@ function fail(w, text, idx){
   renderTeacher();
   if (checkEnd(true)) return;
   G.turn = 1 - t;
+  const note = endgameNote();
+  if (note) setMsg(`${text} ${note}`, "bad");
   save();
   pendingTimer = setTimeout(dealNew, 1600);
 }
@@ -437,8 +441,18 @@ function dealNew(note){
   if (note) setMsg(note, "");
 }
 
+// Team 1 always opens a round, so an even turn count means both teams have played equally.
+function roundComplete(){ return G.turns % 2 === 0; }
+function endgameNote(){
+  if (G.mode !== "points" || Math.max(...G.scores) < G.goal) return "";
+  if (!roundComplete()) return `${G.names[G.turn]} gets a last turn.`;
+  if (G.scores[0] === G.scores[1]) return `Tied at ${G.scores[0]}. Extra round!`;
+  return "";
+}
 function checkEnd(afterFail){
-  const done = G.mode === "points" ? Math.max(...G.scores) >= G.goal : G.turns >= G.goal*2;
+  const done = G.mode === "points"
+    ? roundComplete() && Math.max(...G.scores) >= G.goal && G.scores[0] !== G.scores[1]
+    : G.turns >= G.goal*2;
   if (!done) return false;
   G.over = true; stopTimer(); busy = true; save();
   pendingTimer = setTimeout(showEnd, afterFail ? 1400 : 900);
@@ -499,15 +513,16 @@ function teamColor(i){ return `var(--team-${i})`; }
 
 function render(deal, keepMsg){
   document.documentElement.style.setProperty("--turn-color", teamColor(G.turn));
+  const note = G.over ? "" : endgameNote();
   [0,1].forEach(i=>{
     const el = $("team"+i);
     el.querySelector(".tname").textContent = G.names[i];
     el.querySelector(".tscore").textContent = G.scores[i];
     el.classList.toggle("active", G.turn===i && !G.over);
-    el.querySelector(".tturn").textContent = (G.turn===i && !G.over) ? "Your turn" : "";
+    el.querySelector(".tturn").textContent = (G.turn===i && !G.over) ? (note && !roundComplete() ? "Last turn" : "Your turn") : "";
   });
   $("roundInfo").textContent = G.mode === "points"
-    ? `First to ${G.goal}`
+    ? (note ? (roundComplete() ? "Extra round" : "Last turn") : `First to ${G.goal}`)
     : `Round ${Math.min(Math.floor(G.turns/2)+1, G.goal)} of ${G.goal}`;
   renderTrail(); renderWord(); renderTimer(); renderKeys(); renderTeacher();
   if (deal){ const w=$("word"); w.classList.remove("deal"); void w.offsetWidth; w.classList.add("deal"); if(!busy) setMsg(`${G.names[G.turn]}, change one letter.`, ""); }

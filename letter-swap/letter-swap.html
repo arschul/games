@@ -67,6 +67,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .teams-row input{width:100%;padding:12px 14px;border-radius:10px;border:2px solid var(--line);background:var(--surface);font:inherit;color:var(--text)}
 .teams-row input:nth-child(1){border-left:8px solid var(--team-0)}
 .teams-row input:nth-child(2){border-left:8px solid var(--team-1)}
+.teams-row.solo{grid-template-columns:1fr}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:500}
 .chip[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
@@ -127,6 +128,8 @@ button.tile:hover{transform:translateY(-3px)}
 
 .msg{min-height:1.6em;font-size:clamp(17px,1.6vw,22px);font-weight:500;text-align:center}
 .msg.good{color:var(--good)} .msg.bad{color:var(--bad)}
+.hint-line{min-height:1.4em;margin-top:-8px;color:var(--muted);font-size:clamp(15px,1.3vw,18px);text-align:center}
+.hint-line b{color:var(--text);font-weight:700;letter-spacing:.03em}
 
 .kbd{display:flex;flex-direction:column;gap:clamp(7px,.9vw,10px);width:min(800px,100%);margin-top:6px;
   padding:clamp(12px,1.5vw,18px) clamp(10px,1.4vw,18px);border-radius:20px;
@@ -148,6 +151,9 @@ button.tile:hover{transform:translateY(-3px)}
 .key:disabled{background:var(--slot);color:transparent;box-shadow:inset 0 3px 8px rgba(0,0,0,.45);transform:none;cursor:default;filter:none}
 .key:disabled::after{content:attr(data-l);position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);opacity:.45}
 .kbd.locked .key{pointer-events:none;filter:grayscale(.6) brightness(.7)}
+.kbd.locked.cpu .key{filter:saturate(.55) brightness(.82)}
+.kbd.locked.cpu.armed .key{filter:none}
+.kbd.locked.cpu .key:disabled{filter:none}
 
 .teacher{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
 .tbtn{padding:8px 14px;border-radius:10px;border:1px solid var(--line);font-size:15px;font-weight:500;color:var(--muted)}
@@ -196,11 +202,19 @@ button.tile:hover{transform:translateY(-3px)}
   <p class="lede">Change one letter to make a new word. Late, lame, came, same&hellip; Every real word scores a point. Run out of time or miss, and a new word comes in.</p>
 
   <div class="field">
-    <span class="flabel">Teams</span>
-    <div class="teams-row">
+    <span class="flabel">Play</span>
+    <div class="chips" id="playChips"></div>
+  </div>
+  <div class="field">
+    <span class="flabel" id="namesLabel">Teams</span>
+    <div class="teams-row" id="teamsRow">
       <input id="name0" maxlength="18" value="Team 1" aria-label="First team name">
       <input id="name1" maxlength="18" value="Team 2" aria-label="Second team name">
     </div>
+  </div>
+  <div class="field" id="levelField">
+    <span class="flabel">CPU level</span>
+    <div class="chips" id="levelChips"></div>
   </div>
   <div class="field">
     <span class="flabel">Time per turn</span>
@@ -212,6 +226,10 @@ button.tile:hover{transform:translateY(-3px)}
       <div class="chips" id="modeChips"></div>
       <div class="chips" id="goalChips"></div>
     </div>
+  </div>
+  <div class="field">
+    <span class="flabel">Show missed words</span>
+    <div class="chips" id="hintChips"></div>
   </div>
   <div class="actions">
     <button class="btn primary" id="startBtn">Start game</button>
@@ -228,6 +246,7 @@ button.tile:hover{transform:translateY(-3px)}
     <div class="timer" id="timer"><div class="bar"><div class="fill" id="timerFill"></div></div><div class="secs" id="timerSecs">15</div></div>
     <div class="word" id="word" role="group" aria-label="Current word"></div>
     <div class="msg" id="msg" aria-live="polite"></div>
+    <div class="hint-line" id="hintLine" aria-live="polite"></div>
     <div class="kbd" id="kbd"></div>
     <div class="teacher">
       <button class="tbtn" id="undoBtn" disabled>Undo</button>
@@ -249,6 +268,11 @@ button.tile:hover{transform:translateY(-3px)}
 const START_WORDS = ["LATE", "BAKE", "CAKE", "COLD", "BOLD", "HOLD", "GOLD", "MAKE", "TAKE", "LAKE", "LANE", "CANE", "NAME", "GAME", "CAME", "SAME", "TIME", "LINE", "FINE", "MINE", "PINE", "WINE", "BIKE", "LIKE", "HIKE", "HATE", "GATE", "RATE", "MATE", "DATE", "HAND", "BAND", "LAND", "SAND", "WIND", "MIND", "KIND", "FIND", "BELL", "TELL", "WELL", "SELL", "FELL", "HILL", "FILL", "MILL", "PILL", "WALL", "BALL", "CALL", "FALL", "HALL", "TALL", "BOOK", "LOOK", "COOK", "HOOK", "TOOK", "FOOT", "BOOT", "COAT", "BOAT", "GOAT", "MEAT", "HEAT", "SEAT", "BEAT", "NEAT", "FEET", "MEET", "BEST", "NEST", "REST", "TEST", "WEST", "LOST", "COST", "MOST", "POST", "DUST", "MUST", "RUST", "JUST", "FAST", "LAST", "PAST", "CART", "PART", "DART", "HARD", "CARD", "YARD", "WORD", "WORK", "FORK", "SHIP", "SHOP", "SLIP", "TRIP", "GRIP", "CHIP", "WISH", "DISH", "RING", "KING", "WING", "SONG", "LONG", "BONE", "CONE", "TONE", "HOME", "HOPE", "ROPE", "NOTE", "VOTE", "NOSE", "ROSE", "CASE", "BASE", "RACE", "FACE", "PACE", "MICE", "NICE", "RICE", "LOVE", "MOVE", "WAVE", "CAVE", "SAVE", "GAVE", "FIRE", "HIRE", "WIRE", "TIRE", "CORE", "MORE", "SORE", "WORE", "CURE", "PURE", "SURE", "BATH", "PATH", "MATH", "HEAD", "READ", "LEAD", "LOAD", "ROAD", "FOOD", "MOOD", "GOOD", "WOOD", "RAIN", "PAIN", "GAIN", "MAIN", "TAIL", "MAIL", "SAIL", "NAIL", "FAIL", "BEAR", "DEAR", "FEAR", "HEAR", "NEAR", "WEAR", "YEAR", "PEAR", "BEAN", "LEAN", "MEAN", "BELT", "MELT", "FELT", "PICK", "SICK", "KICK", "LUCK", "DUCK", "BACK", "PACK", "LOCK", "SOCK", "ROCK", "PINK", "SINK", "LINK", "MILK", "FARM", "WARM", "FOLD", "SOLD", "TOLD", "CUTE", "JUMP", "BUMP", "PUMP", "CAMP", "LAMP", "TENT", "RENT", "SENT", "BENT", "WENT"];
 // Valid in shared/wordlist.js but not wanted one tap away in class.
 const BLOCKED = new Set(["ANUS", "ARSE", "BOOB", "COCK", "COON", "CRAP", "CUNT", "DAGO", "DICK", "DYKE", "FAGS", "FUCK", "GOOK", "HOES", "HOMO", "KIKE", "MUFF", "NUDE", "PISS", "POOF", "PORN", "RAPE", "SEXY", "SHAG", "SHIT", "SLAG", "SLUT", "SMUT", "SPIC", "TITS", "TURD", "TWAT", "WANK", "WOPS", "JEWY"]);
+// CPU vocabulary and missed-word hints: common words only (wordfreq Zipf >= 3.5, in SCOWL size 50).
+const COMMON_WORDS = new Set("ABLE ACID ACNE ACRE ACTS ADDS AGED AGES AIDE AIMS AIRS AKIN ALAS ALLY ALSO AMEN AMID ANAL ANTI ANTS APEX ARCH AREA ARMS ARMY ARTS ASKS ATOM ATOP AUNT AURA AUTO AVID AWAY AXIS BABE BABY BACK BAGS BAIL BAIT BAKE BALD BALE BALL BAND BANG BANK BANS BARE BARK BARN BARS BASE BASH BASS BATH BATS BEAM BEAN BEAR BEAT BEAU BECK BEDS BEEF BEEN BEES BELL BELT BEND BENT BEST BETA BETS BIAS BIDS BIKE BILL BIND BIRD BITE BITS BLAH BLEW BLOC BLOW BLUE BLUR BOAT BODY BOIL BOLD BOLT BOND BONE BONG BOOK BOOM BOOT BORE BORN BOSS BOTH BOUT BOWL BOWS BOYS BRAD BRED BREW BROW BUCK BUDS BUFF BUGS BULB BULK BULL BUMP BURN BURY BUSH BUST BUSY BUYS BUZZ CAFE CAGE CAKE CALF CALL CALM CAME CAMP CANE CANS CANT CAPE CAPS CARD CARE CARS CART CASE CASH CAST CATS CAVE CELL CENT CHAP CHAT CHEF CHEW CHIC CHIN CHIP CHOP CITE CITY CLAD CLAN CLAP CLAW CLAY CLIP CLUB CLUE COAL COAT CODE COIL COIN COLA COLD COLT COMA COMB COME COMP CONE CONS COOK COOL COPE COPS COPY CORD CORE CORK CORN CORP COST COUP COVE COWS COZY CRAB CREW CROP CROW CUBE CUBS CUES CUFF CUPS CURB CURE CURL CUTE CUTS DADS DALE DAME DAMP DAMS DARE DARK DARN DART DASH DATA DATE DAWN DAYS DEAD DEAF DEAL DEAN DEAR DEBT DECK DEED DEEP DEER DELL DEMO DENT DENY DEPT DESK DIAL DICE DIET DIME DING DIRE DIRT DISC DISH DISK DIVE DOCK DOCS DOES DOGS DOLL DOME DONE DOOM DOOR DORM DOSE DOTS DOVE DOWN DRAG DRAW DREW DRIP DROP DRUM DUAL DUCK DUCT DUDE DUEL DUKE DULL DUMP DUNK DUST DUTY EACH EARL EARN EARS EASE EAST EASY EATS ECHO EDGE EDIT EGGS ELSE ENDS ENVY EPIC EURO EVEN EVER EVIL EXAM EXIT EXPO EYED EYES FACE FACT FADE FAIL FAIR FAKE FALL FAME FANS FARE FARM FAST FATE FATS FAUX FEAR FEAT FEDS FEED FEEL FEES FEET FELL FELT FEST FEUD FIAT FILE FILL FILM FIND FINE FIRE FIRM FISH FIST FITS FIVE FLAG FLAT FLAW FLED FLEE FLEW FLEX FLIP FLOP FLOW FLUX FOAM FOIL FOLD FOLK FOND FONT FOOD FOOL FOOT FORD FORE FORK FORM FORT FOUL FOUR FREE FROG FROM FUEL FULL FUND FUNK FURY FUSE FUSS GAIN GALA GALE GAME GANG GAPS GATE GAVE GAZE GEAR GEEK GEMS GENE GETS GIFT GIGS GILL GIRL GIVE GLAD GLEN GLOW GLUE GOAL GOAT GOES GOLD GOLF GONE GOOD GOVT GOWN GRAB GRAD GRAM GRAY GREW GRID GRIM GRIN GRIP GROW GULF GURU GUTS GUYS HACK HAIL HAIR HALE HALF HALL HALO HALT HAND HANG HANK HARD HARE HARM HART HASH HATE HATH HATS HAUL HAVE HAWK HEAD HEAL HEAP HEAR HEAT HECK HEEL HEIR HELD HELM HELP HERB HERD HERE HERO HERS HIDE HIGH HIKE HILL HIND HINT HIPS HIRE HITS HIVE HOAX HOLD HOLE HOLY HOME HOOD HOOK HOPE HORN HOSE HOST HOUR HUGE HUGS HULK HULL HUNG HUNT HURT HYMN HYPE ICON IDEA IDLE IDOL IMAM INCH INFO INTO IONS IRIS IRON ISLE ITEM JACK JADE JAIL JAWS JAZZ JEEP JERK JETS JOBS JOHN JOIN JOKE JOSH JUMP JUNK JURY JUST KEEN KEEP KEPT KEYS KHAN KICK KIDS KIND KING KISS KITE KITS KNEE KNEW KNIT KNOT KNOW KUNG LABS LACE LACK LADS LADY LAID LAKE LAMB LAME LAMP LAND LANE LAPS LAST LATE LAVA LAWN LAWS LAYS LAZY LEAD LEAF LEAK LEAN LEAP LEFT LEGS LEND LENS LENT LESS LEST LETS LEVY LIAR LICK LIED LIES LIFE LIFT LIKE LILY LIMB LIME LINE LINK LION LIPS LIST LITE LIVE LOAD LOAN LOCK LOFT LOGO LOGS LONE LONG LOOK LOOP LORD LORE LOSE LOSS LOST LOTS LOUD LOVE LUCK LUMP LUNG LURE LUSH LUST MADE MAID MAIL MAIN MAKE MALE MALL MAMA MANS MANY MAPS MARE MARK MARS MART MASH MASK MASS MAST MATE MATH MATS MAYO MAZE MEAL MEAN MEAT MEET MELT MEMO MENU MERE MESA MESH MESS MICE MIKE MILD MILE MILK MILL MIND MINE MINI MINT MISS MIST MOCK MODE MOLD MOLE MOMS MONK MONO MOOD MOON MORE MOSS MOST MOTH MOVE MUCH MUSE MUST MUTE MYTH NAIL NAME NAVY NEAR NEAT NECK NEED NEON NERD NEST NETS NEWS NEXT NICE NICK NINE NODE NOEL NONE NOON NOPE NORM NOSE NOTE NOUN NOVA NULL NUMB NUTS OAKS OATH OBEY ODDS OFFS OILS OKAY ONCE ONES ONLY ONTO OOPS OPEN ORAL OUCH OURS OUTS OVAL OVEN OVER OWED OWES OWNS PACE PACK PACT PADS PAGE PAID PAIN PAIR PALE PALM PALS PAPA PARK PART PASS PAST PATH PAWN PAYS PEAK PEAS PEEK PEEL PEER PENS PEST PETS PICK PIER PIES PIGS PIKE PILE PILL PINE PING PINK PINS PINT PIPE PITS PITY PLAN PLAY PLEA PLOT PLUG PLUM PLUS POEM POET POKE POLE POLL POLO POLY POND PONY POOL POOR POPE POPS PORK PORT POSE POST POTS POUR PRAY PREP PRES PREY PRIX PROF PROM PROP PROS PUBS PUCK PUFF PULL PULP PUMP PUNK PURE PUSH PUTS QUAD QUIT QUIZ RACE RACK RAGE RAID RAIL RAIN RAMP RAMS RANG RANK RANT RARE RASH RATE RATS RAVE RAYS READ REAL REAP REAR REDS REEF REEL REFS RELY RENT REPS REST RIBS RICE RICH RICK RIDE RIFT RING RIPE RISE RISK RITE ROAD ROAR ROBE ROCK RODE RODS ROLE ROLL ROOF ROOM ROOT ROPE ROSE ROWS RUBY RUDE RUIN RULE RUNS RUSH RUST SACK SAFE SAGA SAGE SAID SAIL SAKE SALE SALT SAME SAND SANE SANG SANK SANS SAVE SAYS SCAM SCAN SCAR SCUM SEAL SEAS SEAT SECT SEED SEEK SEEM SEEN SEES SELF SELL SEMI SEND SENT SETS SHAH SHED SHES SHIN SHIP SHOE SHOP SHOT SHOW SHUT SICK SIDE SIGH SIGN SILK SIMS SING SINK SINS SITE SITS SIZE SKIN SKIP SLAM SLAP SLID SLIM SLIP SLOT SLOW SNAP SNOW SOAK SOAP SOCK SODA SOFA SOFT SOIL SOLD SOLE SOLO SOME SONG SONS SOON SORE SORT SOUL SOUP SOUR SPAM SPAN SPEC SPIN SPIT SPOT SPUN SPUR STAR STAT STAY STEM STEP STIR STOP STUD SUBS SUCH SUED SUIT SUMS SUNG SUNK SUNS SURE SURF SWAN SWAP SWAY SWIM SYNC TABS TACO TAGS TAIL TAKE TALE TALK TALL TAME TANG TANK TAPE TAPS TASK TAXI TEAM TEAR TECH TEEN TELL TEMP TEND TENS TENT TERM TEST TEXT THAN THAT THEE THEM THEN THEY THIN THIS THOU THRU THUS TICK TIDE TIDY TIED TIER TIES TILE TILL TILT TIME TINY TIPS TIRE TOES TOLD TOLL TOMB TONE TONS TONY TOOK TOOL TOPS TORE TORN TOSS TOUR TOWN TOYS TRAP TRAY TREE TREK TRIM TRIO TRIP TROY TRUE TUBE TUCK TUNA TUNE TURF TURN TWIN TYPE UGLY UNDO UNIT UNTO UPON URGE USED USER USES VAIN VALE VANS VARY VASE VAST VEIL VEIN VENT VERB VERY VEST VETO VETS VICE VIEW VILE VINE VISA VOID VOTE VOWS WADE WAGE WAIT WAKE WALK WALL WANT WARD WARE WARM WARN WARP WARS WARY WASH WATT WAVE WAYS WEAK WEAR WEEK WEIR WELL WENT WERE WEST WHAT WHEN WHOA WHOM WIDE WIFE WILD WILL WIND WING WINK WINS WIPE WIRE WISE WISH WITH WOKE WOLF WOMB WONT WOOD WOOL WORD WORE WORK WORM WORN WRAP YARD YARN YEAH YEAR YELL YOGA YOUR ZERO ZINC ZONE ZOOM".split(" "));
+// Easy CPU: very common words only (Zipf >= 4.5).
+const EASY_WORDS = new Set("ABLE ACTS AGED AGES ALSO ANTI AREA ARMS ARMY ARTS AWAY BABY BACK BALL BAND BANK BASE BEAR BEAT BEEN BELL BEST BIKE BILL BIRD BLOW BLUE BOAT BODY BOND BOOK BORN BOSS BOTH BOWL BOYS BURN BUSY CAKE CALL CALM CAME CAMP CARD CARE CARS CASE CASH CAST CELL CENT CHAT CITY CLUB CODE COLD COME COOK COOL COPY CORE COST CREW CUTE DARK DATA DATE DAYS DEAD DEAL DEAR DEBT DEEP DIET DOES DOGS DONE DOOR DOWN DRAW DROP DUDE DUTY EACH EAST EASY EDGE EGGS ELSE ENDS EVEN EVER EVIL EYES FACE FACT FAIL FAIR FAKE FALL FANS FARM FAST FEAR FEED FEEL FEES FEET FELL FELT FILE FILL FILM FIND FINE FIRE FIRM FISH FIVE FLAG FLAT FLOW FOOD FOOT FORD FORM FOUR FREE FROM FUEL FULL FUND GAIN GAME GANG GAVE GETS GIFT GIRL GIVE GLAD GOAL GOES GOLD GOLF GONE GOOD GRAB GREW GROW GUYS HAIR HALF HALL HAND HANG HARD HATE HAVE HEAD HEAR HEAT HELD HELP HERE HERO HIDE HIGH HILL HITS HOLD HOLE HOLY HOME HOPE HOST HOUR HUGE HURT IDEA INFO INTO IRON ITEM JACK JAIL JOBS JOHN JOIN JOKE JUMP JUST KEEP KEPT KICK KIDS KIND KING KISS KNEW KNOW LACK LADY LAID LAKE LAND LANE LAST LATE LAWS LEAD LEFT LEGS LESS LETS LIES LIFE LIFT LIKE LINE LINK LIST LIVE LOAD LOAN LOCK LONG LOOK LORD LOSE LOSS LOST LOTS LOUD LOVE LUCK MADE MAIL MAIN MAKE MALE MANY MARK MASS MATE MEAN MEAT MEET MESS MIKE MILE MILK MIND MINE MISS MODE MOON MORE MOST MOVE MUCH MUST NAME NAVY NEAR NECK NEED NEWS NEXT NICE NICK NINE NONE NOSE NOTE OKAY ONCE ONES ONLY ONTO OPEN OVER PACK PAGE PAID PAIN PAIR PARK PART PASS PAST PATH PEAK PICK PINK PLAN PLAY PLOT PLUS POOL POOR PORT POST PULL PURE PUSH PUTS QUIT RACE RAIN RARE RATE READ REAL RENT REST RICE RICH RIDE RING RISE RISK ROAD ROCK ROLE ROLL ROOF ROOM ROSE RULE RUNS SAFE SAID SALE SALT SAME SAVE SAYS SEAT SEEK SEEM SEEN SEES SELF SELL SEMI SEND SENT SETS SHIP SHOP SHOT SHOW SHUT SICK SIDE SIGN SING SITE SIZE SKIN SLOW SNOW SOFT SOLD SOLO SOME SONG SONS SOON SORT SOUL SPOT STAR STAY STEP STOP SUCH SUIT SURE TAKE TALK TALL TANK TASK TEAM TECH TELL TEND TERM TEST TEXT THAN THAT THEM THEN THEY THIS THUS TILL TIME TINY TIPS TOLD TONY TOOK TOOL TOUR TOWN TREE TRIP TRUE TURN TYPE UNIT UPON USED USER USES VERY VICE VIEW VOTE WAIT WAKE WALK WALL WANT WARM WARS WAVE WAYS WEAK WEAR WEEK WELL WENT WERE WEST WHAT WHEN WHOM WIDE WIFE WILD WILL WIND WING WINS WISE WISH WITH WOOD WORD WORK YARD YEAH YEAR YOUR ZERO ZONE".split(" "));
+const CPU_LEVELS = {easy:{vocab:EASY_WORDS, miss:.30}, medium:{vocab:COMMON_WORDS, miss:.15}, hard:{vocab:COMMON_WORDS, miss:.05, squeeze:true}};
 const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const ROWS = ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];
 const TIMERS = [10,15,20,30,0];
@@ -308,11 +332,11 @@ const SFX = {
 };
 
 /* ═════ STATE ═════ */
-let settings = Object.assign({names:["Team 1","Team 2"], timer:15, mode:"points", goal:10, sound:true}, store.get(SET_KEY)||{});
+let settings = Object.assign({names:["Team 1","Team 2"], timer:15, mode:"points", goal:10, sound:true, play:"teams", level:"medium", hints:true}, store.get(SET_KEY)||{});
 soundOn = settings.sound !== false;
 let G = null;          // serializable game state
 let undoStack = [];    // snapshots of G
-let sel = -1, busy = false, paused = false, timeLeft = 0, tickHandle = null, pendingTimer = null;
+let sel = -1, busy = false, paused = false, timeLeft = 0, tickHandle = null, pendingTimer = null, cpuHandle = null;
 
 function snapshot(){ return JSON.parse(JSON.stringify(G)); }
 function save(){ if (G) store.set(STATE_KEY, {G, undoStack: undoStack.slice(-20)}); }
@@ -340,24 +364,100 @@ function neighbors(w){
 
 function newGame(){
   G = {
-    names:[...settings.names], scores:[0,0], turn:0, turns:0,
+    names: settings.play === "cpu" ? [settings.names[0], "CPU"] : [...settings.names],
+    cpu: settings.play === "cpu" ? {level: settings.level} : null, hints: settings.hints !== false,
+    scores:[0,0], turn:0, turns:0,
     timer:settings.timer, mode:settings.mode, goal:settings.goal,
     deck:newDeck(), deckPos:0, word:null, chain:[], chainBy:[],
     accepted:[], rejected:[], longest:1, last:null, over:false
   };
   G.word = drawWord(); G.chain = [G.word]; G.chainBy = [-1];
   undoStack = [];
+  setHint("");
   showGame(); render(true); SFX.deal(); startTurn();
 }
 
 /* ═════ TURN FLOW ═════ */
+function isCpuTurn(){ return !!(G && G.cpu && G.turn === 1 && !G.over); }
 function startTurn(keepMsg){
-  sel = -1; busy = false;
+  sel = -1; busy = isCpuTurn();
   timeLeft = G.timer;
   render(false, keepMsg);
   save();
-  stopTimer();
+  stopTimer(); clearCpu();
+  if (isCpuTurn()){
+    if (!keepMsg) setMsg(`${G.names[1]} is thinking\u2026`, "");
+    if (!paused) scheduleCpu();
+    return;
+  }
   if (G.timer > 0 && !paused) tickHandle = setInterval(onTick, 1000);
+}
+
+/* ═════ CPU ═════ */
+function clearCpu(){ if (cpuHandle){ clearTimeout(cpuHandle); cpuHandle = null; } }
+function scheduleCpu(){ clearCpu(); cpuHandle = setTimeout(cpuPick, 1500 + Math.random()*1500); }
+function commonFollowUps(w, used){
+  let n = 0;
+  for (let i=0;i<4;i++) for (const c of ALPHA){
+    if (c === w[i]) continue;
+    const x = w.slice(0,i)+c+w.slice(i+1);
+    if (COMMON_WORDS.has(x) && !used.includes(x) && isValidLocal(x)) n++;
+  }
+  return n;
+}
+function chooseCpuMove(){
+  const lvl = CPU_LEVELS[G.cpu.level] || CPU_LEVELS.medium;
+  if (Math.random() < lvl.miss) return null;
+  const s = wordSet(), opts = [];
+  for (let i=0;i<4;i++) for (const c of ALPHA){
+    if (c === G.word[i]) continue;
+    const w = G.word.slice(0,i)+c+G.word.slice(i+1);
+    if (lvl.vocab.has(w) && !G.chain.includes(w) && isValidLocal(w) && (!s || s.has(w))) opts.push({word:w, idx:i});
+  }
+  if (!opts.length) return null;
+  if (lvl.squeeze){
+    // Leave the player as few common replies as possible, but never zero when there's a choice.
+    opts.forEach(o => o.left = commonFollowUps(o.word, [...G.chain, o.word]));
+    const live = opts.filter(o => o.left > 0), pool = live.length ? live : opts;
+    const min = Math.min(...pool.map(o=>o.left));
+    const best = pool.filter(o => o.left === min);
+    return best[Math.floor(Math.random()*best.length)];
+  }
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+function cpuPick(){
+  cpuHandle = null;
+  if (paused || !isCpuTurn()) return;
+  const move = chooseCpuMove();
+  if (!move){
+    undoStack.push(snapshot());
+    fail(null, `${G.names[1]} is stumped. No point.`);
+    return;
+  }
+  sel = move.idx; SFX.clack(); renderWord(); renderKeys();
+  cpuHandle = setTimeout(()=>cpuPlay(move), 850);
+}
+function cpuPlay(move){
+  cpuHandle = null;
+  if (paused || !isCpuTurn()) return;
+  const key = document.querySelector(`.key[data-l="${move.word[move.idx]}"]`);
+  if (key) replay(key, "pressed", 160);
+  SFX.clack();
+  undoStack.push(snapshot());
+  succeed(move.word, move.idx);
+}
+
+/* ═════ MISSED-WORD HINTS ═════ */
+function setHint(html){ const h = $("hintLine"); if (h) h.innerHTML = html; }
+function hintFor(from){
+  const out = [];
+  for (let i=0;i<4;i++) for (const c of ALPHA){
+    if (c === from[i]) continue;
+    const w = from.slice(0,i)+c+from.slice(i+1);
+    if (COMMON_WORDS.has(w) && !G.chain.includes(w) && isValidLocal(w)) out.push(w);
+  }
+  if (!out.length) return "";
+  return `From ${from}, you could have played: ` + shuffle(out).slice(0,3).map(w=>`<b>${w}</b>`).join(", ") + ".";
 }
 function stopTimer(){ clearInterval(tickHandle); tickHandle = null; }
 function onTick(){
@@ -401,6 +501,7 @@ async function playLetter(L){
 function succeed(w, idx){
   stopTimer();
   const t = G.turn;
+  if (!(G.cpu && t === 1)) setHint("");
   G.scores[t]++;
   G.chain.push(w); G.chainBy.push(t);
   G.longest = Math.max(G.longest, G.chain.length);
@@ -426,8 +527,9 @@ function succeed(w, idx){
 }
 
 function fail(w, text, idx){
-  stopTimer();
+  stopTimer(); clearCpu();
   const t = G.turn;
+  if (!(G.cpu && t === 1)) setHint(G.hints ? hintFor(G.word) : "");
   G.turns++;
   G.last = {type:"fail", word:w, team:t};
   SFX.bad();
@@ -474,13 +576,14 @@ function checkEnd(afterFail){
 }
 
 /* ═════ TEACHER CONTROLS ═════ */
-function clearPending(){ if (pendingTimer){ clearTimeout(pendingTimer); pendingTimer = null; } }
+function clearPending(){ if (pendingTimer){ clearTimeout(pendingTimer); pendingTimer = null; } clearCpu(); }
 function undo(){
   if (!undoStack.length) return;
   clearPending(); stopTimer();
   G = undoStack.pop();
+  while (G.cpu && G.turn === 1 && undoStack.length) G = undoStack.pop();
   $("word").classList.remove("bad");
-  hideEnd();
+  hideEnd(); setHint("");
   setMsg("Undone.", "");
   startTurn();
 }
@@ -516,7 +619,8 @@ function setPaused(p){
   if (!G || G.over) return;
   paused = p;
   $("pauseOv").classList.toggle("hidden", !p);
-  if (p){ stopTimer(); }
+  if (p){ stopTimer(); clearCpu(); }
+  else if (isCpuTurn()){ if (!pendingTimer){ sel = -1; renderWord(); renderKeys(); scheduleCpu(); } }
   else if (!busy && G.timer > 0){ stopTimer(); tickHandle = setInterval(onTick, 1000); }
 }
 
@@ -533,7 +637,8 @@ function render(deal, keepMsg){
     el.querySelector(".tname").textContent = G.names[i];
     el.querySelector(".tscore").textContent = G.scores[i];
     el.classList.toggle("active", G.turn===i && !G.over);
-    el.querySelector(".tturn").textContent = (G.turn===i && !G.over) ? (note && !roundComplete() ? "Last turn" : "Your turn") : "";
+    el.querySelector(".tturn").textContent = (G.turn===i && !G.over)
+      ? (G.cpu && i===1 ? "Thinking\u2026" : (note && !roundComplete() ? "Last turn" : "Your turn")) : "";
   });
   $("roundInfo").textContent = G.mode === "points"
     ? (note ? (roundComplete() ? "Extra round" : "Last turn") : `First to ${G.goal}`)
@@ -578,8 +683,8 @@ function flipTile(i){ const t=$("word").children[i]; if(t) replay(t, "flip", 500
 function bump(i){ const el=$("team"+i); el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
 function renderTimer(){
   const tm = $("timer");
-  tm.classList.toggle("off", !G.timer);
-  if (!G.timer) return;
+  tm.classList.toggle("off", !G.timer || isCpuTurn());
+  if (!G.timer || isCpuTurn()) return;
   $("timerSecs").textContent = Math.max(0,timeLeft);
   $("timerFill").style.transform = `scaleX(${Math.max(0,timeLeft)/G.timer})`;
   $("timerFill").style.background = teamColor(G.turn);
@@ -599,8 +704,10 @@ function buildKeys(){
 }
 function renderKeys(){
   const k = $("kbd"), locked = busy || G.over;
+  const cpu = isCpuTurn();
   k.classList.toggle("locked", locked);
-  k.classList.toggle("armed", !locked && sel >= 0);
+  k.classList.toggle("cpu", cpu);
+  k.classList.toggle("armed", (!locked || cpu) && sel >= 0);
   k.classList.toggle("idle", !locked && sel < 0);
   document.querySelectorAll(".key").forEach(b=>{ b.disabled = sel>=0 && G.word[sel]===b.dataset.l; });
 }
@@ -652,6 +759,15 @@ function chipGroup(host, items, current, label, onPick){
 }
 function renderSetup(){
   $("name0").value = settings.names[0]; $("name1").value = settings.names[1];
+  const solo = settings.play === "cpu";
+  chipGroup($("playChips"), ["teams","cpu"], settings.play, v=> v==="teams" ? "Teams" : "vs CPU", v=>settings.play=v);
+  $("namesLabel").textContent = solo ? "Player" : "Teams";
+  $("name0").setAttribute("aria-label", solo ? "Player name" : "First team name");
+  $("name1").classList.toggle("hidden", solo);
+  $("teamsRow").classList.toggle("solo", solo);
+  $("levelField").classList.toggle("hidden", !solo);
+  chipGroup($("levelChips"), ["easy","medium","hard"], settings.level, v=> v[0].toUpperCase()+v.slice(1), v=>settings.level=v);
+  chipGroup($("hintChips"), [true,false], settings.hints !== false, v=> v ? "On" : "Off", v=>settings.hints=v);
   chipGroup($("timerChips"), TIMERS, settings.timer, v=> v ? v+" s" : "No timer", v=>settings.timer=v);
   chipGroup($("modeChips"), ["points","rounds"], settings.mode, v=> v==="points"?"First to":"After", v=>settings.mode=v);
   chipGroup($("goalChips"), GOALS[settings.mode], settings.goal, v=> v + (settings.mode==="points"?" points":" rounds"), v=>settings.goal=v);
@@ -686,7 +802,7 @@ $("skipBtn").addEventListener("click", skipWord);
 $("endBtn").addEventListener("click", ()=>{ if (!G || G.over) return; clearPending(); stopTimer(); G.over = true; busy = true; showEnd(); });
 $("pauseBtn").addEventListener("click", ()=>setPaused(!paused));
 $("resumePlay").addEventListener("click", ()=>setPaused(false));
-$("againBtn").addEventListener("click", ()=>{ hideEnd(); settings.names = [...G.names]; newGame(); });
+$("againBtn").addEventListener("click", ()=>{ hideEnd(); newGame(); });
 $("setupBtn").addEventListener("click", showSetup);
 $("soundBtn").addEventListener("click", ()=>{ soundOn=!soundOn; settings.sound=soundOn; store.set(SET_KEY, settings); renderSound(); });
 

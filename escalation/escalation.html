@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escalation — Game Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+(function(){ var s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); })();
+</script>
+<style>
+:root{
+  --bg:#12101f; --bg2:#0b0a14; --panel:#1c1930; --panel2:#252140;
+  --ink:#f4f1ff; --muted:#a49fc4; --line:#332e52;
+  --cool:#4cc9f0; --warm:#f9c74f; --hot:#ef476f;
+  --ok:#3ddc97; --bad:#ff5d73; --gold:#ffc857;
+  --shadow:0 18px 40px rgba(0,0,0,.45);
+}
+html[data-theme="light"]{
+  --bg:#eef1f7; --bg2:#e2e7f1; --panel:#ffffff; --panel2:#f4f6fb;
+  --ink:#16142a; --muted:#5d5980; --line:#d5daea;
+  --cool:#2196c9; --warm:#e0a212; --hot:#d92a54;
+  --ok:#159e6c; --bad:#cf2740; --gold:#c98a08;
+  --shadow:0 14px 32px rgba(30,30,60,.14);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:'Inter',system-ui,sans-serif;
+  background:radial-gradient(1100px 700px at 50% -10%, var(--bg2), var(--bg)) fixed;
+  color:var(--ink); -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.display{font-family:'Sora',system-ui,sans-serif;letter-spacing:-.02em}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--cool);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* corner chrome */
+.corner{position:fixed;top:14px;z-index:60;display:flex;gap:8px}
+.corner.left{left:14px} .corner.right{right:14px}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;
+  background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  font-size:.86rem;font-weight:600;text-decoration:none;box-shadow:var(--shadow);
+}
+.pill:hover{background:var(--panel2)}
+body.playing .corner{display:none}
+
+/* screens */
+.screen{display:none;min-height:100vh;padding:28px 20px 56px}
+.screen.on{display:block}
+.wrap{max-width:1040px;margin:0 auto}
+
+/* setup */
+.hero{text-align:center;padding:34px 0 8px}
+.hero h1{font-size:clamp(2.6rem,7vw,4.4rem);font-weight:800;margin:0;line-height:.95}
+.hero h1 span{
+  background:linear-gradient(90deg,var(--cool),var(--warm) 55%,var(--hot));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p{color:var(--muted);font-size:1.05rem;margin:14px auto 0;max-width:56ch;line-height:1.6}
+
+.meter{margin:26px auto 6px;max-width:760px}
+.meter-bar{height:14px;border-radius:999px;background:linear-gradient(90deg,var(--cool),var(--warm) 52%,var(--hot));box-shadow:var(--shadow)}
+.meter-ends{display:flex;justify-content:space-between;margin-top:10px;gap:20px;font-size:.92rem}
+.meter-ends b{display:block;font-family:'Sora',sans-serif;font-size:1.5rem;line-height:1.1}
+.meter-ends .e1{text-align:left;color:var(--cool)}
+.meter-ends .e2{text-align:right;color:var(--hot)}
+.meter-ends em{font-style:normal;color:var(--muted)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px 24px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-top:26px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+.card h2{font-size:1.1rem;margin:0 0 14px;font-weight:600}
+.hint{color:var(--muted);font-size:.86rem;line-height:1.55}
+
+.players{display:flex;flex-direction:column;gap:9px}
+.prow{display:flex;gap:8px;align-items:center}
+.prow input{
+  flex:1;padding:11px 13px;border-radius:11px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink);font-size:1rem;font-weight:500;
+}
+.prow .num{width:30px;text-align:center;color:var(--muted);font-weight:700;font-size:.9rem}
+.xbtn{width:34px;height:34px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);font-size:1rem;line-height:1}
+.xbtn:hover{color:var(--bad);border-color:var(--bad)}
+.addbtn{margin-top:11px;padding:10px 14px;border-radius:11px;background:var(--panel2);border:1px dashed var(--line);color:var(--muted);font-weight:600;font-size:.9rem;width:100%}
+.addbtn:hover{color:var(--ink);border-color:var(--cool)}
+
+.opt{margin-bottom:15px}
+.opt label{display:block;font-size:.83rem;color:var(--muted);margin-bottom:6px;font-weight:600}
+.opt select{
+  width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink);font-size:.97rem;font-weight:500;
+}
+.count{font-size:.83rem;color:var(--muted);margin-top:-6px}
+.count.low{color:var(--bad);font-weight:600}
+
+.go{
+  display:block;width:100%;max-width:420px;margin:26px auto 0;padding:17px;
+  border-radius:15px;font-family:'Sora',sans-serif;font-size:1.15rem;font-weight:800;
+  color:#12101f;background:linear-gradient(90deg,var(--warm),var(--hot));box-shadow:var(--shadow);
+}
+.go:hover{filter:brightness(1.08)}
+.go:disabled{opacity:.4;cursor:not-allowed;filter:none}
+
+details.rules{margin:22px auto 0;max-width:760px}
+details.rules summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:.92rem;padding:10px 0}
+details.rules ol{color:var(--muted);line-height:1.7;font-size:.93rem;padding-left:20px;margin:4px 0 0}
+details.rules b{color:var(--ink)}
+
+/* game */
+.topbar{
+  position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;margin:-28px -20px 22px;background:var(--panel);border-bottom:1px solid var(--line);
+}
+.tb{padding:8px 13px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:.85rem;font-weight:600;color:var(--ink)}
+.tb:hover{border-color:var(--cool)}
+.stat{font-size:.85rem;color:var(--muted);font-weight:600;padding:8px 4px}
+.stat b{color:var(--ink);font-family:'Sora',sans-serif;font-size:1rem}
+.spacer{flex:1}
+.lives{letter-spacing:3px;font-size:1.1rem}
+.lives .gone{opacity:.22}
+
+.stage{max-width:960px;margin:0 auto}
+.promptcard{
+  position:relative;background:var(--panel);border:1px solid var(--line);border-radius:26px;
+  padding:34px 34px 28px;box-shadow:var(--shadow);text-align:center;
+}
+.lvl{
+  position:absolute;top:16px;right:18px;font-size:.72rem;font-weight:700;color:var(--muted);
+  border:1px solid var(--line);border-radius:999px;padding:4px 10px;
+}
+.qtext{font-family:'Sora',sans-serif;font-weight:600;font-size:clamp(1.5rem,3.7vw,2.5rem);line-height:1.25;margin:6px 0 26px}
+.scale{margin-top:10px}
+.ticks{display:flex;gap:5px;margin-bottom:9px}
+.ticks i{flex:1;height:9px;border-radius:3px;background:var(--panel2);font-style:normal}
+.ticks i:nth-child(1){background:#4cc9f0}.ticks i:nth-child(2){background:#5fc6e0}
+.ticks i:nth-child(3){background:#78c3c4}.ticks i:nth-child(4){background:#95c39c}
+.ticks i:nth-child(5){background:#b9c67c}.ticks i:nth-child(6){background:#dcc75e}
+.ticks i:nth-child(7){background:#f2b94e}.ticks i:nth-child(8){background:#f19248}
+.ticks i:nth-child(9){background:#ed6a53}.ticks i:nth-child(10){background:#ef476f}
+.ends{display:flex;justify-content:space-between;gap:22px;text-align:left}
+.ends div:last-child{text-align:right}
+.ends b{display:block;font-family:'Sora',sans-serif;font-size:1.35rem}
+.ends .n1{color:var(--cool)} .ends .n2{color:var(--hot)}
+.ends em{font-style:normal;color:var(--muted);font-size:.95rem}
+
+.phaseline{text-align:center;color:var(--muted);margin:20px auto 0;max-width:60ch;line-height:1.6}
+.actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.big{
+  padding:15px 30px;border-radius:14px;font-family:'Sora',sans-serif;font-weight:700;font-size:1.02rem;
+  color:#12101f;background:linear-gradient(90deg,var(--warm),var(--hot));box-shadow:var(--shadow);
+}
+.big:hover{filter:brightness(1.08)}
+.ghost{padding:15px 24px;border-radius:14px;background:var(--panel);border:1px solid var(--line);font-weight:600;color:var(--ink)}
+.ghost:hover{border-color:var(--cool)}
+
+.clock{font-family:'Sora',sans-serif;font-size:3.4rem;font-weight:800;text-align:center;margin:18px 0 0;line-height:1}
+.clock.warn{color:var(--hot)}
+.clock small{display:block;font-size:.8rem;font-weight:600;color:var(--muted);letter-spacing:.06em;margin-top:6px;font-family:'Inter',sans-serif}
+
+/* ordering */
+.order{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+@media (max-width:760px){.order{grid-template-columns:1fr}}
+.col h3{font-size:.95rem;margin:0 0 12px;color:var(--muted);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{
+  padding:13px 18px;border-radius:13px;background:var(--panel);border:1px solid var(--line);
+  font-weight:600;font-size:1.02rem;color:var(--ink);
+}
+.chip:hover{border-color:var(--warm);transform:translateY(-2px)}
+.chip{transition:transform .12s ease,border-color .12s ease}
+.slots{display:flex;flex-direction:column;gap:8px}
+.slot{
+  display:flex;align-items:center;gap:12px;padding:12px 15px;border-radius:13px;
+  background:var(--panel);border:1px solid var(--line);
+}
+.slot .pos{width:26px;color:var(--muted);font-weight:700;font-size:.85rem}
+.slot .who{flex:1;font-weight:600}
+.slot .got{
+  font-family:'Sora',sans-serif;font-weight:800;font-size:1.35rem;min-width:44px;text-align:center;
+  border-radius:10px;padding:2px 8px;
+}
+.slot.ok{border-color:var(--ok)} .slot.ok .got{color:var(--ok);background:rgba(61,220,151,.12)}
+.slot.bad{border-color:var(--bad)} .slot.bad .got{color:var(--bad);background:rgba(255,93,115,.12)}
+.slot.empty{border-style:dashed;color:var(--muted)}
+
+/* dealing */
+.deal{text-align:center;padding:26px 16px 10px}
+.deal h2{font-family:'Sora',sans-serif;font-size:clamp(1.7rem,5vw,3rem);font-weight:800;margin:0 0 12px;line-height:1.1}
+.deal p{color:var(--muted);max-width:52ch;margin:0 auto;line-height:1.6}
+.secret{
+  font-family:'Sora',sans-serif;font-size:clamp(6rem,22vw,13rem);font-weight:800;line-height:1;margin:6px 0 2px;
+  background:linear-gradient(90deg,var(--cool),var(--warm) 55%,var(--hot));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.dealprog{display:flex;gap:7px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+.dealprog i{width:30px;height:7px;border-radius:4px;background:var(--panel2);font-style:normal}
+.dealprog i.done{background:var(--ok)}
+.dealprog i.now{background:var(--warm)}
+.slot.pending .got{color:var(--muted);background:var(--panel2)}
+.slot.pick{cursor:pointer}
+.slot.pick:hover{border-color:var(--bad)}
+
+/* number pad */
+.veil{position:fixed;inset:0;background:rgba(6,5,14,.82);z-index:80;display:none;align-items:center;justify-content:center;padding:20px}
+.veil.on{display:flex}
+.pad{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:30px;max-width:640px;width:100%;text-align:center;box-shadow:var(--shadow)}
+.pad h2{font-size:1.9rem;margin:0 0 4px}
+.pad p{color:var(--muted);margin:0 0 22px}
+.nums{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}
+.nums button{
+  padding:18px 0;border-radius:14px;background:var(--panel2);border:1px solid var(--line);
+  font-family:'Sora',sans-serif;font-weight:800;font-size:1.5rem;color:var(--ink);
+}
+.nums button:hover:not(:disabled){border-color:var(--warm);transform:translateY(-2px)}
+.nums button{transition:transform .12s ease,border-color .12s ease}
+.nums button:disabled{opacity:.22;cursor:not-allowed}
+.padfoot{margin-top:18px;color:var(--muted);font-size:.85rem}
+
+/* result */
+.verdict{text-align:center;margin-bottom:18px}
+.verdict h2{font-size:2.2rem;margin:0}
+.verdict.win h2{color:var(--ok)} .verdict.lose h2{color:var(--bad)}
+.verdict p{color:var(--muted);margin:8px 0 0}
+.truth{margin-top:16px}
+.truth h3{font-size:.95rem;color:var(--muted);margin:0 0 10px;font-weight:600}
+
+/* helper */
+.helper{margin-top:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:16px 20px}
+.helper summary{cursor:pointer;font-weight:600;font-size:.92rem;color:var(--muted)}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-top:14px}
+.hgrid div{font-size:.88rem;line-height:1.75;color:var(--muted)}
+.hgrid strong{display:block;color:var(--ink);font-size:.8rem;margin-bottom:4px;font-weight:700}
+
+.keys{text-align:center;color:var(--muted);font-size:.78rem;margin-top:26px;line-height:1.9}
+.keys kbd{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-family:inherit;font-size:.76rem}
+
+/* summary */
+.final{text-align:center;padding-top:20px}
+.final h1{font-size:clamp(2.2rem,6vw,3.4rem);margin:0 0 6px}
+.score{font-family:'Sora',sans-serif;font-size:5rem;font-weight:800;line-height:1;margin:18px 0 4px;
+  background:linear-gradient(90deg,var(--warm),var(--hot));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted)}
+.tiles{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 26px;min-width:140px}
+.tile b{display:block;font-family:'Sora',sans-serif;font-size:2rem}
+.tile span{color:var(--muted);font-size:.82rem}
+
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:90;
+  background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 22px;
+  font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s
+}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="corner left"><a class="pill" href="../">← Game Hub</a></div>
+<div class="corner right"><button class="pill" id="themeBtn" onclick="toggleTheme()">🌙 Dark</button></div>
+
+<!-- ══════════ SETUP ══════════ -->
+<section id="setup" class="screen on">
+  <div class="wrap">
+    <div class="hero">
+      <h1><span>Escalation</span></h1>
+      <p>Everyone holds a secret number from 1 to 10. Answer the prompt so your answer matches how intense your number is — then the class puts everyone in order, lowest to highest.</p>
+    </div>
+
+    <div class="meter">
+      <div class="meter-bar"></div>
+      <div class="meter-ends">
+        <div class="e1"><b>1</b><em>Barely worth mentioning</em></div>
+        <div class="e2"><b>10</b><em>That escalated quickly</em></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Who's playing?</h2>
+        <div class="players" id="players"></div>
+        <button class="addbtn" id="addBtn" onclick="addPlayer()">+ Add player</button>
+        <p class="hint" style="margin-top:12px">2–10 players or teams. Each one gets a secret number from 1 to 10 every round — either from your pack of cards, or dealt on screen one player at a time.</p>
+      </div>
+
+      <div class="card">
+        <h2>Settings</h2>
+        <div class="opt">
+          <label for="mode">Number cards</label>
+          <select id="mode" onchange="modeHint()">
+            <option value="physical" selected>Physical cards — you deal them</option>
+            <option value="digital">On screen — the game deals them</option>
+          </select>
+          <p class="count" id="modeHint"></p>
+        </div>
+        <div class="opt">
+          <label for="lvl">Language level</label>
+          <select id="lvl" onchange="updateCount()">
+            <option value="all">All levels</option>
+            <option value="b1">A2–B1 only</option>
+            <option value="a2">A2 only</option>
+          </select>
+          <p class="count" id="cnt"></p>
+        </div>
+        <div class="opt">
+          <label for="lives">Mistakes allowed per round</label>
+          <select id="lives">
+            <option value="1">1 — ruthless</option>
+            <option value="2" selected>2 — standard</option>
+            <option value="3">3 — gentle</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="timer">Thinking time</label>
+          <select id="timer">
+            <option value="0">No timer</option>
+            <option value="45">45 seconds</option>
+            <option value="60" selected>60 seconds</option>
+            <option value="90">90 seconds</option>
+            <option value="120">2 minutes</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="rounds">Rounds</label>
+          <select id="rounds">
+            <option value="5">5</option>
+            <option value="8" selected>8</option>
+            <option value="10">10</option>
+            <option value="0">Until you stop</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button class="go" id="startBtn" onclick="startGame()">Start playing</button>
+
+    <details class="rules">
+      <summary>How a round works</summary>
+      <ol>
+        <li>Everyone gets a secret number from 1 to 10. <b>Nobody shows it.</b> With <b>physical cards</b> you deal them yourself; <b>on screen</b>, the class closes their eyes and the game shows each player their number in turn.</li>
+        <li>Read the prompt on screen. The scale runs from 1 (mild) to 10 (extreme).</li>
+        <li>Each player invents an answer that fits their secret number, and says it out loud. Someone with a 2 gives a mild answer; someone with a 9 goes big.</li>
+        <li>The class debates and puts everyone in order, lowest to highest. With physical cards, each player shows their card as you place them. On screen, you build the whole line-up first, then reveal it one by one.</li>
+        <li>Every time a revealed number is lower than one already revealed, you lose a life. Survive to the end and the whole class scores.</li>
+      </ol>
+    </details>
+
+    <p class="keys">It's cooperative — the class wins or loses together.</p>
+  </div>
+</section>
+
+<!-- ══════════ GAME ══════════ -->
+<section id="game" class="screen">
+  <div class="topbar">
+    <span class="stat">Round <b id="tRound">1</b></span>
+    <span class="stat">Points <b id="tScore">0</b></span>
+    <span class="stat lives" id="tLives"></span>
+    <span class="spacer"></span>
+    <button class="tb" onclick="toggleTimer()" id="pauseBtn">⏸ Pause</button>
+    <button class="tb" onclick="skipPrompt()">⤼ New prompt</button>
+    <button class="tb" onclick="toggleTheme()" id="themeBtn2">🌙</button>
+    <button class="tb" onclick="endGame()">■ End game</button>
+  </div>
+
+  <div class="stage">
+    <div id="dealArea" class="deal" style="display:none"></div>
+
+    <div class="promptcard" id="promptWrap">
+      <span class="lvl" id="qLvl">B1</span>
+      <p class="qtext" id="qText">Loading…</p>
+      <div class="scale">
+        <div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="ends">
+          <div><b class="n1">1</b><em id="qLo">mild</em></div>
+          <div><b class="n2">10</b><em id="qHi">extreme</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="clockWrap" class="clock"><span id="clock">1:00</span><small id="clockLbl">thinking time</small></div>
+
+    <p class="phaseline" id="phaseLine">Everyone gives an answer that matches their secret number.</p>
+
+    <div class="actions" id="actions"></div>
+
+    <div id="orderArea" style="display:none">
+      <div class="order">
+        <div class="col">
+          <h3 id="askLine">Who had the lowest number?</h3>
+          <div class="chips" id="chips"></div>
+        </div>
+        <div class="col">
+          <h3>Order so far — lowest to highest</h3>
+          <div class="slots" id="slots"></div>
+        </div>
+      </div>
+      <div class="actions" id="orderActions"></div>
+    </div>
+
+    <div id="resultArea" style="display:none"></div>
+
+    <details class="helper" id="helper">
+      <summary>💬 Useful language for answering</summary>
+      <div class="hgrid">
+        <div><strong>Low numbers (1–3)</strong>
+          It's a bit…<br>It's slightly…<br>Not a big deal.<br>I'd barely notice.</div>
+        <div><strong>Middle (4–7)</strong>
+          It's pretty…<br>That's quite…<br>I'd definitely react.<br>Honestly, that's annoying.</div>
+        <div><strong>High (8–10)</strong>
+          It's absolutely…<br>That's completely…<br>I'd never recover.<br>That's the worst thing imaginable.</div>
+        <div><strong>Comparing</strong>
+          Mine's worse than yours.<br>That's nothing compared to…<br>I think I'm higher than Ana.</div>
+      </div>
+    </details>
+
+    <p class="keys">
+      <kbd>Space</kbd> next &nbsp; <kbd>1</kbd>–<kbd>0</kbd> reveal a number &nbsp; <kbd>P</kbd> pause &nbsp; <kbd>N</kbd> new prompt &nbsp; <kbd>H</kbd> language help &nbsp; <kbd>Esc</kbd> close
+    </p>
+  </div>
+</section>
+
+<!-- ══════════ SUMMARY ══════════ -->
+<section id="summary" class="screen">
+  <div class="wrap final">
+    <h1 id="finalTitle">Good game</h1>
+    <p class="sub" id="finalSub"></p>
+    <div class="score" id="finalScore">0</div>
+    <p class="sub">points</p>
+    <div class="tiles">
+      <div class="tile"><b id="fRounds">0</b><span>rounds played</span></div>
+      <div class="tile"><b id="fWon">0</b><span>rounds survived</span></div>
+      <div class="tile"><b id="fPerfect">0</b><span>flawless rounds</span></div>
+      <div class="tile"><b id="fStreak">0</b><span>best streak</span></div>
+    </div>
+    <div class="actions" style="margin-top:34px">
+      <button class="big" onclick="playAgain()">Play again — same players</button>
+      <button class="ghost" onclick="backToSetup()">Change players</button>
+    </div>
+  </div>
+</section>
+
+<div class="veil" id="veil">
+  <div class="pad">
+    <h2 id="padName">Player</h2>
+    <p id="padSub">Show your card. Tap the number.</p>
+    <div class="nums" id="nums"></div>
+    <p class="padfoot">Press <kbd>Esc</kbd> to go back</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════ PROMPT BANK — 100 prompts ═══════════════
+   q  = the prompt read aloud
+   lo = what a 1 sounds like    hi = what a 10 sounds like
+   l  = CEFR reading level of the prompt itself (A2 / B1 / B2)         */
+const PROMPTS = [
+{id:"P001",q:"A birthday present you open in front of everyone.",lo:"the worst present ever",hi:"the present of your dreams",l:"A2"},
+{id:"P002",q:"An excuse for not doing your homework.",lo:"the teacher believes you",hi:"nobody believes a word",l:"A2"},
+{id:"P003",q:"A topping you put on a pizza.",lo:"completely normal",hi:"nobody would eat that",l:"A2"},
+{id:"P004",q:"Something you find under your bed.",lo:"boring",hi:"terrifying",l:"A2"},
+{id:"P005",q:"A superpower you wake up with tomorrow.",lo:"totally useless",hi:"you rule the world",l:"A2"},
+{id:"P006",q:"Something you say on a first date.",lo:"charming",hi:"they leave immediately",l:"B1"},
+{id:"P007",q:"A new rule your parents make.",lo:"fair enough",hi:"completely unfair",l:"A2"},
+{id:"P008",q:"A sound you hear in your house at 3 a.m.",lo:"normal",hi:"you are not sleeping tonight",l:"A2"},
+{id:"P009",q:"A pet you keep in a small apartment.",lo:"perfect choice",hi:"terrible idea",l:"A2"},
+{id:"P010",q:"The reason you were late for school.",lo:"believable",hi:"ridiculous",l:"A2"},
+{id:"P011",q:"A message you accidentally send to the wrong person.",lo:"harmless",hi:"your life is over",l:"B1"},
+{id:"P012",q:"A place your family chooses for the holidays.",lo:"boring",hi:"the trip of your life",l:"A2"},
+{id:"P013",q:"Something you put in a sandwich.",lo:"delicious",hi:"you cannot eat that",l:"A2"},
+{id:"P014",q:"A job you have to do every day.",lo:"relaxing",hi:"extremely stressful",l:"A2"},
+{id:"P015",q:"Something you say to a police officer.",lo:"polite",hi:"you are in big trouble",l:"B1"},
+{id:"P016",q:"A song you play at the school party.",lo:"everybody dances",hi:"everybody leaves",l:"A2"},
+{id:"P017",q:"A present you give your teacher.",lo:"thoughtful",hi:"never do that",l:"B1"},
+{id:"P018",q:"An animal you meet alone in the forest.",lo:"cute",hi:"run",l:"A2"},
+{id:"P019",q:"A smell coming from the kitchen.",lo:"lovely",hi:"call the fire department",l:"A2"},
+{id:"P020",q:"Something you lose on the way to school.",lo:"annoying",hi:"life-ruining",l:"A2"},
+{id:"P021",q:"Something strange your phone starts doing.",lo:"normal",hi:"time to buy a new one",l:"A2"},
+{id:"P022",q:"A tattoo you get at eighteen.",lo:"cool forever",hi:"you will regret it forever",l:"B1"},
+{id:"P023",q:"Something you find in your soup at a restaurant.",lo:"fine, no problem",hi:"never eat there again",l:"A2"},
+{id:"P024",q:"The homework your teacher gives on a Friday.",lo:"easy",hi:"impossible",l:"A2"},
+{id:"P025",q:"A comment you leave on a friend's photo.",lo:"kind",hi:"you just lost a friend",l:"B1"},
+{id:"P026",q:"A place you fall asleep by accident.",lo:"comfortable",hi:"a very bad idea",l:"A2"},
+{id:"P027",q:"Something that happens on your flight.",lo:"normal",hi:"everyone is screaming",l:"B1"},
+{id:"P028",q:"A promise you make to your best friend.",lo:"easy to keep",hi:"impossible to keep",l:"B1"},
+{id:"P029",q:"Something your little brother does to your things.",lo:"annoying",hi:"unforgivable",l:"A2"},
+{id:"P030",q:"The haircut you get the day before the party.",lo:"great",hi:"do not leave the house",l:"A2"},
+{id:"P031",q:"Your reason for cancelling plans with a friend.",lo:"acceptable",hi:"friendship over",l:"B1"},
+{id:"P032",q:"A task you give your new household robot.",lo:"useful",hi:"slightly frightening",l:"B1"},
+{id:"P033",q:"A school subject on your timetable.",lo:"fun",hi:"pure suffering",l:"A2"},
+{id:"P034",q:"What you do on a rainy Sunday afternoon.",lo:"boring",hi:"the best day ever",l:"A2"},
+{id:"P035",q:"A lie you tell your parents.",lo:"a small white lie",hi:"grounded for a year",l:"B1"},
+{id:"P036",q:"The neighbor who moves in upstairs.",lo:"perfect",hi:"a nightmare",l:"A2"},
+{id:"P037",q:"A new ice cream flavor in the shop.",lo:"delicious",hi:"who invented this?",l:"A2"},
+{id:"P038",q:"Something you take with you everywhere.",lo:"easy to replace",hi:"impossible to live without",l:"A2"},
+{id:"P039",q:"The wish you ask a genie for.",lo:"a wasted wish",hi:"the perfect wish",l:"B1"},
+{id:"P040",q:"What you do with a million reais.",lo:"sensible",hi:"broke again by Friday",l:"B1"},
+{id:"P041",q:"Your superhero name.",lo:"actually cool",hi:"deeply embarrassing",l:"A2"},
+{id:"P042",q:"Something your teacher announces at the start of class.",lo:"good news",hi:"the whole class panics",l:"A2"},
+{id:"P043",q:"Food you were forced to eat as a child.",lo:"it was fine",hi:"you still have nightmares",l:"A2"},
+{id:"P044",q:"How somebody wakes you up in the morning.",lo:"gentle",hi:"brutal",l:"A2"},
+{id:"P045",q:"The Wi-Fi password you give a guest.",lo:"friendly",hi:"they will never ask again",l:"B1"},
+{id:"P046",q:"Something you see in the sky tonight.",lo:"normal",hi:"the end of the world",l:"A2"},
+{id:"P047",q:"The reason the party finished early.",lo:"understandable",hi:"the neighbors called the police",l:"B1"},
+{id:"P048",q:"A gift you give the person you like.",lo:"sweet",hi:"way too much",l:"B1"},
+{id:"P049",q:"Something you can do in ten seconds.",lo:"pointless",hi:"genuinely impressive",l:"A2"},
+{id:"P050",q:"A holiday photo you post online.",lo:"normal",hi:"everybody unfollows you",l:"B1"},
+{id:"P051",q:"Something you say in a job interview.",lo:"you're hired",hi:"please leave now",l:"B1"},
+{id:"P052",q:"What happened to your homework.",lo:"the teacher accepts it",hi:"absolutely no chance",l:"A2"},
+{id:"P053",q:"A new rule at your school.",lo:"reasonable",hi:"students protest in the street",l:"B1"},
+{id:"P054",q:"A smell on the bus.",lo:"fine",hi:"get off at the next stop",l:"A2"},
+{id:"P055",q:"What you do the night before an exam.",lo:"helpful",hi:"a disaster",l:"A2"},
+{id:"P056",q:"The costume you wear to a party.",lo:"normal",hi:"legendary",l:"A2"},
+{id:"P057",q:"What you say after you break something expensive.",lo:"completely honest",hi:"a total lie",l:"B1"},
+{id:"P058",q:"Your order at a busy café.",lo:"a classic",hi:"the barista hates you",l:"B1"},
+{id:"P059",q:"Something in the bottom of your backpack.",lo:"useful",hi:"why is that in there?",l:"A2"},
+{id:"P060",q:"A skill you decide to learn this year.",lo:"easy",hi:"it takes a lifetime",l:"B1"},
+{id:"P061",q:"What the class does when the teacher leaves the room.",lo:"harmless",hi:"everyone is in trouble",l:"A2"},
+{id:"P062",q:"An app on your phone.",lo:"you open it every day",hi:"delete it immediately",l:"A2"},
+{id:"P063",q:"Something your dog brings into the house.",lo:"cute",hi:"call somebody",l:"A2"},
+{id:"P064",q:"A reason to start running.",lo:"healthy exercise",hi:"life or death",l:"A2"},
+{id:"P065",q:"What you say after a friend cooks dinner for you.",lo:"kind",hi:"brutally honest",l:"B1"},
+{id:"P066",q:"A change you make to your bedroom.",lo:"nobody notices",hi:"your parents notice immediately",l:"A2"},
+{id:"P067",q:"A new emoji added to every phone.",lo:"useful",hi:"chaos in every group chat",l:"B1"},
+{id:"P068",q:"Something you do on a Monday morning.",lo:"perfectly normal",hi:"unthinkable",l:"A2"},
+{id:"P069",q:"Something you find in your grandmother's house.",lo:"ordinary",hi:"worth a fortune",l:"B1"},
+{id:"P070",q:"A sport you try for the first time.",lo:"safe",hi:"you will break something",l:"A2"},
+{id:"P071",q:"What you say to somebody who is crying.",lo:"comforting",hi:"you made it much worse",l:"B1"},
+{id:"P072",q:"An excuse a student gives in the year 2200.",lo:"boring",hi:"completely wild",l:"B2"},
+{id:"P073",q:"Something you invent in your garage.",lo:"mildly useful",hi:"it changes the world",l:"B1"},
+{id:"P074",q:"Advice you give a new student on day one.",lo:"genuinely helpful",hi:"terrible advice",l:"B1"},
+{id:"P075",q:"Something you bring to a picnic.",lo:"essential",hi:"completely pointless",l:"A2"},
+{id:"P076",q:"Your phone does this at the worst possible moment.",lo:"embarrassing",hi:"you move to another city",l:"B1"},
+{id:"P077",q:"A sign that the movie is bad.",lo:"a small problem",hi:"walk out right now",l:"B1"},
+{id:"P078",q:"What you do with an old T-shirt.",lo:"practical",hi:"creative genius",l:"B1"},
+{id:"P079",q:"Something you overhear in the school corridor.",lo:"normal",hi:"the whole school is talking",l:"B1"},
+{id:"P080",q:"A new soda flavor hits the shelves.",lo:"it sells millions",hi:"banned in six countries",l:"B1"},
+{id:"P081",q:"What you do when you meet your favorite artist.",lo:"impressively cool",hi:"mortifying",l:"B2"},
+{id:"P082",q:"Something that goes wrong on the school trip.",lo:"minor",hi:"never again",l:"B1"},
+{id:"P083",q:"A message you send to the group chat at 2 a.m.",lo:"normal",hi:"they remove you from the group",l:"B1"},
+{id:"P084",q:"A job you have to do at home.",lo:"easy",hi:"exhausting",l:"A2"},
+{id:"P085",q:"Something a person collects.",lo:"slightly unusual",hi:"deeply worrying",l:"B2"},
+{id:"P086",q:"Something you do in the library.",lo:"perfectly allowed",hi:"banned for life",l:"A2"},
+{id:"P087",q:"The reason you become famous.",lo:"admirable",hi:"infamous",l:"B2"},
+{id:"P088",q:"What a time traveler brings back from the past.",lo:"boring",hi:"history is rewritten",l:"B2"},
+{id:"P089",q:"The first line of a horror story.",lo:"mild",hi:"you stop reading",l:"B2"},
+{id:"P090",q:"What you do when you forget somebody's name.",lo:"smooth",hi:"painful for everyone",l:"B2"},
+{id:"P091",q:"The first law in the country you invent.",lo:"sensible",hi:"that's a dictatorship",l:"B2"},
+{id:"P092",q:"A feature on the new phone.",lo:"useful",hi:"nobody asked for that",l:"B1"},
+{id:"P093",q:"Something you eat at 3 a.m.",lo:"reasonable",hi:"pure regret",l:"A2"},
+{id:"P094",q:"Something that makes a teacher happy.",lo:"a small thing",hi:"the best day of their career",l:"B1"},
+{id:"P095",q:"The prize in the school competition.",lo:"disappointing",hi:"unbelievable",l:"A2"},
+{id:"P096",q:"What somebody whispers just before the photo.",lo:"harmless",hi:"the photo is ruined",l:"B1"},
+{id:"P097",q:"A creature discovered in the Amazon.",lo:"ordinary",hi:"front page news worldwide",l:"B2"},
+{id:"P098",q:"A pizza topping in the year 3000.",lo:"still normal",hi:"not from this planet",l:"B1"},
+{id:"P099",q:"Something that makes a bad day better.",lo:"it helps a little",hi:"it fixes everything",l:"A2"},
+{id:"P100",q:"What you say in the last minute before the world ends.",lo:"calm",hi:"extremely dramatic",l:"B2"},
+{id:"P101",q:"A noise your neighbor makes on Sunday morning.",lo:"you barely notice",hi:"you knock on their door",l:"A2"},
+{id:"P102",q:"Something you forget to pack for a weekend trip.",lo:"no problem",hi:"the trip is over",l:"A2"},
+{id:"P103",q:"A question a student asks at the end of class.",lo:"sensible",hi:"the class groans",l:"B1"},
+{id:"P104",q:"Something you find in your pocket after washing your jeans.",lo:"nothing important",hi:"a catastrophe",l:"B1"},
+{id:"P105",q:"A new subject added to the school timetable.",lo:"useful",hi:"students riot",l:"B1"},
+{id:"P106",q:"Something that happens during your presentation.",lo:"nobody notices",hi:"you never present again",l:"B1"},
+{id:"P107",q:"Your reaction when somebody takes the last slice.",lo:"calm",hi:"dramatic",l:"A2"},
+{id:"P108",q:"A gift somebody gives you at the office party.",lo:"thoughtful",hi:"deeply awkward",l:"B2"},
+{id:"P109",q:"A thing you say to your future self.",lo:"boring advice",hi:"it changes everything",l:"B2"},
+{id:"P110",q:"Something you do to avoid your homework.",lo:"mildly lazy",hi:"heroic effort to avoid work",l:"B1"}
+];
+
+/* ═══════════════ STATE ═══════════════ */
+const G = {
+  players:[], pool:[], used:[], q:null, mode:"physical",
+  score:0, round:0, lives:0, livesMax:2, roundsTarget:8,
+  won:0, perfect:0, streak:0, bestStreak:0,
+  placed:[], left:[], maxSeen:0, usedNums:[], mistakes:0,
+  phase:"answer", timeLeft:0, timerId:null, paused:false, timerLen:60,
+  pendingName:null,
+  secret:{}, dealIdx:0, dealShown:false, revealing:false, revealIdx:0
+};
+
+/* ═══════════════ SOUND (lazy, resumed on first gesture) ═══════════════ */
+let AC = null;
+function audio(){
+  if (!AC) { try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ return null; } }
+  if (AC.state === "suspended") AC.resume();
+  return AC;
+}
+function beep(freq, dur, type, vol){
+  const ac = audio(); if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || "sine"; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol || .12, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(); o.stop(ac.currentTime + dur);
+}
+const sGood = () => { beep(660,.12,"triangle",.12); setTimeout(()=>beep(880,.16,"triangle",.12),90); };
+const sBad  = () => { beep(200,.25,"sawtooth",.1); setTimeout(()=>beep(140,.3,"sawtooth",.1),120); };
+const sWin  = () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.22,"triangle",.13), i*110)); };
+const sTick = () => beep(420,.05,"square",.06);
+document.addEventListener("pointerdown", audio, {once:true});
+document.addEventListener("keydown", audio, {once:true});
+
+/* ═══════════════ THEME ═══════════════ */
+function toggleTheme(){
+  const el = document.documentElement;
+  const next = el.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  el.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  paintThemeBtn();
+}
+function paintThemeBtn(){
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  document.getElementById("themeBtn").textContent = dark ? "🌙 Dark" : "☀️ Light";
+  document.getElementById("themeBtn2").textContent = dark ? "🌙" : "☀️";
+}
+
+/* ═══════════════ SETUP ═══════════════ */
+const DEFAULT_NAMES = ["Team 1","Team 2","Team 3","Team 4"];
+function renderPlayers(){
+  const box = document.getElementById("players");
+  box.innerHTML = "";
+  G.setupNames.forEach((name, i) => {
+    const row = document.createElement("div");
+    row.className = "prow";
+    row.innerHTML = '<span class="num">' + (i+1) + '</span>' +
+      '<input type="text" maxlength="16" value="' + name.replace(/"/g,"&quot;") + '">' +
+      (G.setupNames.length > 2 ? '<button class="xbtn" title="Remove">×</button>' : '');
+    row.querySelector("input").addEventListener("input", e => { G.setupNames[i] = e.target.value; });
+    const x = row.querySelector(".xbtn");
+    if (x) x.addEventListener("click", () => { G.setupNames.splice(i,1); renderPlayers(); });
+    box.appendChild(row);
+  });
+  document.getElementById("addBtn").style.display = G.setupNames.length >= 10 ? "none" : "block";
+}
+function addPlayer(){
+  if (G.setupNames.length >= 10) return;
+  G.setupNames.push("Team " + (G.setupNames.length + 1));
+  renderPlayers();
+}
+function levelPool(mode){
+  return PROMPTS.filter(p => mode === "all" || (mode === "b1" && p.l !== "B2") || (mode === "a2" && p.l === "A2"));
+}
+function modeHint(){
+  const digital = document.getElementById("mode").value === "digital";
+  document.getElementById("modeHint").textContent = digital
+    ? "The class closes their eyes; each player sees their number alone."
+    : "Deal one card face down to each player before every round.";
+}
+function updateCount(){
+  const n = levelPool(document.getElementById("lvl").value).length;
+  const el = document.getElementById("cnt");
+  el.textContent = n + " prompts available at this level";
+  el.className = "count" + (n < 12 ? " low" : "");
+}
+
+/* ═══════════════ GAME FLOW ═══════════════ */
+function startGame(){
+  const names = G.setupNames.map((n,i) => (n||"").trim() || ("Team " + (i+1)));
+  if (names.length < 2) { toast("You need at least 2 players"); return; }
+  G.players = names;
+  G.pool = shuffle(levelPool(document.getElementById("lvl").value).slice());
+  G.used = [];
+  G.mode = document.getElementById("mode").value;
+  G.livesMax = parseInt(document.getElementById("lives").value, 10);
+  G.timerLen = parseInt(document.getElementById("timer").value, 10);
+  G.roundsTarget = parseInt(document.getElementById("rounds").value, 10);
+  G.score = 0; G.round = 0; G.won = 0; G.perfect = 0; G.streak = 0; G.bestStreak = 0;
+  show("game"); document.body.classList.add("playing");
+  nextRound();
+}
+function nextRound(){
+  G.round++;
+  G.lives = G.livesMax;
+  G.mistakes = 0;
+  G.placed = [];
+  G.left = G.players.slice();
+  G.maxSeen = 0;
+  G.usedNums = [];
+  G.secret = {};
+  G.dealIdx = 0; G.dealShown = false; G.dealStarted = false;
+  G.revealing = false; G.revealIdx = 0;
+
+  if (!G.pool.length) G.pool = shuffle(G.used.splice(0));
+  G.q = G.pool.pop(); G.used.push(G.q);
+
+  paintPrompt();
+  paintHud();
+  document.getElementById("orderArea").style.display = "none";
+  document.getElementById("resultArea").style.display = "none";
+  document.getElementById("resultArea").innerHTML = "";
+  document.getElementById("orderActions").innerHTML = "";
+  window.scrollTo({top:0, behavior:"smooth"});
+
+  if (G.mode === "digital") beginDeal(); else beginAnswer();
+}
+
+function beginAnswer(){
+  G.phase = "answer";
+  document.getElementById("dealArea").style.display = "none";
+  document.getElementById("promptWrap").style.display = "block";
+  document.getElementById("phaseLine").style.display = "block";
+  document.getElementById("phaseLine").textContent =
+    "Everyone invents an answer that matches their secret number, then says it out loud.";
+  document.getElementById("actions").innerHTML =
+    '<button class="big" onclick="beginOrdering()">Everyone has answered — put them in order</button>';
+  startTimer();
+}
+
+/* ── dealing numbers on screen ── */
+function beginDeal(){
+  G.phase = "deal";
+  const nums = shuffle([1,2,3,4,5,6,7,8,9,10]).slice(0, G.players.length);
+  G.players.forEach((p, i) => { G.secret[p] = nums[i]; });
+  document.getElementById("promptWrap").style.display = "none";
+  document.getElementById("clockWrap").style.display = "none";
+  document.getElementById("phaseLine").style.display = "none";
+  document.getElementById("actions").innerHTML = "";
+  document.getElementById("dealArea").style.display = "block";
+  paintDeal();
+}
+function paintDeal(){
+  const area = document.getElementById("dealArea");
+  const n = G.players.length;
+  let prog = '<div class="dealprog">';
+  for (let i = 0; i < n; i++)
+    prog += '<i class="' + (i < G.dealIdx ? "done" : i === G.dealIdx ? "now" : "") + '"></i>';
+  prog += "</div>";
+
+  if (!G.dealStarted){
+    area.innerHTML =
+      '<h2>Everyone close your eyes</h2>' +
+      '<p>Each player will open their eyes alone and see their own number. Nobody else looks at the screen.</p>' +
+      '<div class="actions"><button class="big" onclick="dealStart()">Deal the numbers</button></div>' + prog;
+  }
+  else if (G.dealIdx >= n){
+    area.innerHTML =
+      '<h2>Everyone open your eyes</h2>' +
+      '<p>All ' + n + ' numbers are dealt. Keep yours secret.</p>' +
+      '<div class="actions"><button class="big" onclick="beginAnswer()">Show the prompt</button></div>' + prog;
+  }
+  else if (!G.dealShown){
+    const who = G.players[G.dealIdx];
+    area.innerHTML =
+      '<h2>' + esc(who) + ' — open your eyes</h2>' +
+      '<p>Everyone else stays closed.</p>' +
+      '<div class="actions"><button class="big" onclick="dealShow()">Show ' + esc(who) + '&rsquo;s number</button></div>' + prog;
+  }
+  else {
+    const who = G.players[G.dealIdx];
+    area.innerHTML =
+      '<p>Only ' + esc(who) + ' should be looking.</p>' +
+      '<div class="secret">' + G.secret[who] + '</div>' +
+      '<p>Remember it. Don&rsquo;t say it.</p>' +
+      '<div class="actions"><button class="big" onclick="dealHide()">Hide — ' + esc(who) + ', close your eyes</button></div>' + prog;
+  }
+}
+function dealStart(){ G.dealStarted = true; paintDeal(); }
+function dealShow(){ G.dealShown = true; beep(660,.09,"triangle",.1); paintDeal(); }
+function dealHide(){ G.dealShown = false; G.dealIdx++; beep(380,.08,"sine",.08); paintDeal(); }
+function paintPrompt(){
+  document.getElementById("qText").textContent = G.q.q;
+  document.getElementById("qLo").textContent = G.q.lo;
+  document.getElementById("qHi").textContent = G.q.hi;
+  document.getElementById("qLvl").textContent = G.q.l;
+}
+function paintHud(){
+  document.getElementById("tRound").textContent =
+    G.roundsTarget ? (G.round + " / " + G.roundsTarget) : G.round;
+  document.getElementById("tScore").textContent = G.score;
+  let h = "";
+  for (let i = 0; i < G.livesMax; i++) h += '<span class="' + (i < G.lives ? "" : "gone") + '">♥</span>';
+  document.getElementById("tLives").innerHTML = h;
+}
+function skipPrompt(){
+  if (G.phase !== "answer" && G.phase !== "deal") { toast("Finish the round first"); return; }
+  if (!G.pool.length) G.pool = shuffle(G.used.splice(0));
+  G.q = G.pool.pop(); G.used.push(G.q);
+  paintPrompt();
+  toast("New prompt");
+}
+
+/* ── timer ── */
+function startTimer(){
+  stopTimer();
+  const wrap = document.getElementById("clockWrap");
+  if (!G.timerLen) { wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  G.timeLeft = G.timerLen; G.paused = false;
+  document.getElementById("pauseBtn").textContent = "⏸ Pause";
+  paintClock();
+  G.timerId = setInterval(() => {
+    if (G.paused) return;
+    G.timeLeft--;
+    if (G.timeLeft <= 5 && G.timeLeft > 0) sTick();
+    if (G.timeLeft <= 0) { stopTimer(); beep(300,.4,"square",.12); document.getElementById("clockLbl").textContent = "time's up"; }
+    paintClock();
+  }, 1000);
+}
+function stopTimer(){ if (G.timerId) clearInterval(G.timerId); G.timerId = null; }
+function paintClock(){
+  const m = Math.floor(Math.max(0,G.timeLeft)/60), s = Math.max(0,G.timeLeft)%60;
+  const el = document.getElementById("clock");
+  el.textContent = m + ":" + (s < 10 ? "0" : "") + s;
+  document.getElementById("clockWrap").className = "clock" + (G.timeLeft <= 10 ? " warn" : "");
+}
+function toggleTimer(){
+  if (!G.timerId) return;
+  G.paused = !G.paused;
+  document.getElementById("pauseBtn").textContent = G.paused ? "▶ Resume" : "⏸ Pause";
+  document.getElementById("clockLbl").textContent = G.paused ? "paused" : "thinking time";
+}
+
+/* ── ordering ── */
+function beginOrdering(){
+  stopTimer();
+  document.getElementById("clockWrap").style.display = "none";
+  G.phase = "order";
+  document.getElementById("actions").innerHTML = "";
+  document.getElementById("phaseLine").style.display = "none";
+  document.getElementById("orderArea").style.display = "block";
+  paintOrder();
+}
+function paintOrder(){
+  const digital = G.mode === "digital";
+  const chips = document.getElementById("chips");
+  chips.innerHTML = "";
+  G.left.forEach(name => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = name;
+    b.addEventListener("click", () => digital ? placeChip(name) : openPad(name));
+    chips.appendChild(b);
+  });
+
+  document.getElementById("askLine").textContent =
+    G.revealing ? "Revealing, lowest first" :
+    G.left.length === 0 ? "Everyone is in the line-up" :
+    G.placed.length === 0 ? "Who had the lowest number?" : "Who comes next, going up?";
+
+  const slots = document.getElementById("slots");
+  slots.innerHTML = "";
+  G.placed.forEach((p, i) => {
+    const shown = p.num != null;
+    const d = document.createElement("div");
+    d.className = shown ? "slot " + (p.ok ? "ok" : "bad")
+                        : "slot pending" + (G.revealing ? "" : " pick");
+    d.innerHTML = '<span class="pos">' + (i+1) + '</span><span class="who">' + esc(p.name) +
+      '</span><span class="got">' + (shown ? p.num : "?") + '</span>';
+    if (!shown && !G.revealing){
+      d.title = "Take " + p.name + " out of the line-up";
+      d.addEventListener("click", () => unplace(i));
+    }
+    slots.appendChild(d);
+  });
+  for (let i = G.placed.length; i < G.players.length; i++){
+    const d = document.createElement("div");
+    d.className = "slot empty";
+    d.innerHTML = '<span class="pos">' + (i+1) + '</span><span class="who">—</span>';
+    slots.appendChild(d);
+  }
+
+  const oa = document.getElementById("orderActions");
+  oa.innerHTML = "";
+  if (!digital) return;
+  if (!G.revealing && G.left.length === 0)
+    oa.innerHTML = '<button class="big" onclick="startReveal()">Lock it in and reveal</button>';
+  else if (G.revealing && G.revealIdx < G.placed.length)
+    oa.innerHTML = '<button class="big" onclick="revealNext()">Reveal ' +
+      esc(G.placed[G.revealIdx].name) + '</button>';
+}
+
+/* ── digital: build the line-up, then reveal ── */
+function placeChip(name){
+  G.placed.push({name:name, num:null, ok:null});
+  G.left = G.left.filter(x => x !== name);
+  beep(540,.06,"triangle",.08);
+  paintOrder();
+}
+function unplace(i){
+  const p = G.placed.splice(i, 1)[0];
+  G.left.push(p.name);
+  G.left.sort((a,b) => G.players.indexOf(a) - G.players.indexOf(b));
+  beep(300,.06,"sine",.07);
+  paintOrder();
+}
+function startReveal(){
+  G.revealing = true; G.revealIdx = 0;
+  paintOrder();
+}
+function revealNext(){
+  const p = G.placed[G.revealIdx];
+  p.num = G.secret[p.name];
+  p.ok = p.num > G.maxSeen;
+  const prevMax = G.maxSeen;
+  G.maxSeen = Math.max(G.maxSeen, p.num);
+  G.revealIdx++;
+  if (p.ok) { G.score += 10; sGood(); }
+  else { G.lives--; G.mistakes++; sBad(); toast(p.name + " had " + p.num + ", after " + prevMax + " — that costs a life"); }
+  paintHud(); paintOrder();
+  if (G.lives <= 0){ revealRest(); setTimeout(() => finishRound(false), 900); return; }
+  if (G.revealIdx >= G.placed.length) setTimeout(() => finishRound(true), 700);
+}
+function revealRest(){
+  for (let i = G.revealIdx; i < G.placed.length; i++){
+    const p = G.placed[i];
+    p.num = G.secret[p.name];
+    p.ok = false;
+  }
+  G.revealIdx = G.placed.length;
+  paintOrder();
+}
+function openPad(name){
+  G.pendingName = name;
+  document.getElementById("padName").textContent = name;
+  document.getElementById("padSub").textContent = "Show your card. Tap the number.";
+  const nums = document.getElementById("nums");
+  nums.innerHTML = "";
+  for (let n = 1; n <= 10; n++){
+    const b = document.createElement("button");
+    b.textContent = n;
+    b.disabled = G.usedNums.indexOf(n) !== -1;
+    b.addEventListener("click", () => revealNumber(n));
+    nums.appendChild(b);
+  }
+  document.getElementById("veil").classList.add("on");
+}
+function closePad(){ document.getElementById("veil").classList.remove("on"); G.pendingName = null; }
+function revealNumber(n){
+  if (G.usedNums.indexOf(n) !== -1) return;
+  const name = G.pendingName;
+  closePad();
+  const ok = n > G.maxSeen;
+  G.usedNums.push(n);
+  G.maxSeen = Math.max(G.maxSeen, n);
+  G.placed.push({name:name, num:n, ok:ok});
+  G.left = G.left.filter(x => x !== name);
+  if (ok) { G.score += 10; sGood(); }
+  else { G.lives--; G.mistakes++; sBad(); toast("Lower than " + G.maxSeen + " — that costs a life"); }
+  paintHud();
+  paintOrder();
+  if (G.lives <= 0) { setTimeout(() => finishRound(false), 700); return; }
+  if (G.left.length === 0) { setTimeout(() => finishRound(true), 700); }
+}
+
+/* ── round result ── */
+function finishRound(survived){
+  G.phase = "result";
+  if (survived){
+    G.won++; G.streak++;
+    G.bestStreak = Math.max(G.bestStreak, G.streak);
+    G.score += 20;
+    if (G.mistakes === 0) { G.perfect++; G.score += 30; }
+    sWin();
+  } else {
+    G.streak = 0;
+  }
+  paintHud();
+
+  const sorted = G.placed.slice().sort((a,b) => a.num - b.num);
+  let truth = '<div class="truth"><h3>The real order</h3><div class="slots">';
+  sorted.forEach((p, i) => {
+    truth += '<div class="slot ok"><span class="pos">' + (i+1) + '</span><span class="who">' +
+      esc(p.name) + '</span><span class="got">' + p.num + '</span></div>';
+  });
+  if (G.left.length) {
+    truth += '<div class="slot empty"><span class="pos">?</span><span class="who">Not revealed: ' +
+      G.left.map(esc).join(", ") + '</span></div>';
+  }
+  truth += "</div></div>";
+
+  const done = G.roundsTarget && G.round >= G.roundsTarget;
+  const head = survived
+    ? (G.mistakes === 0
+        ? '<div class="verdict win"><h2>Flawless</h2><p>Perfect order, no mistakes. +30 bonus.</p></div>'
+        : '<div class="verdict win"><h2>You made it</h2><p>' + G.mistakes + ' mistake' + (G.mistakes>1?"s":"") + ', but the class survived.</p></div>')
+    : '<div class="verdict lose"><h2>That escalated too quickly</h2><p>Out of lives. Ask the rest of the class to reveal their cards.</p></div>';
+
+  const area = document.getElementById("resultArea");
+  area.innerHTML = head + truth +
+    '<div class="actions">' +
+    (done ? '<button class="big" onclick="endGame()">See the final score</button>'
+          : '<button class="big" onclick="nextRound()">Next round</button>' +
+            '<button class="ghost" onclick="endGame()">Finish here</button>') +
+    "</div>";
+  area.style.display = "block";
+  document.getElementById("orderArea").style.display = "none";
+  area.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+/* ═══════════════ END ═══════════════ */
+function endGame(){
+  stopTimer();
+  document.body.classList.remove("playing");
+  document.getElementById("finalScore").textContent = G.score;
+  document.getElementById("fRounds").textContent = G.round;
+  document.getElementById("fWon").textContent = G.won;
+  document.getElementById("fPerfect").textContent = G.perfect;
+  document.getElementById("fStreak").textContent = G.bestStreak;
+  const rate = G.round ? G.won / G.round : 0;
+  document.getElementById("finalTitle").textContent =
+    rate === 1 ? "Perfectly in tune" : rate >= .6 ? "Good game" : "You'll read each other better next time";
+  document.getElementById("finalSub").textContent =
+    G.won + " of " + G.round + " rounds survived";
+  show("summary");
+}
+function playAgain(){
+  G.pool = shuffle(levelPool(document.getElementById("lvl").value).slice());
+  G.used = [];
+  G.score = 0; G.round = 0; G.won = 0; G.perfect = 0; G.streak = 0; G.bestStreak = 0;
+  show("game"); document.body.classList.add("playing");
+  nextRound();
+}
+function backToSetup(){ show("setup"); renderPlayers(); updateCount(); }
+
+/* ═══════════════ HELPERS ═══════════════ */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("on"));
+  document.getElementById(id).classList.add("on");
+  window.scrollTo(0,0);
+}
+function shuffle(a){ for (let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+let toastId = null;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastId);
+  toastId = setTimeout(() => t.classList.remove("on"), 2200);
+}
+
+/* ═══════════════ KEYBOARD ═══════════════ */
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  const padOpen = document.getElementById("veil").classList.contains("on");
+
+  if (e.key === "Escape"){ if (padOpen) closePad(); return; }
+  if (padOpen){
+    if (/^[0-9]$/.test(e.key)){
+      const n = e.key === "0" ? 10 : parseInt(e.key,10);
+      if (G.usedNums.indexOf(n) === -1) revealNumber(n);
+      e.preventDefault();
+    }
+    return;
+  }
+  if (!document.getElementById("game").classList.contains("on")) return;
+
+  if (e.key === " " || e.key === "Enter"){
+    const b = document.querySelector("#dealArea .big") || document.querySelector("#actions .big")
+           || document.querySelector("#orderActions .big") || document.querySelector("#resultArea .big");
+    if (b){ b.click(); e.preventDefault(); }
+  }
+  else if (e.key.toLowerCase() === "p") toggleTimer();
+  else if (e.key.toLowerCase() === "n") skipPrompt();
+  else if (e.key.toLowerCase() === "h") { const h = document.getElementById("helper"); h.open = !h.open; }
+});
+
+/* ═══════════════ BOOT ═══════════════ */
+G.setupNames = DEFAULT_NAMES.slice();
+renderPlayers();
+updateCount();
+modeHint();
+paintThemeBtn();
+</script>
+</body>
+</html>

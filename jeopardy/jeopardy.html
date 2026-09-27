@@ -662,6 +662,38 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   .close-modal-btn:hover { background: rgba(255,255,255,0.18); }
   .close-modal-btn.primary { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 700; }
   .close-modal-btn[hidden] { display: none; }
+
+  .dd-banner {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(28px, 5vw, 48px);
+    color: var(--gold);
+    text-align: center;
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 0 var(--gold-dark);
+  }
+  .dd-sub { font-family: 'Oswald', sans-serif; font-size: 16px; color: #fff; text-align: center; margin-top: 10px; }
+  .wager-panel {
+    background: rgba(255,255,255,0.08);
+    border: 2px solid var(--team, var(--gold));
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .wager-row { display: flex; align-items: center; gap: 8px; }
+  .wager-input {
+    flex: 1;
+    background: rgba(0,0,0,0.35);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Anton', sans-serif;
+    font-size: 20px;
+    text-align: center;
+    padding: 8px 6px;
+  }
+  .wager-step { background: rgba(255,255,255,0.12); color: #fff; }
   .kbd-hint { text-align: center; font-size: 12px; color: #8fa3e6; letter-spacing: 1px; margin-top: 10px; }
 
   /* ─── END SCREEN ─── */
@@ -793,6 +825,27 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
           <button data-v="easy">Easy</button>
           <button data-v="medium">Medium</button>
           <button data-v="hard">Hard</button>
+        </div>
+      </div>
+
+      <div class="rules-row">
+        <span class="rule-label">Daily Doubles</span>
+      </div>
+      <div class="rules-row" style="margin-bottom:0;">
+        <div class="seg" id="dailyDoubleSeg">
+          <button data-v="0">0</button>
+          <button data-v="1">1</button>
+          <button data-v="2">2</button>
+        </div>
+      </div>
+
+      <div class="rules-row">
+        <span class="rule-label">Final round</span>
+      </div>
+      <div class="rules-row" style="margin-bottom:0;">
+        <div class="seg" id="finalRoundSeg">
+          <button data-v="off">Off</button>
+          <button data-v="on">On</button>
         </div>
       </div>
     </div>
@@ -4926,6 +4979,8 @@ let setup = {
   names: ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6'],
   penalty: false,
   level: 'ladder', // global mode: 'ladder' | 'easy' | 'medium' | 'hard'
+  dailyDoubles: 1, // number of Daily Double tiles placed on the board: 0, 1, or 2
+  finalRound: false, // whether a Final Jeopardy-style round follows the main board
   cats: {}, // {catName: difficulty|null}, insertion order = column order.
             // A string tier ('easy'/'medium'/'hard') is an explicit per-column
             // override (set by clicking a .diff-btn); null means "follow the
@@ -4933,6 +4988,7 @@ let setup = {
             // the quick-builders).
 };
 const LEVELS = ['ladder', 'easy', 'medium', 'hard'];
+const DD_COUNTS = [0, 1, 2];
 let activeGroup = 'All';
 const GROUPS = ['All', ...Array.from(new Set(Object.values(CAT_GROUP))).sort()];
 
@@ -4943,6 +4999,8 @@ function loadSetup() {
   if (Array.isArray(saved.names)) saved.names.slice(0, MAX_TEAMS).forEach((n, i) => { if (typeof n === 'string' && n.trim()) setup.names[i] = n; });
   setup.penalty = !!saved.penalty;
   if (LEVELS.includes(saved.level)) setup.level = saved.level;
+  if (DD_COUNTS.includes(saved.dailyDoubles)) setup.dailyDoubles = saved.dailyDoubles;
+  setup.finalRound = !!saved.finalRound;
   if (saved.cats && typeof saved.cats === 'object') {
     Object.entries(saved.cats).forEach(([name, diff]) => {
       if (!CATEGORIES[name] || Object.keys(setup.cats).length >= NUM_CATS) return;
@@ -4984,6 +5042,12 @@ function renderRules() {
   });
   document.querySelectorAll('#levelSeg button').forEach(b => {
     b.classList.toggle('active', b.dataset.v === setup.level);
+  });
+  document.querySelectorAll('#dailyDoubleSeg button').forEach(b => {
+    b.classList.toggle('active', +b.dataset.v === setup.dailyDoubles);
+  });
+  document.querySelectorAll('#finalRoundSeg button').forEach(b => {
+    b.classList.toggle('active', (b.dataset.v === 'on') === setup.finalRound);
   });
 }
 
@@ -5150,6 +5214,22 @@ function resolveColumnQuestions(catName, resolvedLevel) {
   });
 }
 
+// Randomly places `count` Daily Double cells among the board's (cols x 5) cells.
+// With count === 2, avoids placing both in the same category-column when possible
+// (spreads them out — a real teacher-facing fairness expectation).
+function placeDailyDoubles(numCols, count) {
+  if (!count) return [];
+  const rows = VALUES.length;
+  const all = [];
+  for (let col = 0; col < numCols; col++) for (let row = 0; row < rows; row++) all.push({ col, row });
+  for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; }
+  if (count === 1) return [all[0]];
+  // count === 2: prefer two different columns; fall back to any two cells if the board is too narrow (1 column).
+  const first = all[0];
+  const second = all.slice(1).find(c => c.col !== first.col) || all[1];
+  return [first, second];
+}
+
 function newGameState(cfg) {
   const cats = cfg.cats.map(c => ({ name: c.name, diff: c.diff }));
   return {
@@ -5164,7 +5244,17 @@ function newGameState(cfg) {
     penalty: !!cfg.penalty,
     clue: null,
     ended: false,
+    // Daily Double cells resolved once at game start (like Ladder draws) so a saved/resumed/rematch
+    // game keeps the same Daily Double placement. Stored as an array of {col,row}; looked up via cellKey.
+    dailyDoubles: placeDailyDoubles(cats.length, cfg.dailyDoubles || 0),
+    finalRoundEnabled: !!cfg.finalRound,
+    // Final round phase state; null until the main board is fully played with finalRoundEnabled on.
+    finalRound: null,
   };
+}
+
+function isDailyDoubleCell(col, row) {
+  return S.dailyDoubles.some(c => c.col === col && c.row === row);
 }
 
 function startGame() {
@@ -5180,6 +5270,8 @@ function startGame() {
     teams,
     cats: Object.entries(setup.cats).map(([name, override]) => ({ name, diff: columnLevelLabel(override) })),
     penalty: setup.penalty,
+    dailyDoubles: setup.dailyDoubles,
+    finalRound: setup.finalRound,
   });
   history = [];
   pendingTeam = null;
@@ -5203,7 +5295,10 @@ function discardSave() {
 
 function rematch() {
   if (!S) return;
-  S = newGameState({ teams: S.teams.map(t => t.name), cats: S.cats, penalty: S.penalty });
+  S = newGameState({
+    teams: S.teams.map(t => t.name), cats: S.cats, penalty: S.penalty,
+    dailyDoubles: S.dailyDoubles.length, finalRound: S.finalRoundEnabled,
+  });
   history = [];
   pendingTeam = null;
   SFX.gameStart();
@@ -5263,7 +5358,13 @@ function undo() {
 function openClue(col, row, sourceEl) {
   if (!S || S.ended || S.clue || S.used[cellKey(col, row)]) return;
   snapshot();
-  S.clue = { col, row, tried: [], winner: null, revealed: false, mark: history.length };
+  const isDD = isDailyDoubleCell(col, row);
+  S.clue = {
+    col, row, tried: [], winner: null, revealed: false, mark: history.length,
+    isDailyDouble: isDD,
+    wager: null, // Daily Double only: null until the controlling team's wager is submitted
+    wagerExplicit: false, // true once submitWager() locks in a real wager (see isStrictDailyDouble)
+  };
   pendingTeam = null;
   SFX.tileClick();
   SFX.questionOpen();
@@ -5281,17 +5382,50 @@ function setClueOrigin(tile) {
   if (modal) modal.style.transformOrigin = `${ox}% ${oy}%`;
 }
 
-function clueValue() { return VALUES[S.clue.row]; }
+// Daily Double clue value is the team's wager once submitted; otherwise the normal board value
+// (used before a wager is made, and for an un-wagered/auto Daily Double judged like normal).
+function clueValue() { const c = S.clue; return (c.isDailyDouble && c.wager != null) ? c.wager : VALUES[c.row]; }
 function canCancel() { const c = S.clue; return !!c && !c.revealed && c.winner === null && c.tried.length === 0; }
+
+// Daily Double wager bounds: minimum $5; maximum is the greater of the controlling team's
+// current score or $1000 (standard Jeopardy rule), but never less than the $5 floor —
+// e.g. a team sitting on a negative score can still wager up to $1000, floor $5.
+function wagerBounds(t) {
+  const score = S.teams[t] ? S.teams[t].score : 0;
+  const max = Math.max(score, 1000, 5);
+  return { min: 5, max };
+}
+
+// Daily Double only: the controlling team explicitly locks in a wager before the clue text
+// is revealed. This is what flips the clue into "strict" Daily Double rules (see
+// isStrictDailyDouble): only the controller may then answer, and the wager is always at risk.
+function submitWager(amount) {
+  const c = S && S.clue;
+  if (!c || !c.isDailyDouble || c.wager != null) return;
+  const { min, max } = wagerBounds(S.control);
+  const wager = Math.max(min, Math.min(max, Math.round(Number(amount) || 0)));
+  snapshot();
+  c.wager = wager;
+  c.wagerExplicit = true;
+  commit();
+}
+
+// A Daily Double's real "always at risk, single-team-only" rules apply only once a wager
+// has been EXPLICITLY locked in via the wager panel (c.wagerExplicit). If a teacher skips
+// the wager UI entirely and just judges the clue like normal (via keyboard, or clicking a
+// buzz-btn for any team), it resolves as an ordinary clue at face value under the normal
+// penalty setting — the wager stepper is an optional enhancement, not a mandatory gate.
+function isStrictDailyDouble(c) { return c.isDailyDouble && c.wagerExplicit; }
 
 function markCorrect(t) {
   const c = S && S.clue;
   if (!c || c.winner !== null || c.tried.includes(t) || !S.teams[t]) return;
+  if (isStrictDailyDouble(c) && t !== S.control) return; // DD: only the wagering team may answer
   snapshot();
   S.teams[t].score += clueValue();
   c.winner = t;
   c.revealed = true;
-  S.control = t; // whoever answers correctly picks next
+  S.control = t; // whoever answers correctly picks next (DD: control already sat with them)
   pendingTeam = null;
   SFX.correct();
   flashFeedback('CORRECT!', true);
@@ -5301,12 +5435,17 @@ function markCorrect(t) {
 function markWrong(t) {
   const c = S && S.clue;
   if (!c || c.winner !== null || c.tried.includes(t) || !S.teams[t]) return;
+  if (isStrictDailyDouble(c) && t !== S.control) return; // DD: only the wagering team may answer
   snapshot();
-  if (S.penalty) S.teams[t].score -= clueValue();
+  // A strict (explicitly wagered) Daily Double is always at risk, regardless of the global
+  // penalty setting. An un-wagered/auto Daily Double follows the normal penalty rule.
+  if (isStrictDailyDouble(c) || S.penalty) S.teams[t].score -= clueValue();
   c.tried.push(t);
+  if (isStrictDailyDouble(c)) c.revealed = true; // DD: no one else gets to answer, so reveal immediately on the miss
   pendingTeam = null;
   SFX.wrong();
-  flashFeedback(S.penalty ? '−' + fmt(clueValue()) : 'WRONG!', false);
+  flashFeedback((isStrictDailyDouble(c) || S.penalty) ? '−' + fmt(clueValue()) : 'WRONG!', false);
+  // Strict DD: control stays with the team that wagered (they were the only one who could attempt it).
   commit();
 }
 
@@ -5336,6 +5475,90 @@ function doneClue() {
   S.clue = null;
   pendingTeam = null;
   if (usedCount() >= totalCells()) {
+    if (S.finalRoundEnabled) {
+      startFinalRound();
+    } else {
+      S.ended = true;
+      SFX.victory();
+    }
+  }
+  commit();
+}
+
+// ═══════════════════════════════════════════════════════
+//  FINAL ROUND
+//  S.finalRound = { active, wagers: {teamIdx: amount}, wagersLocked,
+//                    category, q, a, revealed, answers: {teamIdx: true|false} }
+//  Flow: every team wagers (0..their score) -> wagers lock -> one clue reveals ->
+//  teacher marks every team correct/wrong simultaneously -> game ends.
+// ═══════════════════════════════════════════════════════
+function pickFinalClue() {
+  // Pulled from the full CATEGORIES bank (not just this game's board) so it's a fresh
+  // question, never one already used in the main game.
+  const names = Object.keys(CATEGORIES);
+  const name = names[Math.floor(Math.random() * names.length)];
+  const bank = CATEGORIES[name];
+  const q = bank[Math.floor(Math.random() * bank.length)];
+  return { category: name, q: q.q, a: q.a, alt: q.alt || null };
+}
+
+function startFinalRound() {
+  const picked = pickFinalClue();
+  S.finalRound = {
+    active: true,
+    wagers: {}, // teamIdx -> submitted wager amount
+    wagersLocked: false,
+    category: picked.category,
+    q: picked.q,
+    a: picked.a,
+    alt: picked.alt,
+    revealed: false,
+    answers: {}, // teamIdx -> true (correct) | false (wrong)
+  };
+}
+
+// Final round wager bounds: 0 up to the team's current score; a team at $0 or below wagers $0.
+function finalWagerBounds(t) {
+  const score = S.teams[t] ? S.teams[t].score : 0;
+  return { min: 0, max: Math.max(score, 0) };
+}
+
+function submitFinalWager(t, amount) {
+  const fr = S && S.finalRound;
+  if (!fr || !fr.active || fr.wagersLocked || !S.teams[t]) return;
+  const { min, max } = finalWagerBounds(t);
+  const wager = Math.max(min, Math.min(max, Math.round(Number(amount) || 0)));
+  snapshot();
+  fr.wagers[t] = wager;
+  commit();
+}
+
+function allWagersIn() {
+  const fr = S.finalRound;
+  return S.teams.every((_, i) => Object.prototype.hasOwnProperty.call(fr.wagers, i));
+}
+
+// Locks wagers and reveals the final clue text (teams should have written their answers
+// before this point in the classroom; the clue text itself is shown here for the teacher to read aloud).
+function lockFinalWagers() {
+  const fr = S && S.finalRound;
+  if (!fr || !fr.active || fr.wagersLocked || !allWagersIn()) return;
+  snapshot();
+  fr.wagersLocked = true;
+  fr.revealed = true;
+  SFX.questionOpen();
+  commit();
+}
+
+function markFinalAnswer(t, correct) {
+  const fr = S && S.finalRound;
+  if (!fr || !fr.active || !fr.wagersLocked || !S.teams[t] || Object.prototype.hasOwnProperty.call(fr.answers, t)) return;
+  snapshot();
+  const wager = fr.wagers[t] || 0;
+  S.teams[t].score += correct ? wager : -wager;
+  fr.answers[t] = !!correct;
+  SFX[correct ? 'correct' : 'wrong']();
+  if (Object.keys(fr.answers).length >= S.teams.length) {
     S.ended = true;
     SFX.victory();
   }
@@ -5389,7 +5612,11 @@ function render() {
   renderBoard();
   renderScoreboard();
   renderTeacherBar();
-  renderModal();
+  if (S.finalRound && S.finalRound.active) {
+    renderFinalRoundModal();
+  } else {
+    renderModal();
+  }
 }
 
 function renderBoard() {
@@ -5447,11 +5674,29 @@ function renderModal() {
   const overlay = document.getElementById('modalOverlay');
   const c = S.clue;
   if (!c) { overlay.classList.remove('open'); return; }
+  document.getElementById('doneBtn').style.display = '';
+  const hintEl = document.querySelector('.kbd-hint');
+  if (hintEl) hintEl.style.display = '';
   const cat = S.cats[c.col];
   const q = S.board[c.col][c.row];
-  document.getElementById('modalCat').textContent = cat.name.toUpperCase() + ' — ' + cat.diff.toUpperCase();
-  document.getElementById('modalVal').textContent = fmt(VALUES[c.row]);
-  document.getElementById('modalClue').textContent = q.q;
+  // Daily Double, wager not yet locked in, and nobody has judged the clue yet — once someone
+  // has (a wrong attempt or the correct answer), it's too late to wager; drop the panel so
+  // the clue/buzz row behave exactly like a normal clue that quietly skipped the wager step.
+  const ddPending = c.isDailyDouble && c.wager == null && c.winner === null && c.tried.length === 0;
+
+  document.getElementById('modalCat').textContent = cat.name.toUpperCase() + ' — ' + cat.diff.toUpperCase() +
+    (c.isDailyDouble ? ' — DAILY DOUBLE' : '');
+  document.getElementById('modalVal').textContent = ddPending ? '' : fmt(clueValue());
+
+  // Clue text stays hidden behind a "DAILY DOUBLE" banner until a wager is locked in
+  // (the wager stepper renders inline, above the buzz row, in the meantime).
+  const clueWrap = document.getElementById('modalClue');
+  if (ddPending) {
+    clueWrap.textContent = '';
+    clueWrap.append(el('div', 'dd-banner', 'DAILY DOUBLE'), el('div', 'dd-sub', 'Lock in a wager below, or judge normally to skip it.'));
+  } else {
+    clueWrap.textContent = q.q;
+  }
 
   const ans = document.getElementById('answerReveal');
   if (c.revealed) {
@@ -5468,6 +5713,31 @@ function renderModal() {
   const buzzRow = document.getElementById('buzzRow');
   buzzRow.innerHTML = '';
   buzzRow.style.gridTemplateColumns = S.teams.length > 3 ? '1fr 1fr' : '1fr';
+
+  if (ddPending) {
+    // Wager stepper for the controlling team, offered above the (still-usable) buzz row —
+    // a teacher in a hurry can skip it and just judge the clue at face value like normal.
+    const team = S.teams[S.control];
+    const { min, max } = wagerBounds(S.control);
+    const wagerPanel = el('div', 'wager-panel');
+    wagerPanel.style.setProperty('--team', team.color);
+    wagerPanel.appendChild(el('div', 'dd-sub', `${team.name}, wager ${fmt(min)}–${fmt(max)}`));
+    const input = el('input', 'wager-input');
+    input.type = 'number'; input.min = String(min); input.max = String(max); input.step = '5';
+    input.value = String(Math.min(max, Math.max(min, ddWagerDraft != null ? ddWagerDraft : min)));
+    input.addEventListener('input', () => { ddWagerDraft = input.value; });
+    const stepDown = el('button', 'buzz-btn wager-step', '−100');
+    const stepUp = el('button', 'buzz-btn wager-step', '+100');
+    stepDown.addEventListener('click', e => { e.stopPropagation(); input.value = String(Math.max(min, (+input.value || 0) - 100)); ddWagerDraft = input.value; });
+    stepUp.addEventListener('click', e => { e.stopPropagation(); input.value = String(Math.min(max, (+input.value || 0) + 100)); ddWagerDraft = input.value; });
+    const confirm = el('button', 'close-modal-btn primary', 'LOCK IN WAGER');
+    confirm.addEventListener('click', e => { e.stopPropagation(); ddWagerDraft = null; submitWager(input.value); });
+    const row1 = el('div', 'wager-row');
+    row1.append(stepDown, input, stepUp);
+    wagerPanel.append(row1, confirm);
+    buzzRow.appendChild(wagerPanel);
+  }
+
   S.teams.forEach((t, i) => {
     const tried = c.tried.includes(i), won = c.winner === i;
     const locked = c.winner !== null || tried;
@@ -5485,6 +5755,89 @@ function renderModal() {
     card.addEventListener('click', () => { if (!locked) { pendingTeam = i; renderModal(); } });
     buzzRow.appendChild(card);
   });
+
+  if (!overlay.classList.contains('open')) {
+    overlay.classList.add('open', 'animating');
+    setTimeout(() => overlay.classList.remove('animating'), 450);
+  }
+}
+let ddWagerDraft = null; // remembers the in-progress wager input value across re-renders
+let finalWagerDrafts = {}; // teamIdx -> in-progress wager input value, across re-renders
+
+// Final round: reuses the modal shell for two phases —
+//  1) wagers not yet locked: every team enters a wager (one input each, teacher-operated).
+//  2) wagers locked: the category/clue is shown, and every team is marked correct/wrong at once.
+function renderFinalRoundModal() {
+  const overlay = document.getElementById('modalOverlay');
+  const fr = S.finalRound;
+  document.getElementById('backBtn').hidden = true;
+  document.getElementById('revealBtn').style.display = 'none';
+  // Final round drives its own transitions (wager -> reveal -> mark -> end); the normal
+  // Done/keyboard-hint affordances don't apply here, so hide them rather than leave dead UI.
+  document.getElementById('doneBtn').style.display = 'none';
+  const hint = document.querySelector('.kbd-hint');
+  if (hint) hint.style.display = 'none';
+
+  if (!fr.wagersLocked) {
+    document.getElementById('modalCat').textContent = 'FINAL ROUND — WAGERS';
+    document.getElementById('modalVal').textContent = '';
+    document.getElementById('modalClue').textContent = '';
+    const ans = document.getElementById('answerReveal');
+    ans.textContent = ''; ans.style.display = 'none';
+
+    const buzzRow = document.getElementById('buzzRow');
+    buzzRow.innerHTML = '';
+    buzzRow.style.gridTemplateColumns = S.teams.length > 3 ? '1fr 1fr' : '1fr';
+    S.teams.forEach((t, i) => {
+      const { min, max } = finalWagerBounds(i);
+      const locked = Object.prototype.hasOwnProperty.call(fr.wagers, i);
+      const panel = el('div', 'wager-panel');
+      panel.style.setProperty('--team', t.color);
+      const label = el('div', 'dd-sub', `${t.name} — wager 0 to ${fmt(max)}` + (locked ? ` (locked: ${fmt(fr.wagers[i])})` : ''));
+      panel.appendChild(label);
+      if (!locked) {
+        const input = el('input', 'wager-input');
+        input.type = 'number'; input.min = String(min); input.max = String(max); input.step = '5';
+        input.value = String(finalWagerDrafts[i] != null ? finalWagerDrafts[i] : min);
+        input.addEventListener('input', () => { finalWagerDrafts[i] = input.value; });
+        const confirm = el('button', 'close-modal-btn primary', 'LOCK IN');
+        confirm.addEventListener('click', e => { e.stopPropagation(); delete finalWagerDrafts[i]; submitFinalWager(i, input.value); });
+        const row = el('div', 'wager-row');
+        row.append(input, confirm);
+        panel.appendChild(row);
+      }
+      buzzRow.appendChild(panel);
+    });
+  } else {
+    document.getElementById('modalCat').textContent = 'FINAL ROUND — ' + fr.category.toUpperCase();
+    document.getElementById('modalVal').textContent = '';
+    document.getElementById('modalClue').textContent = fr.q;
+    const ans = document.getElementById('answerReveal');
+    let text = '✓ ' + fr.a;
+    if (Array.isArray(fr.alt) && fr.alt.length) text += ' (also accept: ' + fr.alt.join(', ') + ')';
+    ans.textContent = text;
+    ans.style.display = 'block';
+
+    const buzzRow = document.getElementById('buzzRow');
+    buzzRow.innerHTML = '';
+    buzzRow.style.gridTemplateColumns = S.teams.length > 3 ? '1fr 1fr' : '1fr';
+    S.teams.forEach((t, i) => {
+      const marked = Object.prototype.hasOwnProperty.call(fr.answers, i);
+      const won = fr.answers[i] === true;
+      const card = el('div', 'buzz-card' + (marked ? ' tried' : '') + (won ? ' winner' : ''));
+      card.style.setProperty('--team', t.color);
+      const nameWrap = el('div');
+      nameWrap.append(el('span', 'buzz-name', `${t.name} (wager ${fmt(fr.wagers[i] || 0)})`));
+      const btns = el('div', 'buzz-btns');
+      const ok = el('button', 'buzz-btn correct', '✓'); ok.disabled = marked;
+      const no = el('button', 'buzz-btn wrong', '✗'); no.disabled = marked;
+      ok.addEventListener('click', e => { e.stopPropagation(); markFinalAnswer(i, true); });
+      no.addEventListener('click', e => { e.stopPropagation(); markFinalAnswer(i, false); });
+      btns.append(ok, no);
+      card.append(nameWrap, btns);
+      buzzRow.appendChild(card);
+    });
+  }
 
   if (!overlay.classList.contains('open')) {
     overlay.classList.add('open', 'animating');
@@ -5606,6 +5959,10 @@ function init() {
     b.addEventListener('click', () => { setup.penalty = b.dataset.v === 'on'; renderRules(); }));
   document.querySelectorAll('#levelSeg button').forEach(b =>
     b.addEventListener('click', () => { setup.level = b.dataset.v; renderRules(); renderCatSelection(); }));
+  document.querySelectorAll('#dailyDoubleSeg button').forEach(b =>
+    b.addEventListener('click', () => { setup.dailyDoubles = +b.dataset.v; renderRules(); }));
+  document.querySelectorAll('#finalRoundSeg button').forEach(b =>
+    b.addEventListener('click', () => { setup.finalRound = b.dataset.v === 'on'; renderRules(); }));
   document.getElementById('startBtn').addEventListener('click', startGame);
   document.getElementById('resumeBtn').addEventListener('click', resumeGame);
   document.getElementById('discardBtn').addEventListener('click', discardSave);

@@ -204,6 +204,9 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   .cchip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 20%, transparent); }
   .cchip:disabled { opacity: .38; cursor: not-allowed; }
   .cgroup { display: inline-flex; }
+  .speed-row { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+  .speed-row .seg button { padding: 4px 10px; font-size: .82rem; }
+  .speed-row kbd { font: 800 .75rem var(--font-ui); border: 1px solid var(--rule); border-radius: 5px; padding: 0 5px; }
   .cgroup .cchip:first-child { border-radius: 999px 0 0 999px; }
   .cgroup .cchip.pen { border-radius: 0 999px 999px 0; margin-left: -2px; padding: 3px 8px; }
   #custom-dlg { margin: auto; max-height: 92vh; overflow: auto; width: min(640px, 92vw); border: 2px solid var(--rule); border-radius: 18px; background: var(--card); color: var(--ink); padding: 18px 22px; box-shadow: var(--shadow); }
@@ -268,7 +271,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
         <div class="row"><label>Answers</label>
           <span class="seg" data-key="answer"><button data-v="say">Say it</button><button data-v="spell">Spell it</button></span></div>
         <div class="row"><label>Turns</label>
-          <span class="seg" data-key="turns"><button data-v="turns">Take turns</button><button data-v="buzz">Open buzz</button></span></div>
+          <span class="seg" data-key="turns"><button data-v="turns">Take turns</button><button data-v="buzz">Open buzz</button><button data-v="auto">Auto reveal</button></span></div>
         <div class="row"><label>Rounds per team</label>
           <span class="seg" data-key="perTeam"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></span></div>
         <div class="row"><label>Describe bonus (+2)</label>
@@ -864,7 +867,9 @@ const ZOOMS = {
   extreme: { s: [2.00, 2.70], rot: 180, off: 0.40, minVis: 0.12, minPic: 0.85 },
 };
 
-const DEFAULT_SETTINGS = { board: 5, zoom: 'normal', answer: 'say', turns: 'turns', perTeam: 2, describe: 'off', cats: ['animals'], level: 'ALL', showCat: 'on', flagAnswer: 'country' };
+const DEFAULT_SETTINGS = { board: 5, zoom: 'normal', answer: 'say', turns: 'turns', perTeam: 2, describe: 'off', cats: ['animals'], level: 'ALL', showCat: 'on', flagAnswer: 'country', speed: 'normal' };
+const AUTO_SPEEDS = { slow: 2000, normal: 1200, fast: 700 };   // ms between squares in Auto reveal
+const SPEED_ORDER = ['slow', 'normal', 'fast'];
 const LEVELS = ['A1', 'A2', 'B1'];
 const MIN_POOL = 15;
 
@@ -892,6 +897,8 @@ function cleanSettings(raw) {
   if (o.level !== 'A1' && o.level !== 'A2') o.level = 'ALL';
   if (o.showCat !== 'off') o.showCat = 'on';
   if (o.flagAnswer !== 'nat') o.flagAnswer = 'country';
+  if (!['turns', 'buzz', 'auto'].includes(o.turns)) o.turns = 'turns';
+  if (!AUTO_SPEEDS[o.speed]) o.speed = 'normal';
   return o;
 }
 function loadSetup() {
@@ -1191,6 +1198,7 @@ const SFX = {
   ok()   { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.24, { at: i * 0.09, type: 'triangle' })); },
   bad()  { tone(190, 0.30, { type: 'sawtooth', vol: 0.08, slide: -80 }); },
   none() { [392, 330, 262].forEach((f, i) => tone(f, 0.26, { at: i * 0.16 })); },
+  stop() { tone(392, 0.12, { type: 'square', vol: 0.07 }); tone(523, 0.16, { at: 0.1, type: 'square', vol: 0.07 }); },
   fan()  { [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.32, { at: i * 0.11, type: 'triangle' })); },
 };
 function sfx(name) { try { SFX[name](); } catch (e) {} }
@@ -1306,6 +1314,7 @@ function newGame(settings, names) {
     tried: [],
     outcome: null,
     used: [],
+    running: false,
   };
   UNDO = [];
   startRound();
@@ -1315,7 +1324,8 @@ function newGame(settings, names) {
 
 function startRound() {
   S.turn = S.round % T();          // every team starts the same number of rounds
-  S.step = 'pick';
+  S.step = isAuto() ? 'auto' : 'pick';
+  S.running = false;
   S.answerer = null;
   S.tried = [];
   S.outcome = null;
@@ -1362,6 +1372,14 @@ function finishRound(winner) {
 function judge(team, correct) {
   if (!S || S.phase !== 'round' || S.step !== 'answer') return false;
   if (team == null || team < 0 || team >= T()) return false;
+  if (isAuto()) {
+    if (team !== S.answerer) return false;
+    snapshot();
+    ui.spellPending = null;
+    if (correct) finishRound(team); else autoWrong(team);
+    commit();
+    return true;
+  }
   if (S.settings.turns !== 'buzz' && team !== S.turn) return false;
   if (S.tried.includes(team)) return false;
   snapshot();
@@ -1387,6 +1405,91 @@ function judge(team, correct) {
   return true;
 }
 
+/* ---------- Auto reveal: squares open on a timer until a team stops it ---------- */
+function isAuto() { return !!S && S.settings.turns === 'auto'; }
+const autoTimer = { t: null, ms: 0 };
+function anyOpen() { return S.revealed.some(Boolean); }
+/** Keep exactly one pending tick while the reveal runs; called from every render. */
+function syncTimer() {
+  const want = S && S.phase === 'round' && S.step === 'auto' && S.running;
+  const ms = want ? AUTO_SPEEDS[S.settings.speed] || AUTO_SPEEDS.normal : 0;
+  if (autoTimer.t && (!want || autoTimer.ms !== ms)) { clearTimeout(autoTimer.t); autoTimer.t = null; }
+  if (want && !autoTimer.t) { autoTimer.ms = ms; autoTimer.t = setTimeout(autoTick, ms); }
+}
+/** Open one random picture square. Returns false when that ended the round. */
+function revealNext() {
+  const open = [];
+  S.revealed.forEach((r, i) => { if (!r && !S.blank[i]) open.push(i); });
+  if (open.length) {
+    const idx = open[Math.floor(Math.random() * open.length)];
+    S.revealed[idx] = true; S.last = idx;
+    sfx('tick');
+  }
+  if (open.length <= 1) {          // that was the last picture square: nobody stopped it
+    S.running = false;
+    finishRound(null);
+    S.outcome.full = true;
+    return false;
+  }
+  return true;
+}
+function autoTick() {
+  autoTimer.t = null;
+  if (!(S && S.phase === 'round' && S.step === 'auto' && S.running)) return;
+  revealNext();
+  commit();
+}
+/** Space: start, stop, or go on. */
+function toggleRun() {
+  if (!S || S.phase !== 'round' || S.step !== 'auto') return false;
+  S.running = !S.running;
+  ui.spellPending = null;
+  if (S.running) {
+    ui.msg = null;
+    if (!anyOpen()) revealNext();   // the first square opens at once
+  } else {
+    sfx('stop');
+  }
+  commit();
+  return true;
+}
+/** A team number (or click) stops the reveal and hands that team the answer. */
+function autoSelect(team) {
+  if (!S || S.phase !== 'round' || !isAuto() || team < 0 || team >= T()) return false;
+  if (S.step === 'auto') {
+    if (!anyOpen()) { ui.msg = { t: 'info', s: 'Press Space to start revealing first.' }; render(); return false; }
+    if (S.running) sfx('stop');
+    S.running = false;
+    snapshot();                     // undo comes back to this stopped board
+    S.step = 'answer'; S.answerer = team; S.tried = [];
+    ui.msg = null; ui.spellPending = null;
+    commit();
+    return true;
+  }
+  if (S.step === 'answer' && team !== S.answerer) { S.answerer = team; ui.spellPending = null; commit(); return true; }
+  return false;
+}
+/** Wrong guess: every other team gets half of what the guesser would have scored (rounded up). */
+function wrongShare() { return Math.ceil(pot() / 2); }
+function autoWrong(team) {
+  const share = wrongShare();
+  S.teams.forEach((t, i) => { if (i !== team) t.score += share; });
+  S.step = 'done';
+  S.outcome = { winner: null, pts: 0, bonus: false, wrong: team, share };
+  S.answerer = null; S.running = false;
+  ui.msg = null;
+  sfx('bad');
+}
+function setSpeed(d) {
+  if (!S || !isAuto()) return false;
+  const i = Math.max(0, Math.min(SPEED_ORDER.length - 1, SPEED_ORDER.indexOf(S.settings.speed) + d));
+  const v = typeof d === 'string' ? d : SPEED_ORDER[i];
+  if (!AUTO_SPEEDS[v] || v === S.settings.speed) return false;
+  S.settings.speed = v; setup.settings.speed = v; saveSetup();
+  commit();
+  return true;
+}
+
 /** Open buzz: nobody (else) answers this square — move on. */
 function nobody() {
   if (!S || S.phase !== 'round' || S.step !== 'answer' || S.settings.turns !== 'buzz') return false;
@@ -1401,7 +1504,7 @@ function nobody() {
 /** Spell mode: check typed text. A correct answer scores at once; anything else waits for the teacher. */
 function spellCheck(text) {
   if (!S || S.step !== 'answer') return null;
-  const team = S.settings.turns === 'buzz' ? S.answerer : S.turn;
+  const team = S.settings.turns === 'buzz' || isAuto() ? S.answerer : S.turn;
   if (team == null) { ui.msg = { t: 'info', s: 'Click the team that is answering first.' }; render(); return null; }
   if (!String(text || '').trim()) return null;
   const r = checkAnswer(ansOf(currentItem()), text);
@@ -1432,7 +1535,7 @@ function nextRound() {
 function skipPicture() {
   if (!S || S.phase !== 'round' || S.step === 'done') return false;
   snapshot();
-  S.step = 'pick'; S.answerer = null; S.tried = [];
+  S.step = isAuto() ? 'auto' : 'pick'; S.answerer = null; S.tried = []; S.running = false;
   loadPicture(pickItem());
   ui.buffer = ''; ui.spellPending = null;
   ui.msg = { t: 'info', s: 'New picture. ' + S.teams[S.turn].name + ' still picks.' };
@@ -1476,6 +1579,7 @@ function undo() {
     const r = store.get(RECENT_KEY, []); r.pop(); store.set(RECENT_KEY, r);
   }
   S = prev;
+  S.running = false;             // undo never restarts the automatic reveal
   ui.buffer = ''; ui.spellPending = null; ui.msg = { t: 'info', s: 'Undone.' };
   document.body.classList.toggle('playing', S.phase === 'round');
   commit();
@@ -1546,7 +1650,7 @@ function renderBoard() {
   if (!ctx) return;
   const n = S.settings.board, img = getBake(P);
   const all = S.step === 'done';
-  const cover = shade(S.teams[S.turn].color, 0.62);
+  const cover = shade(isAuto() ? '#94a3b8' : S.teams[S.turn].color, 0.62);
   const edge = k => Math.round(k * P / n);
   ctx.clearRect(0, 0, P, P);
   for (let i = 0; i < n * n; i++) {
@@ -1572,28 +1676,30 @@ function renderBoard() {
   if (!all && S.last >= 0) {
     const c = S.last % n, r = Math.floor(S.last / n);
     const x = edge(c), y = edge(r), w = edge(c + 1) - x, hh = edge(r + 1) - y, lw = Math.max(3, P / 120);
-    ctx.strokeStyle = S.teams[S.turn].color; ctx.lineWidth = lw;
+    ctx.strokeStyle = isAuto() ? '#fbbf24' : S.teams[S.turn].color; ctx.lineWidth = lw;
     ctx.strokeRect(x + lw / 2, y + lw / 2, w - lw, hh - lw);
   }
 }
 
 function renderTeams() {
   const box = $('teams'); box.textContent = '';
-  const buzz = S.settings.turns === 'buzz';
+  const buzz = S.settings.turns === 'buzz', auto = isAuto();
+  const pickable = auto ? (S.step === 'auto' && anyOpen()) || S.step === 'answer' : buzz && S.step === 'answer';
   S.teams.forEach((t, i) => {
-    const control = S.step !== 'done' && i === S.turn;
-    const sel = S.step === 'answer' && buzz && S.answerer === i;
+    const control = !auto && S.step !== 'done' && i === S.turn;
+    const sel = S.step === 'answer' && (buzz || auto) && S.answerer === i;
     const tried = S.step === 'answer' && S.tried.includes(i);
     let tag = null;
     if (S.step === 'pick' && control) tag = 'PICKING';
     else if (S.step === 'answer' && !buzz && control) tag = 'ANSWERING';
     else if (sel) tag = 'ANSWERING';
     else if (S.step === 'done' && S.outcome && S.outcome.winner === i) tag = 'GOT IT';
+    else if (S.step === 'done' && S.outcome && S.outcome.wrong != null && S.outcome.wrong !== i) tag = '+' + S.outcome.share;
     const card = h('div', {
-      class: 'team' + (control ? ' control' : '') + (sel ? ' selected' : '') + (tried ? ' tried' : '') + (buzz && S.step === 'answer' ? ' selectable' : ''),
+      class: 'team' + (control ? ' control' : '') + (sel ? ' selected' : '') + (tried ? ' tried' : '') + (pickable ? ' selectable' : ''),
       style: '--c:' + t.color + ';--tb:' + tagColors(t.color).bg + ';--ti:' + tagColors(t.color).ink,
       'data-team': i,
-      onclick: () => { if (buzz && S.step === 'answer') selectAnswerer(i); },
+      onclick: () => { if (auto) autoSelect(i); else if (buzz && S.step === 'answer') selectAnswerer(i); },
     },
       h('span', { class: 'swatch', style: 'background:' + t.color }),
       h('span', { class: 'tnum' }, String(i + 1)),
@@ -1615,6 +1721,8 @@ function renderAction() {
   const t = S.teams[S.turn];
   const buzz = S.settings.turns === 'buzz';
   const spell = S.settings.answer === 'spell';
+
+  if (isAuto() && (S.step === 'auto' || S.step === 'answer')) { renderAutoAction(box, spell); return; }
 
   if (S.step === 'pick') {
     box.append(
@@ -1685,7 +1793,9 @@ function renderAction() {
   box.append(
     o.winner != null
       ? h('div', { class: 'msg good' }, '✅ ' + S.teams[o.winner].name + ' got it! +' + o.pts + (o.bonus ? ' (+' + DESCRIBE_BONUS + ' bonus)' : ''))
-      : h('div', { class: 'msg bad' }, 'Nobody got it this time.'),
+      : o.wrong != null
+        ? h('div', { class: 'msg bad' }, '✗ ' + S.teams[o.wrong].name + ': not right. ' + (o.share ? (T() > 2 ? 'Every other team' : S.teams[1 - o.wrong].name) + ' +' + o.share + '.' : 'No points.'))
+        : h('div', { class: 'msg bad' }, o.full ? 'Nobody stopped it in time.' : 'Nobody got it this time.'),
     h('div', { class: 'result-answer' }, it.a[0]),
     it.alt && it.alt.length ? h('div', { class: 'alts' }, 'Also accepted: ' + it.alt.join(', ')) : null);
   if (S.settings.describe === 'on' && o.winner != null && !o.bonus) {
@@ -1693,6 +1803,64 @@ function renderAction() {
       h('button', { class: 'btn good', type: 'button', onclick: describeBonus }, '+' + DESCRIBE_BONUS + ' Describe bonus', h('small', null, 'B')));
   }
   box.append(h('button', { class: 'btn grow', type: 'button', id: 'next-btn', onclick: nextRound }, last ? 'See final scores' : 'Next picture', h('small', null, 'Space')));
+}
+
+function speedEl() {
+  const seg = h('span', { class: 'seg speed', role: 'group', 'aria-label': 'Reveal speed' });
+  SPEED_ORDER.forEach(v => seg.append(h('button', { type: 'button', class: S.settings.speed === v ? 'on' : null, 'data-speed': v, onclick: () => setSpeed(v) }, v[0].toUpperCase() + v.slice(1))));
+  return h('div', { class: 'speed-row' }, h('span', { class: 'sub' }, 'Speed'), seg, h('span', { class: 'sub' }, h('kbd', null, '−'), ' ', h('kbd', null, '+')));
+}
+function renderAutoAction(box, spell) {
+  const worth = pot(), share = wrongShare();
+  const pts = n => n + (n === 1 ? ' point' : ' points');
+  if (S.step === 'auto') {
+    if (!anyOpen()) {
+      box.append(h('div', { class: 'prompt' }, 'Ready?'),
+        h('div', { class: 'sub' }, 'Squares open one by one. Stop the moment a team knows: the earlier, the more points.'),
+        h('button', { class: 'btn good grow', type: 'button', id: 'run-btn', onclick: toggleRun }, '▶ Start', h('small', null, 'Space')));
+    } else if (S.running) {
+      box.append(h('div', { class: 'prompt' }, 'Revealing… ', h('span', { class: 'who' }, 'Worth ' + pts(worth))),
+        h('div', { class: 'sub' }, 'Press Space, or the number of the team that wants to answer.'),
+        h('button', { class: 'btn bad grow', type: 'button', id: 'run-btn', onclick: toggleRun }, '⏸ Stop', h('small', null, 'Space')));
+    } else {
+      box.append(h('div', { class: 'prompt' }, 'Stopped. Who is answering?'),
+        h('div', { class: 'sub' }, 'Press the team number or click the team.'),
+        h('div', { class: 'sub' }, 'Right: +' + worth + '. Wrong: ' + (T() > 2 ? 'every other team' : 'the other team') + ' +' + share + '.'),
+        h('button', { class: 'btn plain', type: 'button', id: 'run-btn', onclick: toggleRun }, '▶ Go on', h('small', null, 'Space')));
+    }
+    box.append(msgEl(), speedEl());
+    return;
+  }
+  // answer
+  const tm = S.teams[S.answerer];
+  box.append(h('div', { class: 'prompt' }, h('span', { class: 'who' }, tm.name), ', what is it?'),
+    h('div', { class: 'sub' }, 'Right: +' + worth + '. Wrong: ' + (T() > 2 ? 'every other team' : S.teams[1 - S.answerer].name) + ' +' + share + ' and the picture is shown.'),
+    msgEl());
+  if (spell) {
+    if (ui.spellPending) {
+      const p = ui.spellPending;
+      box.append(
+        h('div', { class: 'msg bad' }, '“' + p.text + '” — ' + (p.close ? 'so close! Check the spelling.' : 'not accepted.')),
+        h('div', { class: 'btn-row' },
+          h('button', { class: 'btn bad grow', type: 'button', onclick: () => judge(p.team, false) }, '✗ Wrong', h('small', null, 'N / Enter')),
+          h('button', { class: 'btn good grow', type: 'button', onclick: () => judge(p.team, true) }, '✓ Accept', h('small', null, 'Y'))));
+    } else {
+      const inp = h('input', { class: 'answer-input', id: 'answer-input', type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: 'Type the answer…' });
+      inp.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') { ev.preventDefault(); spellCheck(inp.value); }
+        if (ev.key === 'Escape') inp.blur();
+      });
+      box.append(inp, h('div', { class: 'btn-row' },
+        h('button', { class: 'btn grow', type: 'button', onclick: () => spellCheck(inp.value) }, 'Check', h('small', null, 'Enter')),
+        h('button', { class: 'btn plain', type: 'button', onclick: () => judge(S.answerer, false) }, 'No answer')));
+      setTimeout(() => { if (document.activeElement !== inp && inp.isConnected) inp.focus(); }, 0);
+    }
+    return;
+  }
+  box.append(h('div', { class: 'btn-row' },
+    h('button', { class: 'btn good grow', type: 'button', onclick: () => judge(S.answerer, true) }, '✓ Correct', h('small', null, 'Y')),
+    h('button', { class: 'btn bad grow', type: 'button', onclick: () => judge(S.answerer, false) }, '✗ Wrong', h('small', null, 'N'))),
+    h('div', { class: 'sub' }, 'Wrong team? Press the right team number.'));
 }
 
 function renderTopbar() {
@@ -1740,6 +1908,7 @@ function renderPeek() {
 }
 
 function render() {
+  syncTimer();
   const phase = S ? S.phase : 'setup';
   $('setup').classList.toggle('hidden', phase !== 'setup');
   $('game').classList.toggle('hidden', phase !== 'round');
@@ -1771,7 +1940,9 @@ function renderSetup() {
   });
   renderPictures();
   const total = setup.count * setup.settings.perTeam;
-  $('rules-note').textContent = total + ' rounds in total — every team starts ' + setup.settings.perTeam + (setup.settings.perTeam === 1 ? ' round.' : ' rounds.');
+  $('rules-note').textContent = setup.settings.turns === 'auto'
+    ? total + ' pictures in total; squares open by themselves.'
+    : total + ' rounds in total — every team starts ' + setup.settings.perTeam + (setup.settings.perTeam === 1 ? ' round.' : ' rounds.');
   const saved = store.get(SAVE_KEY, null);
   const can = saved && saved.S && saved.S.phase === 'round';
   $('resume-btn').classList.toggle('hidden', !can);
@@ -1838,7 +2009,7 @@ function resume() {
   saved.S.settings = cleanSettings(saved.S.settings);
   if (Array.isArray(saved.custom)) CUSTOM.items = saved.custom.filter(it => it && typeof it.e === 'string' && Array.isArray(it.a) && it.a.length).slice(0, CUSTOM_MAX);
   preloadCats(saved.S.settings.cats).then(() => {
-    S = saved.S; UNDO = Array.isArray(saved.UNDO) ? saved.UNDO : [];
+    S = saved.S; S.running = false; UNDO = Array.isArray(saved.UNDO) ? saved.UNDO : [];
     ui.buffer = ''; ui.spellPending = null; ui.msg = { t: 'info', s: 'Game resumed.' };
     commit();
   });
@@ -1912,6 +2083,25 @@ function onKey(e) {
 
   if (k === 'a') { setPeek(true); return; }
   if (k === 's' && !e.shiftKey) { skipPicture(); return; }
+
+  if (isAuto() && S.step !== 'done') {
+    if (k === '-' || k === '_') { setSpeed(-1); return; }
+    if (k === '+' || k === '=') { setSpeed(1); return; }
+    if (S.step === 'auto') {
+      if (k === ' ') { e.preventDefault(); toggleRun(); return; }
+      if (/^[1-6]$/.test(k)) { autoSelect(+k - 1); return; }
+      return;
+    }
+    if (ui.spellPending) {
+      if (k === 'y') { judge(ui.spellPending.team, true); return; }
+      if (k === 'n' || k === 'Enter') { e.preventDefault(); judge(ui.spellPending.team, false); return; }
+      return;
+    }
+    if (/^[1-6]$/.test(k)) { autoSelect(+k - 1); return; }
+    if (k === ' ') { e.preventDefault(); return; }
+    if (S.settings.answer === 'say' && (k === 'y' || k === 'n')) { judge(S.answerer, k === 'y'); return; }
+    return;
+  }
 
   if (S.step === 'pick') {
     if (/^[0-9]$/.test(k)) { ui.buffer = (ui.buffer + k).slice(-2); render(); return; }
@@ -2002,7 +2192,7 @@ function init() {
   $('rematch-btn').addEventListener('click', () => { const st = S.settings, nm = S.teams.map(t => t.name); S = null; newGame(st, nm); });
   $('newgame-btn').addEventListener('click', toSetup);
   // game controls
-  $('board').addEventListener('click', ev => { if (S && S.phase === 'round') uncover(boardIndexAt(ev.clientX, ev.clientY)); });
+  $('board').addEventListener('click', ev => { if (!S || S.phase !== 'round') return; if (isAuto()) { if (S.step === 'auto') toggleRun(); return; } uncover(boardIndexAt(ev.clientX, ev.clientY)); });
   $('skip-btn').addEventListener('click', skipPicture);
   $('undo-btn').addEventListener('click', undo);
   $('end-btn').addEventListener('click', armEnd);

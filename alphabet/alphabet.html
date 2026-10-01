@@ -221,7 +221,8 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   .paused-screen h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.5rem, 6vw, 4.5rem); letter-spacing: .04em; }
   .peek { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); z-index: 6; background: var(--card); box-shadow: var(--shadow); border: 2px solid var(--accent); border-radius: 14px; padding: 8px 14px; max-width: 96%; font-weight: 700; font-size: .9rem; line-height: 1.55; text-align: left; }
   .peek b { color: var(--accent); font-family: var(--font-display); font-weight: 400; margin-right: 4px; }
-  .peek span { white-space: nowrap; margin-right: 12px; }
+  .peek span { white-space: nowrap; margin-right: 12px; display: inline-block; }
+  .stage .lecterns { width: min(100%, 1000px); }
 
   /* intro / board end */
   .stage { max-width: 1100px; margin: 0 auto; height: calc(100dvh - 24px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
@@ -284,7 +285,73 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
    ===================================================================== */
 
 /*BANK-START*/
-const CATS = [];
+const CATS = [
+  // Words are space-separated; "_" joins a multi-word item. Level = how common the WORD is (A1 / A2 / B1).
+  { id: 'animals', label: 'Animals', icon: '🐾', group: 'Vocabulary',
+    A1: 'ant bear bee bird cat chicken cow dog dolphin duck elephant fish fox frog giraffe goat horse lion monkey mouse pig rabbit shark sheep snake spider tiger turtle whale zebra',
+    A2: 'bat butterfly camel crab crocodile deer donkey eagle fly goose gorilla hamster hippo insect jellyfish kangaroo kitten koala leopard lizard octopus owl panda parrot penguin polar_bear pony puppy rat snail squirrel swan wolf worm',
+    B1: 'beetle bull cheetah chimpanzee dinosaur flamingo gecko hedgehog hyena iguana jaguar llama lobster mosquito moth newt ostrich otter peacock pelican quail raccoon rhino salmon seal sloth tortoise vulture walrus yak' },
+  { id: 'food', label: 'Food and Drink', icon: '🍎', group: 'Vocabulary',
+    A1: 'apple banana bread butter cake candy carrot cheese chocolate coffee cookie egg fish fruit hamburger ice_cream juice lemon meat milk orange pasta pizza potato rice salad sandwich soup sugar tea tomato water',
+    A2: 'avocado bean biscuit burger cereal cherry coconut corn cucumber donut fries garlic grape honey hot_dog jam ketchup kiwi lettuce lime mango melon mushroom noodles nut olive onion pancake peach peanut pear pepper pie pineapple popcorn sausage steak strawberry sweets toast vanilla vegetable waffle watermelon yogurt',
+    B1: 'broccoli cabbage cauliflower dumpling eggplant fig lasagna lentils mayonnaise omelet quiche quinoa radish raspberry spinach sushi tuna vinegar zucchini' },
+  { id: 'jobs', label: 'Jobs', icon: '👷', group: 'People and Places',
+    A1: 'actor artist cook dancer doctor driver farmer nurse pilot police_officer singer teacher waiter',
+    A2: 'baker builder chef cleaner dentist designer engineer firefighter guide hairdresser journalist judge lawyer manager mechanic model musician officer painter photographer plumber receptionist reporter sailor scientist secretary shop_assistant soldier tour_guide vet writer',
+    B1: 'accountant architect astronaut carpenter cashier editor electrician gardener illustrator interpreter inventor jeweler kindergarten_teacher librarian lifeguard optician pharmacist politician programmer surgeon tailor translator umpire yoga_teacher zookeeper' },
+  { id: 'clothes', label: 'Clothes and Accessories', icon: '👕', group: 'Vocabulary',
+    A1: 'boots cap coat dress hat jacket jeans pants shirt shoes shorts skirt socks sweater T-shirt trousers',
+    A2: 'belt blouse bracelet earrings flip-flops gloves glasses hoodie jumper leggings mask necklace pajamas raincoat ring sandals scarf slippers sneakers suit sunglasses swimsuit tie tracksuit underwear uniform vest watch',
+    B1: 'apron bow_tie cardigan collar kimono mittens nightgown overalls overcoat tights yoga_pants' },
+  { id: 'house', label: 'Things in a House', icon: '🏠', group: 'Vocabulary',
+    A1: 'bath bathroom bed bedroom chair clock computer cup door fridge garden kitchen lamp phone shower sofa stairs table TV window',
+    A2: 'alarm_clock armchair blanket bookcase bowl bucket carpet ceiling closet cooker cupboard curtain desk dishwasher drawer elevator fan floor fork freezer garage glass hairdryer hall heater iron kettle key knife ladder light microwave mirror napkin oven pan pillow plant plate radio roof rug shelf sink spoon tap toaster toilet toothbrush towel vase wall wardrobe washing_machine yard',
+    B1: 'attic basement chimney cushion doorbell fireplace jar lid mattress quilt radiator socket vacuum_cleaner' },
+  { id: 'school', label: 'School', icon: '✏️', group: 'Vocabulary',
+    A1: 'bag board book chair class classroom computer desk English homework lesson math pen pencil question ruler school student teacher test',
+    A2: 'art backpack biology break cafeteria calculator canteen chemistry dictionary eraser exam folder geography glue grade gym history IT lab library lunch map marker music notebook office paper physics playground principal project quiz science scissors sharpener subject textbook timetable uniform vocabulary whiteboard',
+    B1: 'assembly certificate diploma essay graduation ink janitor kindergarten locker semester term university yearbook' },
+  { id: 'body', label: 'Body and Health', icon: '💪', group: 'Vocabulary',
+    A1: 'arm back body doctor ear eye face finger foot hair hand head leg mouth nose teeth tooth',
+    A2: 'ankle beard blood bone brain cheek chest chin cold cough dentist elbow eyebrow fever flu headache heart hip hospital ill knee lip medicine nail neck nurse pain pill shoulder sick skin stomach temperature thumb toe tongue waist wrist',
+    B1: 'allergy bandage eyelash forehead germs gums heel injury jaw kidney liver lung muscle organ palm rash rib skull spine thigh vein virus vitamin' },
+  { id: 'sports', label: 'Sports and Hobbies', icon: '⚽', group: 'Vocabulary',
+    A1: 'baseball basketball cooking cycling dancing drawing football golf hockey music painting reading running singing skating skiing soccer swimming tennis volleyball',
+    A2: 'athletics badminton bowling boxing camping chess climbing diving exercise fishing gardening gymnastics hiking horse_riding ice_skating jogging judo karate kite_flying photography rugby sailing skateboarding snowboarding surfing table_tennis video_games walking yoga',
+    B1: 'archery fencing juggling kayaking knitting netball origami parkour quilting rowing scuba_diving unicycling windsurfing wrestling zumba' },
+  { id: 'transport', label: 'Transport', icon: '🚌', group: 'People and Places',
+    A1: 'bike boat bus car plane ship taxi train',
+    A2: 'ambulance bicycle coach cruise_ship delivery_truck electric_car ferry fire_truck garbage_truck helicopter hot-air_balloon jet lorry metro motorbike motorcycle police_car racing_car rocket school_bus scooter skateboard sports_car subway tram truck underground van',
+    B1: 'cable_car canoe caravan double-decker glider go-kart hovercraft jeep kayak limousine ocean_liner quad_bike raft sailboat spaceship submarine tractor unicycle wagon yacht zeppelin' },
+  { id: 'places', label: 'Places in a City', icon: '🏙️', group: 'People and Places',
+    A1: 'airport bank beach cafe cinema hospital hotel house library museum park restaurant school shop station street supermarket zoo',
+    A2: 'bakery bookstore bridge bus_station bus_stop castle church department_store factory farm gallery garage gym mall market office parking_lot pharmacy playground police_station pool post_office square stadium temple theater tower university water_park',
+    B1: 'aquarium cathedral courthouse embassy fire_station harbor ice_rink jail kiosk mosque newsstand opera_house prison quay skyscraper town_hall youth_club' },
+  { id: 'countries', label: 'Countries', icon: '🌍', group: 'People and Places',
+    A1: 'Argentina Australia Brazil Canada Chile China England France Germany India Italy Japan Mexico Portugal Russia Spain United_States',
+    A2: 'Belgium Bolivia Colombia Cuba Denmark Ecuador Egypt Finland Greece Iceland Indonesia Ireland Jamaica Kenya Morocco Netherlands New_Zealand Nigeria Norway Paraguay Peru Poland Scotland South_Africa South_Korea Sweden Switzerland Thailand Turkey Ukraine United_Kingdom Uruguay Venezuela Vietnam Wales',
+    B1: 'Austria Croatia Ethiopia Ghana Honduras Hungary Jordan Kazakhstan Luxembourg Malaysia Nepal Oman Pakistan Qatar Romania Singapore Tanzania Uganda Yemen Zambia Zimbabwe' },
+  { id: 'nature', label: 'Nature and Weather', icon: '🌦️', group: 'Vocabulary',
+    A1: 'beach cloud flower forest grass ice island lake moon mountain rain river sea sky snow spring star summer sun tree wind winter',
+    A2: 'autumn bush cave desert earth field fog hill jungle leaf lightning nest ocean planet rainbow rock sand storm thunder valley volcano waterfall wave weather wood',
+    B1: 'avalanche breeze canyon cliff drought earthquake flood glacier hurricane iceberg meadow mist pond quicksand rainforest stream tornado tsunami universe' },
+  { id: 'verbs', label: 'Verbs', icon: '🏃', group: 'Word Types',
+    A1: 'ask be buy come cook dance drink drive eat fly get give go have help jump know like listen live look make open play read run see sing sit sleep speak swim take talk walk want watch work write',
+    A2: 'answer arrive begin borrow break bring build call carry catch change choose clean climb close count cry cut decide draw dream drop enjoy explain fall feel find finish follow forget grow guess hate hear hide hit hold hope hurry imagine invite join keep kick knock laugh learn leave lend lose love meet miss move need order pay pick plan point pull push put relax remember rent ride ring send shout show shut smile stop study teach tell think throw touch travel try turn understand use visit wait wake wash win wish worry',
+    B1: 'admire bake ignore improve nod quit upload vanish volunteer yawn yell zoom' },
+  { id: 'adjectives', label: 'Adjectives', icon: '🎨', group: 'Word Types',
+    A1: 'bad beautiful big black blue cheap cold dark easy expensive fast good green hard hot long new nice old orange red short slow small tall white yellow young',
+    A2: 'awful boring bright brilliant clean comfortable dangerous delicious different difficult dirty dry empty famous fantastic fresh full great heavy high huge important interesting large light loud low modern narrow noisy open perfect pretty quick quiet rich round safe sharp soft strange strong sweet tasty terrible thick thin tiny ugly useful warm weak wet wide wonderful wrong',
+    B1: 'ancient enormous fragile gigantic icy juicy massive neat ordinary pale rare smooth unusual valuable vast violet visible' },
+  { id: 'feelings', label: 'Feelings and Personality', icon: '😊', group: 'Word Types',
+    A1: 'happy hungry sad thirsty tired',
+    A2: 'afraid angry bored brave calm clever crazy excited friendly funny glad interested kind lazy lonely nervous OK polite proud quiet relaxed rude scared shy sleepy sorry surprised unhappy upset worried',
+    B1: 'annoyed ashamed bossy cheerful confident confused curious disappointed embarrassed generous grateful grumpy honest jealous mean moody optimistic outgoing patient pessimistic sensitive stressed vain wise' },
+  { id: 'shopping', label: 'Things You Can Buy', icon: '🛒', group: 'Vocabulary',
+    A1: 'apple bag ball bike book bread camera candy car computer cup dress eggs flowers game hat ice_cream jeans juice lamp milk orange_juice pen phone pizza shoes toy TV watch',
+    A2: 'battery bracelet charger chocolate dictionary earphones envelope gift guitar hairbrush headphones jacket jewelry keyboard kettle kite laptop magazine map mirror necklace newspaper notebook paint perfume plant poster radio ring scarf shampoo soap stamp sunglasses tablet ticket toothbrush toothpaste umbrella vase video_game wallet yogurt yo-yo',
+    B1: 'candle deodorant ink key_ring lipstick mattress nail_polish olive_oil quilt vitamins' },
+];
 /*BANK-END*/
 
 // Value of a letter when a category has no word bank: how hard it is to START an English word with it.
@@ -305,6 +372,16 @@ const TEAM_PALETTE = [
   { name: 'Teal',   c: '#0d9488' },
 ];
 const LEVELS = ['A1', 'A2', 'B1'];
+const GROUPS = ['Vocabulary', 'People and Places', 'Word Types'];
+/** Turn each bank's level strings into words[letter] = [[word, level], …]. */
+function expandBank(c) {
+  c.words = {};
+  for (const lvl of LEVELS) for (const raw of String(c[lvl] || '').split(/\s+/).filter(Boolean)) {
+    const w = raw.replace(/_/g, ' '), L = headLetter(w);
+    if (L) (c.words[L] = c.words[L] || []).push([w, lvl]);
+  }
+}
+CATS.forEach(expandBank);
 const UNDO_DEPTH = 30;
 const MUTE_KEY = 'alphabetgrab:mute';
 const THEME_KEY = 'arschul:theme';
@@ -909,13 +986,13 @@ function renderSetup() {
         h('input', { id: 'tn' + i, maxlength: 20, placeholder: TEAM_PALETTE[i].name, value: setup.names[i], 'aria-label': 'Team ' + (i + 1) + ' name',
           oninput: e => { setup.names[i] = e.target.value.slice(0, 20); saveSetup(); } })))));
   const fairNote = setup.boards % setup.teams === 0 ? null
-    : h('div', { class: 'note' }, 'The starting team changes every board. With ' + setup.teams + ' teams, ' + setup.teams + ' boards gives everyone the same number of starts.');
+    : h('div', { class: 'note' }, 'Tip: ' + setup.teams + ' boards give every team the same number of starts.');
   const rulesPanel = h('div', { class: 'panel' },
     h('h2', null, 'Rules'),
     h('div', { class: 'row' }, h('label', null, 'Board'), seg('mode', [['claim', 'Claim (shared)'], ['race', 'Race (own A–Z)']])),
     h('div', { class: 'note' }, setup.mode === 'claim'
-      ? 'One A–Z board for everyone. A letter belongs to the first team that gives a word for it.'
-      : 'Every team fills its own A–Z. Best for 2–3 teams. Repeated words are flagged.'),
+      ? 'One shared A\u2013Z. The first team with a word gets the letter.'
+      : 'Each team fills its own A\u2013Z. Best for 2\u20133 teams.'),
     setup.mode === 'race' && setup.teams > 3 ? h('div', { class: 'note warn' }, 'Race gets long with ' + setup.teams + ' teams. Claim is quicker.') : null,
     h('div', { class: 'row' }, h('label', null, 'Turn time'), seg('time', [[10, '10s'], [20, '20s'], [30, '30s'], [0, 'Off']])),
     h('div', { class: 'row' }, h('label', null, 'Boards'),
@@ -929,8 +1006,13 @@ function renderSetup() {
 
   const picked = setup.cats.map(catOf);
   const catPanel = h('div', { class: 'panel' },
-    h('h2', null, 'Categories'),
-    h('div', { class: 'note' }, 'One category per board, in this order:'),
+    h('div', { class: 'row', style: 'margin-top:0' }, h('h2', { style: 'margin:0' }, 'Categories'),
+      CATS.length ? h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' },
+        h('label', { style: 'font-weight:800;font-size:.9rem' }, 'Level'), seg('level', [['A1', 'A1'], ['A2', 'Up to A2'], ['ALL', 'All']]),
+        h('button', { type: 'button', class: 'tool', style: 'box-shadow:none;background:var(--rule)', onclick: randomCats, title: 'A random category for every board' }, '\u{1F3B2} Random')) : null),
+    h('div', { class: 'note' }, 'One category per board, in this order. Numbers = open letters at this level.'),
+    (() => { const thin = picked.filter(c => c.bank && catCount(c.bank) < 12);
+      return thin.length ? h('div', { class: 'note warn' }, thin.map(c => c.label).join(', ') + (thin.length > 1 ? ' have' : ' has') + ' fewer than 12 open letters at this level. Try a higher level for a fuller board.') : null; })(),
     h('div', { class: 'picked' }, picked.length ? picked.map((c, i) =>
       h('span', { class: 'pk' }, h('b', null, String(i + 1)), (c.icon ? c.icon + ' ' : '') + c.label,
         h('button', { type: 'button', 'aria-label': 'Remove ' + c.label, onclick: () => toggleCat(setup.cats[i]) }, '×')))
@@ -942,7 +1024,7 @@ function renderSetup() {
       h('button', { type: 'button', class: 'tool', onclick: addFree }, '+ Add')),
     setup.free.length ? h('div', { class: 'cat-chips', style: 'margin-top:6px' }, setup.free.map(f =>
       h('button', { type: 'button', class: 'cchip' + (setup.cats.includes(freeKey(f)) ? ' on' : ''), onclick: () => toggleCat(freeKey(f)) }, '✏️ ' + f))) : null,
-    h('div', { class: 'note' }, CATS.length ? 'Your own categories use standard letter values and have no word list.' : 'Letter values: common first letters 10, hard ones (Q, Z, X) 40–50.'));
+    h('div', { class: 'note' }, CATS.length ? 'Fewer words for a letter = more points. Your own categories use standard values.' : 'Letter values: common first letters 10, hard ones (Q, Z, X) 40\u201350.'));
 
   return h('div', { id: 'setup' },
     h('div', { class: 'logo' }, 'Alphabet ', h('span', null, 'Grab')),
@@ -955,11 +1037,24 @@ function renderSetup() {
       h('button', { class: 'big-btn', type: 'button', id: 'start', disabled: !setup.cats.length, onclick: startNew }, 'Start ▶'),
       ...utilButtons()),
     h('div', { class: 'keys-help' },
-      'Type the word, ', h('kbd', null, 'Enter'), ' to grab. Teacher keys use ', h('kbd', null, 'Ctrl'), ' (', h('kbd', null, '⌘'), ' on Mac) so capitals still type: ',
+      'Type the word, ', h('kbd', null, 'Enter'), ' to grab \u00B7 Teacher keys: ', h('kbd', null, 'Ctrl'), '/', h('kbd', null, '\u2318'), ' + ',
       h('kbd', null, 'Z'), ' undo · ', h('kbd', null, 'P'), ' pause · ', h('kbd', null, 'S'), ' pass · ',
       h('kbd', null, 'K'), ' challenge · ', CATS.length ? [h('kbd', null, 'I'), ' peek · '] : null, h('kbd', null, 'E'), ' ×2 end'));
 }
-function renderCatLibrary() { return null; }   // filled in with the word banks
+function renderCatLibrary() {
+  return h('div', { class: 'cat-groups' }, GROUPS.map(g => h('div', { class: 'cat-group' },
+    h('h3', null, g),
+    h('div', { class: 'cat-chips' }, CATS.filter(c => c.group === g).map(c => {
+      const key = 'bank:' + c.id, on = setup.cats.includes(key), n = catCount(c);
+      return h('button', { type: 'button', class: 'cchip' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', title: n + ' letters playable at this level',
+        onclick: () => toggleCat(key) }, c.icon + ' ' + c.label, h('span', { class: 'n' }, n));
+    })))));
+}
+function randomCats() {
+  const pool = CATS.map(c => 'bank:' + c.id).sort(() => Math.random() - 0.5);
+  setup.cats = pool.slice(0, Math.max(1, setup.boards));
+  saveSetup(); render();
+}
 function startNew() {
   if (!setup.cats.length) return;
   actx();
@@ -1149,7 +1244,7 @@ function renderIntro() {
   CATS.forEach(x => add('bank:' + x.id, (x.icon ? x.icon + ' ' : '') + x.label));
   setup.free.forEach(f => add(freeKey(f), '✏️ ' + f));
   return h('div', { class: 'stage' },
-    h('div', { class: 'kicker' }, 'Board ' + (S.b + 1) + ' of ' + S.settings.boards + (isRace() ? ' · Race' : ' · Claim')),
+    h('div', { class: 'kicker' }, 'Board ' + (S.b + 1) + ' of ' + S.settings.boards + (isRace() ? ' \u00B7 Race' : ' \u00B7 Claim') + (c.bank ? ' \u00B7 ' + ({ A1: 'Level A1', A2: 'Up to A2', ALL: 'All levels' })[S.settings.level] : '')),
     h('div', { class: 'big' }, (c.icon ? c.icon + ' ' : '') + c.label),
     h('div', { class: 'starts' }, teamTag(S.turn, team(S.turn).name + ' starts')),
     h('div', { class: 'strip' }, ABC.map(L => tileFor(L, { view: S.turn, onclick: toggleBan, noDots: true }))),

@@ -11,46 +11,260 @@ var m=(v==="system")?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":
 document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
 <script defer src="https://arschul.github.io/assets/leaf.v1.js"></script>
 <!-- HUBGEN:leaf end -->
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alphabet Countdown Chaos - 2 Player</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    <style>
-        /* Added neon glow effects for red and blue players */
-        @keyframes pulse-red {
-            0%, 100% { 
-                background-color: rgb(220, 38, 38);
-                box-shadow: 0 0 30px rgba(255, 0, 64, 0.5);
-            }
-            50% { 
-                background-color: rgb(185, 28, 28);
-                box-shadow: 0 0 50px rgba(255, 0, 64, 0.8);
-            }
-        }
-        @keyframes pulse-blue {
-            0%, 100% { 
-                background-color: rgb(37, 99, 235);
-                box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
-            }
-            50% { 
-                background-color: rgb(29, 78, 216);
-                box-shadow: 0 0 50px rgba(0, 212, 255, 0.8);
-            }
-        }
-        .pulse-red-bg {
-            animation: pulse-red 1s ease-in-out infinite;
-        }
-        .pulse-blue-bg {
-            animation: pulse-blue 1s ease-in-out infinite;
-        }
-        .neon-red {
-            box-shadow: 0 0 10px rgba(255, 0, 64, 0.5), 0 0 20px rgba(255, 0, 64, 0.3);
-        }
-        .neon-blue {
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5), 0 0 20px rgba(0, 212, 255, 0.3);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alphabet Grab</title>
+<meta name="description" content="Team vocabulary game: say a word in the category and grab its first letter. Hard letters score more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a1020;
+    --bg2: #111a30;
+    --card: #162038;
+    --tile: #1d2a47;
+    --tile-hi: #26365b;
+    --tile-edge: #33456d;
+    --well: #0c1426;
+    --ink: #f1f5f9;
+    --ink-soft: #a3b3cc;
+    --rule: #2b3a58;
+    --accent: #fbbf24;
+    --accent-ink: #1a1203;
+    --btn: #f59e0b;
+    --good: #34d399;
+    --good-btn: #047857;
+    --bad: #f87171;
+    --bad-btn: #dc2626;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .38);
+    --TC: #ef4444;
+    --tilepx: 110px;
+    --font-display: 'Lilita One', 'Nunito', sans-serif;
+    --font-ui: 'Nunito', system-ui, sans-serif;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #eef2f9;
+    --bg2: #e3e9f4;
+    --card: #ffffff;
+    --tile: #ffffff;
+    --tile-hi: #f6f8fc;
+    --tile-edge: #cfd8e7;
+    --well: #dbe2ee;
+    --ink: #172033;
+    --ink-soft: #4f5b70;
+    --rule: #dde3ee;
+    --accent: #b45309;
+    --accent-ink: #ffffff;
+    --btn: #d97706;
+    --good: #047857;
+    --bad: #b91c1c;
+    --shadow: 0 6px 22px rgba(15, 23, 42, .10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: var(--font-ui); background: radial-gradient(1200px 700px at 50% -10%, var(--bg2), var(--bg)); color: var(--ink); overflow-x: hidden; min-height: 100dvh; }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  input, select { font: inherit; color: inherit; }
+  .hidden { display: none !important; }
+  kbd { font: 800 .74rem var(--font-ui); background: var(--rule); border-radius: 5px; padding: 1px 6px; white-space: nowrap; }
+
+  .back-link {
+    position: fixed; top: 10px; left: 10px; z-index: 50;
+    padding: 6px 13px; border-radius: 999px; text-decoration: none;
+    font: 700 13px/1.2 var(--font-ui); color: var(--ink);
+    background: var(--card); box-shadow: var(--shadow); opacity: .85;
+  }
+  .back-link:hover { opacity: 1; }
+  body.playing .back-link { display: none; }
+  body.playing a[title="Classroom Hub"] { display: none !important; }   /* the generated hub pill would sit on the team cards */
+
+  #app { min-height: 100dvh; padding: 12px 14px; }
+
+  /* ---------- shared bits ---------- */
+  .panel { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 10px 18px; }
+  .panel h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; margin-bottom: 6px; letter-spacing: .02em; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 6px 10px; margin: 5px 0; flex-wrap: wrap; }
+  .row > label { font-weight: 800; font-size: .92rem; }
+  .seg { display: inline-flex; background: var(--rule); border-radius: 12px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 9px; font-weight: 800; font-size: .88rem; color: var(--ink-soft); }
+  .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+  .stepper { display: inline-flex; align-items: center; gap: 8px; }
+  .stepper button { width: 34px; height: 34px; border-radius: 10px; border: 0; background: var(--rule); font-weight: 900; font-size: 1.1rem; }
+  .stepper button:disabled { opacity: .35; cursor: not-allowed; }
+  .stepper output { font-family: var(--font-display); font-size: 1.35rem; min-width: 24px; text-align: center; }
+  .note { color: var(--ink-soft); font-size: .8rem; font-weight: 600; margin-top: 3px; }
+  .note.warn { color: var(--accent); }
+  .big-btn {
+    padding: 10px 34px; border-radius: 999px; border: 0; color: var(--accent-ink);
+    background: var(--btn); font-family: var(--font-display); font-size: 1.35rem; letter-spacing: .02em;
+    box-shadow: 0 8px 22px rgba(245,158,11,.30);
+  }
+  .big-btn.alt { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+  .big-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .tool { border: 0; background: var(--card); box-shadow: var(--shadow); border-radius: 12px; padding: 7px 12px; font-weight: 800; font-size: .86rem; color: var(--ink); white-space: nowrap; }
+  .tool:disabled { opacity: .38; cursor: not-allowed; }
+  .tool.on { outline: 2px solid var(--accent); }
+  .tool.danger.armed { background: var(--bad-btn); color: #fff; }
+  .chip { background: var(--card); border-radius: 999px; padding: 6px 14px; box-shadow: var(--shadow); font-weight: 800; font-size: .95rem; white-space: nowrap; }
+  .spacer { flex: 1; }
+  .swatch { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ---------- SETUP ---------- */
+  #setup { max-width: 1060px; margin: 0 auto; padding-top: 2px; }
+  .logo { text-align: center; font-family: var(--font-display); font-size: clamp(1.9rem, 3.8vw, 2.6rem); line-height: 1.1; color: var(--accent); letter-spacing: .03em; }
+  .logo span { color: var(--ink); }
+  .tagline { text-align: center; color: var(--ink-soft); font-weight: 700; font-size: .95rem; margin: 0 0 8px; }
+  .setup-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; }
+  .team-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin-top: 4px; }
+  .ti { display: flex; align-items: center; gap: 8px; }
+  .ti input, .field { flex: 1; min-width: 0; padding: 7px 11px; border-radius: 10px; border: 2px solid var(--rule); font-weight: 700; font-size: .95rem; background: var(--card); }
+  .ti input:focus, .field:focus { outline: none; border-color: var(--accent); }
+  .cat-groups { display: grid; gap: 7px; }
+  .cat-group h3 { font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-weight: 900; margin-bottom: 4px; }
+  .cat-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cchip { border: 2px solid var(--rule); background: transparent; border-radius: 999px; padding: 3px 10px; font-weight: 800; font-size: .84rem; color: var(--ink); }
+  .cchip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .cchip .n { opacity: .7; font-weight: 700; margin-left: 3px; font-size: .75rem; }
+  .picked { display: flex; flex-wrap: wrap; gap: 5px; min-height: 30px; padding: 6px; border-radius: 12px; background: var(--well); margin: 4px 0 2px; align-items: center; }
+  .picked .pk { display: inline-flex; align-items: center; gap: 5px; background: var(--card); border-radius: 999px; padding: 3px 4px 3px 10px; font-weight: 800; font-size: .84rem; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .picked .pk b { font-family: var(--font-display); font-weight: 400; color: var(--accent); }
+  .picked .pk button { border: 0; background: var(--rule); border-radius: 50%; width: 20px; height: 20px; font-size: .75rem; line-height: 1; font-weight: 900; }
+  .free-row { display: flex; gap: 6px; margin-top: 6px; }
+  .free-row .tool { box-shadow: none; background: var(--rule); }
+  .setup-actions { display: flex; justify-content: center; gap: 12px; margin: 10px 0 2px; flex-wrap: wrap; align-items: center; }
+  .keys-help { text-align: center; color: var(--ink-soft); font-size: .76rem; font-weight: 600; margin-top: 4px; line-height: 1.7; }
+  .credit { text-align: center; color: var(--ink-soft); font-size: .7rem; margin-top: 4px; opacity: .8; }
+
+  /* ---------- GAME ---------- */
+  #game { display: flex; flex-direction: column; gap: 9px; height: calc(100dvh - 24px); }
+  .topbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cat-banner { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .cat-banner .lbl { font-family: var(--font-display); font-size: clamp(1.5rem, 2.8vw, 2.4rem); line-height: 1; letter-spacing: .02em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-banner .sub { color: var(--ink-soft); font-weight: 800; font-size: .9rem; white-space: nowrap; }
+  .tools { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .clockbar { position: relative; height: 12px; border-radius: 999px; background: var(--well); overflow: hidden; }
+  .clockbar i { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--TC); border-radius: 999px; transition: width .1s linear; }
+  .clockbar.low i { animation: blink .5s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+
+  .board-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+  .board { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: calc(var(--tilepx) * .09); max-width: calc(var(--tilepx) * 9 + var(--tilepx) * .09 * 8 + 1px); }
+  .tile {
+    position: relative; width: var(--tilepx); height: var(--tilepx); border-radius: calc(var(--tilepx) * .16);
+    border: 0; background: linear-gradient(180deg, var(--tile-hi), var(--tile)); color: var(--ink);
+    box-shadow: inset 0 0 0 2px var(--tile-edge), 0 4px 0 var(--well), 0 6px 14px rgba(0,0,0,.25);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .tile:hover:not(:disabled) { transform: translateY(-2px); }
+  .tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .tile .L { font-family: var(--font-display); font-size: calc(var(--tilepx) * .52); line-height: 1; }
+  .tile .v { position: absolute; top: calc(var(--tilepx) * .06); right: calc(var(--tilepx) * .07); min-width: calc(var(--tilepx) * .3); padding: 0 calc(var(--tilepx) * .04);
+    height: calc(var(--tilepx) * .24); border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+    font: 900 calc(var(--tilepx) * .155)/calc(var(--tilepx) * .24) var(--font-ui); text-align: center; }
+  .tile .w { font-weight: 900; font-size: calc(var(--tilepx) * .13); line-height: 1.05; text-transform: uppercase; letter-spacing: .02em; max-width: 92%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: calc(var(--tilepx) * .03); }
+  .tile .dots { position: absolute; bottom: calc(var(--tilepx) * .07); left: 0; right: 0; display: flex; justify-content: center; gap: calc(var(--tilepx) * .04); }
+  .tile .dots i { width: calc(var(--tilepx) * .1); height: calc(var(--tilepx) * .1); border-radius: 50%; box-shadow: 0 0 0 2px var(--tile); }
+  .tile.mine { box-shadow: inset 0 0 0 2px rgba(255,255,255,.25), 0 4px 0 var(--well), 0 6px 14px rgba(0,0,0,.25); }
+  .tile.mine .v { background: rgba(0,0,0,.28); color: inherit; }
+  .tile.banned { background: var(--well); box-shadow: inset 0 3px 10px rgba(0,0,0,.35); color: var(--ink-soft); opacity: .55; }
+  .tile.banned .L { opacity: .55; }
+  .tile.banned::after { content: ''; position: absolute; left: 18%; right: 18%; top: 50%; height: calc(var(--tilepx) * .05); background: currentColor; border-radius: 9px; transform: rotate(-12deg); opacity: .7; }
+  .tile.flash { animation: pop .45s ease; }
+  @keyframes pop { 0% { transform: scale(.7); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+  .tile.preview { box-shadow: inset 0 0 0 4px var(--TC), 0 4px 0 var(--well), 0 0 22px var(--TC); }
+  .tile:disabled { cursor: default; }
+
+  .wordrow { display: flex; align-items: stretch; gap: 10px; }
+  .who { display: flex; align-items: center; padding: 0 16px; border-radius: 14px; font-family: var(--font-display); font-size: clamp(1.05rem, 1.8vw, 1.45rem); letter-spacing: .03em; white-space: nowrap; text-transform: uppercase; }
+  .wordbox { flex: 1; min-width: 0; position: relative; }
+  .wordbox input { width: 100%; height: 100%; min-height: 52px; padding: 8px 16px; border-radius: 14px; border: 3px solid var(--TC); background: var(--card); font: 800 clamp(1.15rem, 2vw, 1.6rem) var(--font-ui); letter-spacing: .02em; }
+  .wordbox input:focus { outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--TC) 30%, transparent); }
+  .wordbox input::placeholder { color: var(--ink-soft); font-weight: 700; font-size: .78em; }
+  .hint { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-weight: 900; font-size: clamp(.85rem, 1.3vw, 1.05rem); pointer-events: none; padding: 3px 10px; border-radius: 999px; background: var(--well); }
+  .hint.bad { color: var(--bad); }
+  .hint.good { color: var(--good); }
+  .claim-btn { border: 0; border-radius: 14px; padding: 0 20px; background: var(--btn); color: var(--accent-ink); font-family: var(--font-display); font-size: 1.2rem; }
+  .claim-btn.pass { background: var(--card); color: var(--ink); box-shadow: var(--shadow); font-family: var(--font-ui); font-weight: 900; font-size: .95rem; }
+
+  .lecterns { display: flex; gap: 8px; justify-content: center; }
+  .lectern { flex: 1 1 0; max-width: 260px; min-width: 0; background: var(--card); border-radius: 14px; box-shadow: var(--shadow); padding: 6px 10px 7px; border-top: 6px solid var(--c); position: relative; text-align: center; cursor: default; }
+  .lectern .nm { font-weight: 900; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lectern .sc { font-family: var(--font-display); font-size: clamp(1.6rem, 2.6vw, 2.3rem); line-height: 1.05; }
+  .lectern .ct { color: var(--ink-soft); font-size: .76rem; font-weight: 800; }
+  .lectern.picking { box-shadow: 0 0 0 3px var(--c), 0 0 26px color-mix(in srgb, var(--c) 55%, transparent); }
+  .lectern .tag { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); font: 900 .66rem var(--font-ui); letter-spacing: .1em; padding: 2px 8px; border-radius: 999px; }
+  .lectern .adj { display: none; position: absolute; inset: auto 6px 6px auto; gap: 4px; }
+  .show-adj .lectern .adj { display: flex; }
+  .lectern .adj button { border: 0; border-radius: 8px; width: 34px; height: 26px; font-weight: 900; font-size: .8rem; background: var(--rule); }
+  .keystrip { text-align: center; color: var(--ink-soft); font-size: .74rem; font-weight: 700; }
+
+  /* overlays */
+  .overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(5,9,20,.72); backdrop-filter: blur(3px); padding: 16px; }
+  :root[data-theme="light"] .overlay { background: rgba(230,236,246,.82); }
+  .modal { background: var(--card); border-radius: 22px; box-shadow: var(--shadow); padding: 22px 26px; max-width: 620px; width: 100%; text-align: center; }
+  .modal h2 { font-family: var(--font-display); font-weight: 400; font-size: 2rem; letter-spacing: .02em; margin-bottom: 6px; }
+  .modal p { font-weight: 700; color: var(--ink-soft); margin: 6px 0; }
+  .modal .word { font-family: var(--font-display); font-size: 2.6rem; color: var(--ink); text-transform: uppercase; letter-spacing: .03em; }
+  .modal .acts { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .act { border: 0; border-radius: 14px; padding: 12px 20px; font-weight: 900; font-size: 1rem; color: #fff; min-width: 180px; }
+  .act small { display: block; font-weight: 700; font-size: .78rem; opacity: .9; margin-top: 2px; }
+  .act.good { background: var(--good-btn); }
+  .act.bad { background: var(--bad-btn); }
+  .act.plain { background: var(--rule); color: var(--ink); min-width: 0; }
+  .banner { position: fixed; left: 50%; top: 44%; z-index: 90; transform: translate(-50%, -50%); font-family: var(--font-display); font-size: clamp(2.6rem, 7vw, 5.5rem); letter-spacing: .04em; padding: 10px 40px; border-radius: 24px; color: #fff; background: var(--bad-btn); box-shadow: 0 20px 60px rgba(0,0,0,.45); pointer-events: none; animation: bannerIn 1.5s ease forwards; white-space: nowrap; }
+  @keyframes bannerIn { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } 20% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  .paused-screen { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: var(--well); border-radius: 22px; }
+  .paused-screen h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.5rem, 6vw, 4.5rem); letter-spacing: .04em; }
+  .peek { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); z-index: 6; background: var(--card); box-shadow: var(--shadow); border: 2px solid var(--accent); border-radius: 14px; padding: 8px 14px; max-width: 96%; font-weight: 700; font-size: .9rem; line-height: 1.55; text-align: left; }
+  .peek b { color: var(--accent); font-family: var(--font-display); font-weight: 400; margin-right: 4px; }
+  .peek span { white-space: nowrap; margin-right: 12px; }
+
+  /* intro / board end */
+  .stage { max-width: 1100px; margin: 0 auto; height: calc(100dvh - 24px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+  .stage .kicker { color: var(--ink-soft); font-weight: 900; letter-spacing: .14em; text-transform: uppercase; font-size: .9rem; }
+  .stage .big { font-family: var(--font-display); font-size: clamp(2.6rem, 7vw, 5.4rem); line-height: 1; letter-spacing: .03em; text-transform: uppercase; color: var(--accent); max-width: 100%; overflow-wrap: anywhere; }
+  .stage .starts { font-weight: 900; font-size: 1.15rem; }
+  .stage .strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; max-width: 900px; --tilepx: clamp(52px, 6.6vw, 82px); }
+  .stage .strip .tile .w { display: none; }
+  .stage .ctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .stage select { padding: 7px 10px; border-radius: 10px; border: 2px solid var(--rule); background: var(--card); font-weight: 800; }
+  .mini { --tilepx: clamp(44px, 5.2vw, 70px); }
+  .bpts { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .bpts .chip { border-top: 4px solid var(--c); }
+
+  /* end */
+  #end { max-width: 1060px; margin: 0 auto; text-align: center; }
+  .podium { display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin: 16px 0 10px; min-height: 230px; }
+  .step { width: clamp(130px, 18vw, 200px); border-radius: 16px 16px 6px 6px; padding: 10px 8px; color: #fff; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; box-shadow: var(--shadow); }
+  .step .pl { font-family: var(--font-display); font-size: 2.2rem; line-height: 1; }
+  .step .nm { font-weight: 900; font-size: 1rem; margin-top: 4px; overflow-wrap: anywhere; }
+  .step .sc { font-family: var(--font-display); font-size: 1.6rem; }
+  .results { margin: 6px auto 10px; border-collapse: collapse; min-width: min(560px, 100%); }
+  .results th, .results td { padding: 6px 12px; text-align: left; border-bottom: 1px solid var(--rule); font-weight: 700; }
+  .results th { color: var(--ink-soft); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
+  .results td.num { text-align: right; font-family: var(--font-display); font-weight: 400; font-size: 1.2rem; }
+  .wordlists { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; text-align: left; margin: 10px 0; }
+  .wordlists h3 { font-family: var(--font-display); font-weight: 400; font-size: 1.1rem; margin-bottom: 4px; }
+  .wordlists ul { list-style: none; columns: 2; font-weight: 700; font-size: .9rem; }
+  .wordlists li { break-inside: avoid; padding: 1px 0; }
+  .wordlists li i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .wordlists li b { font-family: var(--font-display); font-weight: 400; color: var(--accent); margin-right: 5px; }
+  .confetti { position: fixed; top: -12px; z-index: 200; border-radius: 2px; animation: fall linear forwards; pointer-events: none; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
+
+  @media (max-width: 760px) {
+    .setup-grid { grid-template-columns: minmax(0, 1fr); }
+    .lecterns { flex-wrap: wrap; }
+    .lectern { flex-basis: 30%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tile, .tile.flash, .banner, .clockbar.low i { animation: none !important; transition: none !important; }
+  }
+</style>
 </head>
 <body>
 <!-- HUBGEN:leafback start -->
@@ -60,521 +274,1075 @@ text-decoration:none;color:#c9d3e4;background:rgba(16,24,42,.82);border:1px soli
 backdrop-filter:blur(4px);opacity:.55;transition:opacity .2s" onmouseover="this.style.opacity=1"
 onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
 <!-- HUBGEN:leafback end -->
-    <div id="app"></div>
+<a class="back-link" href="../">← Game Hub</a>
+<div id="app"></div>
+<script>
+'use strict';
+/* =====================================================================
+   ALPHABET GRAB — say a word in the category, grab its first letter.
+   Single file, vanilla JS. Teacher referees every word.
+   ===================================================================== */
 
-    <script>
-        const LETTER_VALUES = {
-            E: 1, T: 1, A: 1, O: 1, N: 1,
-            R: 2, I: 2, S: 2, H: 2, D: 2,
-            L: 3, F: 3, C: 3, M: 3, U: 3,
-            G: 4, Y: 4, P: 4, W: 4, B: 4,
-            V: 5, K: 5, J: 5, X: 5, Z: 5, Q: 5
-        };
+/*BANK-START*/
+const CATS = [];
+/*BANK-END*/
 
-        let gameState = 'menu'; // menu, playing, paused, gameover, challenge
-        let selectedTime = 20;
-        let bannedLetters = new Set();
-        let availableLetters = [];
-        let currentPlayer = 'red'; // 'red' or 'blue'
-        let lastPlayer = null; // Track who clicked the last letter
-        let redUsedLetters = new Set();
-        let blueUsedLetters = new Set();
-        let redScore = 0;
-        let blueScore = 0;
-        let timeLeft = 20;
-        let maxTime = 20;
-        let timerInterval = null;
-        let audioInitialized = false;
-        let manualEnd = false; // Track if game ended manually
-        let lastMove = null; // { letter, points, player }
+// Value of a letter when a category has no word bank: how hard it is to START an English word with it.
+const CLASSIC = {
+  S: 1, C: 1, P: 1, B: 1, M: 1, A: 1, T: 1, D: 1, R: 1, F: 1,
+  H: 2, G: 2, L: 2, W: 2, E: 2, I: 2, N: 2, O: 2,
+  K: 3, J: 3, U: 3, V: 3, Y: 3,
+  Q: 4, Z: 4,
+  X: 5,
+};
+const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const TEAM_PALETTE = [
+  { name: 'Red',    c: '#ef4444' },
+  { name: 'Blue',   c: '#3b82f6' },
+  { name: 'Green',  c: '#16a34a' },
+  { name: 'Orange', c: '#f59e0b' },
+  { name: 'Purple', c: '#a855f7' },
+  { name: 'Teal',   c: '#0d9488' },
+];
+const LEVELS = ['A1', 'A2', 'B1'];
+const UNDO_DEPTH = 30;
+const MUTE_KEY = 'alphabetgrab:mute';
+const THEME_KEY = 'arschul:theme';
+const SAVE_KEY = 'alphabetgrab:save';
+const SETUP_KEY = 'alphabetgrab:setup';
+const DEFAULT_SETUP = {
+  teams: 2, names: ['', '', '', '', '', ''],
+  mode: 'claim', time: 20, boards: 2, challenge: 'on', speed: 'off', level: 'A2',
+  cats: [], free: [],
+};
 
-        // Initialize audio context
-        function initAudio() {
-            if (!audioInitialized && typeof Tone !== 'undefined') {
-                audioInitialized = true;
-            }
-        }
+/* =====================================================================
+   STORAGE
+   ===================================================================== */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+};
 
-        // Play sound effects
-        function playSound(type) {
-            if (typeof Tone === 'undefined') return;
-            
-            try {
-                const oscillatorType = {
-                    'click': 'sine',
-                    'win': 'sawtooth',
-                    'lose': 'triangle',
-                    'tick': 'square'
-                }[type];
+/* =====================================================================
+   CATEGORIES
+   ===================================================================== */
+const freeKey = label => 'free:' + label;
+function catOf(key) {
+  if (typeof key === 'string' && key.startsWith('bank:')) {
+    const c = CATS.find(x => x.id === key.slice(5));
+    if (c) return { key, label: c.label, icon: c.icon || '', bank: c };
+    return { key: freeKey(key.slice(5)), label: key.slice(5), icon: '✏️', free: true };
+  }
+  const label = String(key || '').replace(/^free:/, '') || 'Anything';
+  return { key: freeKey(label), label, icon: '✏️', free: true };
+}
+function levelIdx(lvl) { const i = LEVELS.indexOf(lvl); return i < 0 ? LEVELS.length - 1 : i; }
+function bankWords(c, L, level) {
+  if (!c || !c.words || !c.words[L]) return [];
+  const max = level === 'ALL' ? 99 : levelIdx(level);
+  return c.words[L].filter(w => levelIdx(w[1]) <= max).map(w => w[0]);
+}
+function valueFromCount(n) { return n >= 6 ? 1 : n >= 4 ? 2 : n >= 2 ? 3 : n === 1 ? 4 : 5; }
+/** Letter values and default bans for one board. */
+function boardSpec(key, level) {
+  const c = catOf(key);
+  const values = {}, banned = {};
+  if (c.bank) {
+    for (const L of ABC) {
+      const n = bankWords(c.bank, L, level).length;
+      values[L] = valueFromCount(n);
+      if (n === 0) banned[L] = true;
+    }
+  } else {
+    for (const L of ABC) values[L] = CLASSIC[L];
+  }
+  return { values, banned };
+}
 
-                const synth = new Tone.Synth({
-                    oscillator: { type: oscillatorType }
-                }).toDestination();
+/* =====================================================================
+   WORDS
+   ===================================================================== */
+function cleanWord(raw) { return String(raw || '').normalize('NFC').replace(/\s+/g, ' ').trim().slice(0, 40); }
+function plain(w) { return String(w || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+/** The letter a typed word claims: first letter after any leading a / an / the. Null if there is none. */
+function headLetter(w) {
+  let s = plain(w).replace(/^[^a-z]+/, '');
+  const m = s.match(/^(a|an|the)\s+(?=[a-z])/);
+  if (m) s = s.slice(m[0].length);
+  const ch = s.charAt(0);
+  return /[a-z]/.test(ch) ? ch.toUpperCase() : null;
+}
+function wordKey(w) {
+  let s = plain(w).replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  s = s.replace(/^(a|an|the) (?=\S)/, '');
+  return s.replace(/ /g, '');
+}
+/** Parse what the teacher typed: a single letter claims without logging a word. */
+function parseEntry(raw) {
+  const w = cleanWord(raw);
+  if (!w) return null;
+  if (/^[A-Za-z]$/.test(w)) return { L: w.toUpperCase(), word: '' };
+  const L = headLetter(w);
+  return L ? { L, word: w } : { L: null, word: w };
+}
 
-                const note = {
-                    'click': 'C5',
-                    'win': 'C6',
-                    'lose': 'C3',
-                    'tick': 'C4'
-                }[type];
+/* =====================================================================
+   STATE
+   ===================================================================== */
+let S = null;          // the whole game; plain JSON so it can be saved, snapshotted and restored
+let UNDO = [];         // JSON strings of earlier S values
+let setup = loadSetup();
+const ui = { word: '', msg: null, endArmed: 0, adjust: false, mod: false, peek: false, challenge: false, flash: null, banner: null, dupConfirm: '' };
+const CLK = { deadline: 0, lastSec: null };
 
-                const duration = type === 'tick' ? '32n' : '8n';
-                synth.triggerAttackRelease(note, duration);
-            } catch (e) {
-                console.error('Audio error:', e);
-            }
-        }
+function loadSetup() {
+  const raw = store.get(SETUP_KEY, null) || {};
+  const o = Object.assign({}, DEFAULT_SETUP, raw);
+  o.teams = Math.min(6, Math.max(2, parseInt(o.teams, 10) || 2));
+  o.names = Array.from({ length: 6 }, (_, i) => String((raw.names || [])[i] || '').slice(0, 20));
+  if (!['claim', 'race'].includes(o.mode)) o.mode = 'claim';
+  if (![0, 10, 20, 30].includes(o.time)) o.time = 20;
+  o.boards = Math.min(6, Math.max(1, parseInt(o.boards, 10) || 2));
+  if (o.challenge !== 'off') o.challenge = 'on';
+  if (o.speed !== 'on') o.speed = 'off';
+  if (!['A1', 'A2', 'ALL'].includes(o.level)) o.level = 'A2';
+  o.free = (Array.isArray(o.free) ? o.free : []).map(cleanWord).filter(Boolean).slice(0, 12);
+  o.cats = (Array.isArray(o.cats) ? o.cats : []).filter(k =>
+    (k.startsWith('bank:') && CATS.some(c => 'bank:' + c.id === k)) || (k.startsWith('free:') && o.free.includes(k.slice(5))));
+  if (!o.cats.length) {
+    if (CATS.length) o.cats = ['bank:' + (CATS.find(c => c.id === 'animals') || CATS[0]).id];
+    else { if (!o.free.length) o.free = ['Animals', 'Food and drink']; o.cats = o.free.slice(0, 2).map(freeKey); }
+  }
+  return o;
+}
+function saveSetup() { store.set(SETUP_KEY, setup); }
 
-        function startGame() {
-            initAudio();
-            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(letter => !bannedLetters.has(letter));
-            availableLetters = alphabet;
-            redUsedLetters = new Set();
-            blueUsedLetters = new Set();
-            redScore = 0;
-            blueScore = 0;
-            currentPlayer = 'red';
-            lastPlayer = null; // Reset last player
-            timeLeft = selectedTime;
-            maxTime = selectedTime;
-            gameState = 'playing';
-            manualEnd = false; // Reset manual end flag
-            lastMove = null; // Reset last move
-            render();
-            startTimer();
-        }
+function T() { return S.teams.length; }
+function B() { return S.board; }
+function team(i) { return S.teams[i]; }
+function isRace() { return S.settings.mode === 'race'; }
+function timeMs() { return S.settings.time * 1000; }
 
-        // Toggle banned letter
-        function toggleBannedLetter(letter) {
-            if (bannedLetters.has(letter)) {
-                bannedLetters.delete(letter);
-            } else {
-                bannedLetters.add(letter);
-            }
-            render();
-        }
+/** Letters still open to team t on the current board. */
+function openFor(t) {
+  const b = B();
+  return ABC.filter(L => !b.banned[L] && (isRace() ? !(b.claims[t] || {})[L] : !b.claims[L]));
+}
+function heldBy(t) {
+  const b = B();
+  if (isRace()) return Object.keys(b.claims[t] || {}).length;
+  return Object.values(b.claims).filter(c => c.t === t).length;
+}
+function playable() { return ABC.filter(L => !B().banned[L]).length; }
 
-        function handleLetterClick(letter) {
-            if (gameState !== 'playing') return;
-            
-            const currentUsedLetters = currentPlayer === 'red' ? redUsedLetters : blueUsedLetters;
-            if (currentUsedLetters.has(letter)) return;
-            if (!availableLetters.includes(letter)) return;
+function newGame() {
+  const teams = Array.from({ length: setup.teams }, (_, i) => ({
+    name: setup.names[i].trim() || TEAM_PALETTE[i].name, color: TEAM_PALETTE[i].c, score: 0,
+  }));
+  S = {
+    v: 1, phase: 'intro',
+    settings: { mode: setup.mode, time: setup.time, boards: setup.boards, challenge: setup.challenge === 'on', speed: setup.speed === 'on', level: setup.level },
+    teams, queue: buildQueue(setup.cats, setup.boards, 0), b: 0, starterOffset: 0,
+    board: null, turn: 0, last: null, paused: false,
+    clock: { left: 0, running: false }, log: [],
+  };
+  UNDO = [];
+  prepareBoard(0);
+}
+function buildQueue(cats, n, rot) {
+  const list = cats.length ? cats : ['free:Anything'];
+  return Array.from({ length: n }, (_, i) => list[(i + rot) % list.length]);
+}
+function prepareBoard(b) {
+  const key = S.queue[b];
+  const spec = boardSpec(key, S.settings.level);
+  const starter = (b + S.starterOffset) % T();
+  S.b = b;
+  S.board = {
+    key, values: spec.values, banned: spec.banned,
+    claims: isRace() ? Object.fromEntries(S.teams.map((_, i) => [i, {}])) : {},
+    turns: 0, passStreak: 0, starter, pts: S.teams.map(() => 0), endReason: '',
+  };
+  S.turn = starter; S.last = null; S.phase = 'intro'; S.paused = false;
+  S.clock = { left: timeMs(), running: false };
+}
 
-            initAudio();
-            playSound('click');
+/* =====================================================================
+   CLOCK (wall-clock deadline; the saved state only keeps the time left)
+   ===================================================================== */
+const now = () => performance.now();
+function clockLeft() {
+  if (!S) return 0;
+  return S.clock.running ? Math.max(0, CLK.deadline - now()) : S.clock.left;
+}
+function syncClock() { if (S && S.clock.running) S.clock.left = clockLeft(); }
+function startTurnClock() {
+  S.clock.left = timeMs();
+  CLK.lastSec = null;
+  if (S.settings.time > 0) { S.clock.running = true; CLK.deadline = now() + S.clock.left; }
+  else S.clock.running = false;
+}
+function holdClock() { syncClock(); S.clock.running = false; }
+function resumeClock() {
+  if (S.settings.time <= 0 || S.phase !== 'play' || S.paused || ui.challenge) return;
+  if (S.clock.left < 3000) S.clock.left = 3000;    // never resume straight into a timeout
+  S.clock.running = true; CLK.deadline = now() + S.clock.left; CLK.lastSec = null;
+}
+function clockLoop() {
+  if (!S || S.phase !== 'play' || !S.clock.running) return;
+  const left = clockLeft();
+  paintClock(left);
+  const sec = Math.ceil(left / 1000);
+  if (sec <= 5 && sec > 0 && sec !== CLK.lastSec) { CLK.lastSec = sec; sfx('tick'); }
+  if (left <= 0) timeout();
+}
 
-            const letterValue = LETTER_VALUES[letter];
-            const timeBonus = Math.floor(timeLeft);
-            const points = letterValue * timeBonus;
+/* =====================================================================
+   ACTIONS
+   ===================================================================== */
+function snapshot() {
+  syncClock();
+  UNDO.push(JSON.stringify(S));
+  if (UNDO.length > UNDO_DEPTH) UNDO.shift();
+}
+function commit() {
+  syncClock();
+  store.set(SAVE_KEY, { S, UNDO });
+  render();
+}
+function say(s, t) { ui.msg = s ? { s, t: t || 'info' } : null; }
 
-            currentUsedLetters.add(letter);
-            if (currentPlayer === 'red') {
-                redScore += points;
-            } else {
-                blueScore += points;
-            }
+function startBoard() {
+  if (!S || S.phase !== 'intro') return;
+  if (!openFor(S.turn).length) { say('Open at least one letter first.', 'bad'); render(); return; }
+  snapshot();
+  S.phase = 'play';
+  startTurnClock();
+  sfx('pop');
+  commit();
+}
 
-            lastPlayer = currentPlayer; // Track who clicked this letter
-            lastMove = { letter, points, player: currentPlayer };
+/** Check a claim without changing anything. Returns {ok, L, word, pts, base, err, dup}. */
+function checkClaim(L, word) {
+  const b = B(), t = S.turn;
+  if (!L) return { ok: false, err: 'Start with a letter' };
+  if (b.banned[L]) return { ok: false, L, err: L + ' is closed on this board' };
+  if (isRace()) {
+    if (b.claims[t][L]) return { ok: false, L, err: team(t).name + ' already has ' + L };
+  } else if (b.claims[L]) return { ok: false, L, err: L + ' is already ' + team(b.claims[L].t).name + '’s' };
+  const base = b.values[L] * 10;
+  let pts = base, fast = false;
+  if (S.settings.speed && S.settings.time > 0 && timeMs() - clockLeft() <= timeMs() / 2) { pts = Math.round(base * 1.5); fast = true; }
+  let dup = null;
+  if (word && isRace()) {
+    const k = wordKey(word);
+    for (let i = 0; i < T(); i++) for (const LL in b.claims[i]) if (b.claims[i][LL].w && wordKey(b.claims[i][LL].w) === k) dup = i;
+  }
+  return { ok: true, L, word, base, pts, fast, dup };
+}
 
-            const totalUsedLetters = new Set([...redUsedLetters, ...blueUsedLetters]);
-            if (totalUsedLetters.size === availableLetters.length) {
-                gameState = 'gameover';
-                playSound('win');
-                stopTimer();
-                render();
-                return;
-            }
+function claim(L, word, force) {
+  if (!S || S.phase !== 'play' || S.paused || ui.challenge) return false;
+  const c = checkClaim(L, word);
+  if (!c.ok) { say(c.err, 'bad'); sfx('nope'); render(); return false; }
+  if (c.dup != null && !force && ui.dupConfirm !== wordKey(word)) {
+    ui.dupConfirm = wordKey(word);
+    say('“' + word + '” was already said by ' + team(c.dup).name + '. Press Enter again to accept it.', 'bad');
+    render(); return false;
+  }
+  ui.dupConfirm = '';
+  snapshot();
+  const t = S.turn, b = B();
+  const rec = { t, w: word || '', p: c.pts };
+  if (isRace()) b.claims[t][L] = rec; else b.claims[L] = rec;
+  team(t).score += c.pts;
+  b.pts[t] += c.pts;
+  S.log.push({ b: S.b, t, L, w: word || '', p: c.pts });
+  S.last = { t, L, w: word || '', p: c.pts, base: c.base, ch: (t + 1) % T() };
+  b.passStreak = 0;
+  ui.word = ''; ui.flash = L;
+  say(c.fast ? 'Fast! +50%' : null, 'good');
+  sfx('pop');
+  endTurn();
+  commit();
+  return true;
+}
 
-            // Switch player and reset timer
-            currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
-            timeLeft = selectedTime;
-            render();
-        }
+function pass(isTimeout) {
+  if (!S || S.phase !== 'play' || ui.challenge) return false;
+  if (!isTimeout && S.paused) return false;
+  snapshot();
+  const name = team(S.turn).name;
+  B().passStreak++;
+  S.last = null;
+  ui.word = ''; ui.dupConfirm = '';
+  if (isTimeout) { ui.banner = 'TIME’S UP'; sfx('buzz'); say(name + ' ran out of time.', 'bad'); }
+  else { sfx('pass'); say(name + ' passed.'); }
+  endTurn();
+  commit();
+  return true;
+}
+function timeout() { if (S.clock.running) { S.clock.running = false; S.clock.left = 0; pass(true); } }
 
-        // Timer functions
-        function startTimer() {
-            stopTimer();
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                if (timeLeft <= 5) {
-                    playSound('tick');
-                }
-                if (timeLeft <= 0) {
-                    // Current player loses their turn, switch to other player
-                    playSound('lose');
-                    currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
-                    timeLeft = selectedTime;
-                }
-                render();
-            }, 1000);
-        }
+/** After a claim or pass: end the board or hand the turn on. */
+function endTurn() {
+  const b = B();
+  b.turns++;
+  let reason = '';
+  if (isRace()) {
+    const done = S.teams.map((_, i) => !openFor(i).length);
+    if (done.some(Boolean) && b.turns % T() === 0) reason = 'done';
+  } else if (!openFor(S.turn).length) reason = 'full';
+  if (!reason && b.passStreak >= T()) reason = 'stuck';
+  S.turn = (S.turn + 1) % T();
+  if (reason) { endBoard(reason); return; }
+  startTurnClock();
+}
+function endBoard(reason) {
+  const b = B();
+  b.endReason = reason;
+  S.phase = 'boardEnd';
+  S.clock.running = false;
+  ui.word = '';
+  sfx('board');
+}
 
-        function stopTimer() {
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-        }
+function nextBoard() {
+  if (!S || S.phase !== 'boardEnd') return;
+  snapshot();
+  if (S.b + 1 >= S.settings.boards) { finishGame(); return; }
+  prepareBoard(S.b + 1);
+  ui.msg = null;
+  commit();
+}
+function finishGame() {
+  S.phase = 'end'; S.clock.running = false; S.paused = false; ui.challenge = false;
+  ui.endArmed = 0;
+  commit();
+  sfx('fanfare');
+  const top = standings().filter(r => r.place === 1);
+  if (top.length && top[0].score > 0) top.forEach(r => confetti(r.color));
+}
+function armEnd() {
+  if (!S || S.phase === 'end') return;
+  const t = Date.now();
+  if (ui.endArmed && t - ui.endArmed < 3000) { snapshot(); finishGame(); return; }
+  ui.endArmed = t;
+  render();
+  setTimeout(() => { if (ui.endArmed === t) { ui.endArmed = 0; render(); } }, 3000);
+}
 
-        // Keyboard support
-        document.addEventListener('keydown', (e) => {
-            if (gameState === 'playing') {
-                const letter = e.key.toUpperCase();
-                if (letter.match(/^[A-Z]$/)) {
-                    handleLetterClick(letter);
-                } else if (e.key === ' ') {
-                    e.preventDefault();
-                    gameState = 'paused';
-                    stopTimer();
-                    render();
-                }
-            } else if (gameState === 'paused' && e.key === ' ') {
-                e.preventDefault();
-                gameState = 'playing';
-                startTimer();
-                render();
-            }
-        });
+/* ---------- challenge (fixed stakes, only the next team, only the last word) ---------- */
+function canChallenge() {
+  if (!S || !S.settings.challenge || !S.last || S.paused) return false;
+  if (S.phase === 'play') return S.turn === S.last.ch;
+  return S.phase === 'boardEnd';
+}
+function openChallenge() {
+  if (!canChallenge() || ui.challenge) return;
+  ui.challenge = true;
+  if (S.phase === 'play') holdClock();
+  render();
+}
+function closeChallenge() { ui.challenge = false; resumeClock(); commit(); }
+function ruleChallenge(rejected) {
+  if (!ui.challenge || !S.last) return;
+  snapshot();
+  const l = S.last, b = B();
+  if (rejected) {
+    team(l.t).score -= l.p; b.pts[l.t] -= l.p;
+    team(l.ch).score += l.base; b.pts[l.ch] += l.base;
+    if (isRace()) delete b.claims[l.t][l.L]; else delete b.claims[l.L];
+    for (let i = S.log.length - 1; i >= 0; i--) { const e = S.log[i]; if (e.b === S.b && e.t === l.t && e.L === l.L) { S.log.splice(i, 1); break; } }
+    if (S.phase === 'boardEnd') {          // the last word of the board was rejected: the board opens again
+      S.phase = 'play'; S.turn = l.ch; b.endReason = ''; b.passStreak = 0;
+      startTurnClock(); S.clock.running = false;
+    }
+    say(team(l.ch).name + ' wins the challenge: ' + l.L + ' is open again.', 'good');
+    sfx('bad');
+  } else {
+    team(l.ch).score -= l.base; b.pts[l.ch] -= l.base;
+    say('The word stands. ' + team(l.ch).name + ' loses ' + l.base + '.', 'bad');
+    sfx('ok');
+  }
+  S.last = null;
+  ui.challenge = false;
+  resumeClock();
+  commit();
+}
 
-        function openChallenge() {
-            gameState = 'challenge';
-            stopTimer();
-            render();
-        }
+/* ---------- teacher controls ---------- */
+function togglePause() {
+  if (!S || S.phase !== 'play' || ui.challenge) return;
+  if (S.paused) { S.paused = false; resumeClock(); }
+  else { holdClock(); S.paused = true; }
+  commit();
+}
+function resumeHeld() { if (S && S.phase === 'play' && !S.paused && !S.clock.running) { resumeClock(); commit(); } }
+function adjust(i, d) {
+  if (!S) return;
+  snapshot();
+  team(i).score += d;
+  commit();
+}
+function undo() {
+  if (!UNDO.length) return false;
+  S = JSON.parse(UNDO.pop());
+  S.clock.running = false;          // undo never restarts the clock by itself
+  S.paused = false;
+  ui.challenge = false; ui.word = ''; ui.dupConfirm = ''; ui.endArmed = 0;
+  say('Undone. Clock is stopped until the next turn or ▶ Resume.');
+  document.body.classList.toggle('playing', S.phase !== 'end');
+  commit();
+  return true;
+}
+function setTurn(i) {
+  if (!S || S.phase !== 'play' || S.turn === i || ui.challenge) return;
+  snapshot();
+  S.turn = i; S.last = null;
+  startTurnClock();
+  say(team(i).name + ' has the turn.');
+  commit();
+}
 
-        function handleChallengeCorrect() {
-            // Current player (who clicked ARE YOU SURE?) loses 10% rounded up
-            const penalty = Math.ceil((currentPlayer === 'red' ? redScore : blueScore) * 0.1);
-            if (currentPlayer === 'red') {
-                redScore = Math.max(0, redScore - penalty);
-            } else {
-                blueScore = Math.max(0, blueScore - penalty);
-            }
-            gameState = 'playing';
-            startTimer();
-            render();
-        }
+/** Standard competition ranking: 1, 1, 3 … */
+function standings() {
+  const rows = S.teams.map((t, i) => ({ i, name: t.name, color: t.color, score: t.score, letters: S.log.filter(e => e.t === i).length }));
+  rows.sort((a, b) => b.score - a.score || a.i - b.i);
+  rows.forEach((r, k) => { r.place = k > 0 && r.score === rows[k - 1].score ? rows[k - 1].place : k + 1; });
+  return rows;
+}
 
-        function handleChallengeIncorrect() {
-            // Last player (who clicked the last letter) loses 10% penalty AND the points from their last move, and the letter becomes available again
-            if (lastPlayer && lastMove) {
-                const penalty = Math.ceil((lastPlayer === 'red' ? redScore : blueScore) * 0.1);
-                if (lastPlayer === 'red') {
-                    redScore = Math.max(0, redScore - penalty - lastMove.points);
-                    redUsedLetters.delete(lastMove.letter);
-                } else {
-                    blueScore = Math.max(0, blueScore - penalty - lastMove.points);
-                    blueUsedLetters.delete(lastMove.letter);
-                }
-            }
-            gameState = 'playing';
-            startTimer();
-            render();
-        }
+function rematch() {
+  const old = S;
+  const off = (old.starterOffset + 1) % old.teams.length;
+  setup.teams = old.teams.length;
+  newGame();
+  S.teams.forEach((t, i) => { t.name = old.teams[i].name; });
+  S.starterOffset = off;
+  S.queue = buildQueue(setup.cats, S.settings.boards, (old.b + 1));
+  prepareBoard(0);
+  document.body.classList.add('playing');
+  commit();
+}
+function toSetup() {
+  S = null; UNDO = [];
+  store.del(SAVE_KEY);
+  document.body.classList.remove('playing');
+  render();
+}
 
-        function endGame() {
-            manualEnd = true; // Mark as manual end
-            gameState = 'gameover';
-            playSound('win');
-            stopTimer();
-            render();
-        }
+/* =====================================================================
+   SOUND (Web Audio, synthesised — no files, one shared context)
+   ===================================================================== */
+const snd = { ctx: null, muted: store.get(MUTE_KEY, false) === true };
+function actx() {
+  if (snd.muted) return null;
+  try {
+    if (!snd.ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; snd.ctx = new C(); }
+    if (snd.ctx.state === 'suspended') { const p = snd.ctx.resume(); if (p && p.catch) p.catch(() => {}); }
+    return snd.ctx;
+  } catch (e) { return null; }
+}
+function tone(freq, dur, o = {}) {
+  const c = actx(); if (!c) return;
+  try {
+    const t = c.currentTime + (o.at || 0), vol = o.vol || 0.14;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq + o.slide), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(t); osc.stop(t + dur + 0.03);
+    osc.onended = () => { try { osc.disconnect(); g.disconnect(); } catch (e) {} };
+  } catch (e) { /* audio is optional */ }
+}
+const SFX = {
+  pop()     { tone(520, 0.10, { type: 'triangle', slide: 260 }); tone(780, 0.12, { at: 0.06, type: 'triangle', vol: 0.1 }); },
+  tick()    { tone(880, 0.06, { type: 'square', vol: 0.05 }); },
+  buzz()    { tone(160, 0.45, { type: 'sawtooth', vol: 0.09, slide: -60 }); },
+  pass()    { tone(330, 0.14, { type: 'sine', slide: -90 }); },
+  nope()    { tone(220, 0.12, { type: 'square', vol: 0.06 }); },
+  ok()      { [523, 659, 784].forEach((f, i) => tone(f, 0.2, { at: i * 0.08, type: 'triangle' })); },
+  bad()     { [392, 311].forEach((f, i) => tone(f, 0.25, { at: i * 0.14, type: 'sawtooth', vol: 0.07 })); },
+  board()   { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.26, { at: i * 0.1, type: 'triangle' })); },
+  fanfare() { [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.34, { at: i * 0.12, type: 'triangle' })); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) {} }
+function toggleSound() { snd.muted = !snd.muted; store.set(MUTE_KEY, snd.muted); paintUtil(); if (!snd.muted) sfx('pop'); }
 
-        // Render function
-        function render() {
-            const app = document.getElementById('app');
-            
-            if (gameState === 'menu') {
-                app.innerHTML = `
-                    <div class="min-h-screen bg-gradient-to-br from-red-600 via-purple-600 to-blue-600 flex items-center justify-center p-4">
-                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border-4 border-purple-500">
-                            <h1 class="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-red-400 to-blue-400 bg-clip-text text-transparent">Alphabet Countdown Chaos</h1>
-                            <p class="text-center text-gray-300 mb-6">Red vs Blue - Click all letters before time runs out!</p>
+/* =====================================================================
+   THEME (same key and values as the shared leaf script, which takes over the toggle when it loads)
+   ===================================================================== */
+const THEME_FACE = { dark: '\u{1F319}', light: '☀️', system: '\u{1F5A5}️' };
+const THEME_LABEL = { dark: 'Dark theme', light: 'Light theme', system: 'Match system theme' };
+function readTheme() { try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { return 'dark'; } }
+function paintTheme(v) {
+  let eff = v;
+  if (v === 'system') { try { eff = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) { eff = 'dark'; } }
+  document.documentElement.setAttribute('data-theme', eff);
+  document.querySelectorAll('.theme-toggle').forEach(b => {
+    if (!b.children.length) b.textContent = THEME_FACE[v] || THEME_FACE.dark;
+    b.title = THEME_LABEL[v] || THEME_LABEL.dark; b.setAttribute('aria-label', b.title);
+  });
+}
+function toggleTheme() {
+  const order = ['dark', 'light', 'system'];
+  const n = order[(order.indexOf(readTheme()) + 1) % 3];
+  try { localStorage.setItem(THEME_KEY, n); } catch (e) {}
+  paintTheme(n);
+  return n;
+}
+window.toggleTheme = toggleTheme;
+function paintUtil() {
+  paintTheme(readTheme());
+  document.querySelectorAll('.sound-toggle').forEach(b => {
+    b.textContent = snd.muted ? '\u{1F507}' : '\u{1F50A}';
+    b.title = snd.muted ? 'Sound off' : 'Sound on'; b.setAttribute('aria-label', b.title);
+    b.setAttribute('aria-pressed', snd.muted ? 'false' : 'true');
+  });
+}
 
-                            <div class="mb-8">
-                                <h2 class="text-xl font-semibold mb-4 text-white">Select Time Per Letter</h2>
-                                <div class="flex gap-4 justify-center">
-                                    ${[10, 20, 30].map(time => `
-                                        <button onclick="selectedTime = ${time}; render();" 
-                                            class="text-lg px-8 py-6 rounded-lg font-semibold transition-all ${
-                                                selectedTime === time 
-                                                    ? 'bg-purple-600 text-white neon-red' 
-                                                    : 'bg-gray-800 border-2 border-gray-600 text-gray-300 hover:border-purple-500'
-                                            }">
-                                            ${time}s
-                                        </button>
-                                    `).join('')}
-                                </div>
-                            </div>
+/* =====================================================================
+   RENDER helpers
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    const v = attrs[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return el;
+}
+function lum(rgb) { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]); }
+function rgbOf(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+/** A team colour as a fill plus whichever of white / near-black reads better on it. */
+function tagColors(hex) {
+  const fill = rgbOf(hex).map(v => Math.round(v * 0.82));
+  const white = [255, 255, 255], dark = [17, 24, 39];
+  return { bg: 'rgb(' + fill.join(',') + ')', ink: contrast(fill, white) >= contrast(fill, dark) ? '#ffffff' : '#111827' };
+}
+function utilButtons() {
+  return [
+    h('button', { class: 'tool sound-toggle', type: 'button', onclick: toggleSound }),
+    h('button', { class: 'tool theme-toggle', type: 'button', onclick: () => window.toggleTheme() }),
+  ];
+}
+function teamTag(i, text) { const c = tagColors(team(i).color); return h('span', { class: 'who', style: 'background:' + c.bg + ';color:' + c.ink }, text); }
 
-                            <div class="mb-8">
-                                <h2 class="text-xl font-semibold mb-4 text-white">Ban Letters (Click to toggle)</h2>
-                                <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-3">
-                                    ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => `
-                                        <button onclick="toggleBannedLetter('${letter}')"
-                                            class="aspect-square rounded-xl font-bold text-2xl transition-all transform hover:scale-105 active:scale-95 shadow-lg relative ${
-                                                bannedLetters.has(letter)
-                                                    ? 'bg-red-600 text-white line-through neon-red'
-                                                    : 'bg-gray-800 hover:bg-gray-700 text-gray-200 border-2 border-gray-600'
-                                            }">
-                                            ${letter}
-                                            <span class="absolute bottom-1 right-1 text-xs opacity-60">${LETTER_VALUES[letter]}</span>
-                                        </button>
-                                    `).join('')}
-                                </div>
-                                <p class="text-sm text-gray-400 mt-2 text-center">
-                                    ${bannedLetters.size > 0 
-                                        ? `${bannedLetters.size} letter${bannedLetters.size > 1 ? 's' : ''} banned`
-                                        : 'No letters banned'}
-                                </p>
-                            </div>
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render() {
+  const app = $('app');
+  const active = document.activeElement;
+  const keepFocus = active && active.id && active.tagName === 'INPUT' ? { id: active.id, s: active.selectionStart, e: active.selectionEnd } : null;
+  app.textContent = '';
+  if (!S) app.append(renderSetup());
+  else if (S.phase === 'intro') app.append(renderIntro());
+  else if (S.phase === 'play') app.append(renderPlay());
+  else if (S.phase === 'boardEnd') app.append(renderBoardEnd());
+  else app.append(renderEnd());
+  document.body.classList.toggle('playing', !!S && S.phase !== 'end');
+  if (S) document.documentElement.style.setProperty('--TC', team(S.turn).color);
+  paintUtil();
+  if (ui.challenge && S) app.append(renderChallenge());
+  if (ui.banner) { const t = ui.banner; ui.banner = null; const el = h('div', { class: 'banner' }, t); document.body.append(el); setTimeout(() => el.remove(), 1600); }
+  sizeBoard();
+  if (S && S.phase === 'play') paintClock(clockLeft());
+  // focus: the word bar takes every keystroke during play
+  const wb = $('word');
+  if (wb && !ui.challenge && !S.paused) { wb.focus(); const n = wb.value.length; wb.setSelectionRange(n, n); }
+  else if (keepFocus && $(keepFocus.id)) { const el = $(keepFocus.id); el.focus(); try { el.setSelectionRange(keepFocus.s, keepFocus.e); } catch (e) {} }
+  ui.flash = null;
+}
 
-                            <button onclick="startGame()" 
-                                ${bannedLetters.size === 26 ? 'disabled' : ''}
-                                class="w-full text-xl py-6 rounded-lg font-semibold bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-700 hover:to-blue-700 text-white transition-all neon-red ${
-                                    bannedLetters.size === 26 ? 'opacity-50 cursor-not-allowed' : ''
-                                }">
-                                Start Game
-                            </button>
-                        </div>
-                    </div>
-                `;
-            } else if (gameState === 'gameover') {
-                const winner = redScore > blueScore ? 'red' : blueScore > redScore ? 'blue' : 'tie';
-                const winnerColor = winner === 'red' ? 'text-red-400' : winner === 'blue' ? 'text-blue-400' : 'text-purple-400';
-                const winnerBg = winner === 'red' ? 'from-red-600 to-red-800' : winner === 'blue' ? 'from-blue-600 to-blue-800' : 'from-purple-600 to-purple-800';
-                
-                app.innerHTML = `
-                    <div class="min-h-screen bg-gradient-to-br ${winnerBg} flex items-center justify-center p-4">
-                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 ${winner === 'red' ? 'border-red-500 neon-red' : winner === 'blue' ? 'border-blue-500 neon-blue' : 'border-purple-500'}">
-                            <h1 class="text-5xl font-bold mb-4 ${winnerColor}">
-                                ${winner === 'tie' ? '🤝 Tie Game!' : winner === 'red' ? '🔴 Red Wins!' : '🔵 Blue Wins!'}
-                            </h1>
-                            <div class="mb-6 space-y-3">
-                                <div class="bg-red-900/50 rounded-lg p-4 border-2 border-red-500">
-                                    <p class="text-red-400 font-semibold">Red Player</p>
-                                    <p class="text-3xl font-bold text-white">${redScore}</p>
-                                    <p class="text-sm text-gray-400">${redUsedLetters.size} / ${availableLetters.length} letters</p>
-                                </div>
-                                <div class="bg-blue-900/50 rounded-lg p-4 border-2 border-blue-500">
-                                    <p class="text-blue-400 font-semibold">Blue Player</p>
-                                    <p class="text-3xl font-bold text-white">${blueScore}</p>
-                                    <p class="text-sm text-gray-400">${blueUsedLetters.size} / ${availableLetters.length} letters</p>
-                                </div>
-                            </div>
-                            
-                            ${manualEnd ? `
-                                <div class="mb-6">
-                                    <h2 class="text-xl font-semibold mb-4 text-white">Letters Used</h2>
-                                    <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
-                                        ${availableLetters.map(letter => {
-                                            const usedByRed = redUsedLetters.has(letter);
-                                            const usedByBlue = blueUsedLetters.has(letter);
-                                            
-                                            let buttonClass = '';
-                                            if (usedByRed && usedByBlue) {
-                                                buttonClass = 'bg-purple-600 text-white border-2 border-purple-400';
-                                            } else if (usedByRed) {
-                                                buttonClass = 'bg-red-600 text-white border-2 border-red-400 neon-red';
-                                            } else if (usedByBlue) {
-                                                buttonClass = 'bg-blue-600 text-white border-2 border-blue-400 neon-blue';
-                                            } else {
-                                                buttonClass = 'bg-gray-700 text-gray-400 border-2 border-gray-600';
-                                            }
-                                            
-                                            return `
-                                                <div class="aspect-square rounded-lg font-bold text-xl flex items-center justify-center shadow-lg relative ${buttonClass}" aria-label="Letter ${letter}">
-                                                    ${letter}
-                                                    <span class="absolute bottom-0.5 right-0.5 text-xs opacity-60">${LETTER_VALUES[letter]}</span>
-                                                </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                    <p class="text-sm text-gray-400 mt-3">
-                                        <span class="text-red-400">■</span> Red used
-                                        <span class="ml-3 text-blue-400">■</span> Blue used
-                                        <span class="ml-3 text-purple-400">■</span> Both used
-                                        <span class="ml-3 text-gray-400">■</span> Unused
-                                    </p>
-                                </div>
-                            ` : ''}
-                            
-                            <div class="flex gap-4">
-                                <button onclick="gameState = 'menu'; render();" 
-                                    class="flex-1 px-6 py-3 rounded-lg font-semibold bg-gray-800 border-2 border-gray-600 text-gray-300 hover:border-purple-500 transition-all">
-                                    Main Menu
-                                </button>
-                                <button onclick="startGame();" 
-                                    class="flex-1 px-6 py-3 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-all neon-red">
-                                    Play Again
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else if (gameState === 'paused') {
-                app.innerHTML = `
-                    <div class="min-h-screen bg-gradient-to-br from-red-600 via-purple-600 to-blue-600 flex items-center justify-center p-4">
-                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 border-purple-500">
-                            <h1 class="text-4xl font-bold mb-4 text-white">⏸️ Paused</h1>
-                            <div class="mb-6 space-y-3">
-                                <div class="bg-red-900/50 rounded-lg p-3 border-2 border-red-500">
-                                    <p class="text-red-400 font-semibold">Red: ${redScore}</p>
-                                </div>
-                                <div class="bg-blue-900/50 rounded-lg p-3 border-2 border-blue-500">
-                                    <p class="text-blue-400 font-semibold">Blue: ${blueScore}</p>
-                                </div>
-                            </div>
-                            <button onclick="gameState = 'playing'; startTimer(); render();" 
-                                class="w-full px-6 py-3 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-all neon-red">
-                                Resume
-                            </button>
-                        </div>
-                    </div>
-                `;
-            } else if (gameState === 'challenge') {
-                app.innerHTML = `
-                    <div class="min-h-screen bg-gradient-to-br from-yellow-600 via-orange-600 to-red-600 flex items-center justify-center p-4">
-                        <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 border-yellow-500">
-                            <h1 class="text-4xl font-bold mb-4 text-yellow-400">⚠️ Challenge!</h1>
-                            <p class="text-white text-lg mb-6">
-                                Was "${lastPlayer === 'red' ? '🔴 Red' : '🔵 Blue'}" player's last word valid?
-                            </p>
-                            <div class="mb-6 space-y-3">
-                                <div class="bg-red-900/50 rounded-lg p-3 border-2 border-red-500">
-                                    <p class="text-red-400 font-semibold">Red: ${redScore}</p>
-                                </div>
-                                <div class="bg-blue-900/50 rounded-lg p-3 border-2 border-blue-500">
-                                    <p class="text-blue-400 font-semibold">Blue: ${blueScore}</p>
-                                </div>
-                            </div>
-                            <p class="text-sm text-gray-400 mb-6">
-                                Penalty: 10% of score (rounded up) AND points from last move
-                            </p>
-                            <div class="space-y-3">
-                                <button onclick="handleChallengeCorrect();" 
-                                    class="w-full px-6 py-4 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-all text-lg">
-                                    ✓ CORRECT
-                                    <span class="block text-sm opacity-80">Challenger loses points</span>
-                                </button>
-                                <button onclick="handleChallengeIncorrect();" 
-                                    class="w-full px-6 py-4 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition-all text-lg">
-                                    ✗ INCORRECT
-                                    <span class="block text-sm opacity-80">Last player loses points and letter becomes available again</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else if (gameState === 'playing') {
-                const progressPercent = (timeLeft / maxTime) * 100;
-                const progressColor = progressPercent > 50 ? 'bg-green-500' : progressPercent > 25 ? 'bg-yellow-500' : 'bg-red-500';
-                const bgClass = currentPlayer === 'red' 
-                    ? (timeLeft <= 5 ? 'pulse-red-bg' : 'bg-gradient-to-br from-red-600 to-red-800')
-                    : (timeLeft <= 5 ? 'pulse-blue-bg' : 'bg-gradient-to-br from-blue-600 to-blue-800');
-                const playerColor = currentPlayer === 'red' ? 'text-red-400' : 'text-blue-400';
-                const playerBorder = currentPlayer === 'red' ? 'border-red-500' : 'border-blue-500';
-                const playerNeon = currentPlayer === 'red' ? 'neon-red' : 'neon-blue';
-                
-                app.innerHTML = `
-                    <div class="min-h-screen transition-colors duration-500 ${bgClass}">
-                        <div class="container mx-auto p-4 max-w-4xl">
-                            <div class="bg-gray-900 rounded-2xl shadow-2xl p-6 mb-6 border-4 ${playerBorder} ${playerNeon}">
-                                <div class="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h1 class="text-3xl font-bold ${playerColor}">
-                                            ${currentPlayer === 'red' ? '🔴 Red Player' : '🔵 Blue Player'}
-                                        </h1>
-                                        <p class="text-gray-400">
-                                            Remaining: <span class="font-bold ${playerColor} text-2xl">
-                                                ${availableLetters.length - (currentPlayer === 'red' ? redUsedLetters.size : blueUsedLetters.size)}
-                                            </span>
-                                            <span class="text-sm ml-2 text-gray-500">
-                                                / ${availableLetters.length} letters
-                                            </span>
-                                        </p>
-                                    </div>
-                                    <div class="text-right space-y-2">
-                                        <div class="bg-red-900/50 rounded-lg px-4 py-2 border-2 border-red-500">
-                                            <p class="text-red-400 text-sm">Red</p>
-                                            <p class="text-2xl font-bold text-white">${redScore}</p>
-                                        </div>
-                                        <div class="bg-blue-900/50 rounded-lg px-4 py-2 border-2 border-blue-500">
-                                            <p class="text-blue-400 text-sm">Blue</p>
-                                            <p class="text-2xl font-bold text-white">${blueScore}</p>
-                                        </div>
-                                    </div>
-                                </div>
+/* ---------- SETUP ---------- */
+function setSetup(k, v) { setup[k] = v; saveSetup(); render(); }
+function seg(key, opts) {
+  return h('div', { class: 'seg', role: 'group' }, opts.map(([v, label]) =>
+    h('button', { type: 'button', class: setup[key] === v ? 'on' : '', 'aria-pressed': setup[key] === v ? 'true' : 'false', onclick: () => setSetup(key, v) }, label)));
+}
+function toggleCat(key) {
+  const i = setup.cats.indexOf(key);
+  if (i >= 0) setup.cats.splice(i, 1); else setup.cats.push(key);
+  saveSetup(); render();
+}
+function addFree() {
+  const inp = $('freecat'); if (!inp) return;
+  const v = cleanWord(inp.value);
+  if (!v) return;
+  if (!setup.free.includes(v)) { setup.free.unshift(v); setup.free = setup.free.slice(0, 12); }
+  if (!setup.cats.includes(freeKey(v))) setup.cats.push(freeKey(v));
+  inp.value = '';
+  saveSetup(); render();
+}
+function catCount(c) {
+  let n = 0;
+  for (const L of ABC) if (bankWords(c, L, setup.level).length) n++;
+  return n;
+}
+function renderSetup() {
+  const saved = store.get(SAVE_KEY, null);
+  const canResume = saved && saved.S && saved.S.phase !== 'end';
+  const teamsPanel = h('div', { class: 'panel' },
+    h('h2', null, 'Teams'),
+    h('div', { class: 'row' }, h('label', null, 'Number of teams'),
+      h('div', { class: 'stepper' },
+        h('button', { type: 'button', 'aria-label': 'Fewer teams', disabled: setup.teams <= 2, onclick: () => setSetup('teams', setup.teams - 1) }, '−'),
+        h('output', null, setup.teams),
+        h('button', { type: 'button', 'aria-label': 'More teams', disabled: setup.teams >= 6, onclick: () => setSetup('teams', setup.teams + 1) }, '+'))),
+    h('div', { class: 'team-inputs' }, Array.from({ length: setup.teams }, (_, i) =>
+      h('div', { class: 'ti' }, h('span', { class: 'swatch', style: 'background:' + TEAM_PALETTE[i].c }),
+        h('input', { id: 'tn' + i, maxlength: 20, placeholder: TEAM_PALETTE[i].name, value: setup.names[i], 'aria-label': 'Team ' + (i + 1) + ' name',
+          oninput: e => { setup.names[i] = e.target.value.slice(0, 20); saveSetup(); } })))));
+  const fairNote = setup.boards % setup.teams === 0 ? null
+    : h('div', { class: 'note' }, 'The starting team changes every board. With ' + setup.teams + ' teams, ' + setup.teams + ' boards gives everyone the same number of starts.');
+  const rulesPanel = h('div', { class: 'panel' },
+    h('h2', null, 'Rules'),
+    h('div', { class: 'row' }, h('label', null, 'Board'), seg('mode', [['claim', 'Claim (shared)'], ['race', 'Race (own A–Z)']])),
+    h('div', { class: 'note' }, setup.mode === 'claim'
+      ? 'One A–Z board for everyone. A letter belongs to the first team that gives a word for it.'
+      : 'Every team fills its own A–Z. Best for 2–3 teams. Repeated words are flagged.'),
+    setup.mode === 'race' && setup.teams > 3 ? h('div', { class: 'note warn' }, 'Race gets long with ' + setup.teams + ' teams. Claim is quicker.') : null,
+    h('div', { class: 'row' }, h('label', null, 'Turn time'), seg('time', [[10, '10s'], [20, '20s'], [30, '30s'], [0, 'Off']])),
+    h('div', { class: 'row' }, h('label', null, 'Boards'),
+      h('div', { class: 'stepper' },
+        h('button', { type: 'button', 'aria-label': 'Fewer boards', disabled: setup.boards <= 1, onclick: () => setSetup('boards', setup.boards - 1) }, '−'),
+        h('output', null, setup.boards),
+        h('button', { type: 'button', 'aria-label': 'More boards', disabled: setup.boards >= 6, onclick: () => setSetup('boards', setup.boards + 1) }, '+'))),
+    fairNote,
+    h('div', { class: 'row' }, h('label', null, 'Challenges'), seg('challenge', [['on', 'On'], ['off', 'Off']])),
+    h('div', { class: 'row' }, h('label', null, 'Speed bonus'), seg('speed', [['off', 'Off'], ['on', '+50% if fast']])));
 
-                                <div class="w-full bg-gray-700 rounded-full h-4 mb-4 overflow-hidden">
-                                    <div class="h-full transition-all duration-1000 ${progressColor}" 
-                                        style="width: ${progressPercent}%"></div>
-                                </div>
+  const picked = setup.cats.map(catOf);
+  const catPanel = h('div', { class: 'panel' },
+    h('h2', null, 'Categories'),
+    h('div', { class: 'note' }, 'One category per board, in this order:'),
+    h('div', { class: 'picked' }, picked.length ? picked.map((c, i) =>
+      h('span', { class: 'pk' }, h('b', null, String(i + 1)), (c.icon ? c.icon + ' ' : '') + c.label,
+        h('button', { type: 'button', 'aria-label': 'Remove ' + c.label, onclick: () => toggleCat(setup.cats[i]) }, '×')))
+      : h('span', { class: 'note' }, 'Pick at least one.')),
+    CATS.length ? renderCatLibrary() : null,
+    h('div', { class: 'free-row' },
+      h('input', { id: 'freecat', class: 'field', maxlength: 40, placeholder: 'Type your own category, e.g. Things that are round',
+        onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); addFree(); } } }),
+      h('button', { type: 'button', class: 'tool', onclick: addFree }, '+ Add')),
+    setup.free.length ? h('div', { class: 'cat-chips', style: 'margin-top:6px' }, setup.free.map(f =>
+      h('button', { type: 'button', class: 'cchip' + (setup.cats.includes(freeKey(f)) ? ' on' : ''), onclick: () => toggleCat(freeKey(f)) }, '✏️ ' + f))) : null,
+    h('div', { class: 'note' }, CATS.length ? 'Your own categories use standard letter values and have no word list.' : 'Letter values: common first letters 10, hard ones (Q, Z, X) 40–50.'));
 
-                                <div class="flex justify-between items-center">
-                                    <p class="text-2xl font-bold text-white">⏱️ ${timeLeft}s</p>
-                                    <div class="flex gap-3">
-                                        ${lastPlayer ? `
-                                            <button onclick="openChallenge();" 
-                                                class="px-6 py-2 rounded-lg font-semibold bg-yellow-600 border-2 border-yellow-500 text-white hover:bg-yellow-500 transition-all">
-                                                ARE YOU SURE?
-                                            </button>
-                                        ` : ''}
-                                        <button onclick="endGame();" 
-                                            class="px-6 py-2 rounded-lg font-semibold bg-red-700 border-2 border-red-500 text-white hover:bg-red-600 transition-all neon-red">
-                                            END GAME
-                                        </button>
-                                        <button onclick="gameState = 'paused'; stopTimer(); render();" 
-                                            class="px-6 py-2 rounded-lg font-semibold bg-gray-800 border-2 border-gray-600 text-gray-300 hover:border-purple-500 transition-all">
-                                            Pause
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+  return h('div', { id: 'setup' },
+    h('div', { class: 'logo' }, 'Alphabet ', h('span', null, 'Grab')),
+    h('div', { class: 'tagline' }, 'Say a word in the category. Grab its first letter. Hard letters score more.'),
+    h('div', { class: 'setup-grid' },
+      h('div', { style: 'display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start' }, teamsPanel, rulesPanel),
+      catPanel),
+    h('div', { class: 'setup-actions' },
+      canResume ? h('button', { class: 'big-btn alt', type: 'button', onclick: resumeSaved }, '↻ Resume game') : null,
+      h('button', { class: 'big-btn', type: 'button', id: 'start', disabled: !setup.cats.length, onclick: startNew }, 'Start ▶'),
+      ...utilButtons()),
+    h('div', { class: 'keys-help' },
+      'Type the word, ', h('kbd', null, 'Enter'), ' to grab. Teacher keys use ', h('kbd', null, 'Ctrl'), ' (', h('kbd', null, '⌘'), ' on Mac) so capitals still type: ',
+      h('kbd', null, 'Z'), ' undo · ', h('kbd', null, 'P'), ' pause · ', h('kbd', null, 'S'), ' pass · ',
+      h('kbd', null, 'K'), ' challenge · ', CATS.length ? [h('kbd', null, 'I'), ' peek · '] : null, h('kbd', null, 'E'), ' ×2 end'));
+}
+function renderCatLibrary() { return null; }   // filled in with the word banks
+function startNew() {
+  if (!setup.cats.length) return;
+  actx();
+  newGame();
+  document.body.classList.add('playing');
+  commit();
+}
+function resumeSaved() {
+  const saved = store.get(SAVE_KEY, null);
+  if (!saved || !saved.S) return;
+  S = saved.S; UNDO = Array.isArray(saved.UNDO) ? saved.UNDO : [];
+  S.clock.running = false; S.paused = false;
+  say('Game resumed. Clock is stopped until the next turn or ▶ Resume.');
+  actx();
+  commit();
+}
 
-                            <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-3">
-                                ${availableLetters.map(letter => {
-                                    const usedByRed = redUsedLetters.has(letter);
-                                    const usedByBlue = blueUsedLetters.has(letter);
-                                    const usedByCurrent = currentPlayer === 'red' ? usedByRed : usedByBlue;
-                                    
-                                    let buttonClass = '';
-                                    if (usedByRed && usedByBlue) {
-                                        buttonClass = 'bg-purple-600 text-white cursor-not-allowed border-2 border-purple-400';
-                                    } else if (usedByRed) {
-                                        buttonClass = 'bg-red-600 text-white cursor-not-allowed border-2 border-red-400 neon-red';
-                                    } else if (usedByBlue) {
-                                        buttonClass = 'bg-blue-600 text-white cursor-not-allowed border-2 border-blue-400 neon-blue';
-                                    } else {
-                                        buttonClass = `bg-gray-800 text-gray-200 hover:bg-gray-700 border-2 ${currentPlayer === 'red' ? 'border-red-500 hover:border-red-400' : 'border-blue-500 hover:border-blue-400'}`;
-                                    }
-                                    
-                                    return `
-                                        <button onclick="handleLetterClick('${letter}')"
-                                            ${usedByCurrent ? 'disabled' : ''}
-                                            class="aspect-square rounded-xl font-bold text-2xl transition-all transform hover:scale-105 active:scale-95 shadow-lg relative ${buttonClass}"
-                                            aria-label="Letter ${letter}">
-                                            ${letter}
-                                            <span class="absolute bottom-1 right-1 text-xs opacity-60">${LETTER_VALUES[letter]}</span>
-                                        </button>
-                                    `;
-                                }).join('')}
-                            </div>
+/* ---------- tiles ---------- */
+function tileFor(L, opts) {
+  const b = B(), banned = b.banned[L];
+  let owner = null, rec = null;
+  if (isRace()) { rec = (b.claims[opts.view] || {})[L]; if (rec) owner = opts.view; }
+  else { rec = b.claims[L]; if (rec) owner = rec.t; }
+  const kids = [h('span', { class: 'L' }, L)];
+  let style = '', cls = 'tile';
+  if (banned) cls += ' banned';
+  else if (owner != null) {
+    const c = tagColors(team(owner).color);
+    cls += ' mine'; style = 'background:' + c.bg + ';color:' + c.ink;
+    if (rec.w && !opts.noWords) kids.push(h('span', { class: 'w' }, rec.w));
+    kids.push(h('span', { class: 'v' }, '+' + rec.p));
+  } else kids.push(h('span', { class: 'v' }, b.values[L] * 10));
+  if (isRace() && !banned && !opts.noDots) {
+    const others = S.teams.map((_, i) => i).filter(i => i !== opts.view && b.claims[i][L]);
+    if (others.length) kids.push(h('span', { class: 'dots' }, others.map(i => h('i', { style: 'background:' + team(i).color, title: team(i).name }))));
+  }
+  if (ui.flash === L && owner != null) cls += ' flash';
+  if (opts.preview === L && !banned && owner == null) cls += ' preview';
+  const label = 'Letter ' + L + (banned ? ', closed' : owner != null ? ', ' + team(owner).name + (rec.w ? ': ' + rec.w : '') : ', ' + b.values[L] * 10 + ' points');
+  return h('button', { type: 'button', class: cls, style, 'aria-label': label, 'data-l': L, disabled: opts.disabled || (!opts.onclick), onclick: opts.onclick ? () => opts.onclick(L) : null }, kids);
+}
 
-                            <div class="mt-6 bg-gray-900 rounded-2xl shadow-2xl p-4 text-center border-2 ${playerBorder}">
-                                <p class="text-gray-300">Click or type any letter before time runs out!</p>
-                                <p class="text-sm text-gray-500 mt-2">Score = Letter Value × Time Remaining</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-        }
+/* ---------- PLAY ---------- */
+function topbar(extra) {
+  const c = catOf(B().key);
+  return h('div', { class: 'topbar' },
+    h('div', { class: 'cat-banner' },
+      h('span', { class: 'lbl' }, (c.icon ? c.icon + ' ' : '') + c.label),
+      h('span', { class: 'sub' }, 'Board ' + (S.b + 1) + ' of ' + S.settings.boards + (isRace() ? ' · Race' : ''))),
+    h('div', { class: 'spacer' }),
+    h('div', { class: 'tools' }, extra, ...utilButtons(),
+      h('button', { type: 'button', class: 'tool danger' + (ui.endArmed ? ' armed' : ''), onclick: armEnd, title: 'End the game (Ctrl E twice)' }, ui.endArmed ? 'Click again to end' : '⏹ End')));
+}
+function lecterns() {
+  return h('div', { class: 'lecterns' + (ui.adjust || ui.mod ? ' show-adj' : '') }, S.teams.map((t, i) => {
+    const picking = S.phase === 'play' && S.turn === i;
+    const tc = tagColors(t.color);
+    const n = heldBy(i);
+    return h('div', { class: 'lectern' + (picking ? ' picking' : ''), style: '--c:' + t.color, title: S.phase === 'play' ? 'Click to give ' + t.name + ' the turn' : null,
+      onclick: e => { if (e.target.closest('.adj')) return; setTurn(i); } },
+      picking ? h('span', { class: 'tag', style: 'background:' + tc.bg + ';color:' + tc.ink }, 'PICKING') : null,
+      h('div', { class: 'nm' }, t.name),
+      h('div', { class: 'sc' }, t.score),
+      h('div', { class: 'ct' }, isRace() ? n + ' / ' + playable() + ' letters' : n + (n === 1 ? ' letter' : ' letters')),
+      h('div', { class: 'adj' },
+        h('button', { type: 'button', 'aria-label': t.name + ' minus 10', onclick: () => adjust(i, -10) }, '−10'),
+        h('button', { type: 'button', 'aria-label': t.name + ' plus 10', onclick: () => adjust(i, 10) }, '+10')));
+  }));
+}
+function entryPreview() {
+  const p = parseEntry(ui.word);
+  if (!p) return null;
+  if (!p.L) return { bad: true, text: 'Start with a letter' };
+  const c = checkClaim(p.L, p.word);
+  if (!c.ok) return { bad: true, text: c.err, L: p.L };
+  return { bad: false, text: '→ ' + p.L + ' · ' + c.pts + (c.fast ? ' (fast!)' : '') + (c.dup != null ? ' · already said' : ''), L: p.L };
+}
+function submitWord() {
+  const p = parseEntry(ui.word);
+  if (!p) return;
+  if (!p.L) { say('Type a word that starts with a letter.', 'bad'); sfx('nope'); render(); return; }
+  claim(p.L, p.word);
+}
+function clickTile(L) {
+  const p = parseEntry(ui.word);
+  claim(L, p && p.L === L ? p.word : '');
+}
+function renderPlay() {
+  const b = B(), t = S.turn;
+  const pv = entryPreview();
+  const tools = [
+    h('button', { type: 'button', class: 'tool', onclick: togglePause, title: 'Pause (Ctrl P)' }, S.paused ? '▶ Resume' : '⏸ Pause'),
+    !S.paused && !S.clock.running && S.settings.time > 0 ? h('button', { type: 'button', class: 'tool on', onclick: resumeHeld, title: 'Start the clock again' }, '▶ Clock') : null,
+    h('button', { type: 'button', class: 'tool', onclick: undo, disabled: !UNDO.length, title: 'Undo (Ctrl Z)' }, '↶ Undo'),
+    S.settings.challenge ? h('button', { type: 'button', class: 'tool', onclick: openChallenge, disabled: !canChallenge(), title: 'Challenge the last word (Ctrl K)' }, '⚖ Challenge') : null,
+    h('button', { type: 'button', class: 'tool' + (ui.adjust ? ' on' : ''), onclick: () => { ui.adjust = !ui.adjust; render(); }, title: 'Show ±10 on the team cards (or hold Ctrl)' }, '±'),
+  ];
+  const board = h('div', { class: 'board', id: 'board' }, ABC.map(L => tileFor(L, {
+    view: t, preview: pv && !pv.bad ? pv.L : null, onclick: S.paused ? null : clickTile,
+    disabled: S.paused || !!b.banned[L] || (isRace() ? !!b.claims[t][L] : !!b.claims[L]),
+  })));
+  const wrap = h('div', { class: 'board-wrap', id: 'boardwrap' }, board,
+    S.paused ? h('div', { class: 'paused-screen' }, h('h2', null, 'PAUSED'),
+      h('button', { class: 'big-btn', type: 'button', onclick: togglePause }, '▶ Resume'), h('div', { class: 'note' }, 'Ctrl P to resume')) : null,
+    ui.peek ? renderPeek() : null);
+  const hint = ui.msg && !ui.word ? { bad: ui.msg.t === 'bad', good: ui.msg.t === 'good', text: ui.msg.s } : pv ? { bad: pv.bad, text: pv.text } : null;
+  return h('div', { id: 'game' },
+    topbar(tools),
+    S.settings.time > 0 ? h('div', { class: 'clockbar', id: 'clockbar' }, h('i', { id: 'clockfill' })) : null,
+    wrap,
+    h('div', { class: 'wordrow' },
+      teamTag(t, team(t).name + (S.settings.time > 0 ? '' : '’s turn')),
+      S.settings.time > 0 ? h('span', { class: 'who', id: 'clocknum', style: 'background:var(--card);color:var(--ink);box-shadow:var(--shadow);min-width:84px;justify-content:center;text-transform:none' }, '') : null,
+      h('div', { class: 'wordbox' },
+        h('input', { id: 'word', value: ui.word, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', maxlength: 40, disabled: S.paused,
+          'aria-label': 'Word for ' + team(t).name, placeholder: 'Type the word (or just its letter) and press Enter',
+          oninput: e => { ui.word = e.target.value; ui.msg = null; ui.dupConfirm = ''; paintEntry(); },
+          onkeydown: e => {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); submitWord(); }
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ui.word = ''; ui.msg = null; render(); }
+          } }),
+        hint ? h('span', { class: 'hint' + (hint.bad ? ' bad' : hint.good ? ' good' : ''), id: 'hint' }, hint.text) : h('span', { class: 'hint hidden', id: 'hint' })),
+      h('button', { type: 'button', class: 'claim-btn', onclick: submitWord, disabled: S.paused }, 'Grab'),
+      h('button', { type: 'button', class: 'claim-btn pass', onclick: () => pass(false), disabled: S.paused, title: 'Pass the turn (Ctrl S)' }, 'Pass')),
+    lecterns(),
+    h('div', { class: 'keystrip' },
+      h('kbd', null, 'Enter'), ' grab · ', h('kbd', null, 'Esc'), ' clear · ', h('kbd', null, 'Ctrl Z'), ' undo · ', h('kbd', null, 'Ctrl P'), ' pause · ',
+      h('kbd', null, 'Ctrl S'), ' pass · ', S.settings.challenge ? [h('kbd', null, 'Ctrl K'), ' challenge · '] : null,
+      CATS.length ? [h('kbd', null, 'Ctrl I'), ' peek · '] : null, 'hold ', h('kbd', null, 'Ctrl'), ' for ±10 · click a team to give it the turn'));
+}
+/** Update the hint and the previewed tile without rebuilding the page (keeps typing smooth). */
+function paintEntry() {
+  const hint = $('hint'); if (!hint) return;
+  const pv = entryPreview();
+  hint.className = 'hint' + (pv ? (pv.bad ? ' bad' : '') : ' hidden');
+  hint.textContent = pv ? pv.text : '';
+  document.querySelectorAll('.tile.preview').forEach(el => el.classList.remove('preview'));
+  if (pv && !pv.bad && pv.L) { const el = document.querySelector('#board .tile[data-l="' + pv.L + '"]'); if (el) el.classList.add('preview'); }
+}
+function paintClock(left) {
+  const fill = $('clockfill'), num = $('clocknum'), bar = $('clockbar');
+  if (!fill) return;
+  const total = timeMs() || 1;
+  fill.style.width = Math.max(0, Math.min(100, left / total * 100)) + '%';
+  if (num) num.textContent = (S.clock.running ? '' : '⏸ ') + Math.ceil(left / 1000) + 's';
+  if (bar) bar.classList.toggle('low', S.clock.running && left <= 5000);
+}
+function renderPeek() {
+  const c = catOf(B().key);
+  if (!c.bank) return h('div', { class: 'peek' }, 'No word list for your own category.');
+  const open = openFor(S.turn);
+  return h('div', { class: 'peek' }, open.map(L => {
+    const w = bankWords(c.bank, L, S.settings.level).slice(0, 2);
+    return w.length ? h('span', null, h('b', null, L), w.join(', ')) : null;
+  }));
+}
+/** Fit 26 tiles (9 per row) into the space left for the board. */
+function sizeBoard() {
+  const wrap = $('boardwrap'), board = $('board');
+  if (!wrap || !board) return;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const g = 0.09;
+  const byW = W / (9 + 8 * g), byH = H / (3 + 2 * g);
+  const px = Math.max(40, Math.floor(Math.min(byW, byH, 190)));
+  board.style.setProperty('--tilepx', px + 'px');
+}
 
-        // Initial render
-        render();
-    </script>
+/* ---------- INTRO ---------- */
+function toggleBan(L) {
+  const b = B();
+  if (b.banned[L]) delete b.banned[L]; else b.banned[L] = true;
+  commit();
+}
+function changeCat(key) {
+  if (!key) return;
+  const spec = boardSpec(key, S.settings.level);
+  S.queue[S.b] = key; B().key = key; B().values = spec.values; B().banned = spec.banned;
+  commit();
+}
+function renderIntro() {
+  const c = catOf(B().key);
+  const options = [];
+  const seen = new Set();
+  const add = (k, label) => { if (!seen.has(k)) { seen.add(k); options.push(h('option', { value: k, selected: k === B().key ? true : null }, label)); } };
+  S.queue.forEach(k => { const x = catOf(k); add(x.key, (x.icon ? x.icon + ' ' : '') + x.label); });
+  CATS.forEach(x => add('bank:' + x.id, (x.icon ? x.icon + ' ' : '') + x.label));
+  setup.free.forEach(f => add(freeKey(f), '✏️ ' + f));
+  return h('div', { class: 'stage' },
+    h('div', { class: 'kicker' }, 'Board ' + (S.b + 1) + ' of ' + S.settings.boards + (isRace() ? ' · Race' : ' · Claim')),
+    h('div', { class: 'big' }, (c.icon ? c.icon + ' ' : '') + c.label),
+    h('div', { class: 'starts' }, teamTag(S.turn, team(S.turn).name + ' starts')),
+    h('div', { class: 'strip' }, ABC.map(L => tileFor(L, { view: S.turn, onclick: toggleBan, noDots: true }))),
+    h('div', { class: 'note' }, 'Click a letter to close or open it for this board. ' + playable() + ' letters open.'),
+    h('div', { class: 'ctl' },
+      h('select', { 'aria-label': 'Category for this board', onchange: e => changeCat(e.target.value) }, options),
+      h('input', { id: 'introfree', class: 'field', style: 'max-width:240px', maxlength: 40, placeholder: 'or type another category',
+        onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); const v = cleanWord(e.target.value); if (v) { if (!setup.free.includes(v)) { setup.free.unshift(v); setup.free = setup.free.slice(0, 12); saveSetup(); } changeCat(freeKey(v)); } } } })),
+    h('div', { class: 'ctl' },
+      UNDO.length ? h('button', { class: 'tool', type: 'button', onclick: undo }, '↶ Undo') : null,
+      h('button', { class: 'big-btn', type: 'button', id: 'startboard', onclick: startBoard, disabled: !openFor(S.turn).length }, 'Start board ▶'),
+      h('button', { class: 'tool danger' + (ui.endArmed ? ' armed' : ''), type: 'button', onclick: armEnd }, ui.endArmed ? 'Click again to end' : '⏹ End game'),
+      ...utilButtons()),
+    ui.msg ? h('div', { class: 'note warn' }, ui.msg.s) : null,
+    h('div', { class: 'note' }, h('kbd', null, 'Enter'), ' starts the board'));
+}
+
+/* ---------- BOARD END ---------- */
+const REASONS = {
+  full: 'Every open letter has been grabbed.',
+  stuck: 'Every team passed in a row, so the board is closed.',
+  done: 'A team finished its alphabet and the round is complete.',
+};
+function renderBoardEnd() {
+  const b = B(), c = catOf(b.key);
+  const last = S.b + 1 >= S.settings.boards;
+  const views = isRace() ? S.teams.map((_, i) => i) : [null];
+  const left = isRace() ? [] : openFor(0);
+  return h('div', { class: 'stage', style: 'justify-content:flex-start;padding-top:10px;overflow:auto' },
+    h('div', { class: 'kicker' }, 'Board ' + (S.b + 1) + ' of ' + S.settings.boards + ' complete'),
+    h('div', { class: 'big', style: 'font-size:clamp(2rem,5vw,3.6rem)' }, (c.icon ? c.icon + ' ' : '') + c.label),
+    h('div', { class: 'note', style: 'font-size:.95rem' }, REASONS[b.endReason] || ''),
+    h('div', { class: 'bpts' }, S.teams.map((t, i) => h('span', { class: 'chip', style: '--c:' + t.color }, t.name + ' ', h('b', { style: 'font-family:var(--font-display);font-weight:400' }, (b.pts[i] >= 0 ? '+' : '') + b.pts[i])))),
+    views.map(v => h('div', null,
+      v != null ? h('div', { style: 'font-weight:900;margin:4px 0' }, team(v).name) : null,
+      h('div', { class: 'strip mini', style: '--tilepx:' + (isRace() && T() > 2 ? 'clamp(34px,3.6vw,48px)' : 'clamp(48px,5.6vw,74px)') },
+        ABC.map(L => tileFor(L, { view: v == null ? 0 : v, noDots: true, noWords: isRace() && T() > 2 }))))),
+    left.length ? h('div', { class: 'note' }, 'Nobody grabbed: ' + left.join(' ')) : null,
+    renderMissed(left),
+    h('div', { class: 'ctl', style: 'margin-top:6px' },
+      h('button', { class: 'tool', type: 'button', onclick: undo, disabled: !UNDO.length }, '↶ Undo'),
+      canChallenge() ? h('button', { class: 'tool', type: 'button', onclick: openChallenge }, '⚖ Challenge the last word') : null,
+      h('button', { class: 'big-btn', type: 'button', id: 'nextboard', onclick: nextBoard }, last ? 'Results ▶' : 'Next board ▶'),
+      ...utilButtons()),
+    lecterns());
+}
+function renderMissed(left) {
+  const c = catOf(B().key);
+  if (!c.bank || !left.length) return null;
+  const items = left.map(L => [L, bankWords(c.bank, L, S.settings.level).slice(0, 3)]).filter(x => x[1].length);
+  if (!items.length) return null;
+  return h('div', { class: 'peek', style: 'position:static;transform:none;margin:4px auto' }, h('div', { style: 'font-weight:900;margin-bottom:2px' }, 'You could have said:'),
+    items.map(([L, w]) => h('span', null, h('b', null, L), w.join(', '))));
+}
+
+/* ---------- CHALLENGE ---------- */
+function renderChallenge() {
+  const l = S.last;
+  const owner = team(l.t), ch = team(l.ch);
+  return h('div', { class: 'overlay', onclick: e => { if (e.target.classList.contains('overlay')) closeChallenge(); } },
+    h('div', { class: 'modal', role: 'dialog', 'aria-label': 'Challenge' },
+      h('h2', null, '⚖ Challenge!'),
+      h('p', null, ch.name + ' challenges ' + owner.name + '’s word for ' + l.L + ':'),
+      h('div', { class: 'word' }, l.w || l.L),
+      h('p', null, 'Does it fit “' + catOf(B().key).label + '”?'),
+      h('div', { class: 'acts' },
+        h('button', { type: 'button', class: 'act bad', id: 'reject', onclick: () => ruleChallenge(true) }, '✗ Reject the word',
+          h('small', null, owner.name + ' −' + l.p + ', ' + ch.name + ' +' + l.base + ', ' + l.L + ' opens')),
+        h('button', { type: 'button', class: 'act good', id: 'stands', onclick: () => ruleChallenge(false) }, '✓ The word stands',
+          h('small', null, ch.name + ' −' + l.base))),
+      h('div', { class: 'acts' }, h('button', { type: 'button', class: 'act plain', onclick: closeChallenge }, 'Cancel (Esc)'))));
+}
+
+/* ---------- END ---------- */
+function wordListText() {
+  const lines = [];
+  for (let b = 0; b <= S.b && b < S.queue.length; b++) {
+    const entries = S.log.filter(e => e.b === b && e.w);
+    if (!entries.length) continue;
+    lines.push('Board ' + (b + 1) + ': ' + catOf(S.queue[b]).label);
+    entries.slice().sort((a, c) => a.L.localeCompare(c.L) || a.t - c.t).forEach(e => lines.push(e.L + '  ' + e.w + '  (' + team(e.t).name + ')'));
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+function copyWords() {
+  const text = wordListText();
+  const done = () => { say('Word list copied.', 'good'); render(); };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done)); return; }
+  } catch (e) {}
+  fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  const ta = h('textarea', { style: 'position:fixed;left:-9999px' }); ta.value = text; document.body.append(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  ta.remove(); done();
+}
+function renderEnd() {
+  const rows = standings();
+  const places = [...new Set(rows.map(r => r.place))].slice(0, 3);
+  const order = places.length >= 2 ? [places[1], places[0], places[2]].filter(p => p != null) : places;
+  const heights = { 0: 210, 1: 165, 2: 130 };
+  const podium = h('div', { class: 'podium' }, order.map(p => {
+    const group = rows.filter(r => r.place === p);
+    const rank = places.indexOf(p);
+    return h('div', { style: 'display:flex;gap:8px;align-items:flex-end' }, group.map(r => {
+      const c = tagColors(r.color);
+      return h('div', { class: 'step', style: 'height:' + heights[rank] + 'px;background:' + c.bg + ';color:' + c.ink },
+        h('div', { class: 'pl' }, ['1st', '2nd', '3rd', '4th', '5th', '6th'][p - 1]), h('div', { class: 'nm' }, r.name), h('div', { class: 'sc' }, r.score));
+    }));
+  }));
+  const boards = [];
+  for (let b = 0; b <= S.b && b < S.queue.length; b++) {
+    const entries = S.log.filter(e => e.b === b);
+    if (!entries.length) continue;
+    boards.push(h('div', { class: 'panel' }, h('h3', null, 'Board ' + (b + 1) + ': ' + catOf(S.queue[b]).label),
+      h('ul', null, entries.slice().sort((a, c) => a.L.localeCompare(c.L) || a.t - c.t).map(e =>
+        h('li', null, h('i', { style: 'background:' + team(e.t).color }), h('b', null, e.L), e.w || '—')))));
+  }
+  const hasWords = S.log.some(e => e.w);
+  return h('div', { id: 'end' },
+    h('div', { class: 'logo' }, 'Alphabet ', h('span', null, 'Grab')),
+    podium,
+    h('table', { class: 'results' },
+      h('thead', null, h('tr', null, h('th', null, 'Place'), h('th', null, 'Team'), h('th', null, 'Letters'), h('th', { style: 'text-align:right' }, 'Points'))),
+      h('tbody', null, rows.map(r => h('tr', null, h('td', null, r.place), h('td', null, h('span', { class: 'swatch', style: 'display:inline-block;vertical-align:-3px;margin-right:6px;background:' + r.color }), r.name),
+        h('td', null, r.letters), h('td', { class: 'num' }, r.score))))),
+    ui.msg ? h('div', { class: 'note' }, ui.msg.s) : null,
+    h('div', { class: 'setup-actions' },
+      h('button', { class: 'tool', type: 'button', onclick: undo, disabled: !UNDO.length }, '↶ Undo'),
+      hasWords ? h('button', { class: 'tool', type: 'button', onclick: copyWords }, '\u{1F4CB} Copy word list') : null,
+      h('button', { class: 'big-btn', type: 'button', id: 'rematch', onclick: rematch }, 'Rematch'),
+      h('button', { class: 'big-btn alt', type: 'button', id: 'newgame', onclick: toSetup }, 'New game'),
+      ...utilButtons()),
+    boards.length ? h('div', { class: 'wordlists' }, boards) : null);
+}
+function confetti(color) {
+  if (matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = [color, '#fbbf24', '#ffffff', '#38bdf8'];
+  for (let i = 0; i < 90; i++) {
+    const el = h('div', { class: 'confetti', style: 'left:' + Math.random() * 100 + 'vw;width:' + (6 + Math.random() * 6) + 'px;height:' + (8 + Math.random() * 8) + 'px;background:' + colors[i % colors.length] + ';animation-duration:' + (2.2 + Math.random() * 2) + 's;animation-delay:' + Math.random() * 0.6 + 's' });
+    document.body.append(el);
+    setTimeout(() => el.remove(), 5000);
+  }
+}
+
+/* =====================================================================
+   KEYBOARD
+   ===================================================================== */
+function onKey(e) {
+  const mod = e.ctrlKey || e.metaKey;
+  if (e.key === 'Control' || e.key === 'Meta') { if (!ui.mod) { ui.mod = true; const l = document.querySelector('.lecterns'); if (l) l.classList.add('show-adj'); } return; }
+  if (!S) return;
+  if (mod && !e.altKey && !e.shiftKey) {
+    const k = e.key.toLowerCase();
+    const map = { z: undo, p: togglePause, s: () => pass(false), k: openChallenge, e: armEnd };
+    if (k === 'i') { e.preventDefault(); if (!ui.peek && S.phase === 'play') { ui.peek = true; render(); } return; }
+    if (map[k]) { e.preventDefault(); map[k](); return; }
+    return;
+  }
+  if (ui.challenge) { if (e.key === 'Escape') { e.preventDefault(); closeChallenge(); } return; }
+  const tag = (e.target && e.target.tagName) || '';
+  const inField = (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') && e.target.id !== 'word';
+  if (inField) return;
+  if (e.key === 'Enter') {
+    if (S.phase === 'intro' && !e.target.closest('button')) { e.preventDefault(); startBoard(); }
+    else if (S.phase === 'boardEnd' && !e.target.closest('button')) { e.preventDefault(); nextBoard(); }
+  } else if (S.phase === 'play' && !S.paused && e.target.id !== 'word' && e.key.length === 1 && !e.altKey) {
+    // a stray focus elsewhere: send typing to the word bar
+    const wb = $('word'); if (wb) wb.focus();
+  }
+}
+function onKeyUp(e) {
+  if (e.key === 'Control' || e.key === 'Meta') { ui.mod = false; const l = document.querySelector('.lecterns'); if (l && !ui.adjust) l.classList.remove('show-adj'); }
+  if ((e.key === 'i' || e.key === 'I' || e.key === 'Control' || e.key === 'Meta') && ui.peek) { ui.peek = false; render(); }
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+function boot() {
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', () => { ui.mod = false; if (ui.peek) { ui.peek = false; render(); } });
+  window.addEventListener('resize', sizeBoard);
+  if (window.ResizeObserver) new ResizeObserver(() => sizeBoard()).observe(document.body);
+  document.addEventListener('pointerdown', () => actx(), { once: true });
+  setInterval(clockLoop, 100);
+  setInterval(() => { if (S && S.phase === 'play' && S.clock.running) { syncClock(); store.set(SAVE_KEY, { S, UNDO }); } }, 2000);
+  render();
+}
+boot();
+</script>
 </body>
 </html>

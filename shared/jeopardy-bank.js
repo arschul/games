@@ -1,8 +1,6 @@
 /* Shared question bank: 36 categories x 15 questions, ranked 1-15 (easiest first) and CEFR-tagged.
-   Used by Jeopardy (jeopardy/jeopardy.html) and Question Mark (question-mark/question-mark.html).
-   Item: {q, a, rank, cefr, alt?, reveal?}. `reveal` is Question Mark's word-by-word wording; Jeopardy ignores it.
-   groups: library tab per category. frame: categories whose questions share one fixed frame
-   ("What is the capital of ...?"), so Question Mark leaves them out. Validate: node shared/validate-jeopardy-bank.js */
+   Used by Jeopardy (jeopardy/jeopardy.html). Question Mark keeps its own adapted copy in question-mark/questions.js.
+   Item: {q, a, rank, cefr, alt?}. groups: library tab per category. Validate: node shared/validate-jeopardy-bank.js */
 (function (root) {
 var groups = {
   "Animals": "World",
@@ -42,13 +40,12 @@ var groups = {
   "Vegetables": "Vocabulary",
   "World Capitals": "World"
 };
-var frame = ["Stage Names","Periodic Table","The Letter A"];
 var categories = {
   "Animals": [
     {"q":"What is the largest land animal?","a":"elephant","rank":1,"cefr":"A1","alt":["African elephant"]},
     {"q":"What is the fastest land animal?","a":"cheetah","rank":2,"cefr":"A1"},
     {"q":"What do we call a baby dog?","a":"puppy","rank":3,"cefr":"A1"},
-    {"q":"What is the largest animal in the world (lives in the ocean)?","a":"blue whale","rank":4,"cefr":"A2","reveal":"What is the largest animal that lives in the ocean?"},
+    {"q":"What is the largest animal in the world (lives in the ocean)?","a":"blue whale","rank":4,"cefr":"A2"},
     {"q":"What do we call a baby cat?","a":"kitten","rank":5,"cefr":"A2"},
     {"q":"Which bird cannot fly but runs very fast?","a":"ostrich","rank":6,"cefr":"A2"},
     {"q":"What is the tallest animal in the world?","a":"giraffe","rank":7,"cefr":"B1"},
@@ -62,21 +59,21 @@ var categories = {
     {"q":"Which living animal has the strongest bite force ever measured?","a":"saltwater crocodile","rank":15,"cefr":"B2"}
   ],
   "Brazilian Capitals": [
-    {"q":"What is the capital of Brazil?","a":"Brasília","rank":1,"cefr":"A1","alt":["Brasilia"],"reveal":"Which Brazilian city was built in the 1950s to be the new capital?"},
-    {"q":"What is the capital of São Paulo state?","a":"São Paulo","rank":2,"cefr":"A1","alt":["Sao Paulo"],"reveal":"Which state capital is the biggest city in Brazil?"},
-    {"q":"What is the capital of Rio de Janeiro state?","a":"Rio de Janeiro","rank":3,"cefr":"A1","reveal":"Which state capital has Sugarloaf Mountain and Copacabana beach?"},
-    {"q":"What is the capital of Paraná state?","a":"Curitiba","rank":4,"cefr":"A2","reveal":"Which southern state capital is famous for its Botanical Garden and tube bus stops?"},
-    {"q":"What is the capital of Minas Gerais?","a":"Belo Horizonte","rank":5,"cefr":"A2","reveal":"Which Brazilian state capital do people often call 'BH' for short?"},
-    {"q":"What is the capital of Bahia?","a":"Salvador","rank":6,"cefr":"A2","reveal":"Which state capital was Brazil's first capital city?"},
-    {"q":"What is the capital of Rio Grande do Sul?","a":"Porto Alegre","rank":7,"cefr":"B1","reveal":"What is the southernmost state capital in Brazil?"},
-    {"q":"What is the capital of Pernambuco?","a":"Recife","rank":8,"cefr":"B1","reveal":"Which state capital is called the 'Brazilian Venice' because of its bridges?"},
-    {"q":"What is the capital of Santa Catarina?","a":"Florianópolis","rank":9,"cefr":"B1","alt":["Florianopolis"],"reveal":"Which state capital is mostly on an island and called 'Floripa'?"},
-    {"q":"What is the capital of Ceará?","a":"Fortaleza","rank":10,"cefr":"B1","alt":["Ceara"],"reveal":"Which northeastern state capital's name means 'fortress' in English?"},
-    {"q":"What is the capital of Amazonas?","a":"Manaus","rank":11,"cefr":"B2","reveal":"Which state capital sits in the middle of the Amazon rainforest?"},
-    {"q":"What is the capital of Pará?","a":"Belém","rank":12,"cefr":"B2","alt":["Belem","Para"],"reveal":"Which state capital near the mouth of the Amazon hosted COP30 in 2025?"},
-    {"q":"What is the capital of Goiás?","a":"Goiânia","rank":13,"cefr":"B2","alt":["Goiania"],"reveal":"Which state capital is famous as the home of sertanejo music?"},
-    {"q":"What is the capital of Mato Grosso do Sul?","a":"Campo Grande","rank":14,"cefr":"B2","reveal":"Which state capital's name means 'big field' in English?"},
-    {"q":"What is the capital of Tocantins?","a":"Palmas","rank":15,"cefr":"B2","reveal":"Which state capital, founded in 1989, is the newest in Brazil?"}
+    {"q":"What is the capital of Brazil?","a":"Brasília","rank":1,"cefr":"A1","alt":["Brasilia"]},
+    {"q":"What is the capital of São Paulo state?","a":"São Paulo","rank":2,"cefr":"A1","alt":["Sao Paulo"]},
+    {"q":"What is the capital of Rio de Janeiro state?","a":"Rio de Janeiro","rank":3,"cefr":"A1"},
+    {"q":"What is the capital of Paraná state?","a":"Curitiba","rank":4,"cefr":"A2"},
+    {"q":"What is the capital of Minas Gerais?","a":"Belo Horizonte","rank":5,"cefr":"A2"},
+    {"q":"What is the capital of Bahia?","a":"Salvador","rank":6,"cefr":"A2"},
+    {"q":"What is the capital of Rio Grande do Sul?","a":"Porto Alegre","rank":7,"cefr":"B1"},
+    {"q":"What is the capital of Pernambuco?","a":"Recife","rank":8,"cefr":"B1"},
+    {"q":"What is the capital of Santa Catarina?","a":"Florianópolis","rank":9,"cefr":"B1","alt":["Florianopolis"]},
+    {"q":"What is the capital of Ceará?","a":"Fortaleza","rank":10,"cefr":"B1","alt":["Ceara"]},
+    {"q":"What is the capital of Amazonas?","a":"Manaus","rank":11,"cefr":"B2"},
+    {"q":"What is the capital of Pará?","a":"Belém","rank":12,"cefr":"B2","alt":["Belem","Para"]},
+    {"q":"What is the capital of Goiás?","a":"Goiânia","rank":13,"cefr":"B2","alt":["Goiania"]},
+    {"q":"What is the capital of Mato Grosso do Sul?","a":"Campo Grande","rank":14,"cefr":"B2"},
+    {"q":"What is the capital of Tocantins?","a":"Palmas","rank":15,"cefr":"B2"}
   ],
   "Brazilian Cars": [
     {"q":"What color is commonly associated with taxis in Brazil?","a":"yellow","rank":1,"cefr":"A1"},
@@ -89,7 +86,7 @@ var categories = {
     {"q":"What was the first car mass-produced in Brazil, built starting in 1956?","a":"Romi-Isetta","rank":8,"cefr":"B1"},
     {"q":"What popular pickup truck is made by Fiat in Brazil?","a":"Fiat Toro","rank":9,"cefr":"B1","alt":["Toro"]},
     {"q":"What Volkswagen car was Brazil's best-selling car for 27 years in a row?","a":"Gol","rank":10,"cefr":"B1","alt":["VW Gol","Volkswagen Gol"]},
-    {"q":"In what year did the Volkswagen Beetle ('Fusca') finally stop being produced in Brazil?","a":"1996","rank":11,"cefr":"B2","alt":["1986"],"reveal":"In what year did Brazil stop making the Volkswagen Beetle, the Fusca?"},
+    {"q":"In what year did the Volkswagen Beetle ('Fusca') finally stop being produced in Brazil?","a":"1996","rank":11,"cefr":"B2","alt":["1986"]},
     {"q":"Which area near São Paulo, named after three cities, is the center of Brazil's car industry?","a":"the ABC Paulista","rank":12,"cefr":"B2","alt":["ABC","ABC region"]},
     {"q":"What do Brazilians call a cheap car with a small 1.0 engine?","a":"carro popular","rank":13,"cefr":"B2","alt":["popular car"]},
     {"q":"What Chinese brand makes electric and hybrid cars at a factory in Bahia?","a":"BYD","rank":14,"cefr":"B2","alt":["1.0"]},
@@ -113,21 +110,21 @@ var categories = {
     {"q":"What is the superlative form of 'little' (amount)?","a":"least","rank":15,"cefr":"B2"}
   ],
   "Famous Landmarks": [
-    {"q":"In which country is the Eiffel Tower?","a":"France","rank":1,"cefr":"A1","reveal":"In which country can you climb the Eiffel Tower?"},
-    {"q":"In which country is the Great Wall?","a":"China","rank":2,"cefr":"A1","reveal":"The Great Wall was built to protect which country?"},
-    {"q":"In which country is the Statue of Liberty?","a":"USA","rank":3,"cefr":"A1","alt":["United States"],"reveal":"The Statue of Liberty was a gift from France to which country?"},
-    {"q":"In which country is the Colosseum?","a":"Italy","rank":4,"cefr":"A2","reveal":"Gladiators once fought in the Colosseum in which country?"},
-    {"q":"In which country is Christ the Redeemer?","a":"Brazil","rank":5,"cefr":"A2","reveal":"Christ the Redeemer looks down over Rio in which country?"},
-    {"q":"In which country is the Taj Mahal?","a":"India","rank":6,"cefr":"A2","reveal":"The Taj Mahal, a white marble building, is in which country?"},
-    {"q":"In which country is Machu Picchu?","a":"Peru","rank":7,"cefr":"B1","reveal":"Which South American country is home to Machu Picchu?"},
-    {"q":"In which country is Big Ben (Elizabeth Tower)?","a":"England","rank":8,"cefr":"B1","alt":["UK","United Kingdom"],"reveal":"Big Ben is the famous clock tower of which country?"},
-    {"q":"In which country are the pyramids of Giza?","a":"Egypt","rank":9,"cefr":"B1","reveal":"The pyramids of Giza stand near Cairo in which country?"},
-    {"q":"In which country is the Sydney Opera House?","a":"Australia","rank":10,"cefr":"B1","reveal":"Which country has the Sydney Opera House by its harbor?"},
-    {"q":"In which country is Petra?","a":"Jordan","rank":11,"cefr":"B2","reveal":"Petra, a city carved into pink rock, is in which country?"},
-    {"q":"In which country is Chichén Itzá, the famous Mayan pyramid?","a":"Mexico","rank":12,"cefr":"B2","reveal":"Chichén Itzá, an old Mayan pyramid, is in which country?"},
-    {"q":"In which country is the Sagrada Família?","a":"Spain","rank":13,"cefr":"B2","reveal":"Gaudí's unfinished church, the Sagrada Família, is in which country?"},
-    {"q":"In which country is Angkor Wat?","a":"Cambodia","rank":14,"cefr":"B2","reveal":"Angkor Wat, the largest temple complex in the world, is in which country?"},
-    {"q":"In which country is the Blue Mosque?","a":"Turkey","rank":15,"cefr":"B2","reveal":"In which country does the Blue Mosque stand, in Istanbul?"}
+    {"q":"In which country is the Eiffel Tower?","a":"France","rank":1,"cefr":"A1"},
+    {"q":"In which country is the Great Wall?","a":"China","rank":2,"cefr":"A1"},
+    {"q":"In which country is the Statue of Liberty?","a":"USA","rank":3,"cefr":"A1","alt":["United States"]},
+    {"q":"In which country is the Colosseum?","a":"Italy","rank":4,"cefr":"A2"},
+    {"q":"In which country is Christ the Redeemer?","a":"Brazil","rank":5,"cefr":"A2"},
+    {"q":"In which country is the Taj Mahal?","a":"India","rank":6,"cefr":"A2"},
+    {"q":"In which country is Machu Picchu?","a":"Peru","rank":7,"cefr":"B1"},
+    {"q":"In which country is Big Ben (Elizabeth Tower)?","a":"England","rank":8,"cefr":"B1","alt":["UK","United Kingdom"]},
+    {"q":"In which country are the pyramids of Giza?","a":"Egypt","rank":9,"cefr":"B1"},
+    {"q":"In which country is the Sydney Opera House?","a":"Australia","rank":10,"cefr":"B1"},
+    {"q":"In which country is Petra?","a":"Jordan","rank":11,"cefr":"B2"},
+    {"q":"In which country is Chichén Itzá, the famous Mayan pyramid?","a":"Mexico","rank":12,"cefr":"B2"},
+    {"q":"In which country is the Sagrada Família?","a":"Spain","rank":13,"cefr":"B2"},
+    {"q":"In which country is Angkor Wat?","a":"Cambodia","rank":14,"cefr":"B2"},
+    {"q":"In which country is the Blue Mosque?","a":"Turkey","rank":15,"cefr":"B2"}
   ],
   "Flags": [
     {"q":"What two colors are on the flag of Japan?","a":"white and red","rank":1,"cefr":"A1","alt":["red and white"]},
@@ -143,7 +140,7 @@ var categories = {
     {"q":"What is the only national flag that is not rectangular?","a":"Nepal","rank":11,"cefr":"B2"},
     {"q":"How many points does the star have on the flag of Chile?","a":"5","rank":12,"cefr":"B2"},
     {"q":"What shape is the white cross on the flag of Switzerland?","a":"a plus sign/equilateral cross","rank":13,"cefr":"B2","alt":["cross","plus sign"]},
-    {"q":"Which two countries have nearly identical flags (differing mainly in shade), Romania and...?","a":"Chad","rank":14,"cefr":"B2","alt":["Moldova"],"reveal":"Which country has a flag almost the same as Romania's flag?"},
+    {"q":"Which two countries have nearly identical flags (differing mainly in shade), Romania and...?","a":"Chad","rank":14,"cefr":"B2","alt":["Moldova"]},
     {"q":"How many gold stars are in the circle on the European Union flag?","a":"12","rank":15,"cefr":"B2","alt":["twelve"]}
   ],
   "Food and Drink": [
@@ -176,7 +173,7 @@ var categories = {
     {"q":"What building material is the strongest but slowest to place?","a":"metal","rank":10,"cefr":"B1"},
     {"q":"What was the 2019 event called when a black hole swallowed the whole map?","a":"The End","rank":11,"cefr":"B2","alt":["the black hole event","Chapter 1 finale"]},
     {"q":"What do you do to help a knocked-down teammate get back up?","a":"revive them","rank":12,"cefr":"B2","alt":["revive","reviving"]},
-    {"q":"What is the name for landing quickly and aggressively at the very start of a match to fight early?","a":"dropping hot","rank":13,"cefr":"B2","alt":["hot dropping"],"reveal":"What do players call landing in a busy area at the start of a match?"},
+    {"q":"What is the name for landing quickly and aggressively at the very start of a match to fight early?","a":"dropping hot","rank":13,"cefr":"B2","alt":["hot dropping"]},
     {"q":"What is the term for the practice of quickly building structures for defense in a fight?","a":"turtling","rank":14,"cefr":"B2","alt":["building up"]},
     {"q":"What glowing boxes, found around the map, hold weapons and make a humming sound?","a":"chests","rank":15,"cefr":"B2","alt":["treasure chests"]}
   ],
@@ -192,7 +189,7 @@ var categories = {
     {"q":"What small red or black fruit grows on thin canes and has a hollow center?","a":"raspberry","rank":9,"cefr":"B1","alt":["blackberry"]},
     {"q":"What tropical yellow fruit is spiky on the outside with sweet segments inside?","a":"pineapple","rank":10,"cefr":"B1"},
     {"q":"What fruit is a hybrid of a plum and an apricot?","a":"pluot","rank":11,"cefr":"B2","alt":["plumcot"]},
-    {"q":"What fruit, grown widely in Brazil, is often used to make an energy drink and has a small black seed inside?","a":"guaraná","rank":12,"cefr":"B2","alt":["guarana"],"reveal":"Which Brazilian fruit with a small black seed is used in energy drinks?"},
+    {"q":"What fruit, grown widely in Brazil, is often used to make an energy drink and has a small black seed inside?","a":"guaraná","rank":12,"cefr":"B2","alt":["guarana"]},
     {"q":"What purple/black fruit, common in the Amazon, is used in bowls and smoothies?","a":"açaí","rank":13,"cefr":"B2","alt":["acai"]},
     {"q":"What tropical fruit is known as the 'king of fruits' in Southeast Asia for its strong smell?","a":"durian","rank":14,"cefr":"B2"},
     {"q":"What fruit has a hard shell, milky white flesh, and grows on palm trees?","a":"coconut","rank":15,"cefr":"B2"}
@@ -201,10 +198,10 @@ var categories = {
     {"q":"What is the largest continent?","a":"Asia","rank":1,"cefr":"A1"},
     {"q":"What is the largest ocean?","a":"Pacific Ocean","rank":2,"cefr":"A1","alt":["Pacific"]},
     {"q":"What is the smallest continent?","a":"Australia","rank":3,"cefr":"A1","alt":["Oceania"]},
-    {"q":"What is the longest river in the world? (either accepted answer counts)","a":"Nile","rank":4,"cefr":"A2","alt":["Amazon"],"reveal":"What is the longest river in the world?"},
+    {"q":"What is the longest river in the world? (either accepted answer counts)","a":"Nile","rank":4,"cefr":"A2","alt":["Amazon"]},
     {"q":"What is the tallest mountain in the world?","a":"Mount Everest","rank":5,"cefr":"A2","alt":["Everest"]},
     {"q":"What is the largest country by area?","a":"Russia","rank":6,"cefr":"A2"},
-    {"q":"What is the largest desert by area in the world overall (it's a cold one)?","a":"Antarctic Desert","rank":7,"cefr":"B1","alt":["Antarctica"],"reveal":"Which cold desert is the largest desert in the world?"},
+    {"q":"What is the largest desert by area in the world overall (it's a cold one)?","a":"Antarctic Desert","rank":7,"cefr":"B1","alt":["Antarctica"]},
     {"q":"What is the largest hot desert in the world?","a":"Sahara","rank":8,"cefr":"B1"},
     {"q":"Which country currently has the largest population in the world?","a":"India","rank":9,"cefr":"B1","alt":["China"]},
     {"q":"What is the driest place on Earth?","a":"Atacama Desert","rank":10,"cefr":"B1","alt":["Death Valley","McMurdo Dry Valleys"]},
@@ -223,7 +220,7 @@ var categories = {
     {"q":"What is the name of the villain who tries to kill Harry?","a":"Voldemort","rank":6,"cefr":"A2","alt":["Lord Voldemort"]},
     {"q":"What is the name of the school's headmaster in the first books?","a":"Albus Dumbledore","rank":7,"cefr":"B1","alt":["Dumbledore"]},
     {"q":"What is the name of Harry's other best friend, a clever girl?","a":"Hermione Granger","rank":8,"cefr":"B1","alt":["Hermione"]},
-    {"q":"What creature guards Hogwarts and drains happiness (feeds on fear)?","a":"Dementor","rank":9,"cefr":"B1","reveal":"What creature guards Hogwarts and takes away people's happiness?"},
+    {"q":"What creature guards Hogwarts and drains happiness (feeds on fear)?","a":"Dementor","rank":9,"cefr":"B1"},
     {"q":"What house is known for cunning and ambition?","a":"Slytherin","rank":10,"cefr":"B1"},
     {"q":"What is the name of the magical objects Voldemort split his soul into?","a":"Horcruxes","rank":11,"cefr":"B2"},
     {"q":"What platform at King's Cross station leads to the Hogwarts Express?","a":"Platform 9¾","rank":12,"cefr":"B2","alt":["Platform 9 3/4"]},
@@ -235,7 +232,7 @@ var categories = {
     {"q":"How many months are in a year?","a":"12","rank":1,"cefr":"A1"},
     {"q":"How many legs does a spider have?","a":"8","rank":2,"cefr":"A1"},
     {"q":"How many players are on a basketball team on the court at once?","a":"5","rank":3,"cefr":"A1"},
-    {"q":"How many players are on a football (soccer) team on the field?","a":"11","rank":4,"cefr":"A2","reveal":"How many players does a soccer team have on the field?"},
+    {"q":"How many players are on a football (soccer) team on the field?","a":"11","rank":4,"cefr":"A2"},
     {"q":"How many continents are there?","a":"7","rank":5,"cefr":"A2"},
     {"q":"How many strings does a standard guitar have?","a":"6","rank":6,"cefr":"A2"},
     {"q":"How many bones are in the adult human body?","a":"206","rank":7,"cefr":"B1"},
@@ -515,7 +512,7 @@ var categories = {
     {"q":"What is the largest organ in the human body?","a":"skin","rank":9,"cefr":"B1"},
     {"q":"What do we call the layer of gases surrounding the Earth?","a":"the atmosphere","rank":10,"cefr":"B1","alt":["atmosphere"]},
     {"q":"What is the chemical formula for table salt?","a":"NaCl","rank":11,"cefr":"B2"},
-    {"q":"What is the speed of light in a vacuum (approx.)?","a":"300,000 km/s","rank":12,"cefr":"B2","alt":["300000 km/s","186000 mi/s"],"reveal":"What is the speed of light, approximately?"},
+    {"q":"What is the speed of light in a vacuum (approx.)?","a":"300,000 km/s","rank":12,"cefr":"B2","alt":["300000 km/s","186000 mi/s"]},
     {"q":"What is the name of the theory that explains how species change over time?","a":"evolution","rank":13,"cefr":"B2","alt":["theory of evolution"]},
     {"q":"What particle in an atom has a negative charge?","a":"electron","rank":14,"cefr":"B2"},
     {"q":"What is the study of the stars and universe called?","a":"astronomy","rank":15,"cefr":"B2"}
@@ -624,7 +621,7 @@ var categories = {
   ],
   "Vegetables": [
     {"q":"What orange vegetable is good for your eyes?","a":"carrot","rank":1,"cefr":"A1"},
-    {"q":"What round red vegetable is used in salads and sauces (technically a fruit)?","a":"tomato","rank":2,"cefr":"A1","reveal":"What round red vegetable is used in salads and sauces?"},
+    {"q":"What round red vegetable is used in salads and sauces (technically a fruit)?","a":"tomato","rank":2,"cefr":"A1"},
     {"q":"What green vegetable looks like a small tree?","a":"broccoli","rank":3,"cefr":"A1"},
     {"q":"What white vegetable makes people cry when you cut it?","a":"onion","rank":4,"cefr":"A2"},
     {"q":"What long green vegetable is mostly water and used in salads?","a":"cucumber","rank":5,"cefr":"A2"},
@@ -640,24 +637,24 @@ var categories = {
     {"q":"What vegetable family includes broccoli, cauliflower, and cabbage?","a":"brassica","rank":15,"cefr":"B2","alt":["cruciferous vegetables"]}
   ],
   "World Capitals": [
-    {"q":"What is the capital of France?","a":"Paris","rank":1,"cefr":"A1","reveal":"Which city on the River Seine is the capital of France?"},
-    {"q":"What is the capital of the United Kingdom?","a":"London","rank":2,"cefr":"A1","reveal":"Which capital city of England has red double-decker buses?"},
-    {"q":"What is the capital of the USA?","a":"Washington, D.C.","rank":3,"cefr":"A1","alt":["Washington DC","Washington"],"reveal":"In which capital city does the US president live and work?"},
-    {"q":"What is the capital of Japan?","a":"Tokyo","rank":4,"cefr":"A2","reveal":"Which capital city in Japan is famous for sushi and anime?"},
-    {"q":"What is the capital of Italy?","a":"Rome","rank":5,"cefr":"A2","reveal":"Which Italian capital city surrounds Vatican City?"},
-    {"q":"What is the capital of Germany?","a":"Berlin","rank":6,"cefr":"A2","reveal":"Which capital city was divided by a wall until 1989?"},
-    {"q":"What is the capital of Canada?","a":"Ottawa","rank":7,"cefr":"B1","reveal":"Which Canadian city is the capital, not Toronto or Vancouver?"},
-    {"q":"What is the capital of Egypt?","a":"Cairo","rank":8,"cefr":"B1","reveal":"Which capital city sits on the River Nile in Egypt?"},
-    {"q":"What is the capital of Russia?","a":"Moscow","rank":9,"cefr":"B1","reveal":"Which capital city has the Kremlin and Red Square?"},
-    {"q":"What is the capital of Argentina?","a":"Buenos Aires","rank":10,"cefr":"B1","reveal":"Which South American capital city is famous for tango?"},
-    {"q":"What is the capital of South Korea?","a":"Seoul","rank":11,"cefr":"B1","reveal":"Which Asian capital city is the center of K-pop?"},
-    {"q":"What is the capital of Turkey?","a":"Ankara","rank":12,"cefr":"B2","reveal":"What is the capital of Turkey, which many people think is Istanbul?"},
-    {"q":"What is the capital of South Africa? (one accepted answer is enough)","a":"Pretoria","rank":13,"cefr":"B2","alt":["Cape Town","Bloemfontein"],"reveal":"What is one of the three capital cities of South Africa?"},
-    {"q":"What is the capital of Switzerland?","a":"Bern","rank":14,"cefr":"B2","reveal":"Which Swiss city is the capital, not Zurich or Geneva?"},
-    {"q":"What is the capital of Kazakhstan?","a":"Astana","rank":15,"cefr":"B2","reveal":"Which Central Asian capital was renamed Nur-Sultan and later changed back?"}
+    {"q":"What is the capital of France?","a":"Paris","rank":1,"cefr":"A1"},
+    {"q":"What is the capital of the United Kingdom?","a":"London","rank":2,"cefr":"A1"},
+    {"q":"What is the capital of the USA?","a":"Washington, D.C.","rank":3,"cefr":"A1","alt":["Washington DC","Washington"]},
+    {"q":"What is the capital of Japan?","a":"Tokyo","rank":4,"cefr":"A2"},
+    {"q":"What is the capital of Italy?","a":"Rome","rank":5,"cefr":"A2"},
+    {"q":"What is the capital of Germany?","a":"Berlin","rank":6,"cefr":"A2"},
+    {"q":"What is the capital of Canada?","a":"Ottawa","rank":7,"cefr":"B1"},
+    {"q":"What is the capital of Egypt?","a":"Cairo","rank":8,"cefr":"B1"},
+    {"q":"What is the capital of Russia?","a":"Moscow","rank":9,"cefr":"B1"},
+    {"q":"What is the capital of Argentina?","a":"Buenos Aires","rank":10,"cefr":"B1"},
+    {"q":"What is the capital of South Korea?","a":"Seoul","rank":11,"cefr":"B1"},
+    {"q":"What is the capital of Turkey?","a":"Ankara","rank":12,"cefr":"B2"},
+    {"q":"What is the capital of South Africa? (one accepted answer is enough)","a":"Pretoria","rank":13,"cefr":"B2","alt":["Cape Town","Bloemfontein"]},
+    {"q":"What is the capital of Switzerland?","a":"Bern","rank":14,"cefr":"B2"},
+    {"q":"What is the capital of Kazakhstan?","a":"Astana","rank":15,"cefr":"B2"}
   ]
 };
-var bank = { categories: categories, groups: groups, frame: frame };
+var bank = { categories: categories, groups: groups };
 root.JEOPARDY_BANK = bank;
 if (typeof module !== 'undefined' && module.exports) module.exports = bank;
 })(typeof window !== 'undefined' ? window : globalThis);

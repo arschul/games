@@ -253,7 +253,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
 <div id="fx" aria-hidden="true"><div class="bg"></div><div class="beam b1"></div><div class="beam b2"></div><div class="beam b3"></div><div class="bulbs"></div><div class="cone"></div></div>
 <div id="fxtop" aria-hidden="true"><div class="slam">✗</div><canvas id="confetti"></canvas></div>
 <div id="app"></div>
-<script src="../shared/jeopardy-bank.js"></script>
+<script src="questions.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -270,7 +270,7 @@ const LEVEL_LABEL = { easy: 'Easy', medium: 'Medium', all: 'All' };
 const HELPER_WORDS = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'do', 'does', 'did', 'of', 'in', 'on', 'at', 'to', 'for']);
 const UNDO_DEPTH = 30, HISTORY_GAMES = 3;
 
-const BANK = window.JEOPARDY_BANK;
+const BANK = window.QM_QUESTIONS;   // question-mark/questions.js — this game's own questions
 const app = document.getElementById('app');
 
 /* ---------- small helpers ---------- */
@@ -297,20 +297,19 @@ const clone = o => JSON.parse(JSON.stringify(o));
 /* ---------- content ---------- */
 const words = s => s.trim().split(/\s+/);
 const norm = w => w.toLowerCase().replace(/[^a-z0-9']/g, '');
-const POOL_CATS = BANK ? Object.keys(BANK.categories).filter(c => BANK.groups[c] !== 'Grammar' && !BANK.frame.includes(c)) : [];
-const FRAME_CATS = BANK ? Object.keys(BANK.categories).filter(c => BANK.groups[c] !== 'Grammar' && BANK.frame.includes(c)) : [];
+const POOL_CATS = BANK ? Object.keys(BANK) : [];
 function questionsFor(level, cats) {
   const max = LEVELS[level] || 5, out = [];
   for (const c of cats) {
     if (!POOL_CATS.includes(c)) continue;
-    for (const q of BANK.categories[c]) if (q.rank <= max) out.push(c + '#' + q.rank);
+    for (const q of BANK[c]) if (q.rank <= max) out.push(c + '#' + q.rank);
   }
   return out;
 }
 function getQ(id) {
   const i = id.lastIndexOf('#'), cat = id.slice(0, i), rank = +id.slice(i + 1);
-  const q = BANK.categories[cat].find(x => x.rank === rank);
-  return { id, cat, rank, cefr: q.cefr, text: q.reveal || q.q, a: q.a, alt: q.alt || [] };
+  const q = BANK[cat].find(x => x.rank === rank);
+  return { id, cat, rank, cefr: q.cefr, text: q.q, a: q.a, alt: q.alt || [] };
 }
 function nearTwins(a, b) {
   const A = words(a).map(norm), B = words(b).map(norm);
@@ -800,7 +799,7 @@ function render() {
   if (silent) return;
   document.body.classList.toggle('playing', !!S && S.phase !== 'end');
   app.textContent = '';
-  if (!BANK) { app.append(h('p', { class: 'err', text: 'The question bank (shared/jeopardy-bank.js) did not load. Check the connection and reload the page.' })); return; }
+  if (!BANK) { app.append(h('p', { class: 'err', text: 'The questions (question-mark/questions.js) did not load. Check the connection and reload the page.' })); return; }
   let plan = null;
   if (!S) app.append(renderSetup());
   else if (S.phase === 'end') app.append(renderEnd());
@@ -952,7 +951,7 @@ function renderSetup() {
     h('p', { class: 'note', text: st.helpers ? 'Helper words (the, is, of, in…) start face up and don\'t count in the points.' : 'Every word starts hidden — calling a number that hides "the" wastes the turn.' })
   );
 
-  const cnt = c => BANK.categories[c].filter(q => q.rank <= LEVELS[st.level]).length;
+  const cnt = c => BANK[c].filter(q => q.rank <= LEVELS[st.level]).length;
   const catCard = h('div', { class: 'card' },
     h('h2', { text: 'Categories' }),
     h('div', { class: 'chip-tools' },
@@ -977,7 +976,7 @@ function renderSetup() {
       reason ? h('span', { class: 'why', text: reason }) : null,
       saved && saved.S ? h('button', { type: 'button', class: 'ghost', onclick: resume }, 'Resume game') : null,
       h('button', { type: 'button', class: 'big', disabled: !!reason, onclick: () => { sfx('whoosh'); newGame(setup); render(); } }, 'Start')),
-    h('p', { class: 'credit', text: 'Questions from the Jeopardy bank · ranked and CEFR-tagged' })
+    h('p', { class: 'credit', text: 'Questions adapted from the Jeopardy bank · ranked and CEFR-tagged' })
   );
 }
 function resume() {
@@ -1167,7 +1166,7 @@ render();
 window.QM = {
   get S() { return S; }, set S(v) { S = v; }, get undoStack() { return undoStack; }, get ui() { return ui; }, clock,
   setSilent(v) { silent = v; }, newGame, flip, judge, nextRound, skipQuestion, cancelQuestion, adjust, giveControl, endGame, undo,
-  rematch, resume, toSetup, render, pot, hidden, questionsFor, getQ, nearTwins, tileSize, ranking, POOL_CATS, FRAME_CATS,
+  rematch, resume, toSetup, render, pot, hidden, questionsFor, getQ, nearTwins, tileSize, ranking, POOL_CATS,
   get setup() { return setup; }, set setup(v) { setup = v; }, snd, setMuted, mus, setMusic
 };
 </script>

@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- HUBGEN:leaf start -->
+<script>(function(){try{var k="arschul:theme",v=localStorage.getItem(k);
+if(!v){var o=["hub-theme","theme","gh-theme","adv-theme","reviews-theme","worksheets-theme",
+"vocab-theme","toefl-theme","stc-theme","wheelquest-theme","wba-theme","airtight-theme","efl-reader-theme"];
+for(var i=0;i<o.length;i++){var x=localStorage.getItem(o[i]);if(x==="light"||x==="dark"){v=x;break;}}
+v=v||"dark";localStorage.setItem(k,v);}
+var m=(v==="system")?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):v;
+document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
+<script defer src="https://arschul.github.io/assets/leaf.v1.js"></script>
+<!-- HUBGEN:leaf end -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Question Mark</title>
+<meta name="description" content="Team game show: the question is hidden word by word. Call a number, flip a word, guess the answer — the fewer words you need, the more you score.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --stage: #120d2e; --stage2: #1d1550; --ink: #f4f1ff; --muted: #b9b2dd;
+    --panel: #251c63; --panel-edge: #4c3fb0; --face: #fbf8ff; --face-ink: #1b1440;
+    --gold: #ffcc33; --gold-ink: #2a1d00; --good: #2fd27a; --bad: #ff4d5e;
+    --chrome: rgba(255,255,255,.08); --chrome-line: rgba(255,255,255,.16);
+    --btn: #34298a; --btn-ink: #fff; --field: #1a1342;
+    --display: 'Bungee', 'Arial Black', system-ui, sans-serif;
+    --ui: 'Outfit', system-ui, sans-serif;
+  }
+  html[data-theme="light"] {
+    --ink: #1b1440; --muted: #514a78; --chrome: #ffffff; --chrome-line: #d9d3f2;
+    --btn: #4a3bc4; --btn-ink: #fff; --field: #f4f1ff;
+  }
+  html[data-theme="light"] body { background: #efeafd; }
+  html[data-theme="light"] .stage { color: #f4f1ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--stage); color: var(--ink); font-family: var(--ui); overflow-x: hidden; }
+  button { font: inherit; cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: .45; }
+  :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+  .back-link { position: fixed; top: 12px; left: 12px; z-index: 50; padding: 6px 13px; border-radius: 999px;
+    background: var(--chrome); border: 1px solid var(--chrome-line); color: var(--ink); text-decoration: none;
+    font-weight: 600; font-size: 14px; opacity: .8; }
+  .back-link:hover { opacity: 1; }
+  body.playing .back-link, body.playing a[title="Classroom Hub"] { display: none !important; }
+
+  /* ---------- setup ---------- */
+  .setup { max-width: 1240px; margin: 0 auto; padding: 50px 24px 16px; min-height: 100vh; display: flex; flex-direction: column; gap: 12px; }
+  .title { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .title h1 { font-family: var(--display); font-weight: 400; font-size: clamp(34px, 4vw, 54px); margin: 0; color: var(--gold); letter-spacing: 1px; }
+  .title p { margin: 0; color: var(--muted); font-size: 17px; }
+  .cols { display: grid; grid-template-columns: minmax(280px, 1fr) 1.9fr; gap: 16px; }
+  .card { background: var(--chrome); border: 1px solid var(--chrome-line); border-radius: 16px; padding: 14px 16px; }
+  .card h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
+  .row label { min-width: 104px; font-weight: 600; font-size: 15px; }
+  .seg { display: inline-flex; border: 1px solid var(--chrome-line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--ink); padding: 6px 12px; font-weight: 600; font-size: 14px; }
+  .seg button.on { background: var(--btn); color: var(--btn-ink); }
+  .stepper { display: inline-flex; align-items: center; gap: 8px; }
+  .stepper button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--chrome-line); background: var(--field); color: var(--ink); font-weight: 800; }
+  .stepper b { min-width: 18px; text-align: center; font-size: 18px; }
+  .names { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 4px; }
+  .names .nm { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+  .names input { width: 100%; min-width: 0; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--chrome-line); background: var(--field); color: var(--ink); font: 600 14px var(--ui); }
+  .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .chip { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 10px;
+    border: 1px solid var(--chrome-line); background: var(--field); color: var(--ink); font-weight: 600; font-size: 14px; text-align: left; }
+  .chip.on { background: var(--btn); border-color: var(--btn); color: var(--btn-ink); }
+  .chip small { opacity: .75; font-weight: 500; }
+  .chip.off-frame { opacity: .38; cursor: help; }
+  .chip-tools { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px; flex-wrap: wrap; }
+  .mini { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--chrome-line); background: transparent; color: var(--ink); font-size: 13px; font-weight: 600; }
+  .count { margin-left: auto; font-weight: 700; }
+  .count.low { color: var(--bad); }
+  .note { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  .start-row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+  .why { color: var(--muted); font-size: 14px; }
+  .big { padding: 12px 26px; border-radius: 14px; border: 0; background: var(--gold); color: var(--gold-ink); font: 400 22px var(--display); letter-spacing: 1px; }
+  .ghost { padding: 10px 18px; border-radius: 12px; border: 1px solid var(--chrome-line); background: var(--chrome); color: var(--ink); font-weight: 700; font-size: 16px; }
+  .credit { color: var(--muted); font-size: 12px; text-align: right; }
+
+  /* ---------- play ---------- */
+  .stage { position: relative; height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto 1fr auto auto; overflow: hidden;
+    background: radial-gradient(ellipse at 50% -10%, #3a2a9a 0%, var(--stage2) 38%, var(--stage) 75%); color: var(--ink); }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+  .round { font-weight: 700; color: var(--muted); font-size: 15px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+  .catcard { font-family: var(--display); font-size: clamp(18px, 2.4vw, 32px); color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tools { margin-left: auto; display: flex; gap: 6px; }
+  .tool { height: 36px; min-width: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font-weight: 600; font-size: 14px; }
+  .tool.armed { background: var(--bad); border-color: var(--bad); }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; padding: 0 2vw; min-height: 0; }
+  .pot { display: flex; align-items: baseline; gap: 10px; }
+  .pot b { font-family: var(--display); font-weight: 400; font-size: clamp(34px, 6vh, 64px); color: var(--gold); line-height: 1; }
+  .pot span { color: var(--muted); font-weight: 600; font-size: 16px; text-transform: uppercase; letter-spacing: .1em; }
+  .board { display: flex; flex-wrap: wrap; justify-content: center; gap: 1vh 0.8vw; width: 100%; }
+  .tile { position: relative; flex: 0 1 auto; min-width: 0; height: var(--th, 15vh); width: var(--tw, 10vw); border-radius: 14px;
+    border: 3px solid var(--panel-edge); background: linear-gradient(180deg, #33298a, var(--panel)); color: var(--gold);
+    font-family: var(--display); font-size: calc(var(--th, 15vh) * .46); display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.18), 0 6px 14px rgba(0,0,0,.35); padding: 0 4px; }
+  .tile.pickable:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .tile.shown { background: var(--face); border-color: #fff; color: var(--face-ink); font-family: var(--ui); font-weight: 800;
+    font-size: var(--fs, calc(var(--th, 15vh) * .3)); cursor: default; }
+  .tile.shown .n { position: absolute; top: 4px; left: 8px; font: 700 calc(var(--th, 15vh) * .11) var(--ui); color: #7a72a8; }
+  .tile.helper { background: #e3def8; }
+  .tile.fresh { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(255,204,51,.5), 0 6px 14px rgba(0,0,0,.35); }
+  .tile .w { white-space: nowrap; overflow: hidden; text-overflow: clip; max-width: 100%; }
+  .tile.shake { animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  .entry { height: 30px; font: 700 20px var(--ui); color: var(--gold); letter-spacing: .1em; }
+  .answer { min-height: 9vh; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .answer .a { font-family: var(--display); font-size: clamp(26px, 5vh, 52px); color: #fff; }
+  .answer .alt { color: var(--muted); font-size: 16px; }
+  .answer .msg { font-weight: 700; font-size: clamp(18px, 3vh, 28px); }
+  .msg.good { color: var(--good); } .msg.bad { color: var(--bad); }
+  .dock { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; flex-wrap: wrap; }
+  .act { padding: 10px 22px; border-radius: 12px; border: 0; font-weight: 800; font-size: 18px; color: #fff; background: var(--btn); }
+  .act.ok { background: var(--good); color: #062a15; } .act.no { background: var(--bad); } .act.next { background: var(--gold); color: var(--gold-ink); }
+  .hint { color: var(--muted); font-size: 15px; font-weight: 600; }
+  .clock { min-width: 64px; padding: 8px 12px; border-radius: 12px; border: 2px solid rgba(255,255,255,.3); background: transparent; color: #fff; font: 800 20px var(--ui); }
+  .clock.low { border-color: var(--bad); color: var(--bad); }
+  .clock.paused { opacity: .6; }
+  .teams { display: flex; gap: 10px; justify-content: center; padding: 8px 12px 24px; flex-wrap: wrap; }
+  .team { position: relative; min-width: 150px; flex: 0 1 200px; padding: 8px 14px 10px; border-radius: 14px; background: rgba(255,255,255,.07);
+    border: 2px solid transparent; border-top: 6px solid var(--tc); text-align: center; color: #fff; }
+  .team.ctrl { border-color: var(--gold); border-top-color: var(--tc); background: rgba(255,204,51,.12); }
+  .team .tn { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team .ts { font-family: var(--display); font-size: clamp(24px, 4vh, 36px); line-height: 1.1; }
+  .team .tag { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--gold); color: var(--gold-ink); font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 99px; letter-spacing: .08em; }
+  .team .tried { opacity: .45; }
+  .team .adj { display: none; gap: 6px; justify-content: center; margin-top: 4px; }
+  body.shift .team .adj { display: flex; }
+  .team .adj button { padding: 2px 8px; border-radius: 7px; border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.2); color: #fff; font-weight: 700; font-size: 13px; }
+  .peek { position: fixed; right: 14px; bottom: 14px; z-index: 40; background: #000; color: #fff; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 15px; }
+  .keys { position: absolute; left: 12px; right: 12px; text-align: center; bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: rgba(255,255,255,.4); font-size: 12px; }
+
+  /* ---------- end ---------- */
+  .endwrap { max-width: 1100px; margin: 0 auto; padding: 56px 24px 30px; }
+  .ranks { display: flex; gap: 12px; justify-content: center; align-items: flex-end; flex-wrap: wrap; margin: 10px 0 20px; }
+  .rank { width: 170px; padding: 12px; border-radius: 16px; background: var(--chrome); border: 1px solid var(--chrome-line); border-top: 8px solid var(--tc); text-align: center; }
+  .rank .place { font-family: var(--display); font-size: 30px; color: var(--gold); }
+  .rank.first { transform: translateY(-14px); }
+  .rank .tn { font-weight: 700; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank .ts { font-family: var(--display); font-size: 26px; }
+  table.log { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px; }
+  table.log th, table.log td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--chrome-line); vertical-align: top; }
+  table.log th { color: var(--muted); font-weight: 600; }
+  .end-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .err { padding: 40px; font-size: 20px; }
+
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } .names { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<!-- HUBGEN:leafback start -->
+<a href="https://arschul.github.io/" style="position:fixed;left:10px;bottom:10px;z-index:2147483000;
+display:inline-block;padding:5px 11px;border-radius:999px;font:500 12px/1.2 system-ui,sans-serif;
+text-decoration:none;color:#c9d3e4;background:rgba(16,24,42,.82);border:1px solid rgba(160,180,210,.28);
+backdrop-filter:blur(4px);opacity:.55;transition:opacity .2s" onmouseover="this.style.opacity=1"
+onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
+<!-- HUBGEN:leafback end -->
+<a class="back-link" href="../">← Game Hub</a>
+<div id="app"></div>
+<script src="../shared/jeopardy-bank.js"></script>
+<script>
+'use strict';
+/* =====================================================================
+   QUESTION MARK — the question is hidden word by word.
+   State lives in one plain-JSON object S. Every scoring/turn action
+   snapshots S first (undo, 30 deep) and autosaves afterwards.
+   ===================================================================== */
+const SAVE_KEY = 'questionmark:save', SETUP_KEY = 'questionmark:setup', HIST_KEY = 'questionmark:history';
+const THEME_KEY = 'arschul:theme';
+const TEAM_COLORS = ['#ff5d5d', '#4dabff', '#3ddc84', '#ffb020', '#c77dff', '#2ee6d6'];
+const TEAM_INK = ['#fff', '#062033', '#062a15', '#2a1d00', '#fff', '#062a28'];
+const LEVELS = { easy: 5, medium: 10, all: 15 };
+const LEVEL_LABEL = { easy: 'Easy', medium: 'Medium', all: 'All' };
+const HELPER_WORDS = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'do', 'does', 'did', 'of', 'in', 'on', 'at', 'to', 'for']);
+const UNDO_DEPTH = 30, HISTORY_GAMES = 3;
+
+const BANK = window.JEOPARDY_BANK;
+const app = document.getElementById('app');
+
+/* ---------- small helpers ---------- */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === false || v == null) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'text') el.textContent = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  return el;
+}
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+
+/* ---------- content ---------- */
+const words = s => s.trim().split(/\s+/);
+const norm = w => w.toLowerCase().replace(/[^a-z0-9']/g, '');
+const POOL_CATS = BANK ? Object.keys(BANK.categories).filter(c => BANK.groups[c] !== 'Grammar' && !BANK.frame.includes(c)) : [];
+const FRAME_CATS = BANK ? Object.keys(BANK.categories).filter(c => BANK.groups[c] !== 'Grammar' && BANK.frame.includes(c)) : [];
+function questionsFor(level, cats) {
+  const max = LEVELS[level] || 5, out = [];
+  for (const c of cats) {
+    if (!POOL_CATS.includes(c)) continue;
+    for (const q of BANK.categories[c]) if (q.rank <= max) out.push(c + '#' + q.rank);
+  }
+  return out;
+}
+function getQ(id) {
+  const i = id.lastIndexOf('#'), cat = id.slice(0, i), rank = +id.slice(i + 1);
+  const q = BANK.categories[cat].find(x => x.rank === rank);
+  return { id, cat, rank, cefr: q.cefr, text: q.reveal || q.q, a: q.a, alt: q.alt || [] };
+}
+function nearTwins(a, b) {
+  const A = words(a).map(norm), B = words(b).map(norm);
+  return A.length === B.length && A.filter((w, k) => w !== B[k]).length <= 1;
+}
+
+/* ---------- state ---------- */
+let S = null;          // game state (plain JSON)
+let undoStack = [];    // JSON strings of S
+let setup = null;      // setup-screen settings
+let ui = { entry: '', shake: -1, endArmed: 0, peek: false, fresh: -1 };
+const clock = { left: 0, total: 0, running: false, endsAt: 0, tid: 0 };
+let silent = false;    // tests: skip rendering
+
+function defaultSetup() {
+  return { teams: ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6'], count: 2, level: 'easy',
+    cats: POOL_CATS.slice(), showCat: true, helpers: false, rounds: 10, timer: 0, starter: 0 };
+}
+function loadSetup() {
+  const d = defaultSetup(), s = store.get(SETUP_KEY, null);
+  if (!s || typeof s !== 'object') return d;
+  const o = Object.assign(d, s);
+  if (!Array.isArray(o.teams) || o.teams.length !== 6) o.teams = d.teams;
+  o.teams = o.teams.map((t, i) => String(t || '').slice(0, 20) || 'Team ' + (i + 1));
+  o.count = Math.min(6, Math.max(2, o.count | 0));
+  if (!LEVELS[o.level]) o.level = 'easy';
+  o.cats = Array.isArray(o.cats) ? o.cats.filter(c => POOL_CATS.includes(c)) : d.cats;
+  if (![6, 10, 15].includes(o.rounds)) o.rounds = 10;
+  if (![0, 10, 15, 20].includes(o.timer)) o.timer = 0;
+  o.starter = (o.starter | 0) % 6;
+  return o;
+}
+function saveSetup() { store.set(SETUP_KEY, setup); }
+
+function newGame(st) {
+  const T = st.count;
+  const starter = (st.starter | 0) % T;
+  S = {
+    v: 1, gameId: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
+    phase: 'pick',
+    teams: Array.from({ length: T }, (_, i) => ({ name: (st.teams[i] || '').trim() || 'Team ' + (i + 1), color: TEAM_COLORS[i], score: 0 })),
+    set: { level: st.level, cats: st.cats.slice(), showCat: !!st.showCat, helpers: !!st.helpers, rounds: st.rounds, timer: st.timer },
+    round: 1, starter, ctrl: starter, nextStarter: starter, firstStarter: starter,
+    q: null, flips: 0, tried: null, result: null, used: [], log: []
+  };
+  undoStack = [];
+  startHistoryEntry();
+  S.q = draw([]);
+  prepareQ();
+  ui.fresh = -1; ui.entry = '';
+  stopClock(true);
+  save();
+}
+
+/* Draw the next question. Hard rules: not used this game, not `exclude`.
+   Soft rules, relaxed in order when the pool runs dry: not a near-twin of a used one,
+   not seen in the last 3 games, not the same category as the last round. */
+function draw(exclude) {
+  const all = questionsFor(S.set.level, S.set.cats);
+  const used = new Set(S.used), ex = new Set(exclude);
+  const recent = new Set(recentHistory());
+  const lastCat = S.q ? S.q.cat : (S.log.length ? S.log[S.log.length - 1].cat : null);
+  const usedTexts = S.used.map(id => getQ(id).text);
+  const base = all.filter(id => !used.has(id) && !ex.has(id));
+  const tiers = [
+    id => !recent.has(id) && getQ(id).cat !== lastCat && !usedTexts.some(t => nearTwins(t, getQ(id).text)),
+    id => getQ(id).cat !== lastCat && !usedTexts.some(t => nearTwins(t, getQ(id).text)),
+    id => !usedTexts.some(t => nearTwins(t, getQ(id).text)),
+    () => true
+  ];
+  let pick = null;
+  for (const f of tiers) { const c = base.filter(f); if (c.length) { pick = c[Math.floor(Math.random() * c.length)]; break; } }
+  if (!pick) { // every question used: allow repeats rather than stall
+    const c = all.filter(id => !ex.has(id));
+    pick = c.length ? c[Math.floor(Math.random() * c.length)] : all[0];
+  }
+  S.used.push(pick);
+  addHistory(pick);
+  return getQ(pick);
+}
+function prepareQ() {
+  const w = words(S.q.text);
+  S.q.words = w;
+  S.q.helper = w.map(x => S.set.helpers && HELPER_WORDS.has(norm(x)));
+  S.q.shown = S.q.helper.slice();
+  S.flips = 0; S.tried = null; S.result = null; S.lastFlip = -1;
+}
+const hidden = () => S.q.shown.filter(x => !x).length;
+const allShown = () => hidden() === 0;
+const pot = () => Math.max(1, hidden()) * 100;
+
+/* ---------- cross-game history ---------- */
+function recentHistory() {
+  const hst = store.get(HIST_KEY, []);
+  return (Array.isArray(hst) ? hst : []).filter(g => g && g.id !== S.gameId).slice(-HISTORY_GAMES).flatMap(g => g.q || []);
+}
+function startHistoryEntry() {
+  let hst = store.get(HIST_KEY, []); if (!Array.isArray(hst)) hst = [];
+  hst.push({ id: S.gameId, q: [] });
+  store.set(HIST_KEY, hst.slice(-(HISTORY_GAMES + 1)));
+}
+function addHistory(id) {
+  let hst = store.get(HIST_KEY, []); if (!Array.isArray(hst)) hst = [];
+  let g = hst.find(x => x && x.id === S.gameId);
+  if (!g) { g = { id: S.gameId, q: [] }; hst.push(g); }
+  if (!g.q.includes(id)) g.q.push(id);
+  store.set(HIST_KEY, hst.slice(-(HISTORY_GAMES + 1)));
+}
+
+function removeHistory(id) {
+  const hst = store.get(HIST_KEY, []); if (!Array.isArray(hst)) return;
+  const g = hst.find(x => x && x.id === S.gameId);
+  if (g) { g.q = g.q.filter(x => x !== id); store.set(HIST_KEY, hst); }
+}
+
+/* ---------- actions ---------- */
+function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > UNDO_DEPTH) undoStack.shift(); }
+function save() { store.set(SAVE_KEY, { S, undo: undoStack }); }
+function commit() { save(); render(); }
+
+function flip(i) {
+  if (!S || S.phase !== 'pick' || i < 0 || i >= S.q.words.length) return false;
+  if (S.q.shown[i]) { ui.shake = i; render(); return false; }
+  snapshot();
+  S.q.shown[i] = true; S.flips++; S.lastFlip = i; ui.fresh = i;
+  S.phase = 'guess';
+  if (allShown()) S.tried = S.teams.map(() => false);
+  startClock();
+  commit(); sfx('flip');
+  return true;
+}
+function judge(ok, how) {
+  if (!S || S.phase !== 'guess') return;
+  snapshot();
+  stopClock(true);
+  const t = S.ctrl;
+  if (ok) {
+    const pts = pot();
+    S.teams[t].score += pts;
+    S.result = { winner: t, pts };
+    finishRound(t);
+    sfx('good');
+  } else {
+    S.lastMiss = { team: t, how: how || 'wrong' };
+    if (allShown()) {
+      if (!S.tried) S.tried = S.teams.map(() => false);
+      S.tried[t] = true;
+      const nxt = nextUntried(t);
+      if (nxt < 0) { S.result = { winner: -1, pts: 0 }; finishRound(-1); sfx('none'); }
+      else { S.ctrl = nxt; startClock(); sfx('bad'); }
+    } else {
+      S.ctrl = (t + 1) % S.teams.length;
+      S.phase = 'pick';
+      sfx('bad');
+    }
+  }
+  ui.fresh = -1;
+  commit();
+}
+function nextUntried(t) {
+  const T = S.teams.length;
+  for (let k = 1; k <= T; k++) { const i = (t + k) % T; if (!S.tried[i]) return i; }
+  return -1;
+}
+function finishRound(winner) {
+  S.q.shown = S.q.shown.map(() => true);
+  S.phase = 'done';
+  S.nextStarter = winner >= 0 ? winner : (S.starter + 1) % S.teams.length;
+  S.log.push({ round: S.round, id: S.q.id, cat: S.q.cat, q: S.q.text, a: S.q.a, winner, pts: winner >= 0 ? S.result.pts : 0, flips: S.flips, words: S.q.words.length });
+}
+function nextRound() {
+  if (!S || S.phase !== 'done') return;
+  snapshot();
+  if (S.round >= S.set.rounds) { S.phase = 'end'; commit(); sfx('fanfare'); return; }
+  S.round++;
+  S.starter = S.ctrl = S.nextStarter;
+  S.q = draw([]);
+  prepareQ();
+  S.phase = 'pick'; S.lastMiss = null;
+  ui.fresh = -1; ui.entry = '';
+  commit();
+}
+function skipQuestion() {
+  if (!S || (S.phase !== 'pick' && S.phase !== 'guess')) return;
+  snapshot();
+  stopClock(true);
+  S.q = draw([]);
+  prepareQ();
+  S.phase = 'pick'; S.lastMiss = null;
+  ui.fresh = -1; ui.entry = '';
+  commit();
+}
+/* Esc before any word is flipped: put this question back in the pool and draw another. No undo entry. */
+function cancelQuestion() {
+  if (!S || S.phase !== 'pick' || S.flips !== 0) return false;
+  const id = S.q.id;
+  S.used = S.used.filter(x => x !== id);
+  removeHistory(id);
+  const prev = S.q; S.q = null;   // so the same-category rule looks at the previous round, not this draw
+  S.q = draw([id]);
+  if (S.q.id === id) { S.q = prev; S.used.push(id); return false; }
+  prepareQ();
+  ui.entry = '';
+  commit();
+  return true;
+}
+function adjust(t, d) {
+  if (!S || !S.teams[t]) return;
+  snapshot();
+  S.teams[t].score += d;
+  commit();
+}
+function giveControl(t) {
+  if (!S || S.phase !== 'pick' || t === S.ctrl || !S.teams[t]) return;
+  snapshot();
+  S.ctrl = t;
+  commit();
+}
+function endGame() {
+  if (!S || S.phase === 'end') return;
+  if (Date.now() - ui.endArmed > 3000) { ui.endArmed = Date.now(); render(); setTimeout(() => { if (ui.endArmed && Date.now() - ui.endArmed >= 3000) { ui.endArmed = 0; render(); } }, 3050); return; }
+  ui.endArmed = 0;
+  snapshot();
+  stopClock(true);
+  S.phase = 'end';
+  commit(); sfx('fanfare');
+}
+function undo() {
+  if (!undoStack.length) return;
+  S = JSON.parse(undoStack.pop());
+  ui.fresh = -1; ui.entry = ''; ui.endArmed = 0;
+  stopClock(true);
+  if (S.phase === 'guess' && S.set.timer) { clock.total = clock.left = S.set.timer * 1000; } // stopped; teacher restarts
+  commit();
+}
+function rematch() {
+  const st = Object.assign({}, setup, { starter: (S.firstStarter + 1) % S.teams.length });
+  st.count = S.teams.length; st.teams = setup.teams.slice();
+  S.teams.forEach((t, i) => { st.teams[i] = t.name; });
+  Object.assign(st, { level: S.set.level, cats: S.set.cats, showCat: S.set.showCat, helpers: S.set.helpers, rounds: S.set.rounds, timer: S.set.timer });
+  setup = st; saveSetup();
+  newGame(setup);
+  render();
+}
+function toSetup() { stopClock(true); S = null; undoStack = []; store.del(SAVE_KEY); render(); }
+
+/* ---------- answer clock (memory only; never restarts by itself after undo/resume) ---------- */
+function startClock() {
+  stopClock(true);
+  if (!S.set.timer) return;
+  clock.total = clock.left = S.set.timer * 1000;
+  resumeClock();
+}
+function resumeClock() {
+  if (!S || S.phase !== 'guess' || !S.set.timer || clock.running) return;
+  if (clock.left <= 0) clock.left = clock.total = S.set.timer * 1000;
+  clock.running = true; clock.endsAt = Date.now() + clock.left;
+  tick();
+}
+function pauseClock() {
+  if (!clock.running) return;
+  clock.left = Math.max(0, clock.endsAt - Date.now()); clock.running = false;
+  clearTimeout(clock.tid); paintClock();
+}
+function stopClock(reset) {
+  clearTimeout(clock.tid); clock.running = false;
+  if (reset) clock.left = clock.total = (S && S.set && S.set.timer) ? S.set.timer * 1000 : 0;
+}
+function tick() {
+  if (!clock.running) return;
+  clock.left = Math.max(0, clock.endsAt - Date.now());
+  paintClock();
+  if (clock.left <= 0) { clock.running = false; sfx('buzz'); judge(false, 'time'); return; }
+  clock.tid = setTimeout(tick, Math.min(250, clock.left));
+}
+function toggleClock() { if (clock.running) pauseClock(); else resumeClock(); render(); }
+function paintClock() {
+  const el = document.querySelector('.clock'); if (!el) return;
+  const s = Math.ceil(clock.left / 1000);
+  el.textContent = (clock.running ? '' : '▶ ') + s + 's';
+  el.classList.toggle('low', clock.running && s <= 3);
+  el.classList.toggle('paused', !clock.running);
+}
+
+/* ---------- sound (P2) ---------- */
+function sfx(name) {}
+
+/* ---------- theme ---------- */
+const THEME_FACE = { dark: '\u{1F319}', light: '☀️', system: '\u{1F5A5}️' };
+const THEME_LABEL = { dark: 'Dark theme', light: 'Light theme', system: 'Match system theme' };
+function readTheme() { try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { return 'dark'; } }
+function paintTheme(v) {
+  let eff = v;
+  if (v === 'system') { try { eff = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) { eff = 'dark'; } }
+  document.documentElement.setAttribute('data-theme', eff);
+  document.querySelectorAll('.theme-toggle').forEach(b => {
+    if (!b.children.length) b.textContent = THEME_FACE[v] || THEME_FACE.dark;
+    b.title = THEME_LABEL[v] || THEME_LABEL.dark; b.setAttribute('aria-label', b.title);
+  });
+}
+function toggleTheme() {
+  const order = ['dark', 'light', 'system'];
+  const n = order[(order.indexOf(readTheme()) + 1) % 3];
+  try { localStorage.setItem(THEME_KEY, n); } catch (e) {}
+  paintTheme(n);
+  return n;
+}
+window.toggleTheme = toggleTheme;
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render() {
+  if (silent) return;
+  document.body.classList.toggle('playing', !!S && S.phase !== 'end');
+  app.textContent = '';
+  if (!BANK) { app.append(h('p', { class: 'err', text: 'The question bank (shared/jeopardy-bank.js) did not load. Check the connection and reload the page.' })); return; }
+  if (!S) app.append(renderSetup());
+  else if (S.phase === 'end') app.append(renderEnd());
+  else app.append(renderPlay());
+  paintTheme(readTheme());
+  if (S && S.phase === 'guess') paintClock();
+  ui.shake = -1;
+  fitWords();
+}
+/* shrink any face-up word that doesn't fit its tile (font metrics vary by device) */
+function fitWords() {
+  document.querySelectorAll('.tile.shown').forEach(t => {
+    t.style.removeProperty('font-size');
+    const w = t.querySelector('.w'); if (!w) return;
+    let fs = parseFloat(getComputedStyle(t).fontSize), n = 0;
+    while (w.scrollWidth > w.clientWidth + 1 && fs > 10 && n++ < 30) { fs *= 0.93; t.style.fontSize = fs + 'px'; }
+  });
+}
+window.addEventListener('resize', fitWords);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitWords);
+
+function seg(options, value, onpick) {
+  return h('div', { class: 'seg', role: 'group' }, options.map(([v, label]) =>
+    h('button', { type: 'button', class: v === value ? 'on' : '', 'aria-pressed': String(v === value), onclick: () => onpick(v) }, label)));
+}
+function renderSetup() {
+  const st = setup;
+  const set = (k, v) => { st[k] = v; saveSetup(); render(); };
+  const pool = questionsFor(st.level, st.cats).length;
+  const saved = store.get(SAVE_KEY, null);
+  const reason = !st.cats.length ? 'Pick at least one category' : (pool < 1 ? 'No questions at this level' : '');
+
+  const teamCard = h('div', { class: 'card' },
+    h('h2', { text: 'Teams' }),
+    h('div', { class: 'row' }, h('label', { text: 'How many' }),
+      h('div', { class: 'stepper' },
+        h('button', { type: 'button', 'aria-label': 'Fewer teams', disabled: st.count <= 2, onclick: () => set('count', st.count - 1) }, '−'),
+        h('b', { text: st.count }),
+        h('button', { type: 'button', 'aria-label': 'More teams', disabled: st.count >= 6, onclick: () => set('count', st.count + 1) }, '+'))),
+    h('div', { class: 'names' }, Array.from({ length: st.count }, (_, i) =>
+      h('div', { class: 'nm' }, h('span', { class: 'swatch', style: 'background:' + TEAM_COLORS[i] }),
+        h('input', { value: st.teams[i], maxlength: '20', 'aria-label': 'Team ' + (i + 1) + ' name',
+          oninput: e => { st.teams[i] = e.target.value; saveSetup(); } })))),
+    h('h2', { text: 'Rules', style: 'margin-top:12px' }),
+    h('div', { class: 'row' }, h('label', { text: 'Level' }), seg([['easy', 'Easy'], ['medium', 'Medium'], ['all', 'All']], st.level, v => set('level', v))),
+    h('div', { class: 'row' }, h('label', { text: 'Category' }), seg([[true, 'Show'], [false, 'Hide']], st.showCat, v => set('showCat', v))),
+    h('div', { class: 'row' }, h('label', { text: 'Helper words' }), seg([[false, 'Off'], [true, 'On']], st.helpers, v => set('helpers', v))),
+    h('div', { class: 'row' }, h('label', { text: 'Rounds' }), seg([[6, '6'], [10, '10'], [15, '15']], st.rounds, v => set('rounds', v))),
+    h('div', { class: 'row' }, h('label', { text: 'Answer timer' }), seg([[0, 'Off'], [10, '10s'], [15, '15s'], [20, '20s']], st.timer, v => set('timer', v))),
+    h('p', { class: 'note', text: st.helpers ? 'Helper words (the, is, of, in…) start face up and don\'t count in the points.' : 'Every word starts hidden — calling a number that hides "the" wastes the turn.' })
+  );
+
+  const cnt = c => BANK.categories[c].filter(q => q.rank <= LEVELS[st.level]).length;
+  const catCard = h('div', { class: 'card' },
+    h('h2', { text: 'Categories' }),
+    h('div', { class: 'chip-tools' },
+      h('button', { type: 'button', class: 'mini', onclick: () => set('cats', POOL_CATS.slice()) }, 'All'),
+      h('button', { type: 'button', class: 'mini', onclick: () => set('cats', []) }, 'None'),
+      h('button', { type: 'button', class: 'mini', onclick: () => {
+        const sh = POOL_CATS.slice().sort(() => Math.random() - .5); set('cats', sh.slice(0, 6));
+      } }, '🎲 Random 6'),
+      h('span', { class: 'count' + (pool < 15 ? ' low' : '') , text: pool + ' questions' })),
+    h('div', { class: 'chips' },
+      POOL_CATS.map(c => h('button', { type: 'button', class: 'chip' + (st.cats.includes(c) ? ' on' : ''), 'aria-pressed': String(st.cats.includes(c)),
+        onclick: () => set('cats', st.cats.includes(c) ? st.cats.filter(x => x !== c) : POOL_CATS.filter(x => x === c || st.cats.includes(x))) },
+        h('span', { text: c }), h('small', { text: cnt(c) }))),
+      FRAME_CATS.map(c => h('span', { class: 'chip off-frame', title: 'Not used: every question has the same frame, so one word gives it away.' }, h('span', { text: c }), h('small', { text: '—' })))),
+    h('p', { class: 'note', text: 'Grammar categories and the greyed ones repeat one question frame ("What is the capital of…?"), so they aren\'t used here.' })
+  );
+
+  return h('div', { class: 'setup' },
+    h('div', { class: 'title' }, h('h1', { text: 'Question Mark' }),
+      h('p', { text: 'The question is hidden word by word. Call a number, flip a word, guess the answer.' }),
+      h('div', { style: 'margin-left:auto' }, h('button', { type: 'button', class: 'tool theme-toggle', style: 'color:var(--ink);border-color:var(--chrome-line)', onclick: () => window.toggleTheme() }))),
+    h('div', { class: 'cols' }, teamCard, catCard),
+    h('div', { class: 'start-row' },
+      reason ? h('span', { class: 'why', text: reason }) : null,
+      saved && saved.S ? h('button', { type: 'button', class: 'ghost', onclick: resume }, 'Resume game') : null,
+      h('button', { type: 'button', class: 'big', disabled: !!reason, onclick: () => { newGame(setup); render(); } }, 'Start')),
+    h('p', { class: 'credit', text: 'Questions from the Jeopardy bank · ranked and CEFR-tagged' })
+  );
+}
+function resume() {
+  const saved = store.get(SAVE_KEY, null);
+  if (!saved || !saved.S) return;
+  S = saved.S; undoStack = Array.isArray(saved.undo) ? saved.undo : [];
+  ui.fresh = -1; ui.entry = '';
+  stopClock(true);
+  render();
+}
+
+function tileSize(n) {
+  // one row up to 9 words, two rows above that; tiles fill the width
+  const perRow = n <= 9 ? n : Math.ceil(n / 2);
+  const rows = n <= 9 ? 1 : 2;
+  const tw = Math.min(16, (94 - (perRow - 1) * 0.8) / perRow);
+  const th = Math.min(rows === 1 ? 22 : 15, tw * 1.25);
+  return { tw, th };
+}
+function renderPlay() {
+  const q = S.q, n = q.words.length, { tw, th } = tileSize(n);
+  const board = h('div', { class: 'board', style: `--tw:${tw}vw;--th:min(${th}vw, ${rowsH(n)}vh)` },
+    q.words.map((w, i) => {
+      const shown = q.shown[i];
+      const cls = 'tile' + (shown ? ' shown' : '') + (q.helper[i] ? ' helper' : '') + (i === ui.fresh ? ' fresh' : '') +
+        (!shown && S.phase === 'pick' ? ' pickable' : '') + (i === ui.shake ? ' shake' : '');
+      const fs = `min(calc(var(--th) * .3), ${(tw * 1.45 / Math.max(4.5, w.length)).toFixed(2)}vw)`;
+      return h('button', { type: 'button', class: cls, 'data-i': i, style: shown ? '--fs:' + fs : null, 'aria-label': shown ? `Word ${i + 1}: ${w}` : `Word ${i + 1}, hidden`,
+        disabled: !shown && S.phase !== 'pick' ? true : null, onclick: () => flip(i) },
+        shown ? [h('span', { class: 'n', text: i + 1 }), h('span', { class: 'w', text: w })] : String(i + 1));
+    }));
+
+  const ctrlTeam = S.teams[S.ctrl];
+  let answer = null, dock;
+  if (S.phase === 'done') {
+    const r = S.result;
+    answer = h('div', { class: 'answer' },
+      h('div', { class: 'msg ' + (r.winner >= 0 ? 'good' : 'bad'), text: r.winner >= 0 ? `${S.teams[r.winner].name} +${r.pts}` : 'Nobody got it' }),
+      h('div', { class: 'a', text: q.a }),
+      q.alt.length ? h('div', { class: 'alt', text: 'Also accepted: ' + q.alt.join(', ') }) : null);
+    dock = [h('button', { type: 'button', class: 'act next', onclick: nextRound }, S.round >= S.set.rounds ? 'Final scores (Space)' : 'Next round (Space)')];
+  } else if (S.phase === 'guess') {
+    const full = allShown();
+    answer = h('div', { class: 'answer' }, h('div', { class: 'msg', text: `${ctrlTeam.name}, what's the answer?` + (full ? ' (every word is showing)' : '') }));
+    dock = [
+      S.set.timer ? h('button', { type: 'button', class: 'clock', title: 'Pause / start the clock (T)', onclick: toggleClock }) : null,
+      h('button', { type: 'button', class: 'act ok', onclick: () => judge(true) }, '✓ Right (Y)'),
+      h('button', { type: 'button', class: 'act no', onclick: () => judge(false) }, '✗ Wrong (N)'),
+      h('button', { type: 'button', class: 'act', onclick: () => judge(false, 'pass') }, 'Pass (P)')];
+  } else {
+    const miss = S.lastMiss;
+    answer = h('div', { class: 'answer' },
+      miss ? h('div', { class: 'msg bad', text: `${S.teams[miss.team].name}: ${miss.how === 'time' ? 'time\'s up' : miss.how === 'pass' ? 'pass' : 'not it'}` }) : null,
+      h('div', { class: 'msg', text: `${ctrlTeam.name}, pick a number` }));
+    dock = [h('span', { class: 'hint', text: S.flips === 0 ? 'Type a number (or click a word). Esc = different question.' : 'Type a number or click a word.' })];
+  }
+
+  const teams = h('div', { class: 'teams' }, S.teams.map((t, i) => {
+    const isCtrl = i === S.ctrl && S.phase !== 'done';
+    const tried = S.tried && S.tried[i] && S.phase === 'guess';
+    return h('div', { class: 'team' + (isCtrl ? ' ctrl' : ''), style: '--tc:' + t.color, 'data-team': i,
+      onclick: e => { if (e.target.closest('.adj')) return; giveControl(i); }, title: S.phase === 'pick' ? 'Click to give this team control' : '' },
+      isCtrl ? h('span', { class: 'tag', text: S.phase === 'pick' ? 'PICKING' : 'ANSWERING' }) : null,
+      h('div', { class: 'tn' + (tried ? ' tried' : ''), text: t.name }),
+      h('div', { class: 'ts', text: t.score }),
+      h('div', { class: 'adj' },
+        h('button', { type: 'button', 'aria-label': 'Minus 100 for ' + t.name, onclick: () => adjust(i, -100) }, '−100'),
+        h('button', { type: 'button', 'aria-label': 'Plus 100 for ' + t.name, onclick: () => adjust(i, 100) }, '+100')));
+  }));
+
+  const potLabel = S.phase === 'done' ? (S.result.winner >= 0 ? 'won' : 'points') : (allShown() ? 'last chance' : 'points if right');
+  const potVal = S.phase === 'done' ? (S.result.winner >= 0 ? S.result.pts : 0) : (S.phase === 'pick' ? Math.max(1, hidden() - 1) * 100 : pot());
+
+  return h('div', { class: 'stage' },
+    h('div', { class: 'topbar' },
+      h('span', { class: 'round', text: `Round ${S.round} / ${S.set.rounds}` }),
+      h('span', { class: 'catcard', text: (S.set.showCat || S.phase === 'done') ? q.cat : '???' }),
+      h('div', { class: 'tools' },
+        h('button', { type: 'button', class: 'tool', title: 'Undo (Shift+U)', disabled: !undoStack.length, onclick: undo }, '↶ Undo'),
+        h('button', { type: 'button', class: 'tool', title: 'New question (S)', disabled: !(S.phase === 'pick' || S.phase === 'guess'), onclick: skipQuestion }, 'Skip'),
+        h('button', { type: 'button', class: 'tool' + (ui.endArmed ? ' armed' : ''), title: 'End game (Shift+E twice)', onclick: endGame }, ui.endArmed ? 'Click again to end' : 'End'),
+        h('button', { type: 'button', class: 'tool theme-toggle', onclick: () => window.toggleTheme() }))),
+    h('div', { class: 'center' },
+      h('div', { class: 'pot' }, h('b', { text: potVal }), h('span', { text: potLabel })),
+      board,
+      h('div', { class: 'entry', text: ui.entry ? 'Word ' + ui.entry + '…' : '' }),
+      answer),
+    h('div', { class: 'dock' }, dock),
+    teams,
+    h('div', { class: 'keys', text: 'number = flip · Y/N/P judge · Space next · S skip · hold A peek · Shift: ±100 · Shift+U undo · Shift+E end' + (S.set.timer ? ' · T clock' : '') }),
+    ui.peek && S.phase !== 'done' ? h('div', { class: 'peek', text: 'Answer: ' + q.a + (q.alt.length ? ' (' + q.alt.join(', ') + ')' : '') }) : null
+  );
+}
+function rowsH(n) { return n <= 9 ? 24 : 16; }
+
+function ranking() {
+  const order = S.teams.map((t, i) => ({ ...t, i })).sort((a, b) => b.score - a.score || a.i - b.i);
+  let place = 0;
+  return order.map((t, k) => { if (k === 0 || t.score !== order[k - 1].score) place = k + 1; return { ...t, place }; });
+}
+function renderEnd() {
+  const r = ranking();
+  const ord = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
+  return h('div', { class: 'endwrap' },
+    h('div', { class: 'title' }, h('h1', { text: r.filter(t => t.place === 1).length > 1 ? 'It\'s a tie!' : r[0].name + ' wins!' }),
+      h('div', { style: 'margin-left:auto' }, h('button', { type: 'button', class: 'tool theme-toggle', style: 'color:var(--ink);border-color:var(--chrome-line)', onclick: () => window.toggleTheme() }))),
+    h('div', { class: 'ranks' }, r.map(t => h('div', { class: 'rank' + (t.place === 1 ? ' first' : ''), style: '--tc:' + t.color },
+      h('div', { class: 'place', text: ord[t.place] }), h('div', { class: 'tn', text: t.name }), h('div', { class: 'ts', text: t.score })))),
+    h('table', { class: 'log' },
+      h('thead', {}, h('tr', {}, ['#', 'Category', 'Question', 'Answer', 'Won by', 'Words flipped', 'Points'].map(x => h('th', { text: x })))),
+      h('tbody', {}, S.log.map(l => h('tr', {},
+        h('td', { text: l.round }), h('td', { text: l.cat }), h('td', { text: l.q }), h('td', { text: l.a }),
+        h('td', { text: l.winner >= 0 ? S.teams[l.winner].name : '—' }), h('td', { text: `${l.flips} of ${l.words}` }), h('td', { text: l.pts }))))),
+    h('div', { class: 'end-actions' },
+      h('button', { type: 'button', class: 'ghost', disabled: !undoStack.length, onclick: undo }, '↶ Undo'),
+      h('button', { type: 'button', class: 'big', onclick: rematch }, 'Rematch'),
+      h('button', { type: 'button', class: 'ghost', onclick: toSetup }, 'New game')));
+}
+
+/* =====================================================================
+   KEYBOARD
+   ===================================================================== */
+function typeDigit(d) {
+  if (!S || S.phase !== 'pick') return;
+  const n = S.q.words.length;
+  const buf = ui.entry + d;
+  const v = +buf;
+  if (buf === '0') return;
+  if (v > n) { ui.entry = ''; ui.shake = -1; render(); return; }
+  if (v * 10 > n || buf.length >= 2) { ui.entry = ''; flip(v - 1); return; }
+  ui.entry = buf; render();
+}
+document.addEventListener('keydown', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) return;
+  if (e.key === 'Shift') { document.body.classList.add('shift'); return; }
+  if (!S || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
+  if (e.shiftKey) {
+    if (k === 'U' || k === 'u') { e.preventDefault(); undo(); }
+    else if (k === 'E' || k === 'e') { e.preventDefault(); endGame(); }
+    return;
+  }
+  if (S.phase === 'end') return;
+  if (/^[0-9]$/.test(k)) { e.preventDefault(); typeDigit(k); return; }
+  if (k === 'Enter') { e.preventDefault(); if (ui.entry) { const v = +ui.entry; ui.entry = ''; flip(v - 1); } return; }
+  if (k === 'Backspace') { if (ui.entry) { ui.entry = ''; render(); } return; }
+  if (k === 'Escape') { if (ui.entry) { ui.entry = ''; render(); } else cancelQuestion(); return; }
+  if (k === ' ') { e.preventDefault(); if (S.phase === 'done') nextRound(); return; }
+  const lk = k.toLowerCase();
+  if (lk === 'y') judge(true);
+  else if (lk === 'n') judge(false);
+  else if (lk === 'p') judge(false, 'pass');
+  else if (lk === 's') skipQuestion();
+  else if (lk === 't') { if (S.phase === 'guess' && S.set.timer) toggleClock(); }
+  else if (lk === 'a' && !e.repeat) { ui.peek = true; render(); }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'Shift') document.body.classList.remove('shift');
+  if ((e.key === 'a' || e.key === 'A') && ui.peek) { ui.peek = false; render(); }
+});
+window.addEventListener('blur', () => { document.body.classList.remove('shift'); if (ui.peek) { ui.peek = false; render(); } });
+
+/* ---------- boot ---------- */
+setup = BANK ? loadSetup() : null;
+render();
+
+/* test hooks */
+window.QM = {
+  get S() { return S; }, set S(v) { S = v; }, get undoStack() { return undoStack; }, get ui() { return ui; }, clock,
+  setSilent(v) { silent = v; }, newGame, flip, judge, nextRound, skipQuestion, cancelQuestion, adjust, giveControl, endGame, undo,
+  rematch, resume, toSetup, render, pot, hidden, questionsFor, getQ, nearTwins, tileSize, ranking, POOL_CATS, FRAME_CATS,
+  get setup() { return setup; }, set setup(v) { setup = v; }
+};
+</script>
+</body>
+</html>

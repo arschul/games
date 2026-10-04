@@ -265,7 +265,7 @@ function newGame(st) {
     phase: 'pick',
     teams: Array.from({ length: T }, (_, i) => ({ name: (st.teams[i] || '').trim() || 'Team ' + (i + 1), color: TEAM_COLORS[i], score: 0 })),
     set: { level: st.level, cats: st.cats.slice(), showCat: !!st.showCat, helpers: !!st.helpers, rounds: st.rounds, timer: st.timer },
-    round: 1, starter, ctrl: starter, nextStarter: starter, firstStarter: starter,
+    round: 1, starter, ctrl: starter, picker: starter, nextStarter: starter, firstStarter: starter,
     q: null, flips: 0, tried: null, result: null, used: [], log: []
   };
   undoStack = [];
@@ -349,7 +349,8 @@ function flip(i) {
   snapshot();
   S.q.shown[i] = true; S.flips++; S.lastFlip = i; ui.fresh = i;
   S.phase = 'guess';
-  if (allShown()) S.tried = S.teams.map(() => false);
+  S.picker = S.ctrl;                        // this team flipped and guesses first,
+  S.tried = S.teams.map(() => false);       // then every other team gets one guess, in order
   startClock();
   commit(); sfx('flip');
   return true;
@@ -367,21 +368,21 @@ function judge(ok, how) {
     sfx('good');
   } else {
     S.lastMiss = { team: t, how: how || 'wrong' };
-    if (allShown()) {
-      if (!S.tried) S.tried = S.teams.map(() => false);
-      S.tried[t] = true;
-      const nxt = nextUntried(t);
-      if (nxt < 0) { S.result = { winner: -1, pts: 0 }; finishRound(-1); sfx('none'); }
-      else { S.ctrl = nxt; startClock(); sfx('bad'); }
-    } else {
-      S.ctrl = (t + 1) % S.teams.length;
-      S.phase = 'pick';
+    if (!S.tried) S.tried = S.teams.map(() => false);
+    S.tried[t] = true;
+    const nxt = nextUntried(t);
+    if (nxt >= 0) { S.ctrl = nxt; startClock(); sfx('bad'); }          // next team guesses on the same words
+    else if (allShown()) { S.result = { winner: -1, pts: 0 }; finishRound(-1); sfx('none'); }
+    else {                                                              // everyone missed: the next team in order flips
+      S.picker = S.ctrl = (pickerOf() + 1) % S.teams.length;
+      S.tried = null; S.phase = 'pick';
       sfx('bad');
     }
   }
   ui.fresh = -1;
   commit();
 }
+const pickerOf = () => (S.picker == null ? S.ctrl : S.picker);
 function nextUntried(t) {
   const T = S.teams.length;
   for (let k = 1; k <= T; k++) { const i = (t + k) % T; if (!S.tried[i]) return i; }
@@ -398,7 +399,7 @@ function nextRound() {
   snapshot();
   if (S.round >= S.set.rounds) { S.phase = 'end'; commit(); sfx('fanfare'); return; }
   S.round++;
-  S.starter = S.ctrl = S.nextStarter;
+  S.starter = S.ctrl = S.picker = S.nextStarter;
   S.q = draw([]);
   prepareQ();
   S.phase = 'pick'; S.lastMiss = null;
@@ -409,6 +410,7 @@ function skipQuestion() {
   if (!S || (S.phase !== 'pick' && S.phase !== 'guess')) return;
   snapshot();
   stopClock(true);
+  S.ctrl = pickerOf();   // a skip mid-guess hands the new question back to the team that flipped
   S.q = draw([]);
   prepareQ();
   S.phase = 'pick'; S.lastMiss = null;
@@ -438,7 +440,7 @@ function adjust(t, d) {
 function giveControl(t) {
   if (!S || S.phase !== 'pick' || t === S.ctrl || !S.teams[t]) return;
   snapshot();
-  S.ctrl = t;
+  S.ctrl = S.picker = t;
   commit();
 }
 function endGame() {
@@ -662,7 +664,12 @@ function renderPlay() {
     dock = [h('button', { type: 'button', class: 'act next', onclick: nextRound }, S.round >= S.set.rounds ? 'Final scores (Space)' : 'Next round (Space)')];
   } else if (S.phase === 'guess') {
     const full = allShown();
-    answer = h('div', { class: 'answer' }, h('div', { class: 'msg', text: `${ctrlTeam.name}, what's the answer?` + (full ? ' (every word is showing)' : '') }));
+    const k = (S.tried ? S.tried.filter(Boolean).length : 0) + 1, T = S.teams.length;
+    const miss = S.lastMiss && S.tried && S.tried[S.lastMiss.team] ? S.lastMiss : null;
+    answer = h('div', { class: 'answer' },
+      miss ? h('div', { class: 'msg bad', text: `${S.teams[miss.team].name}: ${miss.how === 'time' ? 'time\'s up' : miss.how === 'pass' ? 'pass' : 'not it'}` }) : null,
+      h('div', { class: 'msg', text: `${ctrlTeam.name}, what's the answer?` }),
+      h('div', { class: 'alt', text: `Guess ${k} of ${T}` + (full ? ' · every word is showing' : '') }));
     dock = [
       S.set.timer ? h('button', { type: 'button', class: 'clock', title: 'Pause / start the clock (T)', onclick: toggleClock }) : null,
       h('button', { type: 'button', class: 'act ok', onclick: () => judge(true) }, '✓ Right (Y)'),
@@ -671,7 +678,7 @@ function renderPlay() {
   } else {
     const miss = S.lastMiss;
     answer = h('div', { class: 'answer' },
-      miss ? h('div', { class: 'msg bad', text: `${S.teams[miss.team].name}: ${miss.how === 'time' ? 'time\'s up' : miss.how === 'pass' ? 'pass' : 'not it'}` }) : null,
+      miss ? h('div', { class: 'msg bad', text: 'Nobody got it on those words.' }) : null,
       h('div', { class: 'msg', text: `${ctrlTeam.name}, pick a number` }));
     dock = [h('span', { class: 'hint', text: S.flips === 0 ? 'Type a number (or click a word). Esc = different question.' : 'Type a number or click a word.' })];
   }

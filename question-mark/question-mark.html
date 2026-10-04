@@ -136,6 +136,7 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   .tools { margin-left: auto; display: flex; gap: 6px; }
   .tool { height: 36px; min-width: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font-weight: 600; font-size: 14px; }
   .tool:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+  .tool.music.off { opacity: .45; text-decoration: line-through; }
   .tool.armed { background: var(--bad); border-color: var(--bad); animation: pulse .6s infinite alternate; }
   .center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6vh; padding: 0 2vw; min-height: 0; }
   .center.enter { animation: slideIn .55s cubic-bezier(.2,1,.3,1) both; }
@@ -459,7 +460,7 @@ function judge(ok, how) {
     S.tried[t] = true;
     const nxt = nextUntried(t);
     if (nxt >= 0) { S.ctrl = nxt; startClock(); ui.fx = 'wrong'; sfx('bad'); }          // next team guesses on the same words
-    else if (allShown()) { S.result = { winner: -1, pts: 0 }; finishRound(-1); ui.fx = 'nobody'; sfx('none'); }
+    else if (allShown()) { S.result = { winner: -1, pts: 0 }; finishRound(-1); ui.fx = 'nobody'; if (!mus.on) sfx('none'); }
     else {                                                              // everyone missed: the next team in order flips
       S.picker = S.ctrl = (pickerOf() + 1) % S.teams.length;
       S.tried = null; S.phase = 'pick';
@@ -484,7 +485,7 @@ function finishRound(winner) {
 function nextRound() {
   if (!S || S.phase !== 'done') return;
   snapshot();
-  if (S.round >= S.set.rounds) { S.phase = 'end'; ui.fx = 'end'; commit(); sfx('fanfare'); return; }
+  if (S.round >= S.set.rounds) { S.phase = 'end'; ui.fx = 'end'; commit(); if (!mus.on) sfx('fanfare'); return; }
   S.round++;
   S.starter = S.ctrl = S.picker = S.nextStarter;
   S.q = draw([]);
@@ -537,7 +538,7 @@ function endGame() {
   snapshot();
   stopClock(true);
   S.phase = 'end'; ui.fx = 'end';
-  commit(); sfx('fanfare');
+  commit(); if (!mus.on) sfx('fanfare');
 }
 function undo() {
   if (!undoStack.length) return;
@@ -607,7 +608,7 @@ function audio() {
   if (snd.ctx.state === 'suspended') snd.ctx.resume();
   return snd.ctx;
 }
-function setMuted(m) { snd.muted = !!m; store.set(MUTE_KEY, snd.muted); if (!m) sfx('chime'); }
+function setMuted(m) { snd.muted = !!m; store.set(MUTE_KEY, snd.muted); if (m) { stopLoop(); if (snd.ctx && mus.gain) setMusicLevel(snd.ctx, 0, .1); } if (!m) sfx('chime'); }
 function tone(c, f, t, dur, type, vol, f2) {
   const o = c.createOscillator(), g = c.createGain();
   o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
@@ -639,6 +640,128 @@ function sfx(name) {
   snd.log.push(name);
   try { const c = audio(); if (c) SFX[name](c, c.currentTime + .01); } catch (e) {}
 }
+/* ---------- music: composed in code, played by small Web Audio synths ----------
+   theme (round start) · final (last round) · thinking loop (pick + guess) · nobody · end.
+   Its own gain under the master, its own toggle (questionmark:music), and silent when sound is muted. */
+const MUSIC_KEY = 'questionmark:music';
+const mus = { on: store.get(MUSIC_KEY, true) !== false, gain: null, loop: false, timer: 0, next: 0, step: 0, piece: null, pieceEnd: 0, log: [], level: 0 };
+const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+function musOut(c) {
+  if (!mus.gain) { mus.gain = c.createGain(); mus.gain.gain.value = 0; mus.gain.connect(c.destination); }
+  return mus.gain;
+}
+function musVoice(c, t, n, dur, type, vol, slide) {
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(midi(n), t);
+  if (slide) o.frequency.linearRampToValueAtTime(midi(n + slide), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(musOut(c)); o.start(t); o.stop(t + dur + .05);
+}
+function musKick(c, t, vol) {
+  const o = c.createOscillator(), g = c.createGain();
+  o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + .12);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + .18);
+  o.connect(g).connect(musOut(c)); o.start(t); o.stop(t + .2);
+}
+function musHat(c, t, vol) {
+  const len = Math.floor(c.sampleRate * .04), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; f.type = 'highpass'; f.frequency.value = 7000; g.gain.value = vol;
+  s.connect(f).connect(g).connect(musOut(c)); s.start(t);
+}
+/* one-shot pieces: [beat, midi note, beats, voice] at a tempo; voices: L lead, B bass, C chord pad, K kick */
+const PIECES = {
+  theme: { bpm: 150, notes: [
+    [0,72,.5,'L'],[.5,76,.5,'L'],[1,79,.5,'L'],[1.5,84,1,'L'],[3,83,.5,'L'],[3.5,84,1.5,'L'],
+    [0,48,1,'B'],[1,55,1,'B'],[2,53,1,'B'],[3,55,1,'B'],[4,48,1,'B'],
+    [0,0,0,'K'],[1,0,0,'K'],[2,0,0,'K'],[3,0,0,'K'],[4,0,0,'K'],
+    [3.5,64,1.5,'C'],[3.5,67,1.5,'C'],[3.5,72,1.5,'C']] },
+  final: { bpm: 132, notes: [
+    [0,67,.33,'L'],[.33,67,.33,'L'],[.66,67,.33,'L'],[1,72,1,'L'],[2,70,.5,'L'],[2.5,72,2,'L'],
+    [0,43,1,'B'],[1,48,1,'B'],[2,46,1,'B'],[3,48,2,'B'],[0,0,0,'K'],[1,0,0,'K'],[2,0,0,'K'],[2.5,0,0,'K'],[3,0,0,'K'],
+    [2.5,64,2,'C'],[2.5,67,2,'C']] },
+  nobody: { bpm: 96, notes: [[0,62,.9,'T'],[1,61,.9,'T'],[2,60,.9,'T'],[3,59,2.2,'W']] },
+  end: { bpm: 140, notes: [
+    [0,72,.5,'L'],[.5,72,.5,'L'],[1,72,.5,'L'],[1.5,72,1,'L'],[2.5,68,1,'L'],[3.5,70,1,'L'],[4.5,72,.5,'L'],[5,70,.5,'L'],[5.5,72,2.5,'L'],
+    [0,48,1,'B'],[1,48,1,'B'],[2,44,1,'B'],[3,46,1,'B'],[4,48,1,'B'],[5,46,.5,'B'],[5.5,48,2.5,'B'],
+    [0,0,0,'K'],[1,0,0,'K'],[2,0,0,'K'],[3,0,0,'K'],[4,0,0,'K'],[5,0,0,'K'],[5.5,0,0,'K'],
+    [5.5,64,2.5,'C'],[5.5,67,2.5,'C'],[5.5,72,2.5,'C'],[5.5,76,2.5,'C']] }
+};
+/* thinking loop: 2 bars of 8ths at 104 bpm — soft pluck arpeggio, bass on beats, hats */
+const LOOP = { bpm: 104, arp: [60,64,67,71, 62,65,69,72, 60,64,67,71, 59,62,67,71], bass: [36,36,41,41,36,36,43,43] };
+function playVoice(c, t, v, n, dur) {
+  if (v === 'L') { musVoice(c, t, n, dur * .95, 'square', .09); musVoice(c, t, n + 12, dur * .9, 'triangle', .05); }
+  else if (v === 'B') musVoice(c, t, n, dur * .9, 'triangle', .22);
+  else if (v === 'C') musVoice(c, t, n, dur, 'sawtooth', .035);
+  else if (v === 'K') musKick(c, t, .5);
+  else if (v === 'T') musVoice(c, t, n, dur, 'sawtooth', .17, -.5);
+  else if (v === 'W') { musVoice(c, t, n, dur, 'sawtooth', .17, -1); musVoice(c, t, n - 12, dur, 'triangle', .2, -1); }
+}
+function musicCtx() { if (!mus.on || snd.muted) return null; try { return audio(); } catch (e) { return null; } }
+function setMusicLevel(c, level, ramp) {
+  const g = musOut(c).gain, t = c.currentTime;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(level, t + (ramp || .4));
+  mus.level = level;
+}
+function playPiece(name) {
+  mus.log.push(name);
+  const c = musicCtx(); if (!c) return 0;
+  try { return playPieceOn(c, name); } catch (e) { return 0; }
+}
+function playPieceOn(c, name) {
+  const p = PIECES[name], spb = 60 / p.bpm, t0 = c.currentTime + .05;
+  setMusicLevel(c, 1, .05);
+  let len = 0;
+  for (const [b, n, d, v] of p.notes) { playVoice(c, t0 + b * spb, v, n, Math.max(.08, d * spb)); len = Math.max(len, b + d); }
+  mus.piece = name; mus.pieceEnd = performance.now() + (len * spb + .3) * 1000;
+  return len * spb;
+}
+function loopTick() { try { loopTickInner(); } catch (e) { stopLoop(); } }
+function loopTickInner() {
+  const c = musicCtx();
+  if (!c || !mus.loop) return;
+  if (performance.now() < mus.pieceEnd) return;              // let a jingle finish first
+  if (mus.piece) { mus.piece = null; mus.next = c.currentTime + .05; mus.step = 0; }
+  const fast = clock.running && clock.left > 0 && clock.left <= 3000;
+  const spb8 = 60 / (LOOP.bpm * (fast ? 1.35 : 1)) / 2;   // one 8th note
+  const want = S && S.phase === 'guess' ? .45 : .7;           // softer while a team is answering
+  if (Math.abs(mus.level - want) > .01) setMusicLevel(c, want, .5);
+  if (mus.next < c.currentTime) mus.next = c.currentTime + .05;
+  while (mus.next < c.currentTime + .25) {
+    const i = mus.step % 16, t = mus.next;
+    musVoice(c, t, LOOP.arp[i] + 12, spb8 * 1.6, 'triangle', .07);
+    if (i % 2 === 0) musVoice(c, t, LOOP.bass[(i / 2) % 8], spb8 * 1.8, 'sine', .2);
+    if (i % 4 === 0) musKick(c, t, .25);
+    musHat(c, t, i % 2 ? .05 : .09);
+    mus.next += spb8; mus.step++;
+  }
+}
+function startLoop() {
+  if (mus.loop) return;
+  mus.loop = true; mus.log.push('loop');
+  clearInterval(mus.timer); mus.timer = setInterval(loopTick, 40); loopTick();
+}
+function stopLoop() {
+  if (!mus.loop) return;
+  mus.loop = false; clearInterval(mus.timer); mus.timer = 0;
+  const c = snd.ctx; if (c && mus.gain && !mus.piece) setMusicLevel(c, 0, .3);
+}
+/* called after every render: the phase decides whether the thinking loop runs */
+function musicSync(cue) {
+  const wantLoop = !!S && (S.phase === 'pick' || S.phase === 'guess') && mus.on && !snd.muted;
+  if (cue === 'round') playPiece(S.round === S.set.rounds && S.set.rounds > 1 ? 'final' : 'theme');
+  else if (cue === 'nobody') { stopLoop(); playPiece('nobody'); }
+  else if (cue === 'end') { stopLoop(); playPiece('end'); }
+  if (wantLoop) startLoop(); else stopLoop();
+}
+function setMusic(on) {
+  mus.on = !!on; store.set(MUSIC_KEY, mus.on);
+  if (!mus.on) { stopLoop(); if (snd.ctx && mus.gain) setMusicLevel(snd.ctx, 0, .2); mus.pieceEnd = 0; mus.piece = null; }
+  else musicSync(null);
+}
+
 ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => { try { if (!snd.muted) audio(); } catch (e) {} }, { once: true, capture: true }));
 
 
@@ -690,6 +813,8 @@ function render() {
 
 function afterRender(plan) {
   const fx = ui.fx; ui.fx = null;
+  const roundStart = !!S && !!S.q && S.phase !== 'end' && (anim.round !== S.round || anim.qid === null);
+  musicSync(roundStart ? 'round' : (fx === 'nobody' || fx === 'end') ? fx : null);
   fitWords();
   if (plan) {
     const rm = reduced();
@@ -820,7 +945,10 @@ function renderSetup() {
     h('div', { class: 'row' }, h('label', { text: 'Helper words' }), seg([[false, 'Off'], [true, 'On']], st.helpers, v => set('helpers', v))),
     h('div', { class: 'row' }, h('label', { text: 'Rounds' }), seg([[6, '6'], [10, '10'], [15, '15']], st.rounds, v => set('rounds', v))),
     h('div', { class: 'row' }, h('label', { text: 'Answer timer' }), seg([[0, 'Off'], [10, '10s'], [15, '15s'], [20, '20s']], st.timer, v => set('timer', v))),
-    h('div', { class: 'row' }, h('label', { text: 'Sound' }), seg([[true, 'On'], [false, 'Off']], !snd.muted, v => { setMuted(!v); render(); })),
+    h('div', { class: 'row' }, h('label', { text: 'Sound' }),
+      h('div', { class: 'seg', role: 'group' },
+        h('button', { type: 'button', class: 'snd-fx' + (!snd.muted ? ' on' : ''), 'aria-pressed': String(!snd.muted), onclick: () => { setMuted(!snd.muted); render(); } }, 'Effects'),
+        h('button', { type: 'button', class: 'snd-music' + (mus.on ? ' on' : ''), 'aria-pressed': String(mus.on), onclick: () => { setMusic(!mus.on); render(); } }, 'Music'))),
     h('p', { class: 'note', text: st.helpers ? 'Helper words (the, is, of, in…) start face up and don\'t count in the points.' : 'Every word starts hidden — calling a number that hides "the" wastes the turn.' })
   );
 
@@ -944,6 +1072,7 @@ function renderPlay() {
         h('button', { type: 'button', class: 'tool', title: 'Undo (Shift+U)', disabled: !undoStack.length, onclick: undo }, '↶ Undo'),
         h('button', { type: 'button', class: 'tool', title: 'New question (S)', disabled: !(S.phase === 'pick' || S.phase === 'guess'), onclick: skipQuestion }, 'Skip'),
         h('button', { type: 'button', class: 'tool' + (ui.endArmed ? ' armed' : ''), title: 'End game (Shift+E twice)', onclick: endGame }, ui.endArmed ? 'Click again to end' : 'End'),
+        h('button', { type: 'button', class: 'tool music' + (mus.on ? '' : ' off'), title: mus.on ? 'Music on (B)' : 'Music off (B)', 'aria-label': mus.on ? 'Music on' : 'Music off', 'aria-pressed': String(mus.on), onclick: () => { setMusic(!mus.on); render(); } }, '🎵'),
         h('button', { type: 'button', class: 'tool mute', title: snd.muted ? 'Sound off (M)' : 'Sound on (M)', 'aria-label': snd.muted ? 'Sound off' : 'Sound on', onclick: () => { setMuted(!snd.muted); render(); } }, snd.muted ? '🔇' : '🔊'),
         h('button', { type: 'button', class: 'tool theme-toggle', onclick: () => window.toggleTheme() }))),
     h('div', { class: 'center' + (newQ ? ' enter' : '') },
@@ -953,7 +1082,7 @@ function renderPlay() {
       answer),
     h('div', { class: 'dock' }, dock),
     teams,
-    h('div', { class: 'keys', text: 'number = flip · Y/N/P judge · Space next · S skip · hold A peek · M sound · Shift: ±100 · Shift+U undo · Shift+E end' + (S.set.timer ? ' · T clock' : '') }),
+    h('div', { class: 'keys', text: 'number = flip · Y/N/P judge · Space next · S skip · hold A peek · M sound · B music · Shift: ±100 · Shift+U undo · Shift+E end' + (S.set.timer ? ' · T clock' : '') }),
     ui.peek && S.phase !== 'done' ? h('div', { class: 'peek', text: 'Answer: ' + q.a + (q.alt.length ? ' (' + q.alt.join(', ') + ')' : '') }) : null
   );
   const plan = { toFlip, potFrom: newQ ? null : anim.pot, potTo: potVal, scores: anim.phase === null ? [] : anim.scores, lift, ctrlShown };
@@ -1020,6 +1149,7 @@ document.addEventListener('keydown', e => {
   else if (lk === 'p') judge(false, 'pass');
   else if (lk === 's') skipQuestion();
   else if (lk === 'm') { setMuted(!snd.muted); render(); }
+  else if (lk === 'b') { setMusic(!mus.on); render(); }
   else if (lk === 't') { if (S.phase === 'guess' && S.set.timer) toggleClock(); }
   else if (lk === 'a' && !e.repeat) { ui.peek = true; render(); }
 });
@@ -1038,7 +1168,7 @@ window.QM = {
   get S() { return S; }, set S(v) { S = v; }, get undoStack() { return undoStack; }, get ui() { return ui; }, clock,
   setSilent(v) { silent = v; }, newGame, flip, judge, nextRound, skipQuestion, cancelQuestion, adjust, giveControl, endGame, undo,
   rematch, resume, toSetup, render, pot, hidden, questionsFor, getQ, nearTwins, tileSize, ranking, POOL_CATS, FRAME_CATS,
-  get setup() { return setup; }, set setup(v) { setup = v; }, snd, setMuted
+  get setup() { return setup; }, set setup(v) { setup = v; }, snd, setMuted, mus, setMusic
 };
 </script>
 </body>

@@ -93,6 +93,14 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
 .clue .num{font-family:'JetBrains Mono',monospace;color:var(--dim);font-size:.9rem;padding-top:5px;min-width:22px}
 .clue .txt{flex:1}
 .ce{font-size:1.55rem;vertical-align:-.22em;margin:0 2px}
+.clue{cursor:pointer;user-select:none;transition:opacity .2s,border-color .2s}
+.clue:hover{border-color:var(--gold)}
+.clue.done{opacity:.38;border-left-color:var(--line)}
+.clue.done .txt{text-decoration:line-through;text-decoration-thickness:2px}
+.clue.done .num::before{content:'\2713';color:var(--mint);margin-right:2px}
+.clue-tip{font-size:.8rem;color:var(--dim);margin:-4px 0 10px}
+.em-tip{position:fixed;z-index:9999;pointer-events:none;background:var(--panel2);color:var(--text);border:1px solid var(--gold);border-radius:10px;padding:6px 12px;font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.35);white-space:nowrap;opacity:0;transform:translate(-50%,-100%);transition:opacity .12s}
+.em-tip.on{opacity:1}
 .clue b{color:var(--rose)}
 .legend{margin-top:14px;padding:12px 14px;background:var(--panel2);border:1px dashed var(--line);border-radius:12px;font-size:.83rem;color:var(--dim);line-height:1.9}
 .legend b{color:var(--text);font-weight:700}
@@ -292,6 +300,7 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
     <div class="play-grid">
       <div class="panel">
         <h2>Clues</h2>
+        <p class="clue-tip">Click a clue to cross it off.</p>
         <div class="clue-list" id="clueList"></div>
         <div class="legend">
           <b>directly left of</b> = the very next house · <b>somewhere left of</b> = anywhere before it<br>
@@ -395,6 +404,15 @@ var CATS=[
   {name:'Music',     items:['🎸','🎹','🥁','🎺','🎤','🎻']},
   {name:'Hobby',     items:['📚','🎮','🎨','🎬','🎧','📷']}
 ];
+var EMOJI_NAMES={
+  '🐶':'dog','🐱':'cat','🐰':'rabbit','🐢':'turtle','🐦':'bird','🐹':'hamster',
+  '🍕':'pizza','🍔':'hamburger','🍣':'sushi','🌮':'taco','🍦':'ice cream','🥗':'salad',
+  '🚲':'bike','🚗':'car','🚌':'bus','🛴':'scooter','🚂':'train','✈️':'plane',
+  '☕':'coffee','🥤':'soda','🧃':'juice','🍵':'tea','🥛':'milk','🧋':'bubble tea',
+  '⚽':'soccer','🏀':'basketball','🎾':'tennis','🏐':'volleyball','🏓':'table tennis','🏈':'football',
+  '🎸':'guitar','🎹':'piano','🥁':'drums','🎺':'trumpet','🎤':'microphone','🎻':'violin',
+  '📚':'reading','🎮':'video games','🎨':'painting','🎬':'movies','🎧':'listening to music','📷':'photography'
+};
 var ALL={at:1,end:1,same:1,notsame:1,left:1,leftsome:1,next:1,between:1};
 var LEVELS=[
   {n:3,m:2,pts:1,label:'Warm-up', minClues:4,  maxClues:7,  anchors:2, depth:0, types:{at:1,same:1,left:1,next:1}},
@@ -933,9 +951,9 @@ function onDraftChange() {
 }
 
 function bankHtml(cat, numbered) {
-  if (!numbered) return '<span class="bank">' + cat.items.join('') + '</span>';
+  if (!numbered) return '<span class="bank">' + cat.items.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</span>';
   var s = '<span class="bank numbered">';
-  cat.items.forEach(function (e, i) { s += '<span class="bnum">' + (i + 1) + '</span>' + e; });
+  cat.items.forEach(function (e, i) { s += '<span class="bnum">' + (i + 1) + '</span><span>' + e + '</span>'; });
   return s + '</span>';
 }
 
@@ -1392,6 +1410,7 @@ function renderPuzzle(){
   updateLevelChip();
   document.getElementById('tPts').textContent=P.pts+(P.pts===1?' point':' points');
   document.getElementById('btnBonus').disabled = P.extras.length===0;
+  P.clues.forEach(function(cl){ cl.done=false; });
   renderClues();
   if(G.gameMode==='solo'){
     G.draft=blankDraft(P); EDIT.mount='gridTbl'; EDIT.masked=false; renderEditGrid();
@@ -1404,8 +1423,9 @@ function renderClues(){
   box.innerHTML='';
   P.clues.forEach(function(cl,i){
     var d=document.createElement('div');
-    d.className='clue'+(cl.bonus?' bonus':'');
+    d.className='clue'+(cl.bonus?' bonus':'')+(cl.done?' done':'');
     d.style.animationDelay=(i*0.05)+'s';
+    d.onclick=function(){ cl.done=!cl.done; d.classList.toggle('done',cl.done); };
     d.innerHTML='<span class="num">'+(i+1)+'</span><span class="txt">'+clueText(cl,P)+'</span>';
     box.appendChild(d);
   });
@@ -1423,7 +1443,7 @@ function renderGrid(reveal){
   P.cats.forEach(function(cat,c){
     var row=document.createElement('div');
     row.className='row'; row.style.gridTemplateColumns=cols;
-    var html='<div class="rowhead"><span class="cname">'+esc(cat.name)+'</span><span class="bank">'+cat.items.join('')+'</span></div>';
+    var html='<div class="rowhead"><span class="cname">'+esc(cat.name)+'</span><span class="bank">'+cat.items.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</span></div>';
     for(var p=0;p<P.n;p++){
       if(reveal) html+='<div class="cell filled" style="animation-delay:'+((c*P.n+p)*0.06)+'s">'+cat.items[P.sol[c][p]]+'</div>';
       else html+='<div class="cell empty"></div>';
@@ -1655,6 +1675,32 @@ document.addEventListener('mousedown',function(e){
   closePicker();
 },true);
 window.addEventListener('resize',function(){ closePicker(); });
+
+/* ---------- EMOJI NAME TOOLTIP ---------- */
+(function(){
+  var tip=document.createElement('div'); tip.className='em-tip'; document.body.appendChild(tip);
+  var cur=null;
+  function nameOf(el){
+    for(var k=0;el && k<3;k++,el=el.parentElement){
+      if(el.nodeType!==1) continue;
+      var t=(el.textContent||'').trim();
+      if(EMOJI_NAMES[t]) return {el:el,name:EMOJI_NAMES[t]};
+    }
+    return null;
+  }
+  document.addEventListener('mouseover',function(e){
+    var hit=nameOf(e.target);
+    if(!hit){ if(cur){ tip.classList.remove('on'); cur=null; } return; }
+    if(hit.el===cur) return;
+    cur=hit.el;
+    tip.textContent=hit.name;
+    var r=hit.el.getBoundingClientRect();
+    tip.style.left=(r.left+r.width/2)+'px';
+    tip.style.top=Math.max(4,r.top-8)+'px';
+    tip.classList.add('on');
+  });
+  document.addEventListener('scroll',function(){ tip.classList.remove('on'); cur=null; },true);
+})();
 
 document.addEventListener('keydown',function(e){
   var t=e.target;

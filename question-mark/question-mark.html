@@ -14,7 +14,7 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Question Mark</title>
-<meta name="description" content="Team game show: the question is hidden word by word. Call a number, flip a word, guess the answer — the fewer words you need, the more you score.">
+<meta name="description" content="Team game show: the question is hidden word by word. Call a number, flip a word, guess the answer — one point per right answer, first team to 3, 5 or 7 wins.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -205,6 +205,11 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   .team .tn { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .team .ts { font-family: var(--display); font-size: clamp(24px, 4vh, 36px); line-height: 1.1; font-variant-numeric: tabular-nums; }
   .team .tag { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--gold); color: var(--gold-ink); font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 99px; letter-spacing: .08em; white-space: nowrap; }
+  .team .pips { display: flex; gap: 5px; justify-content: center; margin-top: 4px; }
+  .team .pips span { width: 11px; height: 11px; border-radius: 50%; border: 2px solid rgba(255,255,255,.45); }
+  .team .pips span.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 8px rgba(255,204,51,.7); }
+  .mp { font: 800 13px var(--ui); letter-spacing: .1em; text-transform: uppercase; color: #2a0006; background: #ff7a86; padding: 3px 10px; border-radius: 99px; animation: pulse .6s infinite alternate; white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) { .mp { animation: none; } }
   .team .adj { display: none; gap: 6px; justify-content: center; margin-top: 4px; }
   body.shift .team .adj { display: flex; }
   .team .adj button { padding: 2px 8px; border-radius: 7px; border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.25); color: #fff; font-weight: 700; font-size: 13px; }
@@ -326,7 +331,7 @@ let silent = false;    // tests: skip rendering
 
 function defaultSetup() {
   return { teams: ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6'], count: 2, level: 'easy',
-    cats: POOL_CATS.slice(), showCat: true, helpers: false, rounds: 10, timer: 0, starter: 0 };
+    cats: POOL_CATS.slice(), showCat: true, helpers: false, target: 5, timer: 0, starter: 0 };
 }
 function loadSetup() {
   const d = defaultSetup(), s = store.get(SETUP_KEY, null);
@@ -337,7 +342,8 @@ function loadSetup() {
   o.count = Math.min(6, Math.max(2, o.count | 0));
   if (!LEVELS[o.level]) o.level = 'easy';
   o.cats = Array.isArray(o.cats) ? o.cats.filter(c => POOL_CATS.includes(c)) : d.cats;
-  if (![6, 10, 15].includes(o.rounds)) o.rounds = 10;
+  if (![3, 5, 7].includes(o.target)) o.target = 5;
+  delete o.rounds;
   if (![0, 10, 15, 20].includes(o.timer)) o.timer = 0;
   o.starter = (o.starter | 0) % 6;
   return o;
@@ -348,10 +354,10 @@ function newGame(st) {
   const T = st.count;
   const starter = (st.starter | 0) % T;
   S = {
-    v: 1, gameId: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
+    v: 2, gameId: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
     phase: 'pick',
     teams: Array.from({ length: T }, (_, i) => ({ name: (st.teams[i] || '').trim() || 'Team ' + (i + 1), color: TEAM_COLORS[i], score: 0 })),
-    set: { level: st.level, cats: st.cats.slice(), showCat: !!st.showCat, helpers: !!st.helpers, rounds: st.rounds, timer: st.timer },
+    set: { level: st.level, cats: st.cats.slice(), showCat: !!st.showCat, helpers: !!st.helpers, target: st.target, timer: st.timer },
     round: 1, starter, ctrl: starter, picker: starter, nextStarter: starter, firstStarter: starter,
     q: null, flips: 0, tried: null, result: null, used: [], log: []
   };
@@ -399,7 +405,9 @@ function prepareQ() {
 }
 const hidden = () => S.q.shown.filter(x => !x).length;
 const allShown = () => hidden() === 0;
-const pot = () => Math.max(1, hidden()) * 100;
+const pot = () => 1;
+const gameWon = () => !!S && S.teams.some(t => t.score >= S.set.target);
+const matchPoint = () => !!S && S.teams.some(t => t.score === S.set.target - 1);
 
 /* ---------- cross-game history ---------- */
 function recentHistory() {
@@ -448,7 +456,7 @@ function judge(ok, how) {
   stopClock(true);
   const t = S.ctrl;
   if (ok) {
-    const pts = pot();
+    const pts = 1;
     S.teams[t].score += pts;
     S.result = { winner: t, pts };
     finishRound(t);
@@ -484,7 +492,7 @@ function finishRound(winner) {
 function nextRound() {
   if (!S || S.phase !== 'done') return;
   snapshot();
-  if (S.round >= S.set.rounds) { S.phase = 'end'; ui.fx = 'end'; commit(); if (!mus.on) sfx('fanfare'); return; }
+  if (gameWon()) { S.phase = 'end'; ui.fx = 'end'; commit(); if (!mus.on) sfx('fanfare'); return; }
   S.round++;
   S.starter = S.ctrl = S.picker = S.nextStarter;
   S.q = draw([]);
@@ -551,7 +559,7 @@ function rematch() {
   const st = Object.assign({}, setup, { starter: (S.firstStarter + 1) % S.teams.length });
   st.count = S.teams.length; st.teams = setup.teams.slice();
   S.teams.forEach((t, i) => { st.teams[i] = t.name; });
-  Object.assign(st, { level: S.set.level, cats: S.set.cats, showCat: S.set.showCat, helpers: S.set.helpers, rounds: S.set.rounds, timer: S.set.timer });
+  Object.assign(st, { level: S.set.level, cats: S.set.cats, showCat: S.set.showCat, helpers: S.set.helpers, target: S.set.target, timer: S.set.timer });
   setup = st; saveSetup();
   newGame(setup);
   render();
@@ -750,7 +758,7 @@ function stopLoop() {
 /* called after every render: the phase decides whether the thinking loop runs */
 function musicSync(cue) {
   const wantLoop = !!S && (S.phase === 'pick' || S.phase === 'guess') && mus.on && !snd.muted;
-  if (cue === 'round') playPiece(S.round === S.set.rounds && S.set.rounds > 1 ? 'final' : 'theme');
+  if (cue === 'round') playPiece(matchPoint() ? 'final' : 'theme');
   else if (cue === 'nobody') { stopLoop(); playPiece('nobody'); }
   else if (cue === 'end') { stopLoop(); playPiece('end'); }
   if (wantLoop) startLoop(); else stopLoop();
@@ -942,13 +950,13 @@ function renderSetup() {
     h('div', { class: 'row' }, h('label', { text: 'Level' }), seg([['easy', 'Easy'], ['medium', 'Medium'], ['all', 'All']], st.level, v => set('level', v))),
     h('div', { class: 'row' }, h('label', { text: 'Category' }), seg([[true, 'Show'], [false, 'Hide']], st.showCat, v => set('showCat', v))),
     h('div', { class: 'row' }, h('label', { text: 'Helper words' }), seg([[false, 'Off'], [true, 'On']], st.helpers, v => set('helpers', v))),
-    h('div', { class: 'row' }, h('label', { text: 'Rounds' }), seg([[6, '6'], [10, '10'], [15, '15']], st.rounds, v => set('rounds', v))),
+    h('div', { class: 'row' }, h('label', { text: 'Points to win' }), seg([[3, '3'], [5, '5'], [7, '7']], st.target, v => set('target', v))),
     h('div', { class: 'row' }, h('label', { text: 'Answer timer' }), seg([[0, 'Off'], [10, '10s'], [15, '15s'], [20, '20s']], st.timer, v => set('timer', v))),
     h('div', { class: 'row' }, h('label', { text: 'Sound' }),
       h('div', { class: 'seg', role: 'group' },
         h('button', { type: 'button', class: 'snd-fx' + (!snd.muted ? ' on' : ''), 'aria-pressed': String(!snd.muted), onclick: () => { setMuted(!snd.muted); render(); } }, 'Effects'),
         h('button', { type: 'button', class: 'snd-music' + (mus.on ? ' on' : ''), 'aria-pressed': String(mus.on), onclick: () => { setMusic(!mus.on); render(); } }, 'Music'))),
-    h('p', { class: 'note', text: st.helpers ? 'Helper words (the, is, of, in…) start face up and don\'t count in the points.' : 'Every word starts hidden — calling a number that hides "the" wastes the turn.' })
+    h('p', { class: 'note', text: st.helpers ? 'Helper words (the, is, of, in…) start face up.' : 'Every word starts hidden — calling a number that hides "the" wastes the turn.' })
   );
 
   const cnt = c => BANK[c].filter(q => q.rank <= LEVELS[st.level]).length;
@@ -974,14 +982,14 @@ function renderSetup() {
     h('div', { class: 'cols' }, teamCard, catCard),
     h('div', { class: 'start-row' },
       reason ? h('span', { class: 'why', text: reason }) : null,
-      saved && saved.S ? h('button', { type: 'button', class: 'ghost', onclick: resume }, 'Resume game') : null,
+      saved && saved.S && saved.S.v === 2 ? h('button', { type: 'button', class: 'ghost', onclick: resume }, 'Resume game') : null,
       h('button', { type: 'button', class: 'big', disabled: !!reason, onclick: () => { sfx('whoosh'); newGame(setup); render(); } }, 'Start')),
     h('p', { class: 'credit', text: 'Questions adapted from the Jeopardy bank · ranked and CEFR-tagged' })
   );
 }
 function resume() {
   const saved = store.get(SAVE_KEY, null);
-  if (!saved || !saved.S) return;
+  if (!saved || !saved.S || saved.S.v !== 2) return;
   S = saved.S; undoStack = Array.isArray(saved.undo) ? saved.undo : [];
   ui.fresh = -1; ui.entry = '';
   stopClock(true);
@@ -1023,7 +1031,7 @@ function renderPlay() {
       h('div', { class: 'msg ' + (r.winner >= 0 ? 'good' : 'bad'), text: r.winner >= 0 ? `${S.teams[r.winner].name} +${r.pts}` : 'Nobody got it' }),
       h('div', { class: 'a', text: q.a }),
       q.alt.length ? h('div', { class: 'alt', text: 'Also accepted: ' + q.alt.join(', ') }) : null);
-    dock = [h('button', { type: 'button', class: 'act next', onclick: nextRound }, S.round >= S.set.rounds ? 'Final scores (Space)' : 'Next round (Space)')];
+    dock = [h('button', { type: 'button', class: 'act next', onclick: nextRound }, gameWon() ? 'Final scores (Space)' : 'Next round (Space)')];
   } else if (S.phase === 'guess') {
     const full = allShown();
     const k = (S.tried ? S.tried.filter(Boolean).length : 0) + 1, T = S.teams.length;
@@ -1055,17 +1063,19 @@ function renderPlay() {
       isCtrl ? h('span', { class: 'tag', text: S.phase === 'pick' ? 'PICKING' : 'ANSWERING' }) : null,
       h('div', { class: 'tn', text: t.name }),
       h('div', { class: 'ts', text: t.score }),
+      h('div', { class: 'pips', 'aria-hidden': 'true' }, Array.from({ length: S.set.target }, (_, k) => h('span', { class: k < t.score ? 'on' : '' }))),
       h('div', { class: 'adj' },
-        h('button', { type: 'button', 'aria-label': 'Minus 100 for ' + t.name, onclick: () => adjust(i, -100) }, '−100'),
-        h('button', { type: 'button', 'aria-label': 'Plus 100 for ' + t.name, onclick: () => adjust(i, 100) }, '+100')));
+        h('button', { type: 'button', 'aria-label': 'Minus 1 point for ' + t.name, onclick: () => adjust(i, -1) }, '−1'),
+        h('button', { type: 'button', 'aria-label': 'Plus 1 point for ' + t.name, onclick: () => adjust(i, 1) }, '+1')));
   }));
 
-  const potLabel = S.phase === 'done' ? (S.result.winner >= 0 ? 'won' : 'points') : (allShown() ? 'last chance' : 'points if right');
-  const potVal = S.phase === 'done' ? (S.result.winner >= 0 ? S.result.pts : 0) : (S.phase === 'pick' ? Math.max(1, hidden() - 1) * 100 : pot());
+  const potLabel = S.phase === 'done' && gameWon() ? 'points — we have a winner!' : (allShown() && S.phase === 'guess' ? 'to win · last chance' : 'points to win');
+  const potVal = S.set.target;
 
   const el = h('div', { class: 'stage' },
     h('div', { class: 'topbar' },
-      h('span', { class: 'round', text: `Round ${S.round} / ${S.set.rounds}` }),
+      h('span', { class: 'round', text: `Round ${S.round}` }),
+      matchPoint() && S.phase !== 'done' ? h('span', { class: 'mp', text: 'Match point' }) : null,
       h('span', { class: 'catcard' + (newQ ? ' swoop' : ''), text: (S.set.showCat || S.phase === 'done') ? q.cat : '???' }),
       h('div', { class: 'tools' },
         h('button', { type: 'button', class: 'tool', title: 'Undo (Shift+U)', disabled: !undoStack.length, onclick: undo }, '↶ Undo'),
@@ -1081,7 +1091,7 @@ function renderPlay() {
       answer),
     h('div', { class: 'dock' }, dock),
     teams,
-    h('div', { class: 'keys', text: 'number = flip · Y/N/P judge · Space next · S skip · hold A peek · M sound · B music · Shift: ±100 · Shift+U undo · Shift+E end' + (S.set.timer ? ' · T clock' : '') }),
+    h('div', { class: 'keys', text: 'number = flip · Y/N/P judge · Space next · S skip · hold A peek · M sound · B music · Shift: ±1 · Shift+U undo · Shift+E end' + (S.set.timer ? ' · T clock' : '') }),
     ui.peek && S.phase !== 'done' ? h('div', { class: 'peek', text: 'Answer: ' + q.a + (q.alt.length ? ' (' + q.alt.join(', ') + ')' : '') }) : null
   );
   const plan = { toFlip, potFrom: newQ ? null : anim.pot, potTo: potVal, scores: anim.phase === null ? [] : anim.scores, lift, ctrlShown };
@@ -1103,10 +1113,10 @@ function renderEnd() {
     h('div', { class: 'ranks' }, r.map((t, k) => h('div', { class: 'rank p' + t.place + (t.place === 1 ? ' first' : ''), style: `--tc:${t.color};--k:${r.length - 1 - k}` },
       h('div', { class: 'place', text: ord[t.place] }), h('div', { class: 'tn', text: t.name }), h('div', { class: 'ts', text: t.score })))),
     h('table', { class: 'log' },
-      h('thead', {}, h('tr', {}, ['#', 'Category', 'Question', 'Answer', 'Won by', 'Words flipped', 'Points'].map(x => h('th', { text: x })))),
+      h('thead', {}, h('tr', {}, ['#', 'Category', 'Question', 'Answer', 'Won by', 'Words flipped'].map(x => h('th', { text: x })))),
       h('tbody', {}, S.log.map(l => h('tr', {},
         h('td', { text: l.round }), h('td', { text: l.cat }), h('td', { text: l.q }), h('td', { text: l.a }),
-        h('td', { text: l.winner >= 0 ? S.teams[l.winner].name : '—' }), h('td', { text: `${l.flips} of ${l.words}` }), h('td', { text: l.pts }))))),
+        h('td', { text: l.winner >= 0 ? S.teams[l.winner].name : '—' }), h('td', { text: `${l.flips} of ${l.words}` }))))),
     h('div', { class: 'end-actions' },
       h('button', { type: 'button', class: 'ghost', disabled: !undoStack.length, onclick: undo }, '↶ Undo'),
       h('button', { type: 'button', class: 'big', onclick: rematch }, 'Rematch'),

@@ -185,6 +185,11 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
 /* ---- teams ---- */
 .team .tries{font-size:.72rem;color:var(--gold);font-weight:700}
 .team.locked{opacity:.55}
+.qbar{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;padding:16px 22px;border-radius:var(--r);border:2px solid var(--gold);background:rgba(255,176,58,.09);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(1.4rem,3vw,2.1rem);text-align:center}
+.qbar .qmark{font-size:.75rem;text-transform:uppercase;letter-spacing:.14em;color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:4px 12px}
+.qbar .ce{font-size:1.5em;vertical-align:-.2em}
+.qbar .also{color:var(--dim);font-weight:600}
+.cell.tgt{border-color:var(--gold)!important;background:rgba(255,176,58,.16)!important;box-shadow:0 0 0 3px rgba(255,176,58,.25)}
 .team.locked .tstat{color:var(--rose)}
 /* ---- solo ---- */
 .solobar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
@@ -242,15 +247,15 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
             <button data-v="target" class="sel">Questions</button>
             <button data-v="grid">Full grid</button>
           </div>
-          <p class="hint" id="modeHint">A few questions about the solution &mdash; fast, and all of them must be right.</p>
+          <p class="hint" id="modeHint">One question for the whole class. A wrong answer puts a team out until the next puzzle.</p>
         </div>
-        <div class="field" id="fieldAnswers">
-          <label>Answers per attempt</label>
-          <div class="seg" id="segAnswers">
-            <button data-v="0" class="sel">Auto</button><button data-v="1">1</button>
-            <button data-v="2">2</button><button data-v="3">3</button>
+        <div class="field" id="fieldAsk">
+          <label>What teams answer</label>
+          <div class="seg" id="segAsk">
+            <button data-v="full" class="sel">House + who lives there</button>
+            <button data-v="house">House only</button>
           </div>
-          <p class="hint">Auto asks enough questions to keep a blind guess under 5% &mdash; 3 on small grids, 2 on five houses.</p>
+          <p class="hint" id="askHint">The house and every emoji that shares it. A blind guess almost never wins.</p>
         </div>
         <div class="field" id="fieldMask">
           <label>Hide answers as you type them</label>
@@ -297,6 +302,7 @@ h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
     <div class="spin">🎲</div><p style="margin-top:14px">Building a new puzzle…</p>
   </div>
   <div id="playBody">
+    <div class="qbar" id="qBar" style="display:none"></div>
     <div class="play-grid">
       <div class="panel">
         <h2>Clues</h2>
@@ -852,7 +858,7 @@ function generateAt(levelIdx,relaxed){
     })).slice(0,4);
     var inv=sol.map(function(p){ var iv=new Array(n); for(var pos=0;pos<n;pos++) iv[p[pos]]=pos; return iv; });
     var P={levelIdx:levelIdx,label:L.label,pts:L.pts,n:n,M:M,cats:cats,sol:sol,inv:inv,clues:chosen,extras:extras,needsHypothesis:tu.needsHypothesis};
-    P.questions=makeQuestions(P,3);
+    P.target=pickTarget(P);
     return P;
   }
   return null;
@@ -864,57 +870,56 @@ function generatePuzzle(levelIdx){
   while(!P && idx>0){ idx--; P=generateAt(idx,true); }
   return P;
 }
-/* ---------- QUESTIONS ----------
-   A single question is a 1-in-n guess: 33% on a three-house grid, which is
-   well inside "just say house 2 and hope". Asking several at once and marking
-   all-or-nothing takes that to n^-k. questionsFor() picks the smallest k that
-   keeps a blind guess under 5%: 3 on three or four houses, 2 on five. */
-function questionsFor(P) {
-  if (G.answerCount > 0) return G.answerCount;
-  return P.n <= 4 ? 3 : 2;
-}
-function makeQuestions(P, want) {
-  var n = P.n, M = P.M, cands = [], c, i, c2;
-  for (c = 0; c < M; c++) for (i = 0; i < n; i++) {
-    (function (cc, ii) {
-      var given = P.clues.some(function (cl) { return cl.type === 'at' && cl.c1 === cc && cl.i1 === ii; });
-      if (!given) cands.push({ kind: 'pos', c1: cc, i1: ii });
-    })(c, i);
-  }
-  if (M >= 2) {
-    for (c = 0; c < M; c++) for (i = 0; i < n; i++) for (c2 = 0; c2 < M; c2++) {
-      if (c2 === c) continue;
-      (function (cc, ii, cd) {
-        var paired = P.clues.some(function (cl) {
-          if (cl.type !== 'same') return false;
-          return (cl.c1 === cc && cl.i1 === ii && cl.c2 === cd) || (cl.c2 === cc && cl.i2 === ii && cl.c1 === cd);
-        });
-        if (!paired) cands.push({ kind: 'pair', c1: cc, i1: ii, c2: cd });
-      })(c, i, c2);
+/* ---------- THE QUESTION ----------
+   One target emoji per puzzle, asked to the whole class. It should take real
+   work: for every emoji we find the smallest set of clues that pins down its
+   house on its own, and ask about the one that needs the most. Emoji handed
+   over by an "is in house N" clue are never asked about. Items that forward
+   deduction can't pin from any small set (they need a hypothesis step on
+   Hard/Master) count as deepest of all. */
+var PIN_MAX = 5;
+function pinDepths(P) {
+  var n = P.n, M = P.M, clues = P.clues, L = clues.length, c, i, p;
+  var depth = [], left = n * M;
+  for (c = 0; c < M; c++) { depth.push([]); for (i = 0; i < n; i++) depth[c].push(PIN_MAX + 1); }
+  var idx = [];
+  function test() {
+    var cand = emptyCand(n, M), sub = idx.map(function (k) { return clues[k]; });
+    if (!propagate(cand, sub, n, M)) return;
+    for (c = 0; c < M; c++) for (i = 0; i < n; i++) {
+      if (depth[c][i] <= PIN_MAX) continue;
+      var cnt = 0; for (p = 0; p < n; p++) if (cand[c][i][p]) cnt++;
+      if (cnt === 1) { depth[c][i] = idx.length; left--; }
     }
   }
-  if (!cands.length) cands.push({ kind: 'pos', c1: 0, i1: 0 });
-
-  /* Two questions about the same emoji are one question wearing two hats, so
-     each target cell can only be asked about once. */
-  var picked = [], seen = {};
-  shuffle(cands).forEach(function (q) {
-    if (picked.length >= want) return;
-    var key = q.c1 + ':' + q.i1;
-    if (seen[key]) return;
-    seen[key] = 1; picked.push(q);
-  });
-  return picked;
+  function combos(start, k) {
+    if (!left) return;
+    if (idx.length === k) { test(); return; }
+    for (var j = start; j <= L - (k - idx.length); j++) { idx.push(j); combos(j + 1, k); idx.pop(); }
+  }
+  for (var k = 1; k <= Math.min(PIN_MAX, L) && left; k++) combos(0, k);
+  return depth;
 }
-function questionText(P, q) {
-  var em = P.cats[q.c1].items[q.i1];
-  if (q.kind === 'pos') return 'Which house has <span class="ce">' + em + '</span>?';
-  return 'Which <b style="color:var(--gold)">' + esc(P.cats[q.c2].name.toLowerCase()) +
-         '</b> is in the same house as <span class="ce">' + em + '</span>?';
+function pickTarget(P) {
+  var d = pinDepths(P), best = -1, pool = [], c, i;
+  var given = {};
+  P.clues.forEach(function (cl) { if (cl.type === 'at') given[cl.c1 + ':' + cl.i1] = 1; });
+  for (c = 0; c < P.M; c++) for (i = 0; i < P.n; i++) {
+    if (given[c + ':' + i]) continue;
+    if (d[c][i] > best) { best = d[c][i]; pool = []; }
+    if (d[c][i] === best) pool.push({ c: c, i: i, depth: d[c][i] });
+  }
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : { c: 0, i: 0, depth: 0 };
 }
-function questionCorrect(P, q, pick) {
-  if (q.kind === 'pos') return pick === P.inv[q.c1][q.i1];
-  return P.inv[q.c2][pick] === P.inv[q.c1][q.i1];
+function targetEmoji(P) { return P.cats[P.target.c].items[P.target.i]; }
+function targetHouse(P) { return P.inv[P.target.c][P.target.i]; }
+function renderQuestionBar() {
+  var bar = document.getElementById('qBar'), P = G.puzzle;
+  var on = P && G.gameMode === 'teams' && G.mode === 'target';
+  bar.style.display = on ? 'flex' : 'none';
+  if (!on) return;
+  bar.innerHTML = '<span class="qmark">Question</span><span>Where is the <span class="ce">' + targetEmoji(P) + '</span>?</span>' +
+    (G.ask === 'full' ? '<span class="also">Who lives with it?</span>' : '');
 }
 
 /* ---------- SHARED GRID EDITOR ----------
@@ -1209,8 +1214,19 @@ function soloCheck() {
 }
 
 /* ---------- ROUND SUMMARY ---------- */
+function targetLine() {
+  var P = G.puzzle, h = targetHouse(P), others = [];
+  for (var c = 0; c < P.M; c++) if (c !== P.target.c) others.push('<span class="ce">' + P.cats[c].items[P.sol[c][h]] + '</span>');
+  return 'The <span class="ce">' + targetEmoji(P) + '</span> is in <b>house ' + (h + 1) + '</b>, with ' +
+    (others.length > 1 ? others.slice(0, -1).join(', ') + ' and ' + others[others.length - 1] : others[0]) + '.';
+}
 function attemptSummary() {
   if (G.gameMode === 'solo') return '';
+  if (G.mode === 'target') {
+    var outs = [];
+    G.teams.forEach(function (t, i) { if (G.out[i]) outs.push(esc(t.name)); });
+    return outs.length ? '<br><span style="font-size:.82rem;opacity:.75">Out this round: ' + outs.join(' · ') + '</span>' : '';
+  }
   var parts = [];
   G.teams.forEach(function (t, i) {
     var n = G.tries[i] || 0;
@@ -1221,7 +1237,7 @@ function attemptSummary() {
 
 /* ---------- STATE ---------- */
 var G={teams:[],round:0,levelIdx:0,puzzle:null,gameMode:'teams',mode:'target',
-       timerSecs:0,bonusOn:true,answerCount:0,maskEntry:false,checkStyle:'which',
+       timerSecs:0,bonusOn:true,ask:'full',out:{},maskEntry:false,checkStyle:'which',
        answered:false,timerId:null,timeLeft:0,activeTeam:-1,
        draft:null,sel:null,peek:false,badCells:null,qs:[],picks:[],
        tries:{},lockUntil:{},lockTicker:null,bonusGiven:false,soloSolved:0,
@@ -1282,12 +1298,16 @@ function renderNameInputs(count){
   segHandler('segMode',function(v){
     var q=v==='target';
     document.getElementById('modeHint').textContent = q
-      ? 'A few questions about the solution — fast, and all of them must be right.'
+      ? 'One question for the whole class. A wrong answer puts a team out until the next puzzle.'
       : 'The team dictates the whole grid. Every cell must match.';
-    document.getElementById('fieldAnswers').classList.toggle('setup-hide',!q);
+    document.getElementById('fieldAsk').classList.toggle('setup-hide',!q);
     document.getElementById('fieldMask').classList.toggle('setup-hide',q);
   });
-  segHandler('segAnswers',function(){});
+  segHandler('segAsk',function(v){
+    document.getElementById('askHint').textContent = v==='full'
+      ? 'The house and every emoji that shares it. A blind guess almost never wins.'
+      : 'Quicker to answer, but on three houses a blind guess wins 1 time in 3.';
+  });
   segHandler('segMask',function(){});
   segHandler('segCheck',function(){});
   document.getElementById('fieldMask').classList.add('setup-hide');
@@ -1305,7 +1325,7 @@ function startGame(){
   G.gameMode=segVal('segGameMode');
   G.teams = G.gameMode==='solo' ? [] : names.map(function(n){ return {name:n,score:0}; });
   G.mode=segVal('segMode');
-  G.answerCount=parseInt(segVal('segAnswers'),10)||0;
+  G.ask=segVal('segAsk')||'full';
   G.maskEntry=segVal('segMask')==='1';
   G.checkStyle=segVal('segCheck')||'which';
   G.levelIdx=parseInt(segVal('segLevel'),10);
@@ -1361,7 +1381,7 @@ function toggleLock(){ G.locked=!G.locked; sfx.click(); updateLevelChip(); }
 function nextPuzzle(){
   stopTimer();
   G.round++; G.answered=false; G.levelTouched=false;
-  G.tries={}; G.lockUntil={}; G.bonusGiven=false; G.badCells=null; G.sel=null; G.peek=false;
+  G.tries={}; G.lockUntil={}; G.out={}; G.bonusGiven=false; G.badCells=null; G.sel=null; G.peek=false;
   stopLockTicker(); closePicker(); stepClear(); G.walk=null;
   document.getElementById('bannerSlot').innerHTML='';
   document.getElementById('playBody').style.display='none';
@@ -1411,7 +1431,7 @@ function renderPuzzle(){
   document.getElementById('tPts').textContent=P.pts+(P.pts===1?' point':' points');
   document.getElementById('btnBonus').disabled = P.extras.length===0;
   P.clues.forEach(function(cl){ cl.done=false; });
-  renderClues();
+  renderClues(); renderQuestionBar();
   if(G.gameMode==='solo'){
     G.draft=blankDraft(P); EDIT.mount='gridTbl'; EDIT.masked=false; renderEditGrid();
   }else{
@@ -1445,7 +1465,8 @@ function renderGrid(reveal){
     row.className='row'; row.style.gridTemplateColumns=cols;
     var html='<div class="rowhead"><span class="cname">'+esc(cat.name)+'</span><span class="bank">'+cat.items.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</span></div>';
     for(var p=0;p<P.n;p++){
-      if(reveal) html+='<div class="cell filled" style="animation-delay:'+((c*P.n+p)*0.06)+'s">'+cat.items[P.sol[c][p]]+'</div>';
+      var tg=(reveal && G.mode==='target' && G.gameMode==='teams' && p===targetHouse(P))?' tgt':'';
+      if(reveal) html+='<div class="cell filled'+tg+'" style="animation-delay:'+((c*P.n+p)*0.06)+'s">'+cat.items[P.sol[c][p]]+'</div>';
       else html+='<div class="cell empty"></div>';
     }
     row.innerHTML=html;
@@ -1458,18 +1479,19 @@ function renderTeams(){
   var pts=G.puzzle?G.puzzle.pts:1;
   box.innerHTML='';
   G.teams.forEach(function(t,i){
-    var left=lockLeft(i), tries=G.tries[i]||0;
+    var left=lockLeft(i), tries=G.tries[i]||0, out=G.mode==='target'&&G.out[i];
     var b=document.createElement('button');
-    b.className='team'+(left>0?' locked':'');
-    b.disabled=G.answered||left>0;
+    b.className='team'+(out?' out':(left>0?' locked':''));
+    b.disabled=G.answered||left>0||out;
     b.onclick=function(){ openAnswer(i); };
     var stat;
-    if(G.answered) stat='Round over';
+    if(out) stat=G.answered?'Was out this round':'Out this round';
+    else if(G.answered) stat='Round over';
     else if(left>0) stat='Locked '+fmtSecs(left);
     else stat='Ready \u00b7 worth '+awardFor(tries+1,pts)+' pt'+(awardFor(tries+1,pts)===1?'':'s');
     b.innerHTML='<span class="tname"><span class="dot"></span>'+esc(t.name)+'</span>'+
                 '<span class="tscore">'+t.score+'</span>'+
-                (tries?'<span class="tries">'+tries+' attempt'+(tries>1?'s':'')+' this round</span>':'')+
+                (tries&&G.mode!=='target'?'<span class="tries">'+tries+' attempt'+(tries>1?'s':'')+' this round</span>':'')+
                 '<span class="tstat">'+stat+'</span>';
     box.appendChild(b);
   });
@@ -1510,12 +1532,13 @@ function giveBonusClue(){
 }
 
 function openAnswer(teamIdx){
-  if(G.answered || lockLeft(teamIdx)>0) return;
+  if(G.answered || lockLeft(teamIdx)>0 || (G.mode==='target' && G.out[teamIdx])) return;
   var P=G.puzzle;
   G.activeTeam=teamIdx; G.picks=[]; G.qs=[]; G.peek=false; G.badCells=null;
   var tries=(G.tries[teamIdx]||0)+1, worth=awardFor(tries,P.pts);
-  document.getElementById('mWho').textContent =
-    G.teams[teamIdx].name+' \u2014 attempt '+tries+', worth '+worth+' point'+(worth===1?'':'s');
+  document.getElementById('mWho').textContent = G.mode==='target'
+    ? G.teams[teamIdx].name+' \u2014 one try, worth '+worth+' point'+(worth===1?'':'s')
+    : G.teams[teamIdx].name+' \u2014 attempt '+tries+', worth '+worth+' point'+(worth===1?'':'s');
   document.getElementById('mSubmit').disabled=true;
   var body=document.getElementById('mBody');
 
@@ -1523,18 +1546,19 @@ function openAnswer(teamIdx){
   if(G.timerId) pauseTimerForAnswer();
 
   if(G.mode==='target'){
-    var k=Math.min(questionsFor(P), P.questions.length);
-    G.qs=P.questions.slice(0,k);
-    G.picks=new Array(k).fill(null);
-    document.getElementById('mQ').innerHTML = k>1
-      ? 'Answer all '+k+' \u2014 every one has to be right.'
-      : 'One question.';
+    var em='<span class="ce">'+targetEmoji(P)+'</span>';
+    G.qs=[{kind:'house'}];
+    if(G.ask==='full') for(var c2=0;c2<P.M;c2++) if(c2!==P.target.c) G.qs.push({kind:'with',c2:c2});
+    G.picks=new Array(G.qs.length).fill(null);
+    document.getElementById('mQ').innerHTML='Where is the '+em+'?'+(G.ask==='full'?' Who lives with it?':'');
     var html='';
     G.qs.forEach(function(q,qi){
-      html+='<div class="qblock" id="qb'+qi+'"><h3><span class="qn">'+(qi+1)+'</span>'+questionText(P,q)+'</h3>'+
+      var title = q.kind==='house' ? 'Which house?'
+        : 'Which <b style="color:var(--gold)">'+esc(P.cats[q.c2].name.toLowerCase())+'</b> lives with '+em+'?';
+      html+='<div class="qblock" id="qb'+qi+'"><h3><span class="qn">'+(qi+1)+'</span>'+title+'</h3>'+
             '<div class="opts" data-q="'+qi+'">';
-      if(q.kind==='pos'){
-        for(var p=0;p<P.n;p++) html+='<button class="opt" data-v="'+p+'">\ud83c\udfe0<small>House '+(p+1)+'</small></button>';
+      if(q.kind==='house'){
+        for(var p=0;p<P.n;p++) html+='<button class="opt" data-v="'+p+'">🏠<small>House '+(p+1)+'</small></button>';
       }else{
         for(var i=0;i<P.n;i++) html+='<button class="opt" data-v="'+i+'">'+P.cats[q.c2].items[i]+'</button>';
       }
@@ -1590,7 +1614,10 @@ function submitAnswer(){
   var P=G.puzzle, t=G.activeTeam, correct;
   if(t<0) return;
   if(G.mode==='target'){
-    correct = G.qs.every(function(q,i){ return questionCorrect(P,q,G.picks[i]); });
+    var h=targetHouse(P);
+    correct = G.qs.every(function(q,i){
+      return q.kind==='house' ? G.picks[i]===h : P.inv[q.c2][G.picks[i]]===h;
+    });
   }else{
     correct = G.draft.every(function(r,c){ return r.every(function(v,p){ return v===P.sol[c][p]; }); });
   }
@@ -1606,6 +1633,7 @@ function handleCorrect(t){
   revealSolution('win', t);
 }
 function handleWrong(t){
+  if(G.mode==='target'){ handleOut(t); return; }
   sfx.wrong();
   G.lockUntil[t]=Date.now()+LOCK_MS;
   var gotBonus=false;
@@ -1615,6 +1643,18 @@ function handleWrong(t){
   flashBanner('bad','\u274c '+G.teams[t].name+' \u2014 not quite',
     'Locked out for one minute, so nobody can work through the options by guessing. '+
     'Their next attempt this round would be worth '+next+' point'+(next===1?'':'s')+'.'+
+    (gotBonus?' A bonus clue has been added.':''), false);
+}
+function handleOut(t){
+  sfx.wrong();
+  G.out[t]=true;
+  var still=G.teams.filter(function(_,i){ return !G.out[i]; }).length;
+  if(!still){ revealSolution('allout'); return; }
+  var gotBonus=false;
+  if(G.bonusOn && !G.bonusGiven && G.puzzle.extras.length){ giveBonusClue(); G.bonusGiven=true; gotBonus=true; }
+  renderTeams();
+  flashBanner('bad','\u274c '+G.teams[t].name+' is out',
+    'Wrong answer \u2014 they sit out until the next puzzle. '+still+' team'+(still===1?' is':'s are')+' still in.'+
     (gotBonus?' A bonus clue has been added.':''), false);
 }
 function flashBanner(kind,title,sub,withNext){
@@ -1633,10 +1673,13 @@ function revealSolution(reason,t){
   if(reason==='win'){
     var tr=G.tries[t]||1;
     title='\u2705 '+G.teams[t].name+' scores '+G.lastAward+'!';
-    sub='Nailed it'+(tr>1?' on attempt '+tr:'')+'. Here is the full street.'+attemptSummary();
+    sub = G.mode==='target'
+      ? targetLine()+' Here is the full street.'+attemptSummary()
+      : 'Nailed it'+(tr>1?' on attempt '+tr:'')+'. Here is the full street.'+attemptSummary();
   }
   else if(reason==='solo'){ title='\u2705 Solved!'; sub='Every house is right. That is '+G.soloSolved+' puzzle'+(G.soloSolved===1?'':'s')+' so far.'; }
-  else { title='\ud83d\udd0d Answer revealed'; sub='No points awarded this round.'+attemptSummary(); }
+  else if(reason==='allout'){ title='\ud83d\udeab Everyone is out'; sub='No points this round. '+targetLine()+attemptSummary(); }
+  else { title='\ud83d\udd0d Answer revealed'; sub='No points awarded this round.'+(G.mode==='target'&&G.gameMode==='teams'?' '+targetLine():'')+attemptSummary(); }
   /* Up on a win only. A teacher reveal or an all-out round holds the level so
      a class that is struggling doesn't get pushed further; the lock stops even
      a win from moving it, and the teacher's own arrows always take priority. */

@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Castle Roads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#141a21;--panel:#1d2530;--panel2:#26303d;--ink:#eef2f6;--mute:#a9b4c2;--gold:#e8b64c;--line:#344152;}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:.55em 1em;background:var(--panel2);color:var(--ink);font-weight:600}
+button:hover{filter:brightness(1.15)}
+button:disabled{opacity:.4;cursor:default;filter:none}
+button.primary{background:var(--gold);color:#1a1408;font-weight:800}
+[hidden]{display:none!important}
+.back-link{position:fixed;top:12px;left:12px;z-index:20;background:rgba(0,0,0,.45);color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600}
+h1{font-family:Cinzel,Georgia,serif;font-weight:900;letter-spacing:.04em;margin:0}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;flex:none}
+
+/* setup */
+#setup{height:100%;display:grid;place-items:center;padding:56px 16px 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px 32px;width:min(760px,100%);display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.card h1{font-size:clamp(34px,4.5vw,52px);color:var(--gold);grid-column:1/-1;text-align:center}
+.sub{grid-column:1/-1;text-align:center;color:var(--mute);margin-top:-18px}
+.lbl{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:0 0 8px;font-weight:700}
+.stepper{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.stepper span{font-size:22px;font-weight:800;min-width:1.4em;text-align:center}
+.prow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.swatch{width:22px;height:22px;border-radius:6px;flex:none}
+.prow input,select{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.45em .6em;width:100%}
+.rules{font-size:14px;line-height:1.45;color:var(--ink);margin:0;padding-left:1.2em}
+.rules li{margin-bottom:6px}
+.go{grid-column:1/-1;display:flex;gap:12px;justify-content:center}
+.go button{font-size:18px;padding:.7em 1.6em}
+
+/* game */
+#game{height:100%;display:grid;grid-template-columns:1fr clamp(270px,24vw,360px)}
+#boardWrap{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 45%,#223040,#121820 75%)}
+#board{display:block;cursor:pointer;touch-action:none}
+#toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:rgba(0,0,0,.75);padding:10px 18px;border-radius:12px;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.on{opacity:1}
+#panel{background:var(--panel);border-left:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+#turnCard .who{display:flex;align-items:center;gap:10px;font-size:clamp(20px,2vw,28px);font-weight:800}
+#turnCard .who .dot{width:22px;height:22px;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
+#phaseText{color:var(--mute);font-size:14px;margin-top:4px;min-height:2.6em}
+#tileBox{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
+#tileCv{width:clamp(96px,10vw,150px);aspect-ratio:1;border-radius:6px}
+#tileBox.stuck #tileCv{outline:4px solid #ff3b30}
+.tileBtns{display:flex;flex-direction:column;gap:6px}
+#left{grid-column:1/-1;font-size:13px;color:var(--mute)}
+#msg{font-size:14px;line-height:1.35;min-height:2.8em;color:var(--gold)}
+#players{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow:auto}
+.pl{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:8px;background:var(--panel2);border-radius:10px;padding:7px 10px;cursor:pointer;border:2px solid transparent}
+.pl.on{border-color:var(--pc);box-shadow:0 0 12px -2px var(--pc)}
+.pl .dot{background:var(--pc)}
+.pl .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .mp{grid-column:2;grid-row:2;color:var(--pc);font-size:11px;letter-spacing:1px}
+.pl .mp i{color:rgba(255,255,255,.15);font-style:normal}
+.pl .sc{grid-row:1/3;grid-column:4;font-size:26px;font-weight:800;min-width:2ch;text-align:right}
+.pl .adj{display:none;grid-row:1/3;grid-column:3;gap:4px}
+.pl .adj button{padding:.2em .5em;font-size:13px}
+body.shift .pl .adj{display:flex}
+.tools{display:flex;gap:8px;margin-top:auto}
+.tools button{flex:1}
+#endBtn.armed{background:#c0392b}
+.keys{font-size:11.5px;color:var(--mute);line-height:1.4}
+
+/* end */
+#end{height:100%;display:grid;place-items:center;padding:56px 16px 16px;overflow:auto}
+#end .card{display:block;width:min(980px,100%)}
+#end h1{font-size:clamp(30px,4vw,48px);color:var(--gold);text-align:center}
+#endSub{text-align:center;color:var(--mute);margin:6px 0 18px}
+table{width:100%;border-collapse:collapse;font-size:clamp(14px,1.3vw,18px)}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th:nth-child(2),td:nth-child(2),th:first-child,td:first-child{text-align:left}
+td:nth-child(2){font-weight:700}
+td .dot{margin-right:8px;vertical-align:-2px}
+th{color:var(--mute);font-size:.8em;text-transform:uppercase;letter-spacing:.05em}
+td.tot{font-size:1.4em;font-weight:800;color:var(--gold)}
+#endLog{font-size:14px;color:var(--mute);max-height:22vh;overflow:auto;margin:16px 0}
+@media (max-width:700px){
+  .card{grid-template-columns:1fr;padding:20px}
+  #game{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  #panel{border-left:0;border-top:1px solid var(--line);max-height:45vh;overflow:auto}
+}
+</style>
+</head>
+<body data-screen="setup">
+<a class="back-link" href="../">← Game Hub</a>
+
+<section id="setup">
+  <div class="card">
+    <h1>Castle Roads</h1>
+    <p class="sub">A tile-laying game in the style of Carcassonne · 2–5 players</p>
+    <div>
+      <p class="lbl">Players</p>
+      <div class="stepper"><button id="pminus" aria-label="Fewer players">−</button><span id="pcount">2</span><button id="pplus" aria-label="More players">+</button></div>
+      <div id="plist"></div>
+      <p class="lbl" style="margin-top:14px">Who starts</p>
+      <select id="first"></select>
+    </div>
+    <div>
+      <p class="lbl">How to play</p>
+      <ol class="rules">
+        <li>Draw a tile and add it to the map. Every edge must match: city to city, road to road, field to field.</li>
+        <li>You may put one follower on the tile you just placed — but not on a road, city or field someone already has.</li>
+        <li>Finished road: 1 point per tile. Finished city: 2 per tile and 2 per shield. Monastery with 8 neighbors: 9.</li>
+        <li>Followers come home when their feature scores. Farmers stay until the end.</li>
+        <li>At the end, unfinished things score less, and farmers score 3 for each finished city next to their field.</li>
+      </ol>
+    </div>
+    <div class="go"><button id="resumeBtn" hidden>Resume game</button><button id="startBtn" class="primary">Start</button></div>
+  </div>
+</section>
+
+<section id="game" hidden>
+  <div id="boardWrap"><canvas id="board" aria-label="Map"></canvas><div id="toast"></div></div>
+  <aside id="panel">
+    <div id="turnCard"><div class="who"><span class="dot" id="turnDot"></span><span id="turnName"></span></div><div id="phaseText"></div></div>
+    <div id="tileBox">
+      <canvas id="tileCv"></canvas>
+      <div class="tileBtns">
+        <button id="rotBtn">⟳ Rotate (R)</button>
+        <button id="placeBtn" class="primary">Place (Enter)</button>
+        <button id="skipBtn">No follower (Space)</button>
+        <button id="discardBtn" class="primary">Discard &amp; draw (Enter)</button>
+      </div>
+      <div id="left"></div>
+    </div>
+    <div id="msg" aria-live="polite"></div>
+    <ol id="players"></ol>
+    <div class="tools"><button id="undoBtn">↶ Undo</button><button id="endBtn">End game</button></div>
+    <div class="keys">R / right-click rotate · Enter place · Space no follower · Shift+U undo · Shift+E end · hold Shift for ±1 · click a player to give them the turn</div>
+  </aside>
+</section>
+
+<section id="end" hidden>
+  <div class="card">
+    <h1 id="endTitle"></h1>
+    <p id="endSub"></p>
+    <table id="endTable"><thead><tr><th>Place</th><th>Player</th><th>Roads</th><th>Cities</th><th>Monasteries</th><th>Farms</th><th>In play</th><th>Final</th><th>±</th><th>Total</th></tr></thead><tbody></tbody></table>
+    <ul id="endLog"></ul>
+    <div class="go"><button id="endUndo">↶ Undo</button><button id="rematchBtn" class="primary">Rematch</button><button id="newBtn">New game</button></div>
+  </div>
+</section>
+
+<script id="engine">
+(function (root) {
+'use strict';
+// ---------- geometry ----------
+// Dirs: 0 N, 1 E, 2 S, 3 W. y grows downward.
+// Ports: 3 per edge, numbered clockwise around the tile: N0 N1 N2 (west→east), E0 E1 E2 (north→south),
+// S0 S1 S2 (east→west), W0 W1 W2 (south→north). Center port of each edge is k=1.
+// Rotation r = quarter turns clockwise; rotated port p shows unrotated port (p - 3r) mod 12.
+const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const PN = {};
+['N', 'E', 'S', 'W'].forEach((d, i) => { for (let k = 0; k < 3; k++) PN[d + k] = i * 3 + k; });
+const ALL = 'N0 N1 N2 E0 E1 E2 S0 S1 S2 W0 W1 W2';
+const C3 = 'N0 N1 N2 E0 E1 E2 W0 W1 W2';
+const NW = 'N0 N1 N2 W0 W1 W2';
+function ft(t, p, at, o) {
+  return Object.assign({
+    t, at,
+    p: p ? p.split(' ').map(n => { if (!(n in PN)) throw Error('bad port ' + n); return PN[n]; }) : []
+  }, o || {});
+}
+const capN = () => ft('c', 'N0 N1 N2', [.5, .13]);
+// type: [count, features]. Feature types: c city, r road, f field, m monastery.
+// `at` = follower spot (unrotated, unit square). `sh` = shield position (shield present).
+const RAW = {
+  A: [2, [ft('m', '', [.5, .45]), ft('r', 'S1', [.5, .87]), ft('f', 'N0 N1 N2 E0 E1 E2 S0 S2 W0 W1 W2', [.18, .2])]],
+  B: [4, [ft('m', '', [.5, .5]), ft('f', ALL, [.18, .2])]],
+  C: [1, [ft('c', ALL, [.5, .5], { sh: [.24, .24] })]],
+  D: [4, [capN(), ft('r', 'E1 W1', [.5, .5]), ft('f', 'E0 W2', [.25, .38]), ft('f', 'E2 S0 S1 S2 W0', [.5, .8])]],
+  E: [5, [capN(), ft('f', 'E0 E1 E2 S0 S1 S2 W0 W1 W2', [.5, .65])]],
+  F: [2, [ft('c', 'E0 E1 E2 W0 W1 W2', [.5, .5], { sh: [.25, .5] }), ft('f', 'N0 N1 N2', [.5, .1]), ft('f', 'S0 S1 S2', [.5, .9])]],
+  G: [1, [ft('c', 'N0 N1 N2 S0 S1 S2', [.5, .5]), ft('f', 'E0 E1 E2', [.9, .5]), ft('f', 'W0 W1 W2', [.1, .5])]],
+  H: [3, [ft('c', 'E0 E1 E2', [.87, .5]), ft('c', 'W0 W1 W2', [.13, .5]), ft('f', 'N0 N1 N2 S0 S1 S2', [.5, .5])]],
+  I: [2, [capN(), ft('c', 'E0 E1 E2', [.87, .5]), ft('f', 'S0 S1 S2 W0 W1 W2', [.38, .62])]],
+  J: [3, [capN(), ft('r', 'E1 S1', [.65, .65]), ft('f', 'E2 S0', [.88, .88]), ft('f', 'E0 S2 W0 W1 W2', [.28, .55])]],
+  K: [3, [capN(), ft('r', 'S1 W1', [.35, .65]), ft('f', 'S2 W0', [.12, .88]), ft('f', 'E0 E1 E2 S0 W2', [.72, .55])]],
+  L: [3, [capN(), ft('r', 'E1', [.8, .5]), ft('r', 'S1', [.5, .8]), ft('r', 'W1', [.2, .5]),
+    ft('f', 'E0 W2', [.3, .38]), ft('f', 'E2 S0', [.82, .82]), ft('f', 'S2 W0', [.18, .82])]],
+  M: [2, [ft('c', NW, [.27, .27], { sh: [.14, .44] }), ft('f', 'E0 E1 E2 S0 S1 S2', [.72, .72])]],
+  N: [3, [ft('c', NW, [.27, .27]), ft('f', 'E0 E1 E2 S0 S1 S2', [.72, .72])]],
+  O: [2, [ft('c', NW, [.25, .25], { sh: [.12, .44] }), ft('r', 'E1 S1', [.65, .65]), ft('f', 'E2 S0', [.88, .88]), ft('f', 'E0 S2', [.78, .3])]],
+  P: [3, [ft('c', NW, [.25, .25]), ft('r', 'E1 S1', [.65, .65]), ft('f', 'E2 S0', [.88, .88]), ft('f', 'E0 S2', [.78, .3])]],
+  Q: [1, [ft('c', C3, [.5, .38], { sh: [.22, .22] }), ft('f', 'S0 S1 S2', [.5, .9])]],
+  R: [3, [ft('c', C3, [.5, .38]), ft('f', 'S0 S1 S2', [.5, .9])]],
+  S: [2, [ft('c', C3, [.5, .35], { sh: [.22, .22] }), ft('r', 'S1', [.5, .87]), ft('f', 'S0', [.8, .92]), ft('f', 'S2', [.2, .92])]],
+  T: [1, [ft('c', C3, [.5, .35]), ft('r', 'S1', [.5, .87]), ft('f', 'S0', [.8, .92]), ft('f', 'S2', [.2, .92])]],
+  U: [8, [ft('r', 'N1 S1', [.5, .5]), ft('f', 'N2 E0 E1 E2 S0', [.8, .5]), ft('f', 'S2 W0 W1 W2 N0', [.2, .5])]],
+  V: [9, [ft('r', 'S1 W1', [.35, .65]), ft('f', 'S2 W0', [.13, .87]), ft('f', 'N0 N1 N2 E0 E1 E2 S0 W2', [.68, .32])]],
+  W: [4, [ft('r', 'E1', [.8, .5]), ft('r', 'S1', [.5, .8]), ft('r', 'W1', [.2, .5]),
+    ft('f', 'W2 N0 N1 N2 E0', [.5, .22]), ft('f', 'E2 S0', [.82, .82]), ft('f', 'S2 W0', [.18, .82])]],
+  X: [1, [ft('r', 'N1', [.5, .2]), ft('r', 'E1', [.8, .5]), ft('r', 'S1', [.5, .8]), ft('r', 'W1', [.2, .5]),
+    ft('f', 'N2 E0', [.82, .18]), ft('f', 'E2 S0', [.82, .82]), ft('f', 'S2 W0', [.18, .82]), ft('f', 'W2 N0', [.18, .18])]],
+};
+// Expected edges N E S W (from the tile reference), checked at load.
+const EXPECT = {
+  A: 'FFRF', B: 'FFFF', C: 'CCCC', D: 'CRFR', E: 'CFFF', F: 'FCFC', G: 'CFCF', H: 'FCFC', I: 'CCFF', J: 'CRRF',
+  K: 'CFRR', L: 'CRRR', M: 'CFFC', N: 'CFFC', O: 'CRRC', P: 'CRRC', Q: 'CCFC', R: 'CCFC', S: 'CCRC', T: 'CCRC',
+  U: 'RFRF', V: 'FFRR', W: 'FRRR', X: 'RRRR'
+};
+const DEF = {};
+for (const [t, [count, feats]] of Object.entries(RAW)) {
+  const pf = new Array(12).fill(-1);
+  feats.forEach((f, j) => f.p.forEach(p => {
+    if (pf[p] !== -1) throw Error(t + ': port ' + p + ' used twice');
+    pf[p] = j;
+  }));
+  if (pf.some(x => x < 0)) throw Error(t + ': port not covered');
+  const edges = [0, 1, 2, 3].map(d => {
+    const a = feats[pf[d * 3]], b = feats[pf[d * 3 + 1]], c = feats[pf[d * 3 + 2]];
+    if (b.t === 'c') { if (pf[d * 3] !== pf[d * 3 + 1] || pf[d * 3 + 2] !== pf[d * 3 + 1]) throw Error(t + ': split city edge'); return 'C'; }
+    if (b.t === 'r') { if (a.t !== 'f' || c.t !== 'f') throw Error(t + ': road edge without fields'); return 'R'; }
+    if (a.t !== 'f' || c.t !== 'f') throw Error(t + ': bad field edge');
+    return 'F';
+  }).join('');
+  if (edges !== EXPECT[t]) throw Error(t + ': edges ' + edges + ' != ' + EXPECT[t]);
+  // A field touches a city on its tile when one of its ports sits next to a city port around the perimeter.
+  feats.forEach(f => {
+    if (f.t !== 'f') return;
+    const s = new Set();
+    f.p.forEach(p => [(p + 1) % 12, (p + 11) % 12].forEach(q => { if (feats[pf[q]].t === 'c') s.add(pf[q]); }));
+    f.adjC = [...s].sort();
+  });
+  DEF[t] = { t, count, feats, pf, edges, shields: feats.filter(f => f.sh).length, mon: feats.findIndex(f => f.t === 'm') };
+}
+const TYPES = Object.keys(DEF);
+const START = 'D';
+
+// ---------- helpers ----------
+const key = (x, y) => x + ',' + y;
+const unkey = k => k.split(',').map(Number);
+const mod = (a, n) => ((a % n) + n) % n;
+function featAt(t, r, p) { return DEF[t].pf[mod(p - 3 * r, 12)]; }
+function edgeOf(t, r, d) { return DEF[t].edges[mod(d - r, 4)]; }
+function anchor(t, r, j) {
+  let [x, y] = DEF[t].feats[j].at;
+  for (let i = 0; i < mod(r, 4); i++) [x, y] = [1 - y, x];
+  return [x, y];
+}
+function mulberry(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function fullDeck() { const d = []; for (const t of TYPES) for (let i = 0; i < DEF[t].count; i++) d.push(t); return d; }
+
+// ---------- placement ----------
+function canPlace(S, x, y, t, r) {
+  if (S.board[key(x, y)]) return false;
+  let n = 0;
+  for (let d = 0; d < 4; d++) {
+    const c = S.board[key(x + DIRS[d][0], y + DIRS[d][1])];
+    if (!c) continue;
+    n++;
+    if (edgeOf(t, r, d) !== edgeOf(c.t, c.r, (d + 2) % 4)) return false;
+  }
+  return n > 0;
+}
+function candidates(S) {
+  const out = new Set();
+  for (const k of Object.keys(S.board)) {
+    const [x, y] = unkey(k);
+    for (const [dx, dy] of DIRS) { const kk = key(x + dx, y + dy); if (!S.board[kk]) out.add(kk); }
+  }
+  return [...out];
+}
+function legalMoves(S, t) {
+  t = t || S.tile;
+  const out = [];
+  if (!t) return out;
+  for (const k of candidates(S)) {
+    const [x, y] = unkey(k);
+    for (let r = 0; r < 4; r++) if (canPlace(S, x, y, t, r)) out.push({ x, y, r });
+  }
+  return out;
+}
+
+// ---------- networks ----------
+function analyze(S) {
+  const keys = Object.keys(S.board);
+  const id = new Map(), nodes = [];
+  for (const k of keys) {
+    const c = S.board[k];
+    DEF[c.t].feats.forEach((f, j) => { id.set(k + '|' + j, nodes.length); nodes.push({ k, j, f }); });
+  }
+  const par = nodes.map((_, i) => i);
+  const find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+  const open = new Array(nodes.length).fill(0);
+  for (const k of keys) {
+    const [x, y] = unkey(k), c = S.board[k];
+    for (let d = 0; d < 4; d++) {
+      const nk = key(x + DIRS[d][0], y + DIRS[d][1]), nc = S.board[nk];
+      for (let q = 0; q < 3; q++) {
+        const a = id.get(k + '|' + featAt(c.t, c.r, d * 3 + q));
+        if (!nc) { open[a]++; continue; }
+        const b = id.get(nk + '|' + featAt(nc.t, nc.r, ((d + 2) % 4) * 3 + (2 - q)));
+        const ra = find(a), rb = find(b);
+        if (ra !== rb) par[ra] = rb;
+      }
+    }
+  }
+  const byRoot = new Map(), netOf = new Map(), nets = [];
+  nodes.forEach((n, i) => {
+    const r = find(i);
+    let net = byRoot.get(r);
+    if (!net) {
+      net = { id: nets.length, type: n.f.t, segs: [], cells: new Set(), shields: 0, open: 0, meeples: [], adj: new Set() };
+      byRoot.set(r, net); nets.push(net);
+    }
+    const s = n.k + '|' + n.j;
+    net.segs.push(s); net.cells.add(n.k);
+    if (n.f.sh) net.shields++;
+    net.open += open[i];
+    netOf.set(s, net);
+  });
+  for (const m of S.meeples) netOf.get(m.k + '|' + m.f).meeples.push(m);
+  for (const net of nets) {
+    if (net.type === 'm') {
+      const [x, y] = unkey(net.segs[0].split('|')[0]);
+      let filled = 0;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) if (S.board[key(x + dx, y + dy)]) filled++;
+      net.filled = filled;
+      net.complete = filled === 9;
+    } else if (net.type === 'f') {
+      net.complete = false;
+      for (const s of net.segs) {
+        const [k, j] = s.split('|');
+        for (const cj of DEF[S.board[k].t].feats[+j].adjC) net.adj.add(netOf.get(k + '|' + cj));
+      }
+    } else net.complete = net.open === 0;
+  }
+  return { nets, netOf };
+}
+function majority(meeples) {
+  const cnt = {};
+  for (const m of meeples) cnt[m.p] = (cnt[m.p] || 0) + 1;
+  const max = Math.max(0, ...Object.values(cnt));
+  return Object.keys(cnt).filter(p => cnt[p] === max).map(Number).sort((a, b) => a - b);
+}
+const KIND = { c: 'city', r: 'road', m: 'monastery', f: 'field' };
+function netValue(net, final) {
+  if (net.type === 'r') return { pts: net.cells.size, tiles: net.cells.size };
+  if (net.type === 'c') return { pts: (final ? 1 : 2) * (net.cells.size + net.shields), tiles: net.cells.size, shields: net.shields };
+  if (net.type === 'm') return { pts: net.filled, tiles: net.filled };
+  const done = [...net.adj].filter(c => c.complete);
+  return { pts: 3 * done.length, cities: done.length };
+}
+function award(S, net, when) {
+  const v = netValue(net, when === 'end');
+  const players = majority(net.meeples);
+  const ev = Object.assign({ e: 'score', when, kind: KIND[net.type], players, segs: net.segs.slice(), n: S.n }, v);
+  if (!players.length) ev.pts = 0;
+  for (const p of players) S.scores[p] += ev.pts;
+  S.log.push(ev);
+  return ev;
+}
+function supply(S, p) { return 7 - S.meeples.filter(m => m.p === p).length; }
+function followerOptions(S) {
+  if (S.phase !== 'follower' || supply(S, S.turn) <= 0) return [];
+  const A = analyze(S), c = S.board[S.last];
+  const out = [];
+  DEF[c.t].feats.forEach((f, j) => { if (!A.netOf.get(S.last + '|' + j).meeples.length) out.push(j); });
+  return out;
+}
+
+// ---------- turn flow (each action returns false and changes nothing when illegal) ----------
+function newGame(o) {
+  const n = o.players.length;
+  if (n < 2 || n > 5) throw Error('2-5 players');
+  const seed = (o.seed != null ? o.seed : Math.floor(Math.random() * 4294967296)) >>> 0;
+  const rng = mulberry(seed);
+  const deck = fullDeck();
+  deck.splice(deck.indexOf(START), 1);
+  for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+  const first = o.first != null && o.first >= 0 ? o.first % n : Math.floor(rng() * n);
+  const S = {
+    v: 1, seed, players: o.players.map((p, i) => ({ name: String(p.name || 'Player ' + (i + 1)), c: p.c != null ? p.c : i })),
+    first, turn: first, deck, tile: null, rot: 0, phase: 'place',
+    board: { '0,0': { t: START, r: 0, n: 0, p: -1 } }, n: 0, last: '0,0',
+    meeples: [], scores: new Array(n).fill(0), log: [], discards: [], early: false
+  };
+  if (o.deck) S.deck = o.deck.slice();
+  draw(S);
+  return S;
+}
+function draw(S) {
+  if (!S.deck.length) { finalScore(S); return; }
+  S.tile = S.deck.pop();
+  S.rot = 0;
+  S.phase = legalMoves(S, S.tile).length ? 'place' : 'stuck';
+}
+function setRot(S, r) { if (S.phase !== 'place') return false; S.rot = mod(r, 4); return true; }
+function place(S, x, y, r) {
+  if (S.phase !== 'place' || !canPlace(S, x, y, S.tile, r)) return false;
+  const k = key(x, y);
+  S.board[k] = { t: S.tile, r: mod(r, 4), n: ++S.n, p: S.turn };
+  S.last = k; S.tile = null; S.rot = mod(r, 4); S.phase = 'follower';
+  if (!followerOptions(S).length) {
+    S.log.push({ e: 'nofollower', p: S.turn, n: S.n, why: supply(S, S.turn) ? 'taken' : 'none' });
+    finishTurn(S);
+  }
+  return true;
+}
+function placeFollower(S, j) {
+  if (!followerOptions(S).includes(j)) return false;
+  S.meeples.push({ p: S.turn, k: S.last, f: j });
+  finishTurn(S);
+  return true;
+}
+function skip(S) { if (S.phase !== 'follower') return false; finishTurn(S); return true; }
+function scoreTurn(S) {
+  const A = analyze(S), c = S.board[S.last], done = new Set(), evs = [];
+  const take = net => {
+    if (done.has(net) || !net.complete) return;
+    done.add(net);
+    evs.push(award(S, net, 'play'));
+    S.meeples = S.meeples.filter(m => !net.meeples.includes(m));
+  };
+  DEF[c.t].feats.forEach((f, j) => { if (f.t === 'c' || f.t === 'r') take(A.netOf.get(S.last + '|' + j)); });
+  const [x, y] = unkey(S.last);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const k = key(x + dx, y + dy), cc = S.board[k];
+    if (cc && DEF[cc.t].mon >= 0) {
+      const net = A.netOf.get(k + '|' + DEF[cc.t].mon);
+      if (net.complete && net.meeples.length) take(net);
+    }
+  }
+  return evs;
+}
+function finishTurn(S) {
+  scoreTurn(S);
+  S.turn = (S.turn + 1) % S.players.length;
+  draw(S);
+}
+function discard(S) {
+  if (S.phase !== 'stuck') return false;
+  S.discards.push(S.tile);
+  S.log.push({ e: 'discard', t: S.tile, p: S.turn, n: S.n });
+  S.tile = null;
+  draw(S);
+  return true;
+}
+function finalScore(S) {
+  S.tile = null;
+  const A = analyze(S);
+  const order = { r: 0, c: 1, m: 2, f: 3 };
+  A.nets.filter(n => n.meeples.length).sort((a, b) => order[a.type] - order[b.type] || a.id - b.id)
+    .forEach(net => award(S, net, 'end'));
+  S.phase = 'end';
+}
+function endEarly(S) {
+  if (S.phase === 'end') return false;
+  if (S.phase === 'follower') scoreTurn(S);
+  S.early = true;
+  finalScore(S);
+  return true;
+}
+function adjust(S, p, d) {
+  if (!(p >= 0 && p < S.players.length) || !d) return false;
+  S.scores[p] += d;
+  S.log.push({ e: 'adj', players: [p], pts: d, n: S.n });
+  return true;
+}
+function setTurn(S, p) {
+  if (!['place', 'stuck'].includes(S.phase) || !(p >= 0 && p < S.players.length) || p === S.turn) return false;
+  S.turn = p;
+  return true;
+}
+
+// ---------- results ----------
+function breakdown(S) {
+  const out = S.players.map(() => ({ road: 0, city: 0, monastery: 0, field: 0, adj: 0, play: 0, end: 0, total: 0 }));
+  for (const ev of S.log) {
+    if (ev.e === 'adj') { out[ev.players[0]].adj += ev.pts; out[ev.players[0]].total += ev.pts; continue; }
+    if (ev.e !== 'score') continue;
+    for (const p of ev.players) { out[p][ev.kind] += ev.pts; out[p][ev.when] += ev.pts; out[p].total += ev.pts; }
+  }
+  return out;
+}
+function ranking(S) {
+  const idx = S.players.map((_, i) => i).sort((a, b) => S.scores[b] - S.scores[a] || a - b);
+  return idx.map(i => ({ p: i, score: S.scores[i], place: 1 + idx.filter(j => S.scores[j] > S.scores[i]).length }));
+}
+
+// ---------- controller with undo ----------
+const API = { place, placeFollower, skip, discard, endEarly, adjust, setTurn };
+function Ctl(S, H) { this.S = S; this.H = H || []; }
+Ctl.prototype.act = function (name, ...args) {
+  const snap = JSON.stringify(this.S);
+  if (API[name](this.S, ...args) === false) return false;
+  this.H.push(snap);
+  if (this.H.length > 30) this.H.shift();
+  return true;
+};
+Ctl.prototype.undo = function () { if (!this.H.length) return false; this.S = JSON.parse(this.H.pop()); return true; };
+
+const CR = {
+  DIRS, DEF, TYPES, START, EXPECT, key, unkey, featAt, edgeOf, anchor, mulberry, fullDeck,
+  canPlace, candidates, legalMoves, analyze, majority, supply, followerOptions,
+  newGame, draw, setRot, place, placeFollower, skip, scoreTurn, finishTurn, discard, finalScore, endEarly, adjust, setTurn,
+  breakdown, ranking, Ctl
+};
+root.CR = CR;
+if (typeof module !== 'undefined' && module.exports) module.exports = CR;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script id="ui">
+(function () {
+'use strict';
+const CR = window.CR;
+const $ = s => document.querySelector(s);
+const SAVE = 'castleroads:save', SETUP = 'castleroads:setup';
+const COLORS = [
+  { name: 'Red', c: '#e0473a', ink: '#fff' },
+  { name: 'Blue', c: '#2f78e0', ink: '#fff' },
+  { name: 'Yellow', c: '#f2c230', ink: '#1a1a1a' },
+  { name: 'Purple', c: '#9a5bd6', ink: '#fff' },
+  { name: 'Black', c: '#262626', ink: '#fff' },
+];
+const TILE = { field: '#77a84f', fieldEdge: '#5f8c3d', road: '#efe4c6', roadEdge: '#8a7552', city: '#c99a5c', wall: '#6b4626', roof: '#a8482f', shield: '#2f5fb3' };
+
+let ctl = null, sel = null, hover = null, endArm = 0, endTimer = null, msgs = [];
+let cache = { sig: '', moves: [], cells: new Map() };
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { } },
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const S = () => ctl.S;
+const pname = p => S().players[p].name;
+const pcol = p => COLORS[S().players[p].c];
+
+// ---------- setup ----------
+function setupInit() {
+  const saved = store.get(SETUP) || {};
+  let n = Math.min(5, Math.max(2, saved.n || 2));
+  const names = saved.names || COLORS.map(c => c.name);
+  const list = $('#plist'), firstSel = $('#first');
+  function draw() {
+    list.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const row = document.createElement('div');
+      row.className = 'prow';
+      row.innerHTML = `<span class="swatch" style="background:${COLORS[i].c}"></span><input maxlength="16" aria-label="Player ${i + 1} name">`;
+      const inp = row.querySelector('input');
+      inp.value = names[i] || COLORS[i].name;
+      inp.addEventListener('input', () => { names[i] = inp.value; refreshFirst(); });
+      list.appendChild(row);
+    }
+    $('#pcount').textContent = n;
+    refreshFirst();
+  }
+  function refreshFirst() {
+    const v = firstSel.value;
+    firstSel.innerHTML = '<option value="-1">Random</option>' +
+      Array.from({ length: n }, (_, i) => `<option value="${i}">${esc((names[i] || '').trim() || COLORS[i].name)}</option>`).join('');
+    firstSel.value = (v !== '' && +v < n) ? v : '-1';
+  }
+  $('#pminus').onclick = () => { if (n > 2) { n--; draw(); } };
+  $('#pplus').onclick = () => { if (n < 5) { n++; draw(); } };
+  $('#startBtn').onclick = () => {
+    const players = Array.from({ length: n }, (_, i) => ({ name: (names[i] || '').trim() || COLORS[i].name, c: i }));
+    store.set(SETUP, { n, names: names.slice(0, 5), first: +firstSel.value });
+    startGame(CR.newGame({ players, first: +firstSel.value }));
+  };
+  $('#resumeBtn').onclick = () => {
+    const sv = store.get(SAVE);
+    if (!sv) return;
+    ctl = new CR.Ctl(sv.S, sv.H || []);
+    show('game'); msgs = []; sel = null; render();
+  };
+  draw();
+  if (saved.first != null) { firstSel.value = String(saved.first < n ? saved.first : -1); }
+  const sv = store.get(SAVE);
+  $('#resumeBtn').hidden = !(sv && sv.S && sv.S.v === 1);
+}
+function startGame(S0) {
+  ctl = new CR.Ctl(S0, []);
+  msgs = []; sel = null;
+  show('game'); save(); render();
+}
+function show(id) {
+  for (const s of ['setup', 'game', 'end']) $('#' + s).hidden = s !== id;
+  document.body.dataset.screen = id;
+  if (id === 'game') resize();
+}
+function save() { store.set(SAVE, { S: ctl.S, H: ctl.H }); }
+
+// ---------- actions ----------
+function act(name, ...args) {
+  const before = S().log.length;
+  if (!ctl.act(name, ...args)) return false;
+  sel = null;
+  msgs = S().log.slice(before).map(caption).filter(Boolean);
+  save(); render();
+  return true;
+}
+function undo() {
+  if (!ctl.undo()) { flash('Nothing to undo'); return; }
+  sel = null; msgs = ['Undone.']; save(); render();
+}
+function caption(ev) {
+  const names = ev.players ? ev.players.map(pname).join(' & ') : '';
+  if (ev.e === 'discard') return `No place for this tile — discarded. ${pname(ev.p)} draws again.`;
+  if (ev.e === 'nofollower') return ev.why === 'none' ? `${pname(ev.p)} has no followers left.` : '';
+  if (ev.e === 'adj') return `${names} ${ev.pts > 0 ? '+' : ''}${ev.pts}`;
+  if (ev.e !== 'score') return '';
+  const end = ev.when === 'end';
+  const label = { road: 'Road', city: 'City', monastery: 'Monastery', field: 'Farm' }[ev.kind];
+  let how;
+  if (ev.kind === 'road') how = `${ev.tiles} tile${ev.tiles > 1 ? 's' : ''} = ${ev.pts}`;
+  else if (ev.kind === 'city') {
+    const m = end ? 1 : 2;
+    how = `${ev.tiles} tile${ev.tiles > 1 ? 's' : ''} × ${m}` + (ev.shields ? ` + ${ev.shields} shield${ev.shields > 1 ? 's' : ''} × ${m}` : '') + ` = ${ev.tiles * m + ev.shields * m}`;
+  } else if (ev.kind === 'monastery') how = end ? `${ev.tiles} tiles around it = ${ev.tiles}` : `surrounded = 9`;
+  else how = `${ev.cities} completed cit${ev.cities === 1 ? 'y' : 'ies'} × 3 = ${ev.cities * 3}`;
+  const state = end ? (ev.kind === 'field' ? '' : ' (unfinished)') : ' complete';
+  if (!ev.players.length) return `${label}${state} — no followers, no points.`;
+  return `${label}${state}: ${how} for ${names}.`;
+}
+function flash(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(flash.t); flash.t = setTimeout(() => el.classList.remove('on'), 1800); }
+
+// ---------- view / board geometry ----------
+const cv = () => $('#board');
+let view = { s: 100, ox: 0, oy: 0 };
+function resize() {
+  const c = cv(), w = c.parentElement.clientWidth, h = c.parentElement.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  if (ctl) render();
+}
+function movesInfo() {
+  const s = S(), sig = s.n + '|' + s.tile + '|' + s.phase + '|' + Object.keys(s.board).length;
+  if (cache.sig !== sig) {
+    cache.sig = sig;
+    cache.moves = s.phase === 'place' ? CR.legalMoves(s) : [];
+    cache.cells = new Map();
+    for (const m of cache.moves) {
+      const k = CR.key(m.x, m.y);
+      if (!cache.cells.has(k)) cache.cells.set(k, []);
+      cache.cells.get(k).push(m.r);
+    }
+  }
+  return cache;
+}
+function computeView() {
+  const s = S(), c = cv(), w = c.clientWidth, h = c.clientHeight;
+  const keys = Object.keys(s.board).concat(s.phase === 'place' ? [...movesInfo().cells.keys()] : []);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const k of keys) { const [x, y] = CR.unkey(k); x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  const cols = x1 - x0 + 1 + .6, rows = y1 - y0 + 1 + .6;
+  const sz = Math.min(w / cols, h / rows, Math.min(w, h) / 3.2);
+  view = { s: sz, ox: (w - (x1 - x0 + 1) * sz) / 2 - x0 * sz, oy: (h - (y1 - y0 + 1) * sz) / 2 - y0 * sz };
+}
+const cellToScreen = (x, y) => [view.ox + x * view.s, view.oy + y * view.s];
+function screenToCell(px, py) { return [Math.floor((px - view.ox) / view.s), Math.floor((py - view.oy) / view.s)]; }
+
+// ---------- tile drawing (unit square, unrotated) ----------
+function cityEdges(t, j) { return [0, 1, 2, 3].filter(d => CR.DEF[t].pf[d * 3 + 1] === j); }
+function cityShape(ctx, edges) {
+  // Builds the city outline and returns the wall path (inner boundary only).
+  const n = edges.length, wall = new Path2D(), fill = new Path2D();
+  let rot = 0, kind;
+  if (n === 4) kind = 'full';
+  else if (n === 1) { kind = 'cap'; rot = edges[0]; }
+  else if (n === 3) { kind = 'three'; rot = (([0, 1, 2, 3].find(d => !edges.includes(d))) + 2) % 4; }
+  else if ((edges[1] - edges[0]) === 2) { kind = 'band'; rot = edges[0]; }
+  else { kind = 'diag'; rot = edges.includes(0) && edges.includes(3) ? 0 : Math.max(...edges); }
+  const R = (x, y) => { for (let i = 0; i < rot; i++) [x, y] = [1 - y, x]; return [x, y]; };
+  const P = (path, fn, ...pts) => { const q = []; for (let i = 0; i < pts.length; i += 2) q.push(...R(pts[i], pts[i + 1])); path[fn](...q); };
+  if (kind === 'full') { fill.rect(0, 0, 1, 1); return { fill, wall }; }
+  if (kind === 'cap') {
+    P(fill, 'moveTo', 0, 0); P(fill, 'lineTo', 1, 0); P(fill, 'quadraticCurveTo', .5, .55, 0, 0);
+    P(wall, 'moveTo', 1, 0); P(wall, 'quadraticCurveTo', .5, .55, 0, 0);
+  } else if (kind === 'band') {
+    P(fill, 'moveTo', 0, 0); P(fill, 'lineTo', 1, 0); P(fill, 'quadraticCurveTo', .55, .5, 1, 1); P(fill, 'lineTo', 0, 1); P(fill, 'quadraticCurveTo', .45, .5, 0, 0);
+    P(wall, 'moveTo', 1, 0); P(wall, 'quadraticCurveTo', .55, .5, 1, 1); P(wall, 'moveTo', 0, 1); P(wall, 'quadraticCurveTo', .45, .5, 0, 0);
+  } else if (kind === 'diag') {
+    P(fill, 'moveTo', 0, 0); P(fill, 'lineTo', 1, 0); P(fill, 'quadraticCurveTo', .42, .42, 0, 1);
+    P(wall, 'moveTo', 1, 0); P(wall, 'quadraticCurveTo', .42, .42, 0, 1);
+  } else {
+    P(fill, 'moveTo', 0, 0); P(fill, 'lineTo', 1, 0); P(fill, 'lineTo', 1, 1); P(fill, 'quadraticCurveTo', .5, .4, 0, 1);
+    P(wall, 'moveTo', 1, 1); P(wall, 'quadraticCurveTo', .5, .4, 0, 1);
+  }
+  fill.closePath();
+  return { fill, wall };
+}
+const PORT_XY = [[.2, 0], [.5, 0], [.8, 0], [1, .2], [1, .5], [1, .8], [.8, 1], [.5, 1], [.2, 1], [0, .8], [0, .5], [0, .2]];
+function drawTileUnit(ctx, t, lw) {
+  const D = CR.DEF[t];
+  ctx.fillStyle = TILE.field; ctx.fillRect(0, 0, 1, 1);
+  // roads
+  ctx.lineCap = 'butt';
+  for (const pass of [0, 1]) {
+    ctx.strokeStyle = pass ? TILE.road : TILE.roadEdge;
+    ctx.lineWidth = pass ? .1 : .14;
+    for (const f of D.feats) {
+      if (f.t !== 'r') continue;
+      const [a, b] = f.p;
+      ctx.beginPath();
+      if (b === undefined) { const [x, y] = PORT_XY[a]; ctx.moveTo(x, y); ctx.lineTo(.5, .5); }
+      else {
+        const da = Math.floor(a / 3), db = Math.floor(b / 3), [ax, ay] = PORT_XY[a], [bx, by] = PORT_XY[b];
+        if ((da + 2) % 4 === db) { ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+        else { ctx.moveTo(ax, ay); ctx.quadraticCurveTo(.5 + (ax - .5 + bx - .5) * .35, .5 + (ay - .5 + by - .5) * .35, bx, by); }
+      }
+      ctx.stroke();
+    }
+  }
+  // cities
+  D.feats.forEach((f, j) => {
+    if (f.t !== 'c') return;
+    const { fill, wall } = cityShape(ctx, cityEdges(t, j));
+    ctx.fillStyle = TILE.city; ctx.fill(fill);
+    ctx.strokeStyle = TILE.wall; ctx.lineWidth = .045; ctx.lineCap = 'round'; ctx.stroke(wall);
+    if (f.sh) {
+      const [x, y] = f.sh;
+      ctx.beginPath(); ctx.moveTo(x - .07, y - .07); ctx.lineTo(x + .07, y - .07); ctx.lineTo(x + .07, y + .01);
+      ctx.quadraticCurveTo(x + .07, y + .07, x, y + .1); ctx.quadraticCurveTo(x - .07, y + .07, x - .07, y + .01); ctx.closePath();
+      ctx.fillStyle = TILE.shield; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = .02; ctx.stroke();
+    }
+  });
+  ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = lw; ctx.strokeRect(0, 0, 1, 1);
+}
+function drawTile(ctx, t, r, px, py, s, alpha) {
+  ctx.save();
+  if (alpha != null) ctx.globalAlpha = alpha;
+  ctx.translate(px + s / 2, py + s / 2); ctx.rotate(r * Math.PI / 2); ctx.scale(s, s); ctx.translate(-.5, -.5);
+  drawTileUnit(ctx, t, 1.2 / s);
+  ctx.restore();
+  // buildings stay upright whatever the rotation
+  const D = CR.DEF[t];
+  ctx.save();
+  if (alpha != null) ctx.globalAlpha = alpha;
+  ctx.translate(px, py); ctx.scale(s, s);
+  if (D.mon >= 0) {
+    const [cx, cy] = CR.anchor(t, r, D.mon);
+    ctx.fillStyle = '#e9dfc9'; ctx.fillRect(cx - .14, cy - .06, .28, .2);
+    ctx.fillStyle = TILE.roof; ctx.beginPath(); ctx.moveTo(cx - .18, cy - .05); ctx.lineTo(cx, cy - .2); ctx.lineTo(cx + .18, cy - .05); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5a3a22'; ctx.fillRect(cx - .03, cy + .05, .06, .09);
+  }
+  if (D.feats.filter(f => f.t === 'r' && f.p.length === 1).length >= 3) {
+    ctx.fillStyle = '#e9dfc9'; ctx.fillRect(.41, .45, .18, .13);
+    ctx.fillStyle = TILE.roof; ctx.beginPath(); ctx.moveTo(.38, .46); ctx.lineTo(.5, .35); ctx.lineTo(.62, .46); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+function meeple(ctx, cx, cy, size, col, lying) {
+  ctx.save();
+  ctx.translate(cx, cy); if (lying) ctx.rotate(-Math.PI / 2); ctx.scale(size, size);
+  const p = new Path2D();
+  p.moveTo(-.12, -.18); p.lineTo(-.44, -.06); p.quadraticCurveTo(-.52, .04, -.4, .08); p.lineTo(-.2, .06);
+  p.lineTo(-.36, .46); p.lineTo(-.07, .46); p.lineTo(0, .28); p.lineTo(.07, .46); p.lineTo(.36, .46); p.lineTo(.2, .06);
+  p.lineTo(.4, .08); p.quadraticCurveTo(.52, .04, .44, -.06); p.lineTo(.12, -.18); p.closePath();
+  p.moveTo(.18, -.34); p.arc(0, -.34, .18, 0, Math.PI * 2);
+  ctx.fillStyle = col.c; ctx.fill(p);
+  ctx.lineWidth = .07; ctx.strokeStyle = col.c === '#262626' ? '#fff' : 'rgba(0,0,0,.75)'; ctx.stroke(p);
+  ctx.restore();
+}
+
+// ---------- render ----------
+function render() {
+  if (!ctl) return;
+  const s = S();
+  if (s.phase === 'end') { renderEnd(); return; }
+  if ($('#game').hidden) show('game');
+  computeView();
+  const c = cv(), ctx = c.getContext('2d'), dpr = c.width / c.clientWidth;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, c.clientWidth, c.clientHeight);
+  const sz = view.s, mi = movesInfo();
+  // candidate cells
+  if (s.phase === 'place') {
+    const col = pcol(s.turn).c;
+    for (const k of mi.cells.keys()) {
+      const [x, y] = CR.unkey(k), [px, py] = cellToScreen(x, y);
+      ctx.fillStyle = hover === k ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.06)';
+      ctx.fillRect(px + 3, py + 3, sz - 6, sz - 6);
+      ctx.setLineDash([sz * .08, sz * .06]); ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, sz * .025);
+      ctx.strokeRect(px + 3, py + 3, sz - 6, sz - 6); ctx.setLineDash([]);
+    }
+  }
+  for (const [k, cell] of Object.entries(s.board)) {
+    const [x, y] = CR.unkey(k), [px, py] = cellToScreen(x, y);
+    drawTile(ctx, cell.t, cell.r, px, py, sz);
+  }
+  // last placed outline
+  if (s.board[s.last] && s.n > 0) {
+    const [x, y] = CR.unkey(s.last), [px, py] = cellToScreen(x, y);
+    ctx.strokeStyle = s.phase === 'follower' ? pcol(s.turn).c : 'rgba(255,255,255,.85)';
+    ctx.lineWidth = Math.max(3, sz * .035); ctx.strokeRect(px + 1.5, py + 1.5, sz - 3, sz - 3);
+  }
+  // ghost
+  if (sel && s.phase === 'place') {
+    const [x, y] = CR.unkey(sel), [px, py] = cellToScreen(x, y);
+    const ok = CR.canPlace(s, x, y, s.tile, s.rot);
+    drawTile(ctx, s.tile, s.rot, px, py, sz, .85);
+    ctx.strokeStyle = ok ? pcol(s.turn).c : '#ff3b30'; ctx.lineWidth = Math.max(4, sz * .05);
+    ctx.strokeRect(px + 2, py + 2, sz - 4, sz - 4);
+  }
+  // followers
+  for (const m of s.meeples) {
+    const cell = s.board[m.k], [x, y] = CR.unkey(m.k), [ax, ay] = CR.anchor(cell.t, cell.r, m.f), [px, py] = cellToScreen(x, y);
+    meeple(ctx, px + ax * sz, py + ay * sz, sz * .26, COLORS[s.players[m.p].c], CR.DEF[cell.t].feats[m.f].t === 'f');
+  }
+  // follower hotspots
+  if (s.phase === 'follower') {
+    const cell = s.board[s.last], [x, y] = CR.unkey(s.last), [px, py] = cellToScreen(x, y), col = pcol(s.turn);
+    for (const j of CR.followerOptions(s)) {
+      const [ax, ay] = CR.anchor(cell.t, cell.r, j);
+      ctx.beginPath(); ctx.arc(px + ax * sz, py + ay * sz, sz * .1, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fill();
+      ctx.lineWidth = Math.max(3, sz * .03); ctx.strokeStyle = col.c; ctx.stroke();
+    }
+  }
+  renderPanel();
+}
+function renderPanel() {
+  const s = S(), col = pcol(s.turn);
+  $('#turnDot').style.background = col.c;
+  $('#turnName').textContent = pname(s.turn);
+  const phaseText = {
+    place: sel ? 'Rotate if needed, then click the tile again (or Enter) to place it.' : 'Click a dotted square to choose where the tile goes.',
+    follower: 'Place a follower on a white circle, or skip.',
+    stuck: 'This tile fits nowhere on the map.',
+  }[s.phase] || '';
+  $('#phaseText').textContent = phaseText;
+  const tc = $('#tileCv'), tctx = tc.getContext('2d'), dpr = Math.min(window.devicePixelRatio || 1, 2), w = tc.clientWidth;
+  tc.width = Math.round(w * dpr); tc.height = Math.round(w * dpr);
+  tctx.setTransform(dpr, 0, 0, dpr, 0, 0); tctx.clearRect(0, 0, w, w);
+  if (s.tile) drawTile(tctx, s.tile, s.rot, 4, 4, w - 8);
+  else { const cell = s.board[s.last]; if (cell) drawTile(tctx, cell.t, cell.r, 4, 4, w - 8, .45); }
+  $('#tileBox').classList.toggle('stuck', s.phase === 'stuck');
+  $('#rotBtn').hidden = s.phase !== 'place';
+  $('#placeBtn').hidden = !(s.phase === 'place' && sel);
+  $('#skipBtn').hidden = s.phase !== 'follower';
+  $('#discardBtn').hidden = s.phase !== 'stuck';
+  $('#left').textContent = `${s.deck.length} tile${s.deck.length === 1 ? '' : 's'} left after this one`;
+  $('#msg').innerHTML = msgs.map(m => `<div>${esc(m)}</div>`).join('');
+  const ul = $('#players');
+  ul.innerHTML = '';
+  s.players.forEach((p, i) => {
+    const li = document.createElement('li');
+    li.className = 'pl' + (i === s.turn ? ' on' : '');
+    li.style.setProperty('--pc', COLORS[p.c].c);
+    const sup = CR.supply(s, i);
+    li.innerHTML = `<span class="dot"></span><span class="nm">${esc(p.name)}</span>` +
+      `<span class="mp" title="Followers left">${'●'.repeat(sup)}<i>${'●'.repeat(7 - sup)}</i></span>` +
+      `<span class="sc">${s.scores[i]}</span>` +
+      `<span class="adj"><button data-d="-1" aria-label="minus one">−1</button><button data-d="1" aria-label="plus one">+1</button></span>`;
+    li.addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (b) { act('adjust', i, +b.dataset.d); return; }
+      if (i !== s.turn && ['place', 'stuck'].includes(s.phase) && act('setTurn', i)) msgs = [`Turn passed to ${p.name}.`], renderPanel();
+    });
+    ul.appendChild(li);
+  });
+  $('#undoBtn').disabled = !ctl.H.length;
+  $('#endBtn').textContent = endArm ? 'Click again to end' : 'End game';
+  $('#endBtn').classList.toggle('armed', !!endArm);
+}
+function renderEnd() {
+  show('end');
+  const s = S(), br = CR.breakdown(s), rk = CR.ranking(s);
+  const ord = ['1st', '2nd', '3rd', '4th', '5th'];
+  $('#endTitle').textContent = rk.filter(r => r.place === 1).length > 1 ? 'A shared victory!' :
+    `${pname(rk[0].p)} wins!`;
+  $('#endSub').textContent = s.early ? 'Game ended early — unfinished features scored.' : 'All tiles placed — final scoring done.';
+  $('#endTable tbody').innerHTML = rk.map(r => {
+    const b = br[r.p];
+    return `<tr><td>${ord[r.place - 1]}</td><td><span class="dot" style="background:${pcol(r.p).c}"></span>${esc(pname(r.p))}</td>` +
+      `<td>${b.road}</td><td>${b.city}</td><td>${b.monastery}</td><td>${b.field}</td><td>${b.play}</td><td>${b.end}</td>` +
+      `<td>${b.adj ? (b.adj > 0 ? '+' : '') + b.adj : ''}</td><td class="tot">${r.score}</td></tr>`;
+  }).join('');
+  const fin = s.log.filter(e => e.e === 'score' && e.when === 'end' && e.players.length);
+  $('#endLog').innerHTML = fin.length ? fin.map(e => `<li>${esc(caption(e))}</li>`).join('') : '<li>No followers left on the map.</li>';
+}
+
+// ---------- input ----------
+function rotate() {
+  const s = S();
+  if (s.phase !== 'place') return;
+  if (sel) {
+    const rs = movesInfo().cells.get(sel) || [];
+    if (!rs.length) return;
+    const next = rs.find(r => r > s.rot) ?? rs[0];
+    if (next === s.rot && rs.length === 1) { flash('Only one way fits here'); return; }
+    CR.setRot(s, next);
+  } else CR.setRot(s, s.rot + 1);
+  save(); render();
+}
+function confirmPlace() {
+  const s = S();
+  if (s.phase !== 'place' || !sel) return;
+  const [x, y] = CR.unkey(sel);
+  if (!act('place', x, y, s.rot)) flash("That way doesn't fit — rotate it");
+}
+function pointerCell(e) {
+  const r = cv().getBoundingClientRect();
+  return { px: e.clientX - r.left, py: e.clientY - r.top };
+}
+function onBoardClick(e) {
+  if (!ctl) return;
+  const s = S(), { px, py } = pointerCell(e);
+  if (s.phase === 'follower') {
+    const cell = s.board[s.last], [x, y] = CR.unkey(s.last), [cx, cy] = cellToScreen(x, y);
+    let best = -1, bd = Infinity;
+    for (const j of CR.followerOptions(s)) {
+      const [ax, ay] = CR.anchor(cell.t, cell.r, j), d = Math.hypot(cx + ax * view.s - px, cy + ay * view.s - py);
+      if (d < bd) { bd = d; best = j; }
+    }
+    if (best >= 0 && bd < view.s * .16) act('placeFollower', best);
+    return;
+  }
+  if (s.phase !== 'place') return;
+  const [x, y] = screenToCell(px, py), k = CR.key(x, y), rs = movesInfo().cells.get(k);
+  if (!rs) { sel = null; render(); return; }
+  if (sel === k) { confirmPlace(); return; }
+  sel = k;
+  if (!rs.includes(s.rot)) CR.setRot(s, rs.find(r => r > s.rot) ?? rs[0]);
+  save(); render();
+}
+function armEnd() {
+  if (S().phase === 'end') return;
+  if (endArm) { clearTimeout(endTimer); endArm = 0; act('endEarly'); return; }
+  endArm = 1; renderPanel();
+  endTimer = setTimeout(() => { endArm = 0; if (ctl && S().phase !== 'end') renderPanel(); }, 3000);
+}
+function keydown(e) {
+  if (e.key === 'Shift') document.body.classList.add('shift');
+  if (!ctl || document.body.dataset.screen === 'setup') return;
+  if (e.target.closest && e.target.closest('input,select,textarea')) return;
+  const s = S(), k = e.key.toLowerCase();
+  if (e.shiftKey && k === 'u') { e.preventDefault(); undo(); return; }
+  if (e.shiftKey && k === 'e') { e.preventDefault(); armEnd(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+  if (s.phase === 'place') {
+    if (k === 'r') { rotate(); e.preventDefault(); }
+    else if (k === 'enter') { confirmPlace(); e.preventDefault(); }
+    else if (k === 'escape') { sel = null; render(); }
+  } else if (s.phase === 'follower') {
+    if (k === ' ' || k === 's') { e.preventDefault(); act('skip'); }
+  } else if (s.phase === 'stuck') {
+    if (k === 'enter' || k === ' ') { e.preventDefault(); act('discard'); }
+  }
+}
+
+function init() {
+  setupInit();
+  show('setup');
+  cv().addEventListener('click', onBoardClick);
+  cv().addEventListener('contextmenu', e => { e.preventDefault(); if (ctl && S().phase === 'place') rotate(); });
+  cv().addEventListener('mousemove', e => {
+    if (!ctl || S().phase !== 'place') return;
+    const { px, py } = pointerCell(e), [x, y] = screenToCell(px, py), k = CR.key(x, y);
+    const h = movesInfo().cells.has(k) ? k : null;
+    if (h !== hover) { hover = h; render(); }
+  });
+  $('#rotBtn').onclick = rotate;
+  $('#placeBtn').onclick = confirmPlace;
+  $('#skipBtn').onclick = () => act('skip');
+  $('#discardBtn').onclick = () => act('discard');
+  $('#undoBtn').onclick = undo;
+  $('#endBtn').onclick = armEnd;
+  $('#endUndo').onclick = undo;
+  $('#rematchBtn').onclick = () => {
+    const s = S();
+    startGame(CR.newGame({ players: s.players, first: (s.first + 1) % s.players.length }));
+  };
+  $('#newBtn').onclick = () => { store.del(SAVE); ctl = null; setupInit(); show('setup'); };
+  window.addEventListener('keydown', keydown);
+  window.addEventListener('keyup', e => { if (e.key === 'Shift') document.body.classList.remove('shift'); });
+  window.addEventListener('blur', () => document.body.classList.remove('shift'));
+  window.addEventListener('resize', resize);
+  // test hooks
+  window.__cr = {
+    get S() { return ctl && ctl.S; }, get ctl() { return ctl; }, get sel() { return sel; },
+    cellCenter(x, y) { const r = cv().getBoundingClientRect(), [px, py] = cellToScreen(x, y); return [r.left + px + view.s / 2, r.top + py + view.s / 2]; },
+    spot(j) { const s = S(), cell = s.board[s.last], [x, y] = CR.unkey(s.last), [px, py] = cellToScreen(x, y), [ax, ay] = CR.anchor(cell.t, cell.r, j), r = cv().getBoundingClientRect(); return [r.left + px + ax * view.s, r.top + py + ay * view.s]; },
+    moves: () => movesInfo().cells,
+    drawTile, meeple, COLORS,
+    render,
+  };
+}
+init();
+})();
+
+</script>
+</body>
+</html>

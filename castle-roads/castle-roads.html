@@ -79,8 +79,20 @@ body.inspect #board{cursor:help}
   padding:12px 22px;border-radius:14px;font-size:clamp(17px,1.7vw,26px);font-weight:700;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:4;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 #banner.on{opacity:1;transform:translate(-50%,0)}
 #banner.on.finale{pointer-events:auto;cursor:pointer}
-#banner b{display:block;font-family:Cinzel,Georgia,serif;color:var(--gold);font-size:.8em;letter-spacing:.06em;margin-bottom:2px}
+#banner>b{display:block;font-family:Cinzel,Georgia,serif;color:var(--gold);font-size:.8em;letter-spacing:.06em;margin-bottom:2px}
 #banner small{display:block;color:var(--mute);font-size:.6em;margin-top:4px;font-weight:600}
+#banner.finale{font-size:clamp(16px,1.45vw,23px);font-weight:600;text-align:left;padding:14px 22px 10px;max-width:min(94%,820px)}
+#banner.finale>b{font-size:.75em}
+#banner .math{font-size:1.15em;margin:4px 0}
+#banner .math b,#banner .gain b{color:var(--gold);font-weight:800}
+#banner .math small{display:block;color:var(--mute);font-size:.68em;margin:2px 0 0}
+#banner .whoLine{margin:4px 0}
+#banner .gain{margin:6px 0 2px;font-size:1.05em}
+#banner .who{display:inline-flex;align-items:center;gap:5px;font-weight:800}
+#banner .who .num{font-size:.75em}
+#banner .finNav{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+#banner .finNav button{font-size:.8em;padding:.45em 1em}
+#banner.finale small{font-size:.62em}
 #tip{position:absolute;z-index:6;background:var(--tip);color:var(--tip-ink);padding:8px 12px;border-radius:10px;font-size:15px;line-height:1.35;max-width:340px;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 #tip small{opacity:.85}
 .boardtools{position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:3}
@@ -441,7 +453,9 @@ function netValue(net, final) {
 function award(S, net, when) {
   const v = netValue(net, when === 'end');
   const players = majority(net.meeples);
-  const ev = Object.assign({ e: 'score', when, kind: KIND[net.type], players, segs: net.segs.slice(), n: S.n }, v);
+  const holders = {};
+  for (const m of net.meeples) holders[m.p] = (holders[m.p] || 0) + 1;
+  const ev = Object.assign({ e: 'score', when, kind: KIND[net.type], players, holders, segs: net.segs.slice(), n: S.n }, v);
   if (!players.length) ev.pts = 0;
   for (const p of players) S.scores[p] += ev.pts;
   S.log.push(ev);
@@ -1032,7 +1046,9 @@ function movesInfo() {
   return cache;
 }
 function fitView() {
-  const s = S(), c = cv(), w = c.clientWidth, h = c.clientHeight;
+  const s = S(), c = cv(), w = c.clientWidth, H = c.clientHeight;
+  // during final scoring the explanation sits at the bottom: fit the map into the space above it
+  const h = fin ? Math.max(H * .4, H - $('#banner').offsetHeight - 30) : H;
   const keys = Object.keys(s.board).concat(s.phase === 'place' ? [...movesInfo().cells.keys()] : []);
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const k of keys) { const [x, y] = CR.unkey(k); x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
@@ -1110,39 +1126,81 @@ function flyHome(gone) {
   }
 }
 
-// ======================= final scoring sequence =======================
+// ======================= final scoring sequence (teacher steps through it) =======================
+const ROLE_N = { road: ['thief', 'thieves'], city: ['knight', 'knights'], monastery: ['monk', 'monks'], field: ['farmer', 'farmers'] };
+const plural = (n, w) => `${n} ${n === 1 ? w[0] : w[1]}`;
 function startFinale(evs) {
-  const s = S();
-  const base = s.scores.slice();
+  const s = S(), base = s.scores.slice();
   for (const e of evs) for (const p of e.players) base[p] -= e.pts;
-  fin = { evs: evs.filter(e => e.players.length), i: -1, cur: base, timer: 0 };
-  roll = { from: base.slice(), to: base.slice(), t0: performance.now(), dur: 1 };
+  fin = { evs, i: -1, base };
+  roll = null;
   $('#banner').classList.add('on', 'finale');
-  finStep();
+  finGo(0);
 }
-function finStep() {
-  if (!fin) return;
-  clearTimeout(fin.timer);
-  fin.i++;
-  if (fin.i >= fin.evs.length) {
-    fx = null; roll = null;
-    $('#banner').innerHTML = '<b>Final scoring</b><div>All counted!</div>';
-    fin.timer = setTimeout(() => stopFinale(), reduced() ? 400 : 900);
-    kick();
-    return;
+function finTotals(i) {
+  const t = fin.base.slice();
+  for (let k = 0; k <= Math.min(i, fin.evs.length - 1); k++) for (const p of fin.evs[k].players) t[p] += fin.evs[k].pts;
+  return t;
+}
+function nameChip(p) { const c = pcol(p); return `<span class="who"><i class="num" style="background:${c.c};color:${c.ink}">${p + 1}</i>${esc(pname(p))}</span>`; }
+function finDetail(e) {
+  const n = fin.evs.length, title = { road: 'Unfinished road', city: 'Unfinished city', monastery: 'Unfinished monastery', field: 'Farm' }[e.kind];
+  let math;
+  if (e.kind === 'road') math = `${plural(e.tiles, ['tile', 'tiles'])} × 1 point = <b>${e.pts}</b>`;
+  else if (e.kind === 'city') math = `${plural(e.tiles, ['tile', 'tiles'])} × 1 point` + (e.shields ? ` + ${plural(e.shields, ['shield', 'shields'])} × 1 point` : '') + ` = <b>${e.pts}</b><br><small>Unfinished cities score half: 1 per tile instead of 2.</small>`;
+  else if (e.kind === 'monastery') math = `${e.tiles} of 9 squares filled (the monastery and its neighbors) × 1 point = <b>${e.pts}</b>`;
+  else math = e.cities ? `This field touches ${plural(e.cities, ['finished city', 'finished cities'])} × 3 points = <b>${e.pts}</b><br><small>Only finished cities count. Each field scores on its own.</small>`
+    : `This field touches no finished city = <b>0</b><br><small>Only finished cities count for farmers.</small>`;
+  const holders = e.holders || Object.fromEntries(e.players.map(p => [p, 1]));
+  const hp = Object.keys(holders).map(Number).sort((a, b) => holders[b] - holders[a] || a - b);
+  const role = ROLE_N[e.kind];
+  let who = 'Followers here: ' + hp.map(p => `${nameChip(p)} (${plural(holders[p], role)})`).join(', ');
+  const before = finTotals(fin.i - 1), after = finTotals(fin.i);
+  const gain = e.players.map(p => `${nameChip(p)} ${before[p]} → <b>${after[p]}</b>`).join(' &nbsp; ');
+  let rule = '';
+  if (hp.length > 1) {
+    const losers = hp.filter(p => !e.players.includes(p));
+    rule = e.players.length > 1 ? `<br><small>Tie for the most ${role[1]} — everyone tied scores the full points.</small>`
+      : `<br><small>Most ${role[1]} wins; ${losers.map(p => esc(pname(p))).join(' and ')} ${losers.length > 1 ? 'score' : 'scores'} nothing here.</small>`;
   }
-  const e = fin.evs[fin.i], from = fin.cur.slice();
-  for (const p of e.players) fin.cur[p] += e.pts;
-  roll = { from, to: fin.cur.slice(), t0: performance.now(), dur: reduced() ? 1 : 600 };
-  sfx('chime', e.pts);
+  return `<b>Final scoring · step ${fin.i + 1} of ${n} · ${title}</b>` +
+    `<div class="math">${math}</div><div class="whoLine">${who}${rule}</div><div class="gain">${e.pts ? gain : 'No points.'}</div>` +
+    `<div class="finNav"><button type="button" data-fin="back"${fin.i ? '' : ' disabled'}>◀ Back</button><button type="button" class="primary" data-fin="next">${fin.i + 1 < n ? 'Next ▶' : 'Totals ▶'}</button></div>` +
+    `<small>Space or → next · ← back · Esc skip to results</small>`;
+}
+function finSummary() {
+  const t = finTotals(fin.evs.length), order = S().players.map((_, i) => i).sort((a, b) => t[b] - t[a] || a - b);
+  return `<b>Final scoring · all ${fin.evs.length} steps done</b><div class="math">Final totals</div>` +
+    `<div class="gain">${order.map(p => `${nameChip(p)} <b>${t[p]}</b>`).join(' &nbsp; ')}</div>` +
+    `<div class="finNav"><button type="button" data-fin="back">◀ Back</button><button type="button" class="primary" data-fin="next">See the results ▶</button></div>` +
+    `<small>Space or → results · ← back</small>`;
+}
+function finGo(i) {
+  if (!fin || i < 0) return;
+  const b = $('#banner');
+  if (i >= fin.evs.length) {
+    if (fin.i >= fin.evs.length) { stopFinale(); return; }
+    const from = finTotals(fin.i);
+    fin.i = fin.evs.length; fx = null;
+    roll = { from, to: finTotals(fin.i), t0: performance.now(), dur: 1 };
+    b.innerHTML = finSummary(); autoFit = true; syncView();
+    kick(); return;
+  }
+  const fwd = i > fin.i, from = finTotals(fin.i);
+  fin.i = i;
+  const e = fin.evs[i];
+  roll = { from, to: finTotals(i), t0: performance.now(), dur: reduced() || !fwd ? 1 : 600 };
+  if (fwd) sfx(e.pts ? 'chime' : 'none', e.pts);
   fx = { parts: [{ segs: e.segs, color: pcol(e.players[0]).c }], t0: performance.now(), until: Infinity };
-  $('#banner').innerHTML = `<b>Final scoring · ${fin.i + 1} of ${fin.evs.length}</b><div>${esc(caption(e))}</div><small>Space: next · Esc: results</small>`;
-  fin.timer = setTimeout(finStep, reduced() ? 900 : 1500);
+  b.innerHTML = finDetail(e);
+  autoFit = true; syncView();
   kick();
 }
+const finNext = () => fin && finGo(fin.i + 1);
+const finBack = () => fin && fin.i > 0 && finGo(fin.i - 1);
 function stopFinale(quiet) {
   if (!fin) return;
-  clearTimeout(fin.timer); fin = null; fx = null; roll = null;
+  fin = null; fx = null; roll = null;
   $('#banner').classList.remove('on', 'finale');
   if (!quiet && ctl && S().phase === 'end') { renderEnd(); sfx('fanfare'); }
 }
@@ -1191,12 +1249,14 @@ function renderBoard() {
   const sz = view.s, mi = movesInfo(), col = pcol(s.turn), now = performance.now();
   if (s.phase === 'place') {
     const cellBg = cssVar('--cell'), cellHov = cssVar('--cell-hover');
-    for (const k of mi.cells.keys()) {
-      const [x, y] = CR.unkey(k), [px, py] = cellToScreen(x, y);
+    for (const [k, rs] of mi.cells) {
+      const [x, y] = CR.unkey(k), [px, py] = cellToScreen(x, y), now_ = rs.includes(s.rot);
       ctx.fillStyle = hover === k ? cellHov : cellBg;
       ctx.fillRect(px + 3, py + 3, sz - 6, sz - 6);
-      ctx.setLineDash([sz * .08, sz * .06]); ctx.strokeStyle = col.c; ctx.lineWidth = Math.max(2, sz * .028);
-      ctx.strokeRect(px + 3, py + 3, sz - 6, sz - 6); ctx.setLineDash([]);
+      ctx.globalAlpha = now_ ? 1 : .45;
+      if (!now_) ctx.setLineDash([sz * .08, sz * .06]);
+      ctx.strokeStyle = col.c; ctx.lineWidth = Math.max(2, sz * (now_ ? .04 : .025));
+      ctx.strokeRect(px + 3, py + 3, sz - 6, sz - 6); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
   }
   for (const [k, cell] of Object.entries(s.board)) {
@@ -1211,13 +1271,13 @@ function renderBoard() {
   // ghost: selected cell, else hovered cell
   if (s.phase === 'place' && (sel || hover)) {
     const k = sel || hover, [x, y] = CR.unkey(k), [px, py] = cellToScreen(x, y);
-    let r = s.rot;
-    if (!sel) { const rs = mi.cells.get(k) || []; if (opts.fitOnly && !rs.includes(r)) r = rs.find(q => q > r) ?? rs[0]; }
+    const r = s.rot;
+    ghostRot = r;
     const fits = CR.canPlace(s, x, y, s.tile, r);
     drawTile(ctx, s.tile, r, px, py, sz, sel ? .92 : .5);
-    ctx.strokeStyle = fits ? col.c : '#ff3b30'; ctx.lineWidth = Math.max(4, sz * .055);
+    ctx.strokeStyle = fits ? '#22c55e' : '#ff3b30'; ctx.lineWidth = Math.max(4, sz * .055);
     ctx.strokeRect(px + 2, py + 2, sz - 4, sz - 4);
-    if (!fits && sel) {
+    if (!fits) {
       ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = Math.max(3, sz * .04);
       ctx.beginPath(); ctx.moveTo(px + sz * .2, py + sz * .2); ctx.lineTo(px + sz * .8, py + sz * .8); ctx.moveTo(px + sz * .8, py + sz * .2); ctx.lineTo(px + sz * .2, py + sz * .8); ctx.stroke();
     }
@@ -1232,6 +1292,7 @@ function renderBoard() {
     drawHighlights(ctx, fx.parts, a);
   }
   if (insp) drawHighlights(ctx, [{ segs: insp.segs, color: '#ffffff' }], .45);
+  else if (meepHover && !fx) drawHighlights(ctx, [{ segs: meepHover.segs, color: meepHover.color }], .4);
   for (const m of s.meeples) {
     const cell = s.board[m.k], [x, y] = CR.unkey(m.k), [ax, ay] = CR.anchor(cell.t, cell.r, m.f), [px, py] = cellToScreen(x, y);
     meeple(ctx, px + ax * sz, py + ay * sz, sz * .32, COLORS[s.players[m.p].c], CR.DEF[cell.t].feats[m.f].t === 'f', m.p + 1);
@@ -1257,7 +1318,8 @@ function renderPanel() {
   $('#turnName').textContent = pname(s.turn);
   const nf = CR.supply(s, s.turn);
   $('#phaseText').textContent = {
-    place: sel ? 'Rotate if needed, then click the tile again (or Enter) to place it.' : 'Click a dotted square to choose where the tile goes.',
+    place: sel ? (CR.canPlace(s, ...CR.unkey(sel), s.tile, s.rot) ? 'Green outline: click the tile again (or Enter) to place it. R to turn it.' : 'Red outline: this way does not fit here. Press R to turn it.')
+      : 'Solid squares fit the tile as it is turned now. R turns it; click a square to choose it.',
     follower: `Click a circle to place a follower (${nf} left), or skip. K knight · T thief · M monk · F farmer`,
     stuck: 'This tile fits nowhere on the map.',
     end: 'Final scoring…',
@@ -1272,6 +1334,7 @@ function renderPanel() {
   $('#tileBox').classList.toggle('canrot', s.phase === 'place');
   $('#rotBtn').hidden = s.phase !== 'place';
   $('#placeBtn').hidden = !(s.phase === 'place' && sel);
+  $('#placeBtn').disabled = !(sel && s.phase === 'place' && CR.canPlace(s, ...CR.unkey(sel), s.tile, s.rot));
   $('#skipBtn').hidden = s.phase !== 'follower';
   $('#discardBtn').hidden = s.phase !== 'stuck';
   $('#left').textContent = s.phase === 'end' ? '' : `${s.deck.length} tile${s.deck.length === 1 ? '' : 's'} left after this one`;
@@ -1345,8 +1408,8 @@ function renderEnd() {
 }
 
 // ======================= tips: inspect + follower preview =======================
-let insp = null, hotJ = -1;
-function hideTip() { $('#tip').hidden = true; insp = null; hotJ = -1; }
+let insp = null, hotJ = -1, ghostRot = null;
+function hideTip() { $('#tip').hidden = true; insp = null; hotJ = -1; meepHover = null; }
 function showTip(px, py, html) {
   const t = $('#tip'), wrap = $('#boardWrap');
   t.innerHTML = html; t.hidden = false;
@@ -1391,6 +1454,11 @@ function onHover(px, py) {
   } else if (s.phase === 'follower') {
     const j = nearestSpot(px, py); if (j !== hotJ) { hotJ = j; kick(); }
   }
+  if (!inspecting && !(s.phase === 'follower' && nearestSpot(px, py) >= 0)) {
+    const m = meepleAt(px, py);
+    if (m) { showMeeple(m, px, py); return; }
+    if (meepHover) { meepHover = null; $('#tip').hidden = true; kick(); }
+  }
   if (inspecting) {
     const hit = featureAt(px, py);
     if (!hit) { insp = null; $('#tip').hidden = true; kick(); return; }
@@ -1399,6 +1467,23 @@ function onHover(px, py) {
     showTip(px, py, describe(net, s, false));
     kick();
   }
+}
+let meepHover = null;
+function meepleAt(px, py) {
+  const s = S(); let best = null, bd = Infinity;
+  for (const m of s.meeples) {
+    const cell = s.board[m.k], [x, y] = CR.unkey(m.k), [ax, ay] = CR.anchor(cell.t, cell.r, m.f), [cx, cy] = cellToScreen(x, y);
+    const d = Math.hypot(cx + ax * view.s - px, cy + ay * view.s - py);
+    if (d < bd) { bd = d; best = m; }
+  }
+  return bd < Math.max(view.s * .17, 16) ? best : null;
+}
+function showMeeple(m, px, py) {
+  const s = S(), cell = s.board[m.k], f = CR.DEF[cell.t].feats[m.f], net = CR.analyze(s).netOf.get(m.k + '|' + m.f);
+  meepHover = { segs: net.segs, color: COLORS[s.players[m.p].c].c };
+  const extra = { f: 'Farmers stay until the end and score 3 for each finished city next to their field.', r: 'Scores when both ends of the road are closed.', c: 'Scores when the city walls are closed.', m: 'Scores 9 when all 8 squares around it are filled.' }[f.t];
+  showTip(px, py, `<b>${esc(s.players[m.p].name)}'s ${ROLE[f.t].toLowerCase()}</b><br>${describe(net, s, false)}<br><small>${extra}</small>`);
+  kick();
 }
 function nearestSpot(px, py) {
   const s = S(); if (s.phase !== 'follower') return -1;
@@ -1428,12 +1513,12 @@ function confirmPlace() {
   const s = S();
   if (s.phase !== 'place' || !sel) return;
   const [x, y] = CR.unkey(sel);
-  if (!act('place', x, y, s.rot)) flash("That way doesn't fit — rotate it");
+  if (!act('place', x, y, s.rot)) flash("Doesn't fit this way — rotate until the outline turns green");
 }
 function pointerPos(e) { const r = cv().getBoundingClientRect(); return { px: e.clientX - r.left, py: e.clientY - r.top }; }
 function onBoardClick(px, py) {
   if (!ctl) return;
-  if (fin) { finStep(); return; }
+  if (fin) return;
   skipFx();
   const s = S();
   if (s.phase === 'follower') {
@@ -1443,10 +1528,10 @@ function onBoardClick(px, py) {
   }
   if (s.phase !== 'place') return;
   const [x, y] = screenToCell(px, py), k = CR.key(x, y), rs = movesInfo().cells.get(k);
-  if (!rs) { sel = null; renderPanel(); kick(); return; }
+  if (!rs) { sel = null; const m = meepleAt(px, py); if (m) showMeeple(m, px, py); else hideTip(); renderPanel(); kick(); return; }
   if (sel === k) { confirmPlace(); return; }
   sel = k;
-  if (opts.fitOnly && !rs.includes(s.rot)) CR.setRot(s, rs.find(r => r > s.rot) ?? rs[0]);
+  if (!rs.includes(s.rot)) flash("Doesn't fit this way — rotate until the outline turns green");
   save(); renderPanel(); kick();
 }
 const ptrs = new Map();
@@ -1522,7 +1607,8 @@ function keydown(e) {
   if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
   if (fin) {
     if (k === 'escape') { e.preventDefault(); stopFinale(); }
-    else if (k === ' ' || k === 'enter' || k === 'arrowright') { e.preventDefault(); finStep(); }
+    else if (k === ' ' || k === 'enter' || k === 'arrowright') { e.preventDefault(); finNext(); }
+    else if (k === 'arrowleft' || k === 'backspace') { e.preventDefault(); finBack(); }
     return;
   }
   if ((fx || roll) && k !== 'i') skipFx();
@@ -1570,7 +1656,11 @@ function init() {
     startGame(CR.newGame({ players: s.players, first: (s.first + 1) % s.players.length }));
   };
   $('#newBtn').onclick = () => { store.del(SAVE); ctl = null; stopConfetti(); setupInit(); show('setup'); };
-  $('#banner').addEventListener('click', () => { if (fin) finStep(); else skipFx(); });
+  $('#banner').addEventListener('click', e => {
+    const b = e.target.closest('button[data-fin]');
+    if (fin) { if (b) (b.dataset.fin === 'back' ? finBack : finNext)(); return; }
+    skipFx();
+  });
   window.addEventListener('keydown', keydown);
   window.addEventListener('keyup', keyup);
   window.addEventListener('blur', () => { document.body.classList.remove('shift', 'inspect'); inspecting = false; insp = null; });
@@ -1579,12 +1669,13 @@ function init() {
   setupInit();
   show('setup');
   window.__cr = {
-    get S() { return ctl && ctl.S; }, get ctl() { return ctl; }, get sel() { return sel; }, get hover() { return hover; }, get opts() { return opts; }, get view() { return view; }, get autoFit() { return autoFit; },
-    get fx() { return !!fx; }, get fin() { return fin && { i: fin.i, n: fin.evs.length }; }, get sfx() { return snd.log; }, get muted() { return snd.muted; },
+    get S() { return ctl && ctl.S; }, get ctl() { return ctl; }, get sel() { return sel; }, get ghostRot() { return ghostRot; }, get hover() { return hover; }, get opts() { return opts; }, get view() { return view; }, get autoFit() { return autoFit; },
+    get fx() { return !!fx; }, get fin() { return fin && { i: fin.i, n: fin.evs.length }; }, finNext, finBack, get sfx() { return snd.log; }, get muted() { return snd.muted; },
     shown: shownScores,
     cellCenter(x, y) { const r = cv().getBoundingClientRect(), [px, py] = cellToScreen(x, y); return [r.left + px + view.s / 2, r.top + py + view.s / 2]; },
     spot(j) { const s = S(), cell = s.board[s.last], [x, y] = CR.unkey(s.last), [px, py] = cellToScreen(x, y), [ax, ay] = CR.anchor(cell.t, cell.r, j), r = cv().getBoundingClientRect(); return [r.left + px + ax * view.s, r.top + py + ay * view.s]; },
     moves: () => movesInfo().cells,
+    meeplePos(i) { const s = S(), m = s.meeples[i], cell = s.board[m.k], [x, y] = CR.unkey(m.k), [ax, ay] = CR.anchor(cell.t, cell.r, m.f), [px, py] = cellToScreen(x, y), r = cv().getBoundingClientRect(); return [r.left + px + ax * view.s, r.top + py + ay * view.s]; },
     drawTile: paintTile, meeple, COLORS, render: renderAll, skipFinale: () => stopFinale(),
   };
 }

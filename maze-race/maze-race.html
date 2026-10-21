@@ -129,7 +129,9 @@ h1, h2, h3, .banner-main, .btn, .tray-name { font-family: 'Montserrat', sans-ser
 .btn.mode.on { background: var(--pc); border-color: #fff; color: var(--pink); box-shadow: 0 0 0 3px var(--pc); }
 .btn.primary { background: var(--accent2); border-color: var(--accent); color: #fff; }
 .btn.danger { background: #b91c1c; border-color: #ef4444; color: #fff; }
-.btn.confirm { background: #15803d; border-color: #4ade80; color: #fff; animation: nudge 1s ease-in-out infinite; }
+.btn.confirm { background: #15803d; border-color: #4ade80; color: #fff; font-size: clamp(1.1rem, 1.6vw, 1.5rem); padding: 8px 22px; }
+.btn.confirm:not(:disabled) { animation: nudge 1s ease-in-out infinite; }
+.btn.confirm:disabled { background: var(--panel); border-color: var(--border); color: var(--muted); opacity: .6; }
 @keyframes nudge { 50% { transform: scale(1.04); } }
 .btn small { font-weight: 700; font-size: .7em; opacity: .85; }
 .seg { display: inline-flex; border: 3px solid var(--border); border-radius: 14px; overflow: hidden; }
@@ -293,7 +295,7 @@ main {
         <button data-o="H" title="Horizontal">↔</button>
         <button data-o="V" title="Vertical">↕</button>
     </div>
-    <button class="btn confirm hidden" id="btnPlace">✔ Place</button>
+    <button class="btn confirm hidden" id="btnPlace" title="Place the wall (Enter)" disabled>✔ Place wall</button>
     <button class="btn hidden" id="btnPass" title="No legal move: pass">⏭ Pass</button>
     <button class="btn" id="btnUndo" title="Undo (U / Ctrl+Z)">↶ Undo</button>
 </section>
@@ -802,8 +804,8 @@ function renderGhost() {
     }
     let text;
     if (!res.ok) text = '✖ ' + res.reason;
-    else if (ghost.pending) text = (ghost.ptr === 'mouse' ? 'Click' : 'Tap') + ' again to place';
-    else text = 'Click to place';
+    else if (ghost.pending) text = 'OK? Press ✔ Place wall';
+    else text = 'Click to choose this spot';
     const w = text.length * 15 + 34, h = 46;
     const cx = R.x + R.width / 2, cy = R.y + R.height / 2;
     let x = Math.min(Math.max(cx - w / 2, 6), VB - w - 6);
@@ -872,10 +874,10 @@ function renderBanner() {
         $('bannerMain').textContent = `${w.name} wins!`;
         $('bannerSub').textContent = 'Play again, start a new game, or undo.';
     } else {
-        $('bannerMain').textContent = `${p.name}'s turn — ${p.wallsLeft > 0 ? 'Move or place a wall' : 'Move your pawn'}`;
+        $('bannerMain').textContent = `${p.name}'s turn — ${mode === 'wall' ? 'Place a wall' : p.wallsLeft > 0 ? 'Move or place a wall' : 'Move your pawn'}`;
         if (!moves.length) $('bannerSub').textContent = p.wallsLeft > 0 ? 'No legal move: place a wall (or pass).' : 'No legal move: pass your turn.';
         else if (mode === 'move') $('bannerSub').textContent = 'Tap a glowing square to move.';
-        else $('bannerSub').textContent = 'Tap near a groove to preview a wall, then tap again to place it.';
+        else $('bannerSub').textContent = 'Tap or drag to move the wall. Then press ✔ Place wall.';
     }
     $('btnMove').classList.toggle('on', mode === 'move');
     $('btnWall').classList.toggle('on', mode === 'wall');
@@ -891,8 +893,9 @@ function renderBanner() {
 }
 
 function updatePlaceBtn() {
-    const show = mode === 'wall' && ghost && ghost.pending && ghost.ok && S.winner === null;
-    $('btnPlace').classList.toggle('hidden', !show);
+    const inWall = mode === 'wall' && S.winner === null;
+    $('btnPlace').classList.toggle('hidden', !inWall);
+    $('btnPlace').disabled = !(inWall && ghost && ghost.pending && ghost.ok);
 }
 
 function render() {
@@ -1031,20 +1034,29 @@ function cellAt(x, y) {
 
 board.addEventListener('contextmenu', e => { e.preventDefault(); });
 
+let dragging = null; // pointerId while a finger/pen/mouse button is down in wall mode
+
+function setPreview(s, ptr) {
+    if (ghost && ghost.pending && ghost.r === s.r && ghost.c === s.c && ghost.o === s.o) return;
+    ghost = { ...s, since: performance.now(), pending: true, ptr };
+    renderGhost();
+}
+
 board.addEventListener('pointermove', e => {
-    if (!S || mode !== 'wall' || S.winner !== null || e.pointerType !== 'mouse') return;
-    if (ghost && ghost.pending) {
-        // Keep a pending (clicked) ghost unless the mouse moves to a different slot.
-        const s = slotAt(...Object.values(svgPoint(e)));
-        if (s.r === ghost.r && s.c === ghost.c) return;
-    }
+    if (!S || mode !== 'wall' || S.winner !== null) return;
     const { x, y } = svgPoint(e);
     const s = slotAt(x, y);
+    if (dragging === e.pointerId) { setPreview(s, e.pointerType); return; }
+    // Mouse hover only: show a faint preview, but never replace a chosen (pending) wall.
+    if (e.pointerType !== 'mouse' || (ghost && ghost.pending)) return;
     if (!ghost || ghost.r !== s.r || ghost.c !== s.c || ghost.o !== s.o) {
         ghost = { ...s, since: performance.now(), pending: false, ptr: 'mouse' };
         renderGhost();
     }
 });
+const endDrag = e => { if (dragging === e.pointerId) dragging = null; };
+board.addEventListener('pointerup', endDrag);
+board.addEventListener('pointercancel', endDrag);
 board.addEventListener('pointerleave', e => {
     if (e.pointerType === 'mouse' && ghost && !ghost.pending) { ghost = null; renderGhost(); }
 });
@@ -1062,22 +1074,13 @@ board.addEventListener('pointerdown', e => {
         if (m) doMove(m);
         return;
     }
-    // Wall mode
+    // Wall mode: a tap (or drag) only moves the preview. Nothing is placed until ✔ Place wall.
+    dragging = e.pointerId;
+    try { board.setPointerCapture(e.pointerId); } catch (err) {}
     const s = slotAt(x, y);
-    const now = performance.now();
-    if (e.pointerType === 'mouse') {
-        const sameSlot = ghost && ghost.r === s.r && ghost.c === s.c && ghost.o === s.o;
-        // Single click works only if the hover preview was visible long enough (true mouse);
-        // touch-as-mouse whiteboards fall through to the two-step preview → confirm flow.
-        if (sameSlot && (ghost.pending || now - ghost.since >= 250)) { tryPlaceWall(ghost.r, ghost.c, ghost.o); return; }
-        if (ghost && ghost.pending && ghost.r === s.r && ghost.c === s.c) { tryPlaceWall(ghost.r, ghost.c, ghost.o); return; }
-        ghost = { ...s, since: now, pending: true, ptr: 'mouse' };
-    } else {
-        if (ghost && ghost.pending && ghost.r === s.r && ghost.c === s.c) { tryPlaceWall(ghost.r, ghost.c, ghost.o); return; }
-        ghost = { ...s, since: now, pending: true, ptr: e.pointerType };
-    }
-    sfx.select();
-    renderGhost();
+    const moved = !ghost || !ghost.pending || ghost.r !== s.r || ghost.c !== s.c || ghost.o !== s.o;
+    setPreview(s, e.pointerType);
+    if (moved) sfx.select();
 });
 
 /* =====================================================================
@@ -1227,7 +1230,7 @@ function buildRules() {
         ${rules.map(([h, b, svg]) => `<div class="rule"><div><h3>${h}</h3>${b}</div>${svg}</div>`).join('')}
         <div class="rule"><div><h3>🖐️ Controls</h3>
             <p><b>🚶 Move</b> (M): tap a glowing square.</p>
-            <p><b>🧱 Wall</b> (W): tap near a groove to see the wall. Tap it <b>again</b> to place it. Green = OK. Red = not allowed.</p>
+            <p><b>🧱 Wall</b> (W): tap near a groove to see the wall. Tap somewhere else or drag to move it. When it is right, press <b>✔ Place wall</b>. Green = OK. Red = not allowed.</p>
             <p><b>Auto / ↔ / ↕</b> (R or right-click): turn the wall. <b>↶ Undo</b> (U) takes back the last action.</p>
             <div class="legend"><span>● R = Red</span><span>■ B = Blue</span><span>▲ G = Green</span><span>◆ Y = Yellow</span></div>
         </div><div></div></div>`;

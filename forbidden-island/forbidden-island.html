@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forbidden Island</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script>
+(function(){
+  try { var t = localStorage.getItem('theme'); document.documentElement.setAttribute('data-theme', t || 'dark'); } catch(e) {}
+})();
+</script>
+<style>
+:root{
+  --s:1;
+  --bg-outer:#cfe3ef; --bg:#e6f0f6; --panel:#ffffff; --panel2:#f1f6fa; --line:#c6d9e6;
+  --ink:#0d2233; --muted:#4c687d; --accent:#d97706; --accent-ink:#ffffff; --glow:rgba(217,119,6,.55);
+  --danger:#dc2626; --ok:#059669;
+  --ocean-a:#8ccdeb; --ocean-b:#4b9fcd; --wave-line:rgba(255,255,255,.35);
+  --sand1:#efdcab; --sand2:#cfac6c; --sandInk:#2e1f08;
+  --flood1:#3b7ddd; --flood2:#1e4fa6;
+  --tile:118px;
+}
+html[data-theme="dark"]{
+  --bg-outer:#020a12; --bg:#061524; --panel:#0c2033; --panel2:#11293f; --line:#1f4260;
+  --ink:#eaf3fa; --muted:#8fadc5; --accent:#fbbf24; --accent-ink:#1a1200; --glow:rgba(251,191,36,.6);
+  --danger:#f87171; --ok:#34d399;
+  --ocean-a:#0d4670; --ocean-b:#05223a; --wave-line:rgba(160,210,255,.12);
+  --sand1:#e8d29b; --sand2:#c29d5c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg-outer);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+button{font-family:inherit;color:inherit}
+.hidden{display:none!important}
+kbd{font:700 12px Inter;padding:1px 6px;border-radius:5px;border:1px solid currentColor;opacity:.7;margin-left:6px}
+
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform:translate(-50%,-50%) scale(var(--s));
+  display:grid;grid-template-columns:320px 1fr 430px;grid-template-rows:84px 1fr 86px;
+  grid-template-areas:"top top top" "left center right" "log log log";gap:12px;padding:12px;background:var(--bg);overflow:hidden}
+
+/* ---------- top bar ---------- */
+#top{grid-area:top;display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:0 18px}
+.back-link{display:inline-flex;align-items:center;padding:10px 18px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);text-decoration:none;font:700 17px Inter;white-space:nowrap}
+.back-link:hover{border-color:var(--accent)}
+#who{display:flex;align-items:center;gap:14px;min-width:360px}
+#who .pawn{font-size:54px}
+.wname{font:900 28px Cinzel;line-height:1.05;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrole{font:600 16px Inter;color:var(--muted)}
+#pips{display:flex;align-items:center;gap:10px}
+.pip{width:30px;height:30px;border-radius:50%;border:3px solid var(--accent);background:transparent}
+.pip.on{background:var(--accent);box-shadow:0 0 12px var(--glow)}
+.piplbl{font:700 15px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+#phases{display:flex;align-items:center;gap:6px}
+.ph{padding:8px 14px;border-radius:999px;font:700 15px Inter;color:var(--muted);border:2px solid var(--line)}
+.ph.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.ph.done{opacity:.55}
+.arrow{color:var(--muted);font-weight:800}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);font:700 17px Inter;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:19px}
+.btn.icon{width:52px;padding:12px 0;font-size:20px}
+.btn.off{opacity:.42;cursor:not-allowed}
+.btn.pulse:not(.off){animation:btnPulse 1.6s infinite}
+.btn small{font-weight:600;opacity:.8}
+@keyframes btnPulse{0%,100%{box-shadow:0 0 0 0 var(--glow)}50%{box-shadow:0 0 0 8px transparent}}
+
+/* ---------- left ---------- */
+#left{grid-area:left;display:flex;flex-direction:column;gap:12px;min-height:0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:11px 14px}
+.boxt{font:900 18px Cinzel;letter-spacing:.04em;margin-bottom:8px}
+#meter{flex:0 0 auto}
+.gauge{display:flex;flex-direction:column;gap:3px}
+.seg{display:flex;align-items:center;height:27px;border-radius:7px;padding:0 10px;background:var(--panel2);border:2px solid transparent;font:800 15px Inter;color:var(--muted);position:relative}
+.seg .lv{width:28px}
+.seg .dr{margin-left:auto;font-weight:700;font-size:13px}
+.seg.on{color:#fff;background:linear-gradient(90deg,var(--c1),var(--c2))}
+.seg.cur{border-color:var(--accent);box-shadow:0 0 14px var(--glow)}
+.seg.cur::before{content:"▶";position:absolute;left:-16px;color:var(--accent);font-size:14px}
+.seg.skull{color:var(--danger)}
+.seg.skull.on{background:linear-gradient(90deg,#7f1d1d,#b91c1c);color:#fff}
+.bigLevel{display:flex;align-items:baseline;justify-content:space-between;margin-top:6px}
+.bigLevel b{font:900 34px Cinzel;color:var(--accent)}
+.rate{font:700 17px Inter}
+.rate b{font-size:24px;color:var(--accent)}
+.diff{font:600 14px Inter;color:var(--muted)}
+#decks{flex:1;min-height:0;display:flex;flex-direction:column}
+.deckrow{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.deck{width:46px;height:60px;border-radius:9px;display:grid;place-items:center;font:900 22px Inter;color:#fff;box-shadow:3px 3px 0 rgba(0,0,0,.25),6px 6px 0 rgba(0,0,0,.12)}
+.deck.t{background:repeating-linear-gradient(45deg,#7c3aed 0 8px,#6d28d9 8px 16px)}
+.deck.f{background:repeating-linear-gradient(-45deg,#1d4ed8 0 8px,#1e40af 8px 16px)}
+.deckinfo b{font:800 17px Inter;display:block}
+.deckinfo span{font:600 14px Inter;color:var(--muted)}
+.fdl{font:700 13px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:4px 0 6px}
+.fdlist{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start}
+.chip{font:600 12.5px Inter;padding:3px 7px;border-radius:7px;background:var(--panel2);border:1px solid var(--line)}
+.chip.fl{border-color:var(--flood1);background:color-mix(in srgb,var(--flood1) 22%,transparent)}
+.chip.gone{text-decoration:line-through;opacity:.55}
+
+/* ---------- center ---------- */
+#center{grid-area:center;display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+#actionbar{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 10px;height:66px;flex:0 0 auto}
+.abtn{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 16px;border-radius:11px;border:2px solid var(--line);background:var(--panel2);font:800 17px Inter;cursor:pointer;white-space:nowrap}
+.abtn:hover{border-color:var(--accent)}
+.abtn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.abtn.off{opacity:.38;cursor:not-allowed}
+.abtn kbd{margin-left:2px}
+#hint{flex:1;font:600 16px Inter;color:var(--muted);padding-left:8px;line-height:1.25;overflow:hidden}
+#hint.err{color:var(--danger)}
+#islandWrap{flex:1;min-height:0;position:relative;border-radius:22px;overflow:hidden;display:grid;place-items:center;padding-top:58px;
+  background:radial-gradient(ellipse at 50% 45%,var(--ocean-a),var(--ocean-b) 75%)}
+.sea{position:absolute;left:-160px;right:-160px;top:-60px;bottom:-60px;pointer-events:none;background-repeat:repeat}
+.sea.s1{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='46'%3E%3Cpath d='M0 23 Q20 9 40 23 T80 23 T120 23 T160 23' fill='none' stroke='white' stroke-opacity='0.16' stroke-width='2.4'/%3E%3C/svg%3E");
+  animation:seaA 9s linear infinite, swell 5s ease-in-out infinite alternate}
+.sea.s2{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='34'%3E%3Cpath d='M0 17 Q13.75 7 27.5 17 T55 17 T82.5 17 T110 17' fill='none' stroke='white' stroke-opacity='0.09' stroke-width='2'/%3E%3C/svg%3E");
+  background-position:40px 12px;animation:seaB 13s linear infinite, swell 7s ease-in-out infinite alternate-reverse}
+.sea.s3{background:radial-gradient(ellipse 60% 45% at 50% 55%,rgba(120,220,255,.16),transparent 70%);animation:glow 6s ease-in-out infinite alternate}
+@keyframes seaA{from{transform:translateX(0)}to{transform:translateX(160px)}}
+@keyframes seaB{from{transform:translateX(0)}to{transform:translateX(-110px)}}
+@keyframes swell{from{margin-top:-6px}to{margin-top:6px}}
+@keyframes glow{from{opacity:.6;transform:scale(1)}to{opacity:1;transform:scale(1.06)}}
+#island{position:relative;display:grid;grid-template-columns:repeat(6,var(--tile));grid-template-rows:repeat(6,var(--tile));gap:0;z-index:1}
+.cell{position:relative}
+.tile{position:absolute;inset:0;perspective:600px;transition:opacity .25s,filter .25s}
+.face{position:absolute;inset:0;border-radius:3px;color:#3a2a10;
+  background:var(--fl,none),var(--bn,none),var(--be,none),var(--bs,none),var(--bw,none),var(--ter);
+  box-shadow:0 6px 0 rgba(30,22,8,.45),inset 0 2px 0 rgba(255,255,255,.32),inset 2px 0 0 rgba(255,255,255,.16),inset 0 -3px 0 rgba(0,0,0,.26),inset -2px 0 0 rgba(0,0,0,.18),0 0 0 1px rgba(40,30,10,.38);
+  padding:0;display:flex;flex-direction:column;align-items:stretch;text-align:center;overflow:hidden}
+.band{position:absolute;left:0;right:0;top:0;height:7px}
+.tname{margin:5px 5px 0;padding:3px 4px 2px;background:linear-gradient(#fffaf0,#f1e4c6);color:#3a2a10;border-radius:4px;font:800 12.5px/1.12 Inter;
+  box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(120,90,40,.25);border-bottom:3px solid var(--bc,#c9b48a)}
+.ticon{position:absolute!important;left:50%;top:61%;transform:translate(-50%,-50%);line-height:0}
+.ticon.glow{animation:tglowC 2.2s ease-in-out infinite!important}
+@keyframes tglowC{0%,100%{transform:translate(-50%,-50%) scale(1);filter:brightness(1)}50%{transform:translate(-50%,-50%) scale(1.1);filter:brightness(1.25)}}
+.tflag{align-self:center;margin:3px 0 0;font:900 10.5px Inter;letter-spacing:.14em;background:rgba(0,10,40,.6);color:#fff;padding:2px 6px;border-radius:4px}
+.tile.flooded .face{--fl:linear-gradient(160deg,rgba(52,120,228,.74),rgba(26,70,160,.82))}
+.tile.sunk .face{background:transparent;box-shadow:none}
+.tile.flooded .face::before{content:"";position:absolute;inset:-20px 0 0 -40px;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='18'%3E%3Cpath d='M0 9 Q9 2 18 9 T36 9' fill='none' stroke='white' stroke-opacity='0.45' stroke-width='2.2'/%3E%3C/svg%3E");
+  animation:tileWave 2.6s linear infinite}
+@keyframes tileWave{from{transform:translate(0,0)}50%{transform:translate(18px,4px)}to{transform:translate(36px,0)}}
+.tile.sunk .face::after{content:"";position:absolute;left:50%;top:50%;width:46px;height:18px;margin:-9px 0 0 -23px;border-radius:50%;border:2px solid rgba(255,255,255,.22);animation:ripple 3.2s ease-out infinite;animation-delay:var(--d2,0s)}
+@keyframes ripple{from{transform:scale(.4);opacity:.9}to{transform:scale(1.9);opacity:0}}
+.tname,.ticon,.tflag{position:relative;z-index:2}
+.band{z-index:2}
+.deco{position:absolute;z-index:1;line-height:0;pointer-events:none;transform-origin:50% 100%;animation-delay:var(--dd,0s)}
+.deco svg{display:block;filter:drop-shadow(0 1.5px 0 rgba(0,0,0,.18))}
+.tile.flooded .deco{opacity:.5;filter:saturate(.5) brightness(1.1);animation:bob 2.4s ease-in-out infinite!important}
+.tile.flooded .deco.dc{display:none}
+.a-sway{animation:sway 3.6s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.a-side{animation:side 2.8s ease-in-out infinite}
+@keyframes side{0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)}}
+.a-hop{animation:hop 3.4s ease-in-out infinite}
+@keyframes hop{0%,70%,100%{transform:translateY(0)}80%{transform:translateY(-6px)}90%{transform:translateY(0)}}
+.a-fly{animation:fly 5s ease-in-out infinite}
+@keyframes fly{0%{transform:translate(-4px,2px) scaleY(1)}25%{transform:translate(0,-3px) scaleY(.6)}50%{transform:translate(4px,0) scaleY(1)}75%{transform:translate(0,-2px) scaleY(.6)}100%{transform:translate(-4px,2px) scaleY(1)}}
+.a-flap{animation:flap .9s ease-in-out infinite}
+@keyframes flap{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.55)}}
+.a-flick{animation:flick .45s ease-in-out infinite alternate}
+@keyframes flick{from{transform:scale(1,1)}to{transform:scale(.92,1.1)}}
+.tile.target{cursor:pointer}
+.tile.target,.tile.sel{z-index:4}
+.tile.target .face{box-shadow:inset 0 0 0 4px var(--accent),0 0 0 2px var(--accent),0 0 26px 8px var(--glow);animation:tpulse 1.3s ease-in-out infinite}
+.tile.sunk.target .face{background:rgba(255,255,255,.08)}
+.tile.dim{opacity:.36;filter:saturate(.4)}
+.tile.sel .face{box-shadow:inset 0 0 0 4px #fff,0 0 0 2px #fff,0 0 26px 8px var(--glow)}
+@keyframes tpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+.pawns .pawn{font-size:39px}
+.pawns{position:absolute;left:0;right:0;bottom:1px;display:flex;justify-content:center;z-index:3;pointer-events:none}
+.pawns .pawn+.pawn{margin-left:-15px}
+.pawn{position:relative;display:inline-block;flex:0 0 auto;font-size:42px;width:1em;height:1.1em;vertical-align:middle}
+.pawn svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 3px 2.5px rgba(0,0,0,.5))}
+.pawn path{fill:var(--pc);stroke:var(--ps);stroke-width:2.4;stroke-linejoin:round}
+.pawn b{position:absolute;left:0;right:0;top:60%;transform:translateY(-50%);text-align:center;font:900 .29em Inter;letter-spacing:.01em;color:var(--pi)}
+.pawn.act{z-index:2;transform:translateY(-3px) scale(1.08)}
+.pawn.act svg{filter:drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 5px var(--accent)) drop-shadow(0 3px 2px rgba(0,0,0,.5))}
+.tile.sunk .pawns .pawn,.tile.sinking .pawns .pawn{animation:bob 1.2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.tile.deal .face{animation:dealIn .5s cubic-bezier(.2,.9,.3,1.2) both;animation-delay:var(--d)}
+@keyframes dealIn{from{transform:translateY(-50px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.tile.anim-flood .face{animation:flip .65s ease}
+.tile.anim-shore .face{animation:flip .55s ease}
+@keyframes flip{0%{transform:rotateY(0)}50%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
+.tile.sinking .face{animation:sinkDrop .95s ease-in forwards}
+@keyframes sinkDrop{0%{transform:none;opacity:1}25%{transform:translateY(-5px) rotate(-3deg)}100%{transform:translateY(34px) scale(.55) rotate(8deg);opacity:0}}
+.splash{position:absolute;inset:-10px;border-radius:50%;border:4px solid rgba(255,255,255,.75);pointer-events:none;animation:splash 1s ease-out forwards;z-index:4}
+@keyframes splash{from{transform:scale(.3);opacity:1}to{transform:scale(1.5);opacity:0}}
+
+#banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;
+  max-width:92%;pointer-events:none;background:rgba(3,14,26,.88);color:#fff;border:2px solid var(--accent);border-radius:14px;padding:6px 14px;min-height:44px;font:700 17px Inter;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+#banner.warn{border-color:var(--danger);background:rgba(60,8,8,.92)}
+#banner .btn{pointer-events:auto;padding:7px 12px;font-size:15px;color:var(--ink)}
+#banner .btn.primary{color:var(--accent-ink)}
+#banner .btn.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+
+/* ---------- right ---------- */
+#right{grid-area:right;display:flex;flex-direction:column;gap:12px;min-height:0}
+.tres{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tre{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:12px;background:var(--panel2);border:2px solid var(--line)}
+.tre svg{flex:0 0 auto;filter:grayscale(.85) brightness(.85);opacity:.55}
+.tre.cap{border-color:var(--ok);box-shadow:0 0 16px color-mix(in srgb,var(--ok) 45%,transparent)}
+.tre.cap svg{filter:none;opacity:1}
+.tre b{font:800 13.5px/1.1 Inter;display:block}
+.tre small{font:600 11px/1.2 Inter;color:var(--muted);display:block}
+.tre small s{opacity:.6}
+.tre.flash{animation:treFlash 1.2s ease 2}
+@keyframes treFlash{50%{transform:scale(1.06);box-shadow:0 0 30px var(--ok)}}
+#hands{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:auto}
+.hand{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:7px 10px;flex:0 0 auto}
+.hand.active{border-color:var(--accent);box-shadow:0 0 18px var(--glow)}
+.hand.over{border-color:var(--danger)}
+.hhead{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.hn{flex:1;min-width:0}
+.hn b{font:800 18px Inter;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hn small{font:600 12px/1.2 Inter;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hc{font:800 15px Inter;color:var(--muted)}
+.hand.over .hc{color:var(--danger)}
+.cards{display:flex;gap:6px;flex-wrap:wrap;min-height:76px;align-items:flex-start}
+.nocards{font:600 14px Inter;color:var(--muted);align-self:center}
+.card{position:relative;width:58px;height:76px;border-radius:9px;background:var(--panel2);border:2px solid var(--kc,var(--line));display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:5px}
+.card .cname{font:800 10.5px/1.1 Inter;text-align:center;margin-top:3px;padding:0 2px}
+.card.k-earth{--kc:#a78bfa}.card.k-wind{--kc:#5eead4}.card.k-fire{--kc:#fb923c}.card.k-ocean{--kc:#38bdf8}
+.card.k-heli{--kc:#fbbf24}.card.k-sand{--kc:#d6b277}
+.card .play{position:absolute;left:3px;right:3px;bottom:3px;border:0;border-radius:6px;background:var(--accent);color:var(--accent-ink);font:900 12px Inter;padding:3px 0;cursor:pointer}
+.card .disc{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;border:2px solid var(--panel);background:var(--danger);color:#fff;font:900 11px Inter;cursor:pointer;display:grid;place-items:center;padding:0}
+.card.spent{opacity:.55}
+
+#log{grid-area:log;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px 18px;overflow:auto;font:600 15px/1.45 Inter}
+#log div{color:var(--muted)}
+#log div:last-child{color:var(--ink);font-weight:700}
+#log .tn{display:inline-block;min-width:68px;color:var(--accent);font-weight:800}
+
+/* ---------- reveal ---------- */
+#reveal{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:40}
+.bigcard{width:250px;height:340px;border-radius:22px;background:var(--panel);border:6px solid var(--kc,var(--accent));box-shadow:0 30px 80px rgba(0,0,0,.6);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;animation:cardIn .45s cubic-bezier(.2,.9,.3,1.15) both}
+.bigcard .bn{font:900 26px/1.15 Cinzel}
+.bigcard .bs{font:700 15px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
+.bigcard.k-earth{--kc:#a78bfa}.bigcard.k-wind{--kc:#5eead4}.bigcard.k-fire{--kc:#fb923c}.bigcard.k-ocean{--kc:#38bdf8}.bigcard.k-heli{--kc:#fbbf24}.bigcard.k-sand{--kc:#d6b277}
+.bigcard.k-wr{--kc:#ef4444;background:linear-gradient(180deg,#450a0a,#0c2a4a);color:#fff}
+.bigcard.k-wr .bs{color:#fecaca}
+.bigcard.k-flood{--kc:#60a5fa;color:#fff;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='18'%3E%3Cpath d='M0 9 Q9 2 18 9 T36 9' fill='none' stroke='white' stroke-opacity='0.3' stroke-width='2'/%3E%3C/svg%3E"),linear-gradient(160deg,#2563eb,#1e3a8a)}
+.bigcard.k-flood .bs{color:#bfdbfe}
+.bigcard.k-sinkc{--kc:#ef4444}
+@keyframes cardIn{from{transform:rotateY(90deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.bigcard.out{animation:cardOut .3s ease forwards}
+@keyframes cardOut{to{transform:translateY(-30px) scale(.85);opacity:0}}
+
+/* ---------- modal ---------- */
+#modal{position:absolute;inset:0;z-index:50;display:grid;place-items:center;background:rgba(2,10,20,.72);backdrop-filter:blur(4px)}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:26px;padding:34px 40px;box-shadow:0 30px 90px rgba(0,0,0,.55);max-height:1000px;overflow:auto}
+.panel{position:relative}
+.xclose{position:absolute;top:16px;right:16px;width:46px;height:46px;border-radius:50%;border:2px solid var(--line);background:var(--panel2);font:900 20px Inter;cursor:pointer;display:grid;place-items:center}
+.xclose:hover{border-color:var(--accent)}
+.panel h1{font:900 54px Cinzel;margin:0 0 6px;color:var(--accent)}
+.panel h2{font:900 32px Cinzel;margin:0 0 12px}
+.panel p{font:600 19px/1.45 Inter;margin:0 0 14px}
+.prow2{display:flex;gap:12px;justify-content:flex-end;margin-top:22px}
+.setup{width:880px}
+.setup .lead{color:var(--muted)}
+.field{display:flex;align-items:center;gap:18px;margin:16px 0}
+.field>label{width:150px;font:800 18px Inter}
+.seg2{display:flex;gap:8px}
+.seg2 button{padding:11px 20px;border-radius:11px;border:2px solid var(--line);background:var(--panel2);font:800 18px Inter;cursor:pointer}
+.seg2 button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.seg2 button small{display:block;font-size:12px;font-weight:600;opacity:.8}
+.plist{display:flex;flex-direction:column;gap:8px;margin-left:168px}
+.prow{display:flex;align-items:center;gap:10px}
+.prow .num{width:30px;font:900 20px Cinzel;color:var(--muted)}
+input[type=text],select{font:700 18px Inter;padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:var(--panel2);color:var(--ink)}
+input[type=text]{width:330px}
+select{min-width:220px}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+.err{color:var(--danger);font:700 17px Inter;min-height:24px}
+.resume{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:14px;background:var(--panel2);border:2px solid var(--accent);margin:14px 0 6px;font:700 17px Inter}
+.resume span{flex:1}
+.big{font-size:24px!important;padding:16px 40px!important}
+.opts{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.optb{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:150px;padding:14px;border-radius:14px;border:3px solid var(--line);background:var(--panel2);cursor:pointer;font:800 16px Inter}
+.optb small{font:600 13px Inter;color:var(--muted)}
+.optb.on{border-color:var(--accent);box-shadow:0 0 16px var(--glow)}
+.optb .pawn{font-size:46px}
+.hlcards{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0 4px;padding-top:8px}
+.hlcards .card{transform:scale(1.35);transform-origin:top left;margin:0 22px 30px 0}
+.end{width:780px;text-align:center}
+.end.win h1{color:var(--ok)}
+.end.lose h1{color:var(--danger)}
+.end .reason{font-size:23px}
+.stats{display:flex;justify-content:center;gap:40px;margin:22px 0}
+.stats div{font:600 17px Inter;color:var(--muted)}
+.stats b{display:block;font:900 46px Cinzel;color:var(--ink)}
+.end .prow2{justify-content:center}
+.rules{width:1240px;columns:2;column-gap:40px}
+.rules h2{column-span:all}
+.rules h3{font:800 20px Inter;color:var(--accent);margin:14px 0 6px;break-after:avoid}
+.rules p,.rules li{font:500 17px/1.45 Inter}
+.rules ul,.rules ol{margin:0 0 8px;padding-left:22px}
+.rules table{width:100%;border-collapse:collapse;break-inside:avoid;margin-bottom:8px}
+.rules td{font:500 15.5px/1.35 Inter;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.rules td:first-child{width:44px}
+.hhead .pawn{font-size:34px}
+.rules .rfoot{column-span:all;display:flex;gap:12px;justify-content:flex-end;margin-top:12px}
+
+@media (prefers-reduced-motion: reduce){.sea,.deco,.tile .face::before,.tile .face::after{animation:none!important}}
+
+/* ---------- terrain (cardboard tiles, Castle Roads style) ---------- */
+.ter-grass{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(155deg,#8dc264,#689e43)}
+.ter-lush{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Ccircle cx='10' cy='20' r='2.2' fill='%23ffd43b'/%3E%3Ccircle cx='38' cy='12' r='2.2' fill='%23f783ac'/%3E%3Ccircle cx='28' cy='42' r='2.2' fill='%23ffffff'/%3E%3Ccircle cx='46' cy='34' r='2' fill='%23ffd43b'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(155deg,#96cc6c,#66a546)}
+.ter-forest{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(155deg,#6f9f4a,#4c7a31)}
+.ter-dusk{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(155deg,#79a05e,#4f6d48)}
+.ter-sand{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='22'%3E%3Cpath d='M0 11 Q15 3 30 11 T60 11' fill='none' stroke='%23a9843e' stroke-opacity='.5' stroke-width='1.5'/%3E%3C/svg%3E"),linear-gradient(155deg,#efd9a0,#d1ab63)}
+.ter-rock{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cg fill='%23525c46' opacity='.5'%3E%3Cellipse cx='8' cy='10' rx='3' ry='2'/%3E%3Cellipse cx='28' cy='6' rx='2' ry='1.5'/%3E%3Cellipse cx='22' cy='28' rx='3.5' ry='2.2'/%3E%3Cellipse cx='5' cy='33' rx='2' ry='1.4'/%3E%3Cellipse cx='35' cy='24' rx='2.4' ry='1.6'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(155deg,#a9b292,#7b866a)}
+.ter-marsh{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),radial-gradient(ellipse 30% 17% at 76% 80%,#4f9fb8 0 86%,#3c7f94 92%,transparent 100%),radial-gradient(ellipse 24% 14% at 20% 74%,#5aa9c0 0 86%,#3c7f94 92%,transparent 100%),linear-gradient(155deg,#80ae6a,#5b8a55)}
+.ter-lagoon{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),radial-gradient(ellipse 30% 19% at 20% 82%,#4fb0cf 0 86%,#2f8aa8 93%,transparent 100%),linear-gradient(155deg,#8dc264,#689e43)}
+.ter-gate{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(90deg,transparent 39%,#a48d63 39% 41%,#d9c59b 41% 59%,#a48d63 59% 61%,transparent 61%),linear-gradient(155deg,#8dc264,#689e43)}
+.ter-fools{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),radial-gradient(circle at 50% 61%,#eee8d8 0 21%,#a39c8c 21% 24%,transparent 24.5%),linear-gradient(155deg,#8dc264,#689e43)}
+.ter-temple{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),radial-gradient(circle at 50% 61%,#ded6c3 0 18%,#a69e86 18% 20.5%,#cfc6ae 20.5% 25%,#9e967f 25% 26.5%,transparent 27%),linear-gradient(155deg,#8dc264,#689e43)}
+.ter-cave{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cg fill='%23525c46' opacity='.5'%3E%3Cellipse cx='8' cy='10' rx='3' ry='2'/%3E%3Cellipse cx='28' cy='6' rx='2' ry='1.5'/%3E%3Cellipse cx='22' cy='28' rx='3.5' ry='2.2'/%3E%3Cellipse cx='5' cy='33' rx='2' ry='1.4'/%3E%3Cellipse cx='35' cy='24' rx='2.4' ry='1.6'/%3E%3C/g%3E%3C/svg%3E"),radial-gradient(ellipse 25% 22% at 50% 63%,#241f1a 0 74%,#6d6457 76% 96%,transparent 100%),linear-gradient(155deg,#a9b292,#7b866a)}
+.ter-palace{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),radial-gradient(circle at 50% 61%,#eef7fa 0 19%,#8fbccc 19% 21.5%,#d6eaf1 21.5% 25%,transparent 25.5%),linear-gradient(155deg,#8dc264,#689e43)}
+.ter-bridge{--ter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cg stroke='%233f6e24' stroke-width='1.6' stroke-linecap='round' fill='none' opacity='.55'%3E%3Cpath d='M6 14l3-5 3 5'/%3E%3Cpath d='M30 8l3-5 3 5'/%3E%3Cpath d='M20 30l3-5 3 5'/%3E%3Cpath d='M38 37l3-5 3 5'/%3E%3Cpath d='M7 41l3-5 3 5'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(to bottom,transparent 55%,#2f7aa8 55% 56.5%,#4a9cc9 56.5% 69%,#2f7aa8 69% 70.5%,transparent 70.5%),linear-gradient(155deg,#8dc264,#689e43)}
+.tile.c-n .face{--bn:linear-gradient(to bottom,rgba(255,255,255,.9) 0 2px,#f3e2b2 2px 9px,#dcc28a 9px 11px,rgba(220,194,138,0) 14px)}
+.tile.c-s .face{--bs:linear-gradient(to top,rgba(255,255,255,.9) 0 2px,#f3e2b2 2px 9px,#dcc28a 9px 11px,rgba(220,194,138,0) 14px)}
+.tile.c-e .face{--be:linear-gradient(to left,rgba(255,255,255,.9) 0 2px,#f3e2b2 2px 9px,#dcc28a 9px 11px,rgba(220,194,138,0) 14px)}
+.tile.c-w .face{--bw:linear-gradient(to right,rgba(255,255,255,.9) 0 2px,#f3e2b2 2px 9px,#dcc28a 9px 11px,rgba(220,194,138,0) 14px)}
+/* glowing treasure icons */
+.ticon.glow{border-radius:50%;padding:3px;background:radial-gradient(circle,color-mix(in srgb,var(--tc) 55%,transparent) 0%,transparent 70%);animation:tglow 2.2s ease-in-out infinite}
+.ticon.glow svg{filter:drop-shadow(0 0 3px var(--tc)) drop-shadow(0 0 7px var(--tc)) drop-shadow(0 0 1px #fff)}
+.ticon.glow::after{content:"";position:absolute;width:5px;height:5px;top:1px;right:2px;border-radius:50%;background:#fff;box-shadow:0 0 6px 2px #fff;animation:twinkle 2.2s ease-in-out infinite}
+@keyframes tglow{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.1);filter:brightness(1.25)}}
+@keyframes twinkle{0%,60%,100%{opacity:0;transform:scale(.3)}75%{opacity:1;transform:scale(1)}}
+.tile.flooded .ticon.glow{background:radial-gradient(circle,color-mix(in srgb,var(--tc) 70%,transparent) 0%,transparent 72%)}
+/* screen shake + drumroll card */
+#stage.shake{animation:shake .7s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{
+  0%,100%{transform:translate(-50%,-50%) scale(var(--s))}
+  10%{transform:translate(calc(-50% - 14px),calc(-50% + 6px)) scale(var(--s)) rotate(-.6deg)}
+  20%{transform:translate(calc(-50% + 13px),calc(-50% - 8px)) scale(var(--s)) rotate(.6deg)}
+  30%{transform:translate(calc(-50% - 11px),calc(-50% + 4px)) scale(var(--s)) rotate(-.4deg)}
+  40%{transform:translate(calc(-50% + 9px),calc(-50% + 7px)) scale(var(--s)) rotate(.4deg)}
+  55%{transform:translate(calc(-50% - 6px),calc(-50% - 4px)) scale(var(--s))}
+  70%{transform:translate(calc(-50% + 4px),calc(-50% + 3px)) scale(var(--s))}
+  85%{transform:translate(calc(-50% - 2px),-50%) scale(var(--s))}}
+.bigcard.k-drum{color:#fff;--kc:#fff;font-size:110px}
+.bigcard.k-drum.td{background:repeating-linear-gradient(45deg,#7c3aed 0 14px,#6d28d9 14px 28px)}
+.bigcard.k-drum.fd{background:repeating-linear-gradient(-45deg,#1d4ed8 0 14px,#1e40af 14px 28px)}
+.bigcard.k-drum .q{font:900 120px Cinzel;text-shadow:0 6px 20px rgba(0,0,0,.5);animation:drumq .18s ease-in-out infinite alternate}
+.bigcard.k-drum{animation:cardIn .35s ease both, wobble .22s ease-in-out .35s infinite alternate}
+@keyframes wobble{from{transform:rotate(-3deg) scale(1)}to{transform:rotate(3deg) scale(1.04)}}
+@keyframes drumq{from{transform:scale(1)}to{transform:scale(1.12)}}
+#stage.shake-sm{animation:shakeSm .5s ease-out}
+@keyframes shakeSm{
+  0%,100%{transform:translate(-50%,-50%) scale(var(--s))}
+  15%{transform:translate(calc(-50% - 6px),calc(-50% + 3px)) scale(var(--s))}
+  35%{transform:translate(calc(-50% + 5px),calc(-50% - 3px)) scale(var(--s))}
+  55%{transform:translate(calc(-50% - 3px),calc(-50% + 2px)) scale(var(--s))}
+  75%{transform:translate(calc(-50% + 2px),-50%) scale(var(--s))}}
+.tile.doom{z-index:5}
+.tile.doom .face{animation:tremble .12s linear infinite;box-shadow:inset 0 0 0 4px #60a5fa,0 0 0 2px #60a5fa,0 0 28px 8px rgba(96,165,250,.7)}
+.tile.doom.flooded .face{box-shadow:inset 0 0 0 4px #ef4444,0 0 0 2px #ef4444,0 0 28px 8px rgba(239,68,68,.7)}
+@keyframes tremble{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(-1.5px,1px) rotate(-.6deg)}50%{transform:translate(1.5px,-1px) rotate(.6deg)}75%{transform:translate(-1px,-1px) rotate(-.3deg)}100%{transform:translate(0,0) rotate(0)}}
+@media (prefers-reduced-motion: reduce){#stage.shake,#stage.shake-sm,.tile.doom .face{animation:none}.ticon.glow,.ticon.glow::after{animation:none}}
+/* ---------- debug ---------- */
+#debug{position:absolute;right:20px;bottom:124px;z-index:60;width:420px;background:#111827;color:#f9fafb;border:2px dashed #f59e0b;border-radius:14px;padding:14px;font:600 14px Inter;display:flex;flex-direction:column;gap:8px}
+#debug select{min-width:0;font-size:14px;padding:6px;background:#1f2937;color:#fff;border-color:#374151}
+#debug button{padding:6px 10px;border-radius:7px;border:1px solid #4b5563;background:#374151;color:#fff;font:700 13px Inter;cursor:pointer}
+#debug .r{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="stage">
+  <header id="top">
+    <a class="back-link" href="../">← Game Hub</a>
+    <div id="who"></div>
+    <div id="pips"></div>
+    <div id="phases"></div>
+    <div class="spacer"></div>
+    <button id="primaryBtn" class="btn primary" data-act="primary"></button>
+    <button id="undoBtn" class="btn" data-act="undo" title="Undo the last action (this phase only)">↶ Undo<kbd>Z</kbd></button>
+    <button class="btn" data-act="rules">Rules</button>
+    <button id="soundBtn" class="btn icon" data-act="sound" title="Sound on/off">🔊</button>
+    <button id="themeBtn" class="btn icon" data-act="theme" title="Light/dark mode">🌓</button>
+  </header>
+  <aside id="left">
+    <section id="meter" class="box"></section>
+    <section id="decks" class="box"></section>
+  </aside>
+  <main id="center">
+    <div id="actionbar"></div>
+    <div id="islandWrap"><div class="sea s3"></div><div class="sea s1"></div><div class="sea s2"></div><div id="banner" class="hidden"></div><div id="island"></div></div>
+  </main>
+  <aside id="right">
+    <section class="box"><div class="boxt">Treasures</div><div id="treasures" class="tres"></div></section>
+    <section id="hands"></section>
+  </aside>
+  <footer id="log"></footer>
+  <div id="reveal" class="hidden"></div>
+  <div id="modal" class="hidden"></div>
+  <div id="debug" class="hidden"></div>
+</div>
+
+<!-- ================= RULES ENGINE (pure, no DOM) ================= -->
+<script id="engine">
+const FI = (() => {
+  'use strict';
+  const ROLES = ['pilot', 'engineer', 'explorer', 'diver', 'messenger', 'navigator'];
+  const ROLE_INFO = {
+    pilot:     { name: 'Pilot',     abbr: 'PI', color: '#2f6fed', ink: '#ffffff', ability: 'Once per turn, fly to any tile for 1 action.' },
+    engineer:  { name: 'Engineer',  abbr: 'EN', color: '#e03b3b', ink: '#ffffff', ability: 'Shore up 2 tiles for 1 action.' },
+    explorer:  { name: 'Explorer',  abbr: 'EX', color: '#22a355', ink: '#ffffff', ability: 'Move and shore up diagonally too.' },
+    diver:     { name: 'Diver',     abbr: 'DI', color: '#1b1f27', ink: '#ffffff', ability: 'For 1 action, swim through flooded and missing tiles.' },
+    messenger: { name: 'Messenger', abbr: 'ME', color: '#e9edf2', ink: '#111827', ability: 'Give treasure cards to a player anywhere.' },
+    navigator: { name: 'Navigator', abbr: 'NA', color: '#f2c318', ink: '#1a1300', ability: 'For 1 action, move another pawn up to 2 tiles.' }
+  };
+  const TREASURES = ['earth', 'wind', 'fire', 'ocean'];
+  const T_INFO = {
+    earth: { name: 'Earth Stone',        short: 'Earth Stone', color: '#a78bfa' },
+    wind:  { name: 'Statue of the Wind', short: 'Wind Statue', color: '#5eead4' },
+    fire:  { name: 'Crystal of Fire',    short: 'Fire Crystal', color: '#fb923c' },
+    ocean: { name: "Ocean's Chalice",    short: 'Chalice', color: '#38bdf8' }
+  };
+  const CARD_NAME = {
+    earth: 'Earth Stone', wind: 'Statue of the Wind', fire: 'Crystal of Fire', ocean: "Ocean's Chalice",
+    heli: 'Helicopter Lift', sand: 'Sandbags', wr: 'Waters Rise!'
+  };
+  const TILE_DEFS = [
+    { name: "Fools' Landing", start: 'pilot' },
+    { name: 'Bronze Gate', start: 'engineer' },
+    { name: 'Copper Gate', start: 'explorer' },
+    { name: 'Iron Gate', start: 'diver' },
+    { name: 'Silver Gate', start: 'messenger' },
+    { name: 'Gold Gate', start: 'navigator' },
+    { name: 'Temple of the Moon', treasure: 'earth' },
+    { name: 'Temple of the Sun', treasure: 'earth' },
+    { name: 'Whispering Garden', treasure: 'wind' },
+    { name: 'Howling Garden', treasure: 'wind' },
+    { name: 'Cave of Embers', treasure: 'fire' },
+    { name: 'Cave of Shadows', treasure: 'fire' },
+    { name: 'Coral Palace', treasure: 'ocean' },
+    { name: 'Tidal Palace', treasure: 'ocean' },
+    { name: 'Breakers Bridge' }, { name: 'Cliffs of Abandon' }, { name: 'Crimson Forest' },
+    { name: 'Dunes of Deception' }, { name: 'Lost Lagoon' }, { name: 'Misty Marsh' },
+    { name: 'Observatory' }, { name: 'Phantom Rock' }, { name: 'Twilight Hollow' }, { name: 'Watchtower' }
+  ];
+  const FOOLS = 0;
+  const LAYOUT = (() => {
+    const out = [];
+    [2, 4, 6, 6, 4, 2].forEach((w, r) => { const c0 = (6 - w) / 2; for (let c = c0; c < c0 + w; c++) out.push(r * 6 + c); });
+    return out;
+  })();
+  const LAYOUT_SET = new Set(LAYOUT);
+  const DIFFS = {
+    novice: { name: 'Novice', level: 1 }, normal: { name: 'Normal', level: 2 },
+    elite: { name: 'Elite', level: 3 }, legendary: { name: 'Legendary', level: 4 }
+  };
+  const ORTH = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const DIAG = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+  const HAND_LIMIT = 5;
+  const SKULL = 10;
+
+  function floodRate(l) { if (l >= SKULL) return 0; if (l <= 2) return 2; if (l <= 5) return 3; if (l <= 7) return 4; return 5; }
+
+  // ---------- randomness (seeded, stored in state so save/resume is exact) ----------
+  function rnd(s) {
+    s.rng = (s.rng + 0x6D2B79F5) >>> 0;
+    let t = s.rng;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function shuffle(s, a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd(s) * (i + 1)); const x = a[i]; a[i] = a[j]; a[j] = x; }
+    return a;
+  }
+
+  // ---------- small helpers ----------
+  function fail(msg) { const e = new Error(msg); e.rule = true; throw e; }
+  function log(s, msg) { s.log.push({ turn: s.turn || 0, msg }); if (s.log.length > 120) s.log.splice(0, s.log.length - 120); }
+  function ev(s, e) { s.events.push(e); }
+  function isTreasure(c) { return TREASURES.includes(c); }
+  function isSpecial(c) { return c === 'heli' || c === 'sand'; }
+  function pname(s, i) { const p = s.players[i]; return p.name + ' (' + ROLE_INFO[p.role].name + ')'; }
+  function count(arr, x) { let n = 0; for (const y of arr) if (y === x) n++; return n; }
+  function rc(cell) { return [Math.floor(cell / 6), cell % 6]; }
+  function idAt(s, r, c) { if (r < 0 || r > 5 || c < 0 || c > 5) return -1; return s.grid[r * 6 + c]; }
+  function alive(s, id) { return id >= 0 && s.tiles[id].state !== 'sunk'; }
+
+  function neighbors(s, id, diag) {
+    const [r, c] = rc(s.tiles[id].cell);
+    const out = [];
+    for (const [dr, dc] of (diag ? ORTH.concat(DIAG) : ORTH)) { const t = idAt(s, r + dr, c + dc); if (alive(s, t)) out.push(t); }
+    return out;
+  }
+
+  // ---------- setup ----------
+  function newGame(opts) {
+    const list = (opts && opts.players) || [];
+    const n = list.length;
+    if (n < 2 || n > 4) fail('Choose 2 to 4 players.');
+    const s = { v: 1, rng: (opts.seed == null ? Math.floor(Math.random() * 4294967296) : opts.seed) >>> 0, events: [], log: [], turn: 0 };
+    const chosen = list.map(p => (p.role && ROLES.includes(p.role)) ? p.role : null);
+    const used = chosen.filter(Boolean);
+    if (new Set(used).size !== used.length) fail('Each player needs a different adventurer.');
+    const pool = shuffle(s, ROLES.filter(r => !used.includes(r)));
+    s.players = list.map((p, i) => {
+      const nm = String(p.name || '').trim().slice(0, 24) || ('Team ' + (i + 1));
+      return { name: nm, role: chosen[i] || pool.pop(), pos: -1, hand: [] };
+    });
+    s.tiles = TILE_DEFS.map((d, i) => ({ id: i, name: d.name, treasure: d.treasure || null, start: d.start || null, state: 'normal', cell: -1 }));
+    const order = shuffle(s, s.tiles.map(t => t.id));
+    s.grid = new Array(36).fill(-1);
+    LAYOUT.forEach((cell, k) => { s.tiles[order[k]].cell = cell; s.grid[cell] = order[k]; });
+    s.captured = { earth: false, wind: false, fire: false, ocean: false };
+    s.floodDeck = shuffle(s, s.tiles.map(t => t.id));
+    s.floodDiscard = []; s.floodOut = []; s.setupFlooded = [];
+    for (let k = 0; k < 6; k++) { const id = s.floodDeck.shift(); s.tiles[id].state = 'flooded'; s.floodDiscard.push(id); s.setupFlooded.push(id); }
+    s.players.forEach(p => { p.pos = s.tiles.find(t => t.start === p.role).id; });
+    const deck = [];
+    TREASURES.forEach(t => { for (let k = 0; k < 5; k++) deck.push(t); });
+    deck.push('heli', 'heli', 'heli', 'sand', 'sand');
+    shuffle(s, deck);
+    for (let k = 0; k < 2; k++) s.players.forEach(p => p.hand.push(deck.shift()));
+    deck.push('wr', 'wr', 'wr');
+    shuffle(s, deck);
+    s.treasureDeck = deck; s.treasureDiscard = [];
+    s.difficulty = DIFFS[opts.difficulty] ? opts.difficulty : 'novice';
+    s.water = DIFFS[s.difficulty].level;
+    s.current = (opts.first == null || opts.first === 'random' || opts.first === '') ? Math.floor(rnd(s) * n) : Math.max(0, Math.min(n - 1, parseInt(opts.first, 10) || 0));
+    s.phase = 'actions'; s.actions = 3; s.pilotFlown = false; s.drawsLeft = 0; s.floodLeft = 0;
+    s.turn = 1; s.interrupts = []; s.result = null;
+    log(s, 'The island rises from the sea. ' + DIFFS[s.difficulty].name + ' difficulty, water level ' + s.water + '.');
+    log(s, 'Turn 1: ' + pname(s, s.current) + ' goes first.');
+    return s;
+  }
+
+  // ---------- legal targets ----------
+  function moveTargets(s, pi) { const p = s.players[pi]; return neighbors(s, p.pos, p.role === 'explorer'); }
+  function diveTargets(s, pi) {
+    const p = s.players[pi];
+    if (p.role !== 'diver') return [];
+    const start = s.tiles[p.pos].cell;
+    const seen = new Set([start]); const q = [start]; const out = new Set();
+    while (q.length) {
+      const cell = q.shift(); const [r, c] = rc(cell);
+      for (const [dr, dc] of ORTH) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr > 5 || nc < 0 || nc > 5) continue;
+        const ncell = nr * 6 + nc;
+        if (!LAYOUT_SET.has(ncell) || seen.has(ncell)) continue;
+        seen.add(ncell);
+        const st = s.tiles[s.grid[ncell]].state;
+        if (st !== 'sunk') out.add(s.grid[ncell]);
+        if (st !== 'normal') q.push(ncell);
+      }
+    }
+    out.delete(p.pos);
+    return [...out];
+  }
+  function flyTargets(s, pi) {
+    const p = s.players[pi];
+    if (p.role !== 'pilot' || s.pilotFlown) return [];
+    return s.tiles.filter(t => t.state !== 'sunk' && t.id !== p.pos).map(t => t.id);
+  }
+  function shoreTargets(s, pi) {
+    const p = s.players[pi];
+    const cand = [p.pos].concat(neighbors(s, p.pos, p.role === 'explorer'));
+    return cand.filter(id => s.tiles[id].state === 'flooded');
+  }
+  function giveTargets(s, pi) {
+    const p = s.players[pi];
+    return s.players.map((q, i) => i).filter(i => i !== pi && (p.role === 'messenger' || s.players[i].pos === p.pos));
+  }
+  function navPawns(s, pi) {
+    if (s.players[pi].role !== 'navigator') return [];
+    return s.players.map((q, i) => i).filter(i => i !== pi && neighbors(s, s.players[i].pos, false).length > 0);
+  }
+  function swimTargets(s, pi) {
+    const p = s.players[pi];
+    if (p.role === 'pilot') return s.tiles.filter(t => t.state !== 'sunk' && t.id !== p.pos).map(t => t.id);
+    if (p.role === 'diver') {
+      const [r, c] = rc(s.tiles[p.pos].cell);
+      let best = Infinity, out = [];
+      s.tiles.forEach(t => {
+        if (t.state === 'sunk' || t.id === p.pos) return;
+        const [r2, c2] = rc(t.cell); const d = Math.abs(r - r2) + Math.abs(c - c2);
+        if (d < best) { best = d; out = [t.id]; } else if (d === best) out.push(t.id);
+      });
+      return out;
+    }
+    return neighbors(s, p.pos, p.role === 'explorer');
+  }
+
+  // ---------- reasons (for UI buttons) ----------
+  function describeInterrupt(s, it) {
+    if (it.type === 'swim') return pname(s, it.player) + ' must swim to safety.';
+    return s.players[it.player].name + ' must discard down to 5 cards.';
+  }
+  function blockReason(s) {
+    if (s.result) return 'The game is over.';
+    if (s.interrupts.length) return 'First: ' + describeInterrupt(s, s.interrupts[0]);
+    return null;
+  }
+  function actionReason(s) {
+    const b = blockReason(s); if (b) return b;
+    if (s.phase !== 'actions') return 'The action phase is over for this turn.';
+    if (s.actions < 1) return 'No actions left. Click End actions.';
+    return null;
+  }
+  function captureReason(s, pi) {
+    const p = s.players[pi];
+    const here = s.tiles[p.pos].treasure;
+    if (here && !s.captured[here]) {
+      const n = count(p.hand, here);
+      if (n >= 4) return null;
+      const tl = s.tiles.filter(t => t.treasure === here).map(t => t.name).join(' or ');
+      return 'Need 4 ' + T_INFO[here].name + ' cards on ' + tl + ' (you have ' + n + ').';
+    }
+    for (const t of TREASURES) {
+      if (!s.captured[t] && count(p.hand, t) >= 4) {
+        const tl = s.tiles.filter(x => x.treasure === t && x.state !== 'sunk').map(x => x.name).join(' or ');
+        return 'Go to ' + tl + ' to capture the ' + T_INFO[t].name + '.';
+      }
+    }
+    if (here && s.captured[here]) return 'The ' + T_INFO[here].name + ' is already captured.';
+    return 'Collect 4 matching treasure cards, then stand on one of that treasure\'s tiles.';
+  }
+  function canDo(s, kind) {
+    const base = actionReason(s);
+    if (base) return { ok: false, why: base };
+    const pi = s.current, p = s.players[pi];
+    const OK = { ok: true, why: '' };
+    switch (kind) {
+      case 'move': return moveTargets(s, pi).length ? OK : { ok: false, why: 'There is no tile you can move to.' };
+      case 'shore': return shoreTargets(s, pi).length ? OK : { ok: false, why: p.role === 'explorer' ? 'No flooded tile on or around you (diagonals count).' : 'No flooded tile on your tile or next to you.' };
+      case 'give': {
+        if (!p.hand.some(isTreasure)) return { ok: false, why: 'You have no treasure cards to give.' };
+        if (!giveTargets(s, pi).length) return { ok: false, why: 'Another player must be on your tile to give a card.' };
+        return OK;
+      }
+      case 'capture': { const r = captureReason(s, pi); return r ? { ok: false, why: r } : OK; }
+      case 'ability': {
+        if (p.role === 'pilot') return s.pilotFlown ? { ok: false, why: 'The Pilot can only fly once per turn.' } : OK;
+        if (p.role === 'diver') return diveTargets(s, pi).length ? OK : { ok: false, why: 'There is nowhere to dive to.' };
+        if (p.role === 'navigator') return navPawns(s, pi).length ? OK : { ok: false, why: 'No other pawn can move.' };
+        if (p.role === 'engineer') return { ok: false, why: 'Engineer: Shore up fixes 2 tiles for 1 action. Use Shore up.' };
+        if (p.role === 'explorer') return { ok: false, why: 'Explorer: Move and Shore up already include diagonals.' };
+        return { ok: false, why: 'Messenger: Give works from anywhere on the island. Use Give.' };
+      }
+    }
+    return { ok: false, why: 'Unknown action.' };
+  }
+  function winWhy(s) {
+    const miss = TREASURES.filter(t => !s.captured[t]);
+    if (miss.length) return 'Capture all 4 treasures first (' + miss.length + ' left).';
+    if (s.tiles[FOOLS].state === 'sunk') return "Fools' Landing has sunk.";
+    if (s.players.some(p => p.pos !== FOOLS)) return "Everyone must be on Fools' Landing.";
+    return null;
+  }
+
+  // ---------- state changes ----------
+  function lose(s, reason) { if (s.result) return; s.result = { win: false, reason }; s.phase = 'over'; s.interrupts = []; ev(s, { type: 'lose' }); log(s, 'GAME OVER: ' + reason); }
+  function win(s) { s.result = { win: true, reason: 'Everyone escaped from the island with all 4 treasures!' }; s.phase = 'over'; s.interrupts = []; ev(s, { type: 'win' }); log(s, 'VICTORY! The helicopter lifts off with all 4 treasures.'); }
+  function handCheck(s, i) {
+    if (s.players[i].hand.length > HAND_LIMIT && !s.interrupts.some(x => x.type === 'handlimit' && x.player === i)) {
+      s.interrupts.push({ type: 'handlimit', player: i });
+      log(s, s.players[i].name + ' has ' + s.players[i].hand.length + ' cards and must discard down to 5.');
+    }
+  }
+  function sink(s, id) {
+    const t = s.tiles[id];
+    if (t.state === 'sunk') return;
+    t.state = 'sunk';
+    [s.floodDeck, s.floodDiscard].forEach(arr => { const k = arr.indexOf(id); if (k >= 0) arr.splice(k, 1); });
+    if (!s.floodOut.includes(id)) s.floodOut.push(id);
+    ev(s, { type: 'sink', tile: id });
+    log(s, t.name + ' sank into the sea!');
+    if (id === FOOLS) { lose(s, "Fools' Landing sank. There is no way off the island."); return; }
+    if (t.treasure && !s.captured[t.treasure]) {
+      const other = s.tiles.find(x => x.treasure === t.treasure && x.id !== id);
+      if (other.state === 'sunk') { lose(s, 'Both ' + T_INFO[t.treasure].name + ' tiles sank before the treasure was captured.'); return; }
+    }
+    s.players.forEach((p, i) => {
+      if (s.result || p.pos !== id) return;
+      if (!swimTargets(s, i).length) { lose(s, pname(s, i) + ' had nowhere to swim and was lost at sea.'); return; }
+      if (!s.interrupts.some(x => x.type === 'swim' && x.player === i)) s.interrupts.push({ type: 'swim', player: i });
+      log(s, pname(s, i) + ' must swim to safety!');
+    });
+  }
+  function needAction(s) { const r = actionReason(s); if (r) fail(r); }
+  function needFree(s) { if (s.result) fail('The game is over.'); }
+  function spend(s) { s.actions--; }
+  function cleanInterrupts(s) {
+    if (s.result) { s.interrupts = []; return; }
+    s.interrupts = s.interrupts.filter(x => x.type === 'swim'
+      ? s.tiles[s.players[x.player].pos].state === 'sunk'
+      : s.players[x.player].hand.length > HAND_LIMIT);
+  }
+
+  const A = {
+    move(s, a) {
+      needAction(s); const pi = s.current;
+      if (!moveTargets(s, pi).includes(a.tile)) fail('You cannot move there.');
+      s.players[pi].pos = a.tile; spend(s);
+      ev(s, { type: 'move' }); log(s, s.players[pi].name + ' moved to ' + s.tiles[a.tile].name + '.');
+    },
+    dive(s, a) {
+      needAction(s); const pi = s.current;
+      if (!diveTargets(s, pi).includes(a.tile)) fail('The Diver cannot reach that tile.');
+      s.players[pi].pos = a.tile; spend(s);
+      ev(s, { type: 'move' }); log(s, s.players[pi].name + ' dived to ' + s.tiles[a.tile].name + '.');
+    },
+    fly(s, a) {
+      needAction(s); const pi = s.current;
+      if (s.players[pi].role !== 'pilot') fail('Only the Pilot can fly.');
+      if (s.pilotFlown) fail('The Pilot can only fly once per turn.');
+      if (!flyTargets(s, pi).includes(a.tile)) fail('You cannot fly there.');
+      s.players[pi].pos = a.tile; s.pilotFlown = true; spend(s);
+      ev(s, { type: 'fly' }); log(s, s.players[pi].name + ' flew to ' + s.tiles[a.tile].name + '.');
+    },
+    shore(s, a) {
+      needAction(s); const pi = s.current; const p = s.players[pi];
+      const tiles = a.tiles;
+      const max = p.role === 'engineer' ? 2 : 1;
+      if (!Array.isArray(tiles) || tiles.length < 1 || tiles.length > max) fail(max === 2 ? 'Choose 1 or 2 tiles.' : 'Choose 1 tile.');
+      if (new Set(tiles).size !== tiles.length) fail('Choose two different tiles.');
+      const legal = shoreTargets(s, pi);
+      tiles.forEach(t => { if (!legal.includes(t)) fail('You cannot shore up that tile.'); });
+      tiles.forEach(t => { s.tiles[t].state = 'normal'; ev(s, { type: 'shore', tile: t }); });
+      spend(s);
+      log(s, p.name + ' shored up ' + tiles.map(t => s.tiles[t].name).join(' and ') + '.');
+    },
+    give(s, a) {
+      needAction(s); const pi = s.current; const from = s.players[pi];
+      if (!giveTargets(s, pi).includes(a.to)) fail('You cannot give a card to that player.');
+      if (!isTreasure(a.card)) fail('Only treasure cards can be given.');
+      const k = from.hand.indexOf(a.card);
+      if (k < 0) fail('You do not have that card.');
+      from.hand.splice(k, 1); s.players[a.to].hand.push(a.card); spend(s);
+      ev(s, { type: 'give' });
+      log(s, from.name + ' gave ' + CARD_NAME[a.card] + ' to ' + s.players[a.to].name + '.');
+      handCheck(s, a.to);
+    },
+    capture(s) {
+      needAction(s); const pi = s.current; const p = s.players[pi];
+      const why = captureReason(s, pi); if (why) fail(why);
+      const t = s.tiles[p.pos].treasure;
+      for (let k = 0; k < 4; k++) { p.hand.splice(p.hand.indexOf(t), 1); s.treasureDiscard.push(t); }
+      s.captured[t] = true; spend(s);
+      ev(s, { type: 'capture', treasure: t });
+      log(s, p.name + ' captured the ' + T_INFO[t].name + '!');
+    },
+    navigate(s, a) {
+      needAction(s); const pi = s.current;
+      if (s.players[pi].role !== 'navigator') fail('Only the Navigator can do that.');
+      const ti = a.target;
+      if (ti === pi || !s.players[ti]) fail('Choose another player\'s pawn.');
+      const path = a.path;
+      if (!Array.isArray(path) || path.length < 1 || path.length > 2) fail('Move the pawn 1 or 2 tiles.');
+      let cur = s.players[ti].pos;
+      for (const step of path) { if (!neighbors(s, cur, false).includes(step)) fail('That is not a legal step.'); cur = step; }
+      s.players[ti].pos = cur; spend(s);
+      ev(s, { type: 'move' });
+      log(s, s.players[pi].name + ' moved ' + s.players[ti].name + ' to ' + s.tiles[cur].name + '.');
+    },
+    endActions(s) {
+      const b = blockReason(s); if (b) fail(b);
+      if (s.phase !== 'actions') fail('The action phase is already over.');
+      s.phase = 'draw'; s.drawsLeft = 2; s.actions = 0;
+      log(s, s.players[s.current].name + ' ends their actions. Draw 2 treasure cards.');
+    },
+    drawTreasure(s) {
+      const b = blockReason(s); if (b) fail(b);
+      if (s.phase !== 'draw' || s.drawsLeft < 1) fail('It is not time to draw treasure cards.');
+      if (!s.treasureDeck.length && s.treasureDiscard.length) {
+        s.treasureDeck = shuffle(s, s.treasureDiscard); s.treasureDiscard = [];
+        log(s, 'The treasure deck ran out and was reshuffled.');
+      }
+      s.drawsLeft--;
+      const pi = s.current;
+      if (!s.treasureDeck.length) {
+        log(s, 'There are no treasure cards left to draw.');
+      } else {
+        const card = s.treasureDeck.shift();
+        ev(s, { type: 'draw', card, player: pi });
+        if (card === 'wr') {
+          s.treasureDiscard.push('wr');
+          s.water++;
+          ev(s, { type: 'rise' });
+          log(s, 'Waters Rise! The water level is now ' + s.water + '.');
+          if (s.water >= SKULL) { lose(s, 'The water level reached the skull.'); return; }
+          if (s.floodDiscard.length) {
+            s.floodDeck = shuffle(s, s.floodDiscard).concat(s.floodDeck);
+            s.floodDiscard = [];
+            log(s, 'The flood discard pile was shuffled onto the top of the flood deck.');
+          }
+        } else {
+          s.players[pi].hand.push(card);
+          log(s, s.players[pi].name + ' drew ' + CARD_NAME[card] + '.');
+          handCheck(s, pi);
+        }
+      }
+      if (s.drawsLeft === 0) { s.phase = 'flood'; s.floodLeft = floodRate(s.water); }
+    },
+    drawFlood(s) {
+      const b = blockReason(s); if (b) fail(b);
+      if (s.phase !== 'flood' || s.floodLeft < 1) fail('There are no flood cards to reveal now.');
+      if (!s.floodDeck.length && s.floodDiscard.length) {
+        s.floodDeck = shuffle(s, s.floodDiscard); s.floodDiscard = [];
+        log(s, 'The flood deck ran out and was reshuffled.');
+      }
+      s.floodLeft--;
+      if (!s.floodDeck.length) { log(s, 'There are no flood cards left.'); return; }
+      const id = s.floodDeck.shift(); const t = s.tiles[id];
+      ev(s, { type: 'floodcard', tile: id, sinks: t.state === 'flooded' });
+      if (t.state === 'normal') {
+        t.state = 'flooded'; s.floodDiscard.push(id);
+        ev(s, { type: 'flood', tile: id });
+        log(s, t.name + ' is flooded.');
+      } else {
+        sink(s, id);
+      }
+    },
+    nextTurn(s) {
+      const b = blockReason(s); if (b) fail(b);
+      if (s.phase !== 'flood' || s.floodLeft > 0) fail('Reveal all the flood cards first.');
+      s.current = (s.current + 1) % s.players.length;
+      s.phase = 'actions'; s.actions = 3; s.pilotFlown = false; s.turn++;
+      ev(s, { type: 'turn' });
+      log(s, 'Turn ' + s.turn + ': ' + pname(s, s.current) + '.');
+    },
+    swim(s, a) {
+      needFree(s);
+      if (!s.interrupts.some(x => x.type === 'swim' && x.player === a.player)) fail('That pawn does not need to swim.');
+      if (!swimTargets(s, a.player).includes(a.tile)) fail('That pawn cannot swim there.');
+      s.players[a.player].pos = a.tile;
+      ev(s, { type: 'move' });
+      log(s, s.players[a.player].name + ' swam to ' + s.tiles[a.tile].name + '.');
+    },
+    discard(s, a) {
+      needFree(s);
+      const p = s.players[a.player]; if (!p) fail('Unknown player.');
+      const card = p.hand[a.index]; if (card == null) fail('That card is not in the hand.');
+      const over = s.interrupts.some(x => x.type === 'handlimit' && x.player === a.player);
+      const spent = isTreasure(card) && s.captured[card];
+      if (!over && !spent) fail('You can only discard when you have more than 5 cards.');
+      p.hand.splice(a.index, 1); s.treasureDiscard.push(card);
+      ev(s, { type: 'discard' });
+      log(s, p.name + ' discarded ' + CARD_NAME[card] + '.');
+    },
+    sandbags(s, a) {
+      needFree(s);
+      const p = s.players[a.player]; if (!p) fail('Unknown player.');
+      const k = p.hand.indexOf('sand'); if (k < 0) fail('That player has no Sandbags card.');
+      const t = s.tiles[a.tile];
+      if (!t || t.state !== 'flooded') fail('Sandbags only work on a flooded tile.');
+      p.hand.splice(k, 1); s.treasureDiscard.push('sand');
+      t.state = 'normal';
+      ev(s, { type: 'shore', tile: a.tile });
+      log(s, p.name + ' played Sandbags on ' + t.name + '.');
+    },
+    heli(s, a) {
+      needFree(s);
+      const p = s.players[a.player]; if (!p) fail('Unknown player.');
+      const k = p.hand.indexOf('heli'); if (k < 0) fail('That player has no Helicopter Lift card.');
+      if (a.win) {
+        const why = winWhy(s); if (why) fail(why);
+        p.hand.splice(k, 1); s.treasureDiscard.push('heli');
+        win(s); return;
+      }
+      const movers = a.movers;
+      if (!Array.isArray(movers) || !movers.length) fail('Choose at least one pawn to lift.');
+      if (new Set(movers).size !== movers.length) fail('Choose each pawn once.');
+      movers.forEach(i => { if (!s.players[i] || s.players[i].pos !== a.from) fail('All lifted pawns must start on the same tile.'); });
+      if (!alive(s, a.to) || a.to === a.from) fail('Choose a different tile that is still above water.');
+      p.hand.splice(k, 1); s.treasureDiscard.push('heli');
+      movers.forEach(i => { s.players[i].pos = a.to; });
+      ev(s, { type: 'fly' });
+      log(s, p.name + ' played Helicopter Lift: ' + movers.map(i => s.players[i].name).join(', ') + ' flew to ' + s.tiles[a.to].name + '.');
+    },
+    // ---- debug ----
+    debugWater(s, a) {
+      needFree(s);
+      s.water = Math.max(1, Math.min(SKULL, a.level | 0));
+      log(s, '[debug] Water level set to ' + s.water + '.');
+      if (s.water >= SKULL) lose(s, 'The water level reached the skull.');
+    },
+    debugTile(s, a) {
+      needFree(s);
+      const t = s.tiles[a.tile]; if (!t) fail('Unknown tile.');
+      if (t.state === 'sunk') fail('That tile has already sunk.');
+      if (a.state === 'sunk') { sink(s, a.tile); return; }
+      if (a.state !== 'normal' && a.state !== 'flooded') fail('Unknown state.');
+      t.state = a.state;
+      ev(s, { type: a.state === 'flooded' ? 'flood' : 'shore', tile: a.tile });
+      log(s, '[debug] ' + t.name + ' set to ' + a.state + '.');
+    },
+    debugCard(s, a) {
+      needFree(s);
+      const p = s.players[a.player]; if (!p) fail('Unknown player.');
+      if (!isTreasure(a.card) && !isSpecial(a.card)) fail('Unknown card.');
+      p.hand.push(a.card);
+      log(s, '[debug] ' + p.name + ' received ' + CARD_NAME[a.card] + '.');
+      handCheck(s, a.player);
+    }
+  };
+
+  function act(prev, a) {
+    const s = JSON.parse(JSON.stringify(prev));
+    s.events = [];
+    if (!a || !A[a.type]) fail('Unknown action.');
+    if (s.result) fail('The game is over.');
+    A[a.type](s, a);
+    cleanInterrupts(s);
+    return s;
+  }
+
+  const api = {
+    ROLES, ROLE_INFO, TREASURES, T_INFO, CARD_NAME, TILE_DEFS, FOOLS, LAYOUT, DIFFS, HAND_LIMIT, SKULL,
+    floodRate, newGame, act, rc, idAt, neighbors, isTreasure, isSpecial, pname,
+    moveTargets, diveTargets, flyTargets, shoreTargets, giveTargets, navPawns, swimTargets,
+    canDo, captureReason, winWhy, blockReason, describeInterrupt
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  return api;
+})();
+</script>
+
+<!-- ================= RENDERING + INPUT ================= -->
+<script id="ui">
+(function () {
+  'use strict';
+  const E = FI, RI = E.ROLE_INFO, TI = E.T_INFO;
+  const $ = (q, r) => (r || document).querySelector(q);
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const LS = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  const SAVE_KEY = 'forbiddenIsland.save', SETUP_KEY = 'forbiddenIsland.setup', SOUND_KEY = 'forbiddenIsland.sound';
+
+  let S = null, undo = [], lastOpts = null, tileEls = {};
+  const ui = {
+    mode: null, sel: [], nav: null, heli: null, sandP: null, modal: null,
+    hint: '', hintErr: false, hintT: 0, revealing: false, hideFlood: new Set(), sinking: new Set(),
+    debug: false, dbg: { tile: 0, p: 0, c: 'earth' }, endAt: 0, setup: null, setupErr: '', revT: 0
+  };
+
+  // ---------------- sound ----------------
+  const Sfx = (() => {
+    let ctx = null; let on = LS.get(SOUND_KEY) !== 'off';
+    function c() {
+      if (!ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; try { ctx = new AC(); } catch (e) { return null; } }
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    }
+    function tone(f, d, o) {
+      o = o || {}; if (!on) return; const a = c(); if (!a) return;
+      const t = a.currentTime + (o.at || 0);
+      const osc = a.createOscillator(), g = a.createGain();
+      osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(f, t);
+      if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + d);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.vol || 0.2, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      osc.connect(g); g.connect(a.destination); osc.start(t); osc.stop(t + d + 0.05);
+    }
+    function noise(d, o) {
+      o = o || {}; if (!on) return; const a = c(); if (!a) return;
+      const t = a.currentTime + (o.at || 0);
+      const len = Math.max(1, Math.floor(a.sampleRate * d));
+      const buf = a.createBuffer(1, len, a.sampleRate); const ch = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
+      const src = a.createBufferSource(); src.buffer = buf;
+      const f = a.createBiquadFilter(); f.type = o.type || 'lowpass'; f.frequency.setValueAtTime(o.freq || 800, t);
+      if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + d);
+      const g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.vol || 0.2, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      src.connect(f); f.connect(g); g.connect(a.destination); src.start(t); src.stop(t + d + 0.05);
+    }
+    return {
+      isOn() { return on; },
+      toggle() { on = !on; LS.set(SOUND_KEY, on ? 'on' : 'off'); if (on) tone(660, 0.08, { type: 'triangle', vol: 0.08 }); },
+      click() { tone(660, 0.06, { type: 'triangle', vol: 0.07 }); },
+      draw() { noise(0.2, { freq: 2500, type: 'highpass', vol: 0.12 }); },
+      move() { tone(330, 0.08, { type: 'triangle', vol: 0.1 }); tone(440, 0.09, { type: 'triangle', vol: 0.08, at: 0.06 }); },
+      shore() { tone(392, 0.12, { type: 'triangle', vol: 0.14 }); tone(587, 0.2, { type: 'triangle', vol: 0.14, at: 0.1 }); },
+      flood() { noise(0.9, { freq: 600, vol: 0.22, to: 180 }); tone(110, 0.7, { vol: 0.12, to: 80 }); },
+      sink() { tone(150, 1.1, { vol: 0.3, to: 35 }); noise(1.0, { freq: 1000, vol: 0.3, to: 120, at: 0.05 }); },
+      rise() { for (let i = 0; i < 3; i++) tone(300, 0.3, { type: 'sawtooth', vol: 0.11, to: 650, at: i * 0.33 }); },
+      capture() { [880, 1109, 1319, 1760].forEach((f, i) => tone(f, 0.5, { type: 'triangle', vol: 0.14, at: i * 0.09 })); },
+      win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.38, { type: 'square', vol: 0.07, at: i * 0.15 })); },
+      lose() { tone(392, 0.4, { type: 'sawtooth', vol: 0.11 }); tone(330, 0.4, { type: 'sawtooth', vol: 0.11, at: 0.35 }); tone(262, 0.9, { type: 'sawtooth', vol: 0.11, to: 130, at: 0.7 }); },
+      err() { tone(170, 0.15, { type: 'square', vol: 0.05 }); },
+      drumroll(dur) {
+        const n = Math.floor(dur / 0.045);
+        for (let i = 0; i < n; i++) {
+          const v = 0.05 + 0.28 * (i / n);
+          noise(0.07, { freq: 420, vol: v, at: i * 0.045 });
+          if (i % 2 === 0) tone(95 + (i % 4) * 6, 0.06, { vol: v * 0.6, at: i * 0.045 });
+        }
+      },
+      boom() { tone(70, 0.9, { vol: 0.35, to: 38 }); noise(1.1, { freq: 6000, type: 'highpass', vol: 0.16, to: 2500 }); noise(0.5, { freq: 300, vol: 0.3 }); }
+    };
+  })();
+
+  // ---------------- icons ----------------
+  function icon(k, sz) {
+    sz = sz || 36;
+    const a = 'width="' + sz + '" height="' + sz + '" viewBox="0 0 40 40" aria-hidden="true"';
+    const ink = 'rgba(0,0,0,.5)';
+    switch (k) {
+      case 'earth': return '<svg ' + a + '><polygon points="20,3 35,12 35,28 20,37 5,28 5,12" fill="' + TI.earth.color + '" stroke="' + ink + '" stroke-width="2"/><path d="M5 12 L20 20 L35 12 M20 20 L20 37" stroke="' + ink + '" stroke-width="1.6" fill="none"/></svg>';
+      case 'wind': return '<svg ' + a + '><path d="M6 31 C9 15 21 6 35 5 C32 11 29 15 23 17 C29 17 32 19 33 21 C27 24 22 25 16 25 C20 27 22 29 23 32 C16 34 10 34 6 31Z" fill="' + TI.wind.color + '" stroke="' + ink + '" stroke-width="2" stroke-linejoin="round"/><path d="M11 29 C16 22 22 16 30 9" stroke="' + ink + '" stroke-width="1.4" fill="none"/></svg>';
+      case 'fire': return '<svg ' + a + '><path d="M20 3 L31 15 L26 37 L14 37 L9 15 Z" fill="' + TI.fire.color + '" stroke="' + ink + '" stroke-width="2" stroke-linejoin="round"/><path d="M9 15 L31 15 M20 3 L17 15 L20 37 M20 3 L23 15" stroke="' + ink + '" stroke-width="1.4" fill="none"/></svg>';
+      case 'ocean': return '<svg ' + a + '><path d="M8 6 H32 C32 18 27 23 20 23 C13 23 8 18 8 6Z" fill="' + TI.ocean.color + '" stroke="' + ink + '" stroke-width="2"/><path d="M18 23 H22 V31 H18Z M12 36 L15 31 H25 L28 36Z" fill="' + TI.ocean.color + '" stroke="' + ink + '" stroke-width="2" stroke-linejoin="round"/><path d="M11 10 Q20 14 29 10" stroke="rgba(255,255,255,.7)" stroke-width="1.6" fill="none"/></svg>';
+      case 'heli': return '<svg ' + a + '><path d="M4 8 H36" stroke="#64748b" stroke-width="3" stroke-linecap="round"/><path d="M19 8 V14" stroke="#64748b" stroke-width="3"/><ellipse cx="16" cy="21" rx="11" ry="8" fill="#fbbf24" stroke="' + ink + '" stroke-width="2"/><circle cx="12" cy="19" r="4" fill="#bae6fd"/><path d="M26 20 H36 L37 15" stroke="#64748b" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M7 33 H26 M11 29 V33 M21 29 V33" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/></svg>';
+      case 'sand': return '<svg ' + a + '><path d="M11 14 C8 21 8 30 12 35 H28 C32 30 32 21 29 14 Z" fill="#d6b277" stroke="' + ink + '" stroke-width="2"/><path d="M11 14 C15 9 25 9 29 14 Z" fill="#b8894a" stroke="' + ink + '" stroke-width="2"/><path d="M14 22 H26 M13 28 H27" stroke="rgba(0,0,0,.25)" stroke-width="2"/></svg>';
+      case 'wr': return '<svg ' + a + '><path d="M3 30 Q9 24 15 30 T27 30 T39 30" stroke="#38bdf8" stroke-width="3" fill="none"/><path d="M3 36 Q9 30 15 36 T27 36 T39 36" stroke="#0ea5e9" stroke-width="3" fill="none"/><path d="M20 23 V5 M13 12 L20 5 L27 12" stroke="#ef4444" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      case 'pad': return '<svg ' + a + '><circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" stroke-width="3"/><path d="M14 12 V28 M26 12 V28 M14 20 H26" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>';
+    }
+    return '';
+  }
+  const MEEPLE = 'M20 2C25 2 28 5.6 28 10C28 12.6 26.8 14.6 25.2 15.8C30.5 16.6 37.6 18.2 38.8 22.6C39.6 25.6 36.4 27 31.4 26.4C30.4 26.3 29.8 27.1 30.3 28L36.4 39.6C37.3 41.6 36.4 43 34.4 43H25.4C24 43 23.3 42.3 22.8 41.2L20 34.8L17.2 41.2C16.7 42.3 16 43 14.6 43H5.6C3.6 43 2.7 41.6 3.6 39.6L9.7 28C10.2 27.1 9.6 26.3 8.6 26.4C3.6 27 0.4 25.6 1.2 22.6C2.4 18.2 9.5 16.6 14.8 15.8C13.2 14.6 12 12.6 12 10C12 5.6 15 2 20 2Z';
+  function pawnHTML(role, extra) {
+    const r = RI[role];
+    const stroke = role === 'messenger' ? '#334155' : '#ffffff';
+    return '<span class="pawn' + (extra ? ' ' + extra : '') + '" style="--pc:' + r.color + ';--pi:' + r.ink + ';--ps:' + stroke + '" title="' + r.name + '"><svg viewBox="0 0 40 44" aria-hidden="true"><path d="' + MEEPLE + '"/></svg><b>' + r.abbr + '</b></span>';
+  }
+
+  // ---------------- island scenery (original SVG sprites) ----------------
+  const SPR = {
+    palm: '<path d="M12 23C12 17 11 12 13 7" stroke="#7a4b22" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M13 7C9 4 5 5 3 8C7 6 10 7 13 7ZM13 7C16 3 20 3 22 6C18 5 15 6 13 7ZM13 7C11 3 12 1 15 1C13 3 13 5 13 7ZM13 7C17 7 20 9 21 12C18 9 15 8 13 7ZM13 7C9 8 6 10 5 13C8 10 11 8 13 7Z" fill="#2f9e44"/>',
+    pine: '<path d="M12 2L18 11H15L19 17H5L9 11H6Z" fill="#2b8a3e" stroke="#1b5e2a" stroke-width=".8"/><rect x="11" y="17" width="2" height="5" fill="#7a4b22"/>',
+    tree: '<rect x="10.8" y="13" width="2.4" height="9" fill="#7a4b22"/><circle cx="12" cy="9" r="6" fill="#40a35a"/><circle cx="8" cy="11.5" r="4" fill="#37944f"/><circle cx="16" cy="11.5" r="4" fill="#2f8a47"/>',
+    redtree: '<rect x="10.8" y="13" width="2.4" height="9" fill="#7a4b22"/><circle cx="12" cy="9" r="6" fill="#e8590c"/><circle cx="8" cy="11.5" r="4" fill="#c92a2a"/><circle cx="16" cy="11.5" r="4" fill="#d9480f"/>',
+    hut: '<rect x="5" y="12" width="14" height="10" fill="#9c6b3c" stroke="#5c3d1e" stroke-width=".8"/><path d="M2.5 13L12 4L21.5 13Z" fill="#d4ad5a" stroke="#8a6a24" stroke-width=".8"/><path d="M7 11L12 6.5L17 11" stroke="#a8842e" stroke-width=".8" fill="none"/><rect x="10.3" y="15.5" width="3.4" height="6.5" fill="#3d2410"/>',
+    rock: '<path d="M2 21L5.5 12L11 8.5L17.5 10.5L22 21Z" fill="#8d8f94" stroke="#55585e" stroke-width=".8"/><path d="M11 8.5L12.5 21M5.5 12L9 21" stroke="#6b6e75" stroke-width=".7"/>',
+    flower: '<path d="M12 22V12" stroke="#2f9e44" stroke-width="1.6"/><path d="M12 18C9 16 7.5 16.5 7.5 17.5C8.5 18.8 11 18.8 12 18Z" fill="#2f9e44"/><g fill="#f06595"><circle cx="12" cy="5.5" r="3"/><circle cx="8.5" cy="8.5" r="3"/><circle cx="15.5" cy="8.5" r="3"/><circle cx="10" cy="12" r="3"/><circle cx="14" cy="12" r="3"/></g><circle cx="12" cy="9" r="2.2" fill="#fcc419"/>',
+    bush: '<circle cx="7" cy="17" r="5" fill="#37944f"/><circle cx="13" cy="15" r="6" fill="#40a35a"/><circle cx="18" cy="18" r="4" fill="#2f8a47"/><circle cx="10" cy="14" r="1" fill="#e03131"/><circle cx="15" cy="17" r="1" fill="#e03131"/>',
+    crab: '<path d="M5 15L2 18M5 16.5L3 20M19 15L22 18M19 16.5L21 20" stroke="#e8590c" stroke-width="1.4" stroke-linecap="round"/><ellipse cx="12" cy="15" rx="7" ry="4.5" fill="#f76707"/><path d="M6.5 12C3.5 10 3.5 7 5 6C5.5 8 6.5 9 7.5 10M17.5 12C20.5 10 20.5 7 19 6C18.5 8 17.5 9 16.5 10" stroke="#f76707" stroke-width="1.8" fill="none" stroke-linecap="round"/><circle cx="10" cy="11" r="1.2" fill="#111"/><circle cx="14" cy="11" r="1.2" fill="#111"/>',
+    turtle: '<ellipse cx="7" cy="19.5" rx="1.8" ry="1.1" fill="#69db7c"/><ellipse cx="16" cy="19.5" rx="1.8" ry="1.1" fill="#69db7c"/><circle cx="20" cy="14" r="2.4" fill="#69db7c"/><circle cx="20.6" cy="13.4" r=".55" fill="#111"/><ellipse cx="12" cy="15" rx="7" ry="5" fill="#2b8a3e"/><path d="M8 13.5L12 11L16 13.5L15 17.5H9Z" fill="none" stroke="#1b5e2a" stroke-width=".9"/>',
+    frog: '<ellipse cx="12" cy="16" rx="7" ry="5" fill="#51cf66"/><circle cx="8.5" cy="10.5" r="2.7" fill="#51cf66"/><circle cx="15.5" cy="10.5" r="2.7" fill="#51cf66"/><circle cx="8.5" cy="10.3" r="1.2" fill="#111"/><circle cx="15.5" cy="10.3" r="1.2" fill="#111"/><path d="M9 17Q12 19 15 17" stroke="#2b8a3e" stroke-width="1" fill="none"/>',
+    bird: '<path d="M2 12Q7 6 12 12Q17 6 22 12" stroke="#334155" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M2 12Q7 6 12 12Q17 6 22 12" stroke="#f8fafc" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+    bat: '<path d="M12 10C10 8 7 8 4 7C5 9 4 11 2 12C5 12 7 13 8 15C9 13 10 13 12 14C14 13 15 13 16 15C17 13 19 12 22 12C20 11 19 9 20 7C17 8 14 8 12 10Z" fill="#343a40"/><circle cx="11" cy="10.5" r=".6" fill="#ffd43b"/><circle cx="13" cy="10.5" r=".6" fill="#ffd43b"/>',
+    mushroom: '<rect x="10" y="13" width="4" height="8" rx="1.5" fill="#f1f3f5" stroke="#adb5bd" stroke-width=".6"/><path d="M4 13.5C4 6.5 20 6.5 20 13.5Z" fill="#e03131"/><circle cx="9" cy="10.5" r="1.2" fill="#fff"/><circle cx="14" cy="9.3" r="1.4" fill="#fff"/><circle cx="17" cy="11.8" r="1" fill="#fff"/>',
+    cactus: '<rect x="10" y="5" width="4" height="17" rx="2" fill="#2f9e44"/><path d="M10 14H7.5V9.5M14 16H16.5V10.5" stroke="#2f9e44" stroke-width="3" fill="none" stroke-linecap="round"/>',
+    reeds: '<path d="M8 22V9M12 22V6M16 22V10" stroke="#5c940d" stroke-width="1.5"/><rect x="7" y="7" width="2" height="5" rx="1" fill="#7a4b22"/><rect x="11" y="4" width="2" height="5" rx="1" fill="#7a4b22"/><rect x="15" y="8" width="2" height="5" rx="1" fill="#7a4b22"/><path d="M16 22C17 17 20 15 22 14M8 22C7 18 4 16 2 16" stroke="#74b816" stroke-width="1.3" fill="none"/>',
+    tower: '<path d="M8 22L9 8H15L16 22Z" fill="#a8a29e" stroke="#57534e" stroke-width=".8"/><rect x="7" y="5" width="10" height="3.5" fill="#78716c"/><path d="M7 5V2.5H9V5M11 5V2.5H13V5M15 5V2.5H17V5" fill="#78716c"/><rect x="11" y="12" width="2" height="3.5" rx="1" fill="#292524"/>',
+    dome: '<rect x="5" y="13" width="14" height="9" fill="#ced4da" stroke="#868e96" stroke-width=".8"/><path d="M4 13C4 6 20 6 20 13Z" fill="#e9ecef" stroke="#868e96" stroke-width=".8"/><path d="M12.5 7L17 3" stroke="#495057" stroke-width="2.2" stroke-linecap="round"/><rect x="10.5" y="16" width="3" height="6" fill="#495057"/>',
+    bridge: '<path d="M1 13H23V16.5H21C19 12.5 15 12.5 13 16.5H11C9 12.5 5 12.5 3 16.5H1Z" fill="#a8a29e" stroke="#57534e" stroke-width=".7"/><path d="M2 13V9M22 13V9M2 9.5Q12 14 22 9.5" stroke="#7a4b22" stroke-width="1" fill="none"/>',
+    gate: '<rect x="4" y="8" width="3.5" height="14" fill="#adb5bd" stroke="#495057" stroke-width=".7"/><rect x="16.5" y="8" width="3.5" height="14" fill="#adb5bd" stroke="#495057" stroke-width=".7"/><path d="M2 8H22V4.5H2Z" fill="#868e96" stroke="#495057" stroke-width=".7"/><path d="M7.5 9Q12 5.5 16.5 9" stroke="#495057" stroke-width=".8" fill="none"/>',
+    shell: '<path d="M12 4L4 18C8 21 16 21 20 18Z" fill="#ffc9c9" stroke="#e8590c" stroke-width=".8"/><path d="M12 4L8 19.5M12 4V20.5M12 4L16 19.5" stroke="#e8590c" stroke-width=".7"/>',
+    butterfly: '<path d="M12 12C8 5 3 7 5 11C3 14 8 16 12 12C16 16 21 14 19 11C21 7 16 5 12 12Z" fill="#ff922b" stroke="#c2410c" stroke-width=".6"/><path d="M12 8.5V16" stroke="#343a40" stroke-width="1.3" stroke-linecap="round"/>',
+    lily: '<path d="M3 16A9 4.5 0 1 0 21 16A9 4.5 0 1 0 3 16ZM12 16L20 14" fill="#40c057" stroke="#2b8a3e" stroke-width=".7"/><circle cx="11" cy="13.5" r="2.6" fill="#faa2c1"/><circle cx="11" cy="13.5" r="1" fill="#fcc419"/>',
+    owl: '<ellipse cx="12" cy="14" rx="6" ry="7" fill="#8d6e63"/><path d="M7 7.5L8.6 10M17 7.5L15.4 10" stroke="#8d6e63" stroke-width="2.2" stroke-linecap="round"/><circle cx="9.5" cy="11.5" r="2.4" fill="#fff"/><circle cx="14.5" cy="11.5" r="2.4" fill="#fff"/><circle cx="9.5" cy="11.5" r="1.1" fill="#111"/><circle cx="14.5" cy="11.5" r="1.1" fill="#111"/><path d="M11.2 14L12 15.5L12.8 14Z" fill="#f59f00"/>',
+    fire: '<path d="M6 21L18 17.5M6 17.5L18 21" stroke="#7a4b22" stroke-width="2" stroke-linecap="round"/><path d="M12 18.5C8 15.5 10 11 12 6.5C13 9.5 16 12 14.3 15C15.2 14 15.2 12.2 15.2 12.2C17 15 15.5 18.5 12 18.5Z" fill="#fd7e14"/><path d="M12 18.5C10.5 16.5 11.5 14.5 12 12.5C13 14.5 13.5 16.5 12 18.5Z" fill="#ffd43b"/>'
+  };
+  // [sprite, left %, top %, size px, animation, center?]
+  const SCENE = {
+    "Fools' Landing": [['palm', 3, 52, 30, 'sway'], ['crab', 74, 62, 24, 'side']],
+    'Bronze Gate': [['gate', 33, 38, 36, '', 1], ['bush', 4, 62, 24, '']],
+    'Copper Gate': [['gate', 33, 38, 36, '', 1], ['flower', 74, 60, 24, 'sway']],
+    'Iron Gate': [['gate', 33, 38, 36, '', 1], ['rock', 4, 64, 22, '']],
+    'Silver Gate': [['gate', 33, 38, 36, '', 1], ['bird', 72, 52, 24, 'fly']],
+    'Gold Gate': [['gate', 33, 38, 36, '', 1], ['palm', 72, 52, 28, 'sway']],
+    'Temple of the Moon': [['owl', 4, 60, 24, 'hop'], ['tree', 72, 56, 28, 'sway']],
+    'Temple of the Sun': [['flower', 4, 58, 24, 'sway'], ['palm', 72, 52, 28, 'sway']],
+    'Whispering Garden': [['flower', 4, 58, 26, 'sway'], ['butterfly', 74, 50, 22, 'flap']],
+    'Howling Garden': [['bush', 3, 60, 26, ''], ['bird', 72, 48, 24, 'fly']],
+    'Cave of Embers': [['fire', 4, 60, 24, 'flick'], ['rock', 72, 60, 26, '']],
+    'Cave of Shadows': [['bat', 4, 50, 24, 'flap'], ['rock', 72, 60, 26, '']],
+    'Coral Palace': [['shell', 5, 62, 22, ''], ['turtle', 72, 62, 26, 'hop']],
+    'Tidal Palace': [['crab', 4, 62, 24, 'side'], ['shell', 74, 62, 22, '']],
+    'Breakers Bridge': [['bridge', 28, 40, 46, '', 1], ['bird', 70, 64, 24, 'fly']],
+    'Cliffs of Abandon': [['rock', 28, 36, 44, '', 1], ['bird', 6, 64, 22, 'fly'], ['pine', 74, 58, 26, 'sway']],
+    'Crimson Forest': [['redtree', 31, 34, 40, 'sway', 1], ['pine', 4, 56, 28, 'sway'], ['mushroom', 74, 64, 22, '']],
+    'Dunes of Deception': [['cactus', 33, 36, 36, '', 1], ['rock', 4, 66, 20, ''], ['bird', 72, 54, 22, 'fly']],
+    'Lost Lagoon': [['hut', 31, 35, 40, '', 1], ['lily', 4, 66, 24, ''], ['frog', 74, 62, 22, 'hop']],
+    'Misty Marsh': [['reeds', 31, 36, 38, 'sway', 1], ['frog', 4, 62, 22, 'hop'], ['lily', 72, 66, 24, '']],
+    'Observatory': [['dome', 31, 35, 40, '', 1], ['pine', 4, 56, 26, 'sway'], ['owl', 74, 60, 22, 'hop']],
+    'Phantom Rock': [['rock', 29, 36, 42, '', 1], ['mushroom', 4, 64, 22, ''], ['bat', 72, 50, 24, 'flap']],
+    'Twilight Hollow': [['hut', 31, 35, 40, '', 1], ['mushroom', 4, 64, 22, ''], ['fire', 74, 62, 22, 'flick']],
+    'Watchtower': [['tower', 33, 33, 38, '', 1], ['palm', 3, 52, 28, 'sway'], ['bird', 72, 50, 22, 'fly']]
+  };
+  const TERRAIN = {
+    "Fools' Landing": 'fools', 'Bronze Gate': 'gate', 'Copper Gate': 'gate', 'Iron Gate': 'gate', 'Silver Gate': 'gate', 'Gold Gate': 'gate',
+    'Temple of the Moon': 'temple', 'Temple of the Sun': 'temple', 'Whispering Garden': 'lush', 'Howling Garden': 'lush',
+    'Cave of Embers': 'cave', 'Cave of Shadows': 'cave', 'Coral Palace': 'palace', 'Tidal Palace': 'palace',
+    'Breakers Bridge': 'bridge', 'Cliffs of Abandon': 'rock', 'Crimson Forest': 'forest', 'Dunes of Deception': 'sand',
+    'Lost Lagoon': 'lagoon', 'Misty Marsh': 'marsh', 'Observatory': 'grass', 'Phantom Rock': 'rock', 'Twilight Hollow': 'dusk', 'Watchtower': 'grass'
+  };
+  const ANIM = { sway: 'a-sway', side: 'a-side', hop: 'a-hop', fly: 'a-fly', flap: 'a-flap', flick: 'a-flick' };
+  function sceneHTML(t) {
+    return (SCENE[t.name] || []).map((d, k) => {
+      const delay = (((t.id * 7 + k * 3) % 10) * 0.37).toFixed(2);
+      const sz = Math.round(d[3] * 1.3), left = d[5] ? 50 - (sz / 2.22) : (d[1] < 50 ? 1 : 100 - sz / 1.11 - 1), top = d[5] ? d[2] - 2 : d[2] - 6;
+      return '<span class="deco' + (d[5] ? ' dc' : '') + (d[4] ? ' ' + ANIM[d[4]] : '') + '" style="left:' + left.toFixed(1) + '%;top:' + top + '%;--dd:-' + delay + 's"><svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24">' + SPR[d[0]] + '</svg></span>';
+    }).join('');
+  }
+  function cardLabel(c) { return c in TI ? TI[c].short : (c === 'heli' ? 'Helicopter Lift' : c === 'sand' ? 'Sandbags' : 'Waters Rise'); }
+  function cardHTML(c, o) {
+    o = o || {};
+    return '<div class="card k-' + c + (o.spent ? ' spent' : '') + '" title="' + esc(E.CARD_NAME[c]) + (o.spent ? ' (already captured — you may discard it)' : '') + '">' +
+      icon(c, 28) + '<span class="cname">' + cardLabel(c) + '</span>' +
+      (o.playable ? '<button class="play" data-act="play" data-card="' + c + '" data-p="' + o.player + '">PLAY</button>' : '') +
+      (o.discardable ? '<button class="disc" data-act="disc" data-p="' + o.player + '" data-i="' + o.index + '" title="Discard this card">✕</button>' : '') +
+      '</div>';
+  }
+  const ORDER = { earth: 0, wind: 1, fire: 2, ocean: 3, heli: 4, sand: 5 };
+  function sortedHand(hand) { return hand.map((c, i) => ({ c, i })).sort((a, b) => ORDER[a.c] - ORDER[b.c] || a.i - b.i); }
+
+  // ---------------- stage scaling ----------------
+  function fit() { const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080); document.documentElement.style.setProperty('--s', s); }
+  window.addEventListener('resize', fit);
+
+  // ---------------- theme ----------------
+  function toggleTheme() {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    LS.set('theme', next);
+    renderTop();
+  }
+
+  // ---------------- state plumbing ----------------
+  function save() { if (S && !S.result) LS.set(SAVE_KEY, JSON.stringify({ state: S, opts: lastOpts })); }
+  function loadSave() {
+    try {
+      const d = JSON.parse(LS.get(SAVE_KEY) || 'null');
+      if (d && d.state && d.state.v === 1 && !d.state.result && Array.isArray(d.state.tiles) && d.state.tiles.length === 24) return d;
+    } catch (e) {}
+    return null;
+  }
+  function clearModes() { ui.mode = null; ui.sel = []; ui.nav = null; ui.heli = null; ui.sandP = null; }
+  function hint(msg, err) {
+    ui.hint = msg; ui.hintErr = !!err; renderActionbar();
+    clearTimeout(ui.hintT); ui.hintT = setTimeout(() => { ui.hint = ''; ui.hintErr = false; renderActionbar(); }, 5000);
+  }
+
+  function act(a) {
+    if (!S || ui.revealing) return false;
+    let next;
+    try { next = E.act(S, a); }
+    catch (e) {
+      if (e && e.rule) { hint(e.message, true); Sfx.err(); return false; }
+      console.error(e); hint('Something went wrong: ' + (e && e.message), true); return false;
+    }
+    const isDebug = a.type.indexOf('debug') === 0;
+    if (isDebug) undo = [];
+    else if (S.phase === 'actions') undo.push(S);
+    if (next.phase !== 'actions' || next.result) undo = [];
+    S = next;
+    clearModes();
+    ui.hint = ''; ui.hintErr = false;
+    if (ui.modal && ui.modal.type !== 'rules') ui.modal = null;
+    const dramatic = S.events.find(e => e.type === 'rise' || e.type === 'sink' || e.type === 'flood');
+    const fc = S.events.find(e => e.type === 'floodcard');
+    const isRise = S.events.some(e => e.type === 'rise');
+    const willSink = S.events.some(e => e.type === 'sink');
+    const drum = dramatic ? (isRise || willSink ? DRUM_MS : DRUM_FLOOD_MS) : 0;
+    if (S.result) { ui.endAt = Date.now() + drum + 1500; setTimeout(renderAll, drum + 1550); LS.del(SAVE_KEY); }
+    else save();
+    if (!dramatic) { renderAll(); handleEvents(S.events); return true; }
+    // build-up: hold the old board, drumroll, then reveal with a shake
+    const evs = S.events;
+    ui.revealing = true;
+    renderTop(); renderActionbar(); renderBanner();
+    const r = $('#reveal'); clearTimeout(ui.revT);
+    const doomed = [...new Set(evs.filter(e => e.type === 'flood' || e.type === 'sink').map(e => e.tile))];
+    if (fc) {
+      // flood card: show the tile name straight away (no face-down card), the outcome waits for the drumroll
+      r.innerHTML = '<div class="bigcard k-flood"><div class="bs">Flood card</div><div class="bn">' + esc(S.tiles[fc.tile].name) + '</div></div>';
+      r.classList.remove('hidden');
+    } else if (isRise) {
+      r.innerHTML = '<div class="bigcard k-drum td"><div class="q">?</div></div>';
+      r.classList.remove('hidden');
+    }
+    doomed.forEach(id => tileEls[id] && tileEls[id].classList.add('doom'));
+    Sfx.drumroll(drum / 1000);
+    setTimeout(() => {
+      ui.revealing = false;
+      doomed.forEach(id => tileEls[id] && tileEls[id].classList.remove('doom'));
+      if (fc) {
+        const c = $('.bigcard', r);
+        if (c) {
+          c.classList.toggle('k-sinkc', !!fc.sinks);
+          c.querySelector('.bs').textContent = fc.sinks ? 'Already flooded — it sinks!' : 'Flooded!';
+        }
+        ui.revT = setTimeout(() => { const b = $('.bigcard', r); if (b) b.classList.add('out'); ui.revT = setTimeout(() => r.classList.add('hidden'), 320); }, 1300);
+      } else if (isRise) { r.classList.add('hidden'); r.innerHTML = ''; }
+      renderAll();
+      handleEvents(evs.filter(e => e.type !== 'floodcard'));
+      if (willSink || isRise) { Sfx.boom(); shake(false); } else shake(true);
+    }, drum);
+    return true;
+  }
+  const DRUM_MS = 1400, DRUM_FLOOD_MS = 1000;
+  function shake(small) {
+    const st = $('#stage');
+    st.classList.remove('shake', 'shake-sm'); void st.offsetWidth; st.classList.add(small ? 'shake-sm' : 'shake');
+    setTimeout(() => st.classList.remove('shake', 'shake-sm'), 750);
+  }
+  function doUndo() {
+    if (!S || !undo.length || ui.revealing) return;
+    S = undo.pop(); clearModes(); ui.modal = null; save(); Sfx.click();
+    hint('Undone.'); renderAll();
+  }
+
+  // ---------------- events → animation & sound ----------------
+  function anim(id, cls) {
+    const el = tileEls[id]; if (!el) return;
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), 800);
+  }
+  function splash(id) {
+    const el = tileEls[id]; if (!el) return;
+    const d = document.createElement('div'); d.className = 'splash'; el.parentNode.appendChild(d);
+    setTimeout(() => d.remove(), 1100);
+  }
+  function showReveal(html, cls) {
+    const r = $('#reveal');
+    r.innerHTML = '<div class="bigcard ' + cls + '">' + html + '</div>';
+    r.classList.remove('hidden');
+    clearTimeout(ui.revT);
+    ui.revT = setTimeout(() => {
+      const c = $('.bigcard', r); if (c) c.classList.add('out');
+      ui.revT = setTimeout(() => r.classList.add('hidden'), 320);
+    }, 1500);
+  }
+  function handleEvents(evs) {
+    (evs || []).forEach(e => {
+      switch (e.type) {
+        case 'move': case 'give': case 'fly': case 'discard': Sfx.move(); break;
+        case 'shore': anim(e.tile, 'anim-shore'); Sfx.shore(); break;
+        case 'flood': anim(e.tile, 'anim-flood'); Sfx.flood(); break;
+        case 'sink':
+          ui.sinking.add(e.tile); renderIsland(); splash(e.tile); Sfx.sink();
+          setTimeout(() => { ui.sinking.delete(e.tile); renderIsland(); }, 980);
+          break;
+        case 'draw':
+          if (e.card === 'wr') { showReveal(icon('wr', 120) + '<div class="bn">Waters Rise!</div><div class="bs">Water level up · flood pile back on top</div>', 'k-wr'); Sfx.rise(); }
+          else { showReveal(icon(e.card, 120) + '<div class="bn">' + esc(E.CARD_NAME[e.card]) + '</div><div class="bs">' + (E.isTreasure(e.card) ? 'Treasure card' : 'Special action') + '</div>', 'k-' + e.card); Sfx.draw(); }
+          break;
+        case 'floodcard':
+          showReveal('<div class="bs">' + (e.sinks ? 'Already flooded — it sinks!' : 'Flood card') + '</div><div class="bn">' + esc(S.tiles[e.tile].name) + '</div>', e.sinks ? 'k-flood k-sinkc' : 'k-flood');
+          Sfx.draw();
+          break;
+        case 'capture': {
+          Sfx.capture();
+          const el = document.querySelector('.tre[data-t="' + e.treasure + '"]');
+          if (el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+          showReveal(icon(e.treasure, 120) + '<div class="bn">' + esc(TI[e.treasure].name) + '</div><div class="bs">Captured!</div>', 'k-' + e.treasure);
+          break;
+        }
+        case 'win': Sfx.win(); break;
+        case 'lose': setTimeout(() => Sfx.lose(), 700); break;
+      }
+    });
+  }
+
+  // ---------------- targeting ----------------
+  function swimInterrupt() { return S && S.interrupts.find(x => x.type === 'swim'); }
+  function targets() {
+    if (!S || S.result || ui.revealing) return null;
+    const pi = S.current;
+    switch (ui.mode) {
+      case 'move': return E.moveTargets(S, pi);
+      case 'dive': return E.diveTargets(S, pi);
+      case 'fly': return E.flyTargets(S, pi);
+      case 'shore': return E.shoreTargets(S, pi).filter(t => !ui.sel.includes(t));
+      case 'nav': {
+        if (ui.nav.target == null || ui.nav.path.length >= 2) return [];
+        const from = ui.nav.path.length ? ui.nav.path[ui.nav.path.length - 1] : S.players[ui.nav.target].pos;
+        return E.neighbors(S, from, false);
+      }
+      case 'sand': return S.tiles.filter(t => t.state === 'flooded').map(t => t.id);
+      case 'heli':
+        if (ui.heli.from == null) return [...new Set(S.players.map(p => p.pos))];
+        return S.tiles.filter(t => t.state !== 'sunk' && t.id !== ui.heli.from).map(t => t.id);
+    }
+    const sw = swimInterrupt();
+    if (sw && !ui.modal) return E.swimTargets(S, sw.player);
+    return null;
+  }
+  function selectedTiles() {
+    const out = new Set(ui.sel);
+    if (ui.mode === 'nav' && ui.nav) ui.nav.path.forEach(t => out.add(t));
+    if (ui.mode === 'heli' && ui.heli && ui.heli.from != null) out.add(ui.heli.from);
+    return out;
+  }
+  function onTileClick(id) {
+    if (!S || S.result || ui.revealing || ui.modal) return;
+    const tg = targets();
+    if (!tg) return;
+    if (!tg.includes(id)) {
+      if (ui.mode === 'heli' && ui.heli.from === id) { ui.heli.from = null; ui.heli.movers = []; renderAll(); return; }
+      if (ui.mode === 'shore' && ui.sel.includes(id)) { ui.sel = []; renderAll(); return; }
+      hint('You cannot choose that tile.', true); Sfx.err(); return;
+    }
+    const pi = S.current;
+    switch (ui.mode) {
+      case 'move': case 'dive': case 'fly': act({ type: ui.mode, tile: id }); break;
+      case 'shore':
+        if (S.players[pi].role === 'engineer' && ui.sel.length === 0) {
+          const rest = E.shoreTargets(S, pi).filter(x => x !== id);
+          if (!rest.length) act({ type: 'shore', tiles: [id] });
+          else { ui.sel = [id]; Sfx.click(); renderAll(); }
+        } else act({ type: 'shore', tiles: ui.sel.concat([id]) });
+        break;
+      case 'nav':
+        ui.nav.path.push(id);
+        if (ui.nav.path.length >= 2 || !E.neighbors(S, id, false).length) act({ type: 'navigate', target: ui.nav.target, path: ui.nav.path });
+        else { Sfx.click(); renderAll(); }
+        break;
+      case 'sand': act({ type: 'sandbags', player: ui.sandP, tile: id }); break;
+      case 'heli':
+        if (ui.heli.from == null) {
+          ui.heli.from = id;
+          ui.heli.movers = S.players.map((p, i) => p.pos === id ? i : -1).filter(i => i >= 0);
+          Sfx.click(); renderAll();
+        } else act({ type: 'heli', player: ui.heli.p, from: ui.heli.from, movers: ui.heli.movers, to: id });
+        break;
+      default: {
+        const sw = swimInterrupt();
+        if (sw) act({ type: 'swim', player: sw.player, tile: id });
+      }
+    }
+  }
+
+  function startMode(k) {
+    if (!S || S.result || ui.revealing || ui.modal) return;
+    const abilityModes = ['fly', 'dive', 'nav'];
+    if (ui.mode === k || (k === 'ability' && abilityModes.includes(ui.mode))) { clearModes(); renderAll(); return; }
+    const c = E.canDo(S, k);
+    if (!c.ok) { hint(c.why, true); Sfx.err(); return; }
+    clearModes();
+    if (k === 'capture') { act({ type: 'capture' }); return; }
+    if (k === 'give') {
+      const p = S.players[S.current];
+      const types = [...new Set(p.hand.filter(E.isTreasure))];
+      const rec = E.giveTargets(S, S.current);
+      ui.modal = { type: 'give', card: types.length === 1 ? types[0] : null, to: rec.length === 1 ? rec[0] : null };
+      Sfx.click(); renderAll(); return;
+    }
+    if (k === 'ability') {
+      const role = S.players[S.current].role;
+      if (role === 'pilot') ui.mode = 'fly';
+      else if (role === 'diver') ui.mode = 'dive';
+      else if (role === 'navigator') {
+        const others = E.navPawns(S, S.current);
+        ui.mode = 'nav'; ui.nav = { target: others.length === 1 ? others[0] : null, path: [] };
+      }
+    } else ui.mode = k;
+    Sfx.click(); renderAll();
+  }
+  function playSpecial(p, card) {
+    if (!S || S.result || ui.revealing) return;
+    const pl = S.players[p]; if (!pl || !pl.hand.includes(card)) return;
+    clearModes();
+    if (ui.modal && ui.modal.type === 'give') ui.modal = null;
+    if (card === 'sand') {
+      if (!S.tiles.some(t => t.state === 'flooded')) { hint('There are no flooded tiles to sandbag.', true); Sfx.err(); return; }
+      ui.mode = 'sand'; ui.sandP = p;
+    } else if (card === 'heli') {
+      if (!E.winWhy(S)) { ui.modal = { type: 'heliwin', p }; }
+      else { ui.mode = 'heli'; ui.heli = { p, from: null, movers: [] }; }
+    }
+    Sfx.click(); renderAll();
+  }
+  function primaryInfo() {
+    if (!S || S.result) return { label: 'End actions', dis: 'No game is running.' };
+    const blk = (ui.revealing ? 'Please wait…' : null) || E.blockReason(S);
+    if (S.phase === 'actions') return { label: 'End actions', key: 'E', a: { type: 'endActions' }, dis: blk, pulse: S.actions === 0 };
+    if (S.phase === 'draw') return { label: 'Draw treasure card', sub: S.drawsLeft + ' left', key: 'Space', a: { type: 'drawTreasure' }, dis: blk, pulse: true };
+    if (S.floodLeft > 0) return { label: 'Reveal flood card', sub: S.floodLeft + ' left', key: 'Space', a: { type: 'drawFlood' }, dis: blk, pulse: true };
+    return { label: 'Next turn ▶', key: 'Space', a: { type: 'nextTurn' }, dis: blk, pulse: true };
+  }
+  function runPrimary() {
+    if (ui.modal) return;
+    const p = primaryInfo();
+    if (p.dis) { hint(p.dis, true); Sfx.err(); return; }
+    act(p.a);
+  }
+
+  // ---------------- rendering ----------------
+  function buildIsland(deal) {
+    const isl = $('#island'); isl.innerHTML = ''; tileEls = {};
+    for (let cell = 0; cell < 36; cell++) {
+      const div = document.createElement('div'); div.className = 'cell';
+      const id = S ? S.grid[cell] : -1;
+      if (id >= 0) {
+        const t = document.createElement('div');
+        t.className = 'tile ter-' + (TERRAIN[S.tiles[id].name] || 'grass') + (deal ? ' deal' : '');
+        t.dataset.id = id;
+        t.style.setProperty('--d', (E.LAYOUT.indexOf(cell) * 40) + 'ms');
+        t.style.setProperty('--d2', (-(cell % 7) * 0.45).toFixed(2) + 's');
+        t.innerHTML = '<div class="face"></div><div class="pawns"></div>';
+        div.appendChild(t); tileEls[id] = t;
+      }
+      isl.appendChild(div);
+    }
+  }
+  function renderIsland() {
+    if (!S) return;
+    const tg = targets(); const tset = tg ? new Set(tg) : null; const sel = selectedTiles();
+    S.tiles.forEach(t => {
+      const el = tileEls[t.id]; if (!el) return;
+      let look = t.state;
+      if (look === 'flooded' && ui.hideFlood.has(t.id)) look = 'normal';
+      const sinking = ui.sinking.has(t.id);
+      if (sinking) look = 'flooded';
+      el.classList.toggle('normal', look === 'normal');
+      el.classList.toggle('flooded', look === 'flooded');
+      el.classList.toggle('sunk', look === 'sunk');
+      el.classList.toggle('sinking', sinking);
+      el.classList.toggle('target', !!(tset && tset.has(t.id)));
+      el.classList.toggle('dim', !!(tset && !tset.has(t.id)));
+      el.classList.toggle('sel', sel.has(t.id));
+      const [tr, tc] = E.rc(t.cell);
+      [['c-n', -1, 0], ['c-s', 1, 0], ['c-w', 0, -1], ['c-e', 0, 1]].forEach(([cl, dr, dc]) => {
+        const nid = E.idAt(S, tr + dr, tc + dc);
+        el.classList.toggle(cl, nid < 0 || (S.tiles[nid].state === 'sunk' && !ui.sinking.has(nid)));
+      });
+      let html = '';
+      if (look !== 'sunk') {
+        const bandColor = t.start ? RI[t.start].color : (t.treasure ? TI[t.treasure].color : '');
+        html += '<div class="tname"' + (bandColor ? ' style="--bc:' + bandColor + '"' : '') + '>' + esc(t.name) + '</div>';
+        if (look === 'flooded') html += '<div class="tflag">FLOODED</div>';
+        if (t.treasure) html += '<div class="ticon glow" style="--tc:' + TI[t.treasure].color + '">' + icon(t.treasure, 32) + '</div>';
+        else if (t.id === E.FOOLS) html += '<div class="ticon" style="color:#3d3a33">' + icon('pad', 30) + '</div>';
+        html += sceneHTML(t);
+      }
+      const face = el.firstChild;
+      if (face._h !== html) { face.innerHTML = html; face._h = html; }
+      const title = t.name + (t.treasure ? ' — ' + TI[t.treasure].name + ' tile' : '') + (t.start ? ' — ' + RI[t.start].name + ' starts here' : '') + (look === 'sunk' ? ' (sunk)' : look === 'flooded' ? ' (flooded)' : '');
+      el.title = title;
+      const pw = S.players.map((p, i) => p.pos === t.id ? pawnHTML(p.role, i === S.current ? 'act' : '') : '').join('');
+      const pe = el.lastChild;
+      if (pe._h !== pw) { pe.innerHTML = pw; pe._h = pw; }
+    });
+  }
+  function renderTop() {
+    const th = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('#themeBtn').textContent = th ? '☀️' : '🌙';
+    $('#soundBtn').textContent = Sfx.isOn() ? '🔊' : '🔇';
+    if (!S) { $('#who').innerHTML = ''; $('#pips').innerHTML = ''; $('#phases').innerHTML = ''; $('#primaryBtn').classList.add('hidden'); $('#undoBtn').classList.add('off'); return; }
+    const p = S.players[S.current]; const r = RI[p.role];
+    $('#who').innerHTML = pawnHTML(p.role) + '<div><div class="wname">' + esc(p.name) + '</div><div class="wrole">' + r.name + ' · Turn ' + S.turn + '</div></div>';
+    if (S.phase === 'actions') {
+      let h = ''; for (let k = 0; k < 3; k++) h += '<span class="pip' + (k < S.actions ? ' on' : '') + '"></span>';
+      $('#pips').innerHTML = h + '<span class="piplbl">' + S.actions + ' action' + (S.actions === 1 ? '' : 's') + '<br>left</span>';
+    } else $('#pips').innerHTML = '';
+    const order = ['actions', 'draw', 'flood'];
+    const labels = ['Actions', 'Draw treasure', 'Flood'];
+    const cur = order.indexOf(S.phase);
+    $('#phases').innerHTML = labels.map((l, i) => '<span class="ph' + (i === cur ? ' on' : i < cur ? ' done' : '') + '">' + l + '</span>').join('<span class="arrow">→</span>');
+    const pi = primaryInfo(); const b = $('#primaryBtn');
+    b.classList.toggle('hidden', !!S.result);
+    b.innerHTML = esc(pi.label) + (pi.sub ? ' <small>· ' + esc(pi.sub) + '</small>' : '') + (pi.key ? '<kbd>' + pi.key + '</kbd>' : '');
+    b.classList.toggle('off', !!pi.dis); b.classList.toggle('pulse', !!pi.pulse);
+    b.title = pi.dis || '';
+    $('#undoBtn').classList.toggle('off', !undo.length);
+    $('#undoBtn').title = undo.length ? 'Undo the last action' : 'Nothing to undo (undo only works during the action phase)';
+  }
+  function renderLeft() {
+    const m = $('#meter');
+    if (!S) { m.innerHTML = '<div class="boxt">Water level</div>'; $('#decks').innerHTML = ''; return; }
+    const cols = ['#7dd3fc', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a', '#172554', '#0f172a'];
+    let g = '';
+    for (let l = E.SKULL; l >= 1; l--) {
+      const on = l <= S.water, cur = l === S.water;
+      if (l === E.SKULL) { g += '<div class="seg skull' + (on ? ' on' : '') + (cur ? ' cur' : '') + '"><span class="lv">☠</span><span class="dr">Game over</span></div>'; continue; }
+      g += '<div class="seg' + (on ? ' on' : '') + (cur ? ' cur' : '') + '" style="--c1:' + cols[l - 1] + ';--c2:' + cols[Math.min(8, l)] + '"><span class="lv">' + l + '</span><span class="dr">' + E.floodRate(l) + ' cards</span></div>';
+    }
+    m.innerHTML = '<div class="boxt">Water level</div><div class="gauge">' + g + '</div>' +
+      '<div class="bigLevel"><span class="rate">Level</span><b>' + S.water + '</b></div>' +
+      '<div class="rate">Flood: draw <b>' + E.floodRate(S.water) + '</b> cards per turn</div>' +
+      '<div class="diff">Difficulty: ' + E.DIFFS[S.difficulty].name + '</div>';
+    const fd = S.floodDiscard.map(id => '<span class="chip fl">' + esc(S.tiles[id].name) + '</span>').join('');
+    const out = S.floodOut.map(id => '<span class="chip gone">' + esc(S.tiles[id].name) + '</span>').join('');
+    $('#decks').innerHTML = '<div class="boxt">Decks</div>' +
+      '<div class="deckrow"><div class="deck t">' + S.treasureDeck.length + '</div><div class="deckinfo"><b>Treasure deck</b><span>Discard pile: ' + S.treasureDiscard.length + '</span></div></div>' +
+      '<div class="deckrow"><div class="deck f">' + S.floodDeck.length + '</div><div class="deckinfo"><b>Flood deck</b><span>Discard: ' + S.floodDiscard.length + ' · Sunk: ' + S.floodOut.length + '</span></div></div>' +
+      '<div class="fdl">Flood discard pile</div><div class="fdlist">' + (fd || '<span class="chip">Empty</span>') + (out ? '</div><div class="fdl">Sunk (out of the game)</div><div class="fdlist" style="flex:0 0 auto">' + out : '') + '</div>';
+  }
+  function abilityLabel(role) {
+    if (role === 'pilot') return (S && S.pilotFlown) ? '✈ Fly (used)' : '✈ Fly';
+    if (role === 'diver') return '🤿 Dive';
+    if (role === 'navigator') return '🧭 Navigate';
+    return '★ Ability';
+  }
+  function defaultHint() {
+    if (!S) return '';
+    if (S.result) return 'Game over.';
+    const sw = swimInterrupt();
+    if (sw) return E.describeInterrupt(S, sw);
+    if (S.interrupts.length) return E.describeInterrupt(S, S.interrupts[0]);
+    if (S.phase === 'actions') return S.actions ? 'Choose an action. Special cards (PLAY) are free and can be used at any time.' : 'No actions left. Click End actions.';
+    if (S.phase === 'draw') return 'Draw 2 treasure cards, one at a time.';
+    if (S.floodLeft > 0) return 'Reveal the flood cards one at a time.';
+    return 'The flood is over. Click Next turn.';
+  }
+  function renderActionbar() {
+    const bar = $('#actionbar');
+    if (!S) { bar.innerHTML = ''; return; }
+    const role = S.players[S.current].role;
+    const defs = [['move', '➜ Move', 'M'], ['shore', '🛠 Shore up', 'S'], ['give', '🎁 Give', 'G'], ['capture', '🏆 Capture', 'C'], ['ability', abilityLabel(role), 'A']];
+    const activeAbility = ['fly', 'dive', 'nav'].includes(ui.mode);
+    let h = defs.map(d => {
+      const c = E.canDo(S, d[0]);
+      const on = ui.mode === d[0] || (d[0] === 'ability' && activeAbility) || (d[0] === 'give' && ui.modal && ui.modal.type === 'give');
+      return '<button class="abtn' + (on ? ' on' : '') + (c.ok ? '' : ' off') + '" data-act="mode" data-k="' + d[0] + '" title="' + esc(c.ok ? RI[role].name + ': ' + RI[role].ability : c.why) + '">' + d[1] + '<kbd>' + d[2] + '</kbd></button>';
+    }).join('');
+    h += '<div id="hint" class="' + (ui.hintErr ? 'err' : '') + '">' + esc(ui.hint || defaultHint()) + '</div>';
+    bar.innerHTML = h;
+  }
+  function renderBanner() {
+    const b = $('#banner');
+    let h = '', warn = false;
+    const cancel = ' <button class="btn" data-act="cancel">Cancel <kbd>Esc</kbd></button>';
+    if (S && !S.result && !ui.modal) {
+      const pi = S.current;
+      switch (ui.mode) {
+        case 'move': h = 'Move: click a glowing tile.' + cancel; break;
+        case 'dive': h = 'Dive: click a glowing tile. You can swim through flooded and missing tiles.' + cancel; break;
+        case 'fly': h = 'Fly: click any tile on the island.' + cancel; break;
+        case 'shore':
+          if (S.players[pi].role === 'engineer' && ui.sel.length === 1) h = 'Choose a second tile, or <button class="btn primary" data-act="shore-one">Shore up just 1 tile</button>' + cancel;
+          else h = (S.players[pi].role === 'engineer' ? 'Shore up (up to 2 tiles): click a flooded tile.' : 'Shore up: click a flooded tile.') + cancel;
+          break;
+        case 'nav':
+          if (ui.nav.target == null) h = 'Navigator: whose pawn? ' + E.navPawns(S, pi).map(i => '<button class="btn" data-act="nav-pick" data-v="' + i + '">' + pawnHTML(S.players[i].role) + ' ' + esc(S.players[i].name) + '</button>').join(' ') + cancel;
+          else if (!ui.nav.path.length) h = 'Move ' + esc(S.players[ui.nav.target].name) + ': choose step 1.' + cancel;
+          else h = 'Choose step 2, or <button class="btn primary" data-act="nav-done">Stop here</button>' + cancel;
+          break;
+        case 'sand': h = esc(S.players[ui.sandP].name) + ' plays Sandbags: click any flooded tile.' + cancel; break;
+        case 'heli':
+          if (ui.heli.from == null) h = esc(S.players[ui.heli.p].name) + ' plays Helicopter Lift: click a tile with pawns on it.' + cancel;
+          else {
+            const here = S.players.map((p, i) => p.pos === ui.heli.from ? i : -1).filter(i => i >= 0);
+            h = 'Lift: ' + here.map(i => '<button class="btn' + (ui.heli.movers.includes(i) ? ' on' : '') + '" data-act="heli-tog" data-v="' + i + '">' + (ui.heli.movers.includes(i) ? '✓ ' : '') + esc(S.players[i].name) + '</button>').join(' ') + ' → now click the destination tile.' + cancel;
+          }
+          break;
+        default: {
+          const sw = swimInterrupt();
+          if (sw) { warn = true; h = '⚠ ' + esc(E.pname(S, sw.player)) + ' is in the water! Click a glowing tile to swim to.'; }
+        }
+      }
+    }
+    b.classList.toggle('hidden', !h);
+    b.classList.toggle('warn', warn);
+    if (b._h !== h) { b.innerHTML = h; b._h = h; }
+  }
+  function renderRight() {
+    if (!S) { $('#treasures').innerHTML = ''; $('#hands').innerHTML = ''; return; }
+    $('#treasures').innerHTML = E.TREASURES.map(t => {
+      const cap = S.captured[t];
+      const tl = S.tiles.filter(x => x.treasure === t).map(x => x.state === 'sunk' ? '<s>' + esc(x.name) + '</s>' : esc(x.name)).join(' · ');
+      return '<div class="tre' + (cap ? ' cap' : '') + '" data-t="' + t + '">' + icon(t, 34) + '<div><b>' + esc(TI[t].name) + '</b><small>' + (cap ? '✓ Captured!' : tl) + '</small></div></div>';
+    }).join('');
+    const live = !S.result && !ui.revealing;
+    $('#hands').innerHTML = S.players.map((p, i) => {
+      const r = RI[p.role];
+      const cards = sortedHand(p.hand).map(o => {
+        const spent = E.isTreasure(o.c) && S.captured[o.c];
+        return cardHTML(o.c, { player: i, index: o.i, playable: live && E.isSpecial(o.c), discardable: live && spent, spent });
+      }).join('');
+      return '<div class="hand' + (i === S.current ? ' active' : '') + (p.hand.length > E.HAND_LIMIT ? ' over' : '') + '">' +
+        '<div class="hhead">' + pawnHTML(p.role) + '<div class="hn"><b>' + esc(p.name) + '</b><small>' + r.name + ' — ' + r.ability + '</small></div><span class="hc">' + p.hand.length + '/5</span></div>' +
+        '<div class="cards">' + (cards || '<span class="nocards">No cards</span>') + '</div></div>';
+    }).join('');
+  }
+  function renderLog() {
+    const l = $('#log');
+    if (!S) { l.innerHTML = ''; return; }
+    l.innerHTML = S.log.slice(-40).map(x => '<div><span class="tn">Turn ' + x.turn + '</span>' + esc(x.msg) + '</div>').join('');
+    l.scrollTop = l.scrollHeight;
+  }
+
+  // ---------------- modals ----------------
+  function setupDefaults() {
+    let st = null;
+    try { st = JSON.parse(LS.get(SETUP_KEY) || 'null'); } catch (e) {}
+    const d = { n: 2, names: ['Team 1', 'Team 2', 'Team 3', 'Team 4'], roles: ['', '', '', ''], diff: 'novice', first: 'random' };
+    if (st && st.n >= 2 && st.n <= 4) {
+      d.n = st.n;
+      if (Array.isArray(st.names)) st.names.forEach((v, i) => { if (i < 4 && typeof v === 'string') d.names[i] = v; });
+      if (Array.isArray(st.roles)) st.roles.forEach((v, i) => { if (i < 4 && (v === '' || E.ROLES.includes(v))) d.roles[i] = v; });
+      if (E.DIFFS[st.diff]) d.diff = st.diff;
+      d.first = st.first != null ? String(st.first) : 'random';
+    }
+    return d;
+  }
+  function setupHTML() {
+    const st = ui.setup; const sv = loadSave();
+    let h = '<div class="panel setup"><h1>Forbidden Island</h1><p class="lead">A cooperative treasure hunt. Work together, capture all 4 treasures, and escape before the island sinks!</p>';
+    if (sv) {
+      const p = sv.state.players[sv.state.current];
+      h += '<div class="resume"><span>Saved game: turn ' + sv.state.turn + ', ' + esc(p.name) + ' (' + RI[p.role].name + ') to play.</span><button class="btn primary" data-act="resume">Resume game</button></div>';
+    }
+    h += '<div class="field"><label>Players</label><div class="seg2">' + [2, 3, 4].map(n => '<button class="' + (n === st.n ? 'on' : '') + '" data-act="set-n" data-v="' + n + '">' + n + '</button>').join('') + '</div></div>';
+    h += '<div class="plist">';
+    for (let i = 0; i < st.n; i++) {
+      h += '<div class="prow"><span class="num">' + (i + 1) + '</span><input type="text" maxlength="24" data-set="name" data-i="' + i + '" value="' + esc(st.names[i]) + '" aria-label="Player ' + (i + 1) + ' name">' +
+        '<select data-set="role" data-i="' + i + '" aria-label="Adventurer"><option value="">🎲 Random adventurer</option>' +
+        E.ROLES.map(r => '<option value="' + r + '"' + (st.roles[i] === r ? ' selected' : '') + '>' + RI[r].name + '</option>').join('') + '</select></div>';
+    }
+    h += '</div>';
+    h += '<div class="field"><label>Difficulty</label><div class="seg2">' + Object.keys(E.DIFFS).map(k => '<button class="' + (k === st.diff ? 'on' : '') + '" data-act="set-diff" data-v="' + k + '">' + E.DIFFS[k].name + '<small>water ' + E.DIFFS[k].level + '</small></button>').join('') + '</div></div>';
+    h += '<div class="field"><label>First player</label><select data-set="first"><option value="random">🎲 Random</option>';
+    for (let i = 0; i < st.n; i++) h += '<option value="' + i + '"' + (String(st.first) === String(i) ? ' selected' : '') + '>' + esc(st.names[i] || ('Team ' + (i + 1))) + '</option>';
+    h += '</select></div>';
+    h += '<div class="err">' + esc(ui.setupErr || '') + '</div>';
+    h += '<div class="prow2"><button class="btn" data-act="rules">Rules</button><button class="btn primary big" data-act="start">' + (sv ? 'Start new game ▶' : 'Start ▶') + '</button></div></div>';
+    return h;
+  }
+  function rulesHTML() {
+    const roles = E.ROLES.map(r => '<tr><td>' + pawnHTML(r) + '</td><td><b>' + RI[r].name + '</b> — ' + RI[r].ability + '</td></tr>').join('');
+    return '<div class="panel rules"><h2>How to play</h2>' +
+      '<h3>Goal</h3><p>You are one team. Capture all 4 treasures. Then everyone meets on Fools\' Landing, and one player plays a Helicopter Lift card to fly away. You all win or lose together.</p>' +
+      '<h3>Your turn</h3><ol><li>Do up to <b>3 actions</b>.</li><li>Draw <b>2 treasure cards</b>.</li><li>Draw <b>flood cards</b>. The water meter shows how many.</li></ol>' +
+      '<h3>Actions (1 action each)</h3><ul><li><b>Move</b> to a tile next to you (up, down, left or right).</li><li><b>Shore up</b>: fix a flooded tile. It must be your tile or next to you.</li><li><b>Give</b> a treasure card to a player on your tile.</li><li><b>Capture</b> a treasure: give up 4 matching cards while you stand on one of its 2 tiles.</li></ul>' +
+      '<h3>Flooding</h3><p>A flood card floods its tile. If the tile is already flooded, it <b>sinks</b> and never comes back. Players on a sinking tile must swim to a tile next to them.</p>' +
+      '<h3>Waters Rise!</h3><p>The water level goes up by 1. The flood cards that were already drawn go back on top of the flood deck, so those tiles will flood again soon!</p>' +
+      '<h3>Special cards (free, any time)</h3><ul><li><b>Helicopter Lift</b>: fly one or more pawns from one tile to any tile.</li><li><b>Sandbags</b>: fix any flooded tile on the island.</li></ul><p>You can play them even on another player\'s turn. They do not cost an action.</p>' +
+      '<h3>Hand limit</h3><p>You can hold 5 cards. If you get more, discard or play cards right away.</p>' +
+      '<h3>You lose if…</h3><ul><li>both tiles of a treasure sink before you capture it,</li><li>Fools\' Landing sinks,</li><li>a player cannot swim to safety, or</li><li>the water reaches the skull.</li></ul>' +
+      '<h3>Adventurers</h3><table>' + roles + '</table>' +
+      '<h3>Keyboard</h3><p><kbd>M</kbd> move <kbd>S</kbd> shore up <kbd>G</kbd> give <kbd>C</kbd> capture <kbd>A</kbd> ability <kbd>E</kbd> end actions <kbd>Space</kbd> next card <kbd>Z</kbd> undo <kbd>Esc</kbd> cancel</p>' +
+      '<div class="rfoot">' + (S && !S.result && !(ui.modal && ui.modal.back && ui.modal.back.type === 'setup') ? '<button class="btn" data-act="newsetup">New game…</button>' : '') + '<button class="btn primary" data-act="close-rules">Close</button></div></div>';
+  }
+  function giveHTML() {
+    const pi = S.current, p = S.players[pi];
+    const types = [...new Set(p.hand.filter(E.isTreasure))];
+    const rec = E.giveTargets(S, pi);
+    const m = ui.modal;
+    const ready = m.card && m.to != null;
+    return '<div class="panel" style="width:860px"><button class="xclose" data-act="close" title="Cancel (Esc)">✕</button><h2>🎁 Give a treasure card</h2><p>1. Choose a card</p><div class="opts">' +
+      types.map(t => {
+        const n = p.hand.filter(c => c === t).length;
+        return '<button class="optb' + (m.card === t ? ' on' : '') + '" data-act="give-card" data-v="' + t + '">' + icon(t, 52) + '<span>' + esc(TI[t].name) + '</span><small>you have ' + n + '</small></button>';
+      }).join('') + '</div><p>2. Choose who gets it' + (p.role === 'messenger' ? ' (Messenger: anyone on the island)' : ' (players on your tile)') + '</p><div class="opts">' +
+      rec.map(i => '<button class="optb' + (m.to === i ? ' on' : '') + '" data-act="give-to" data-v="' + i + '">' + pawnHTML(S.players[i].role) + '<span>' + esc(S.players[i].name) + '</span><small>' + S.players[i].hand.length + '/5 cards</small></button>').join('') +
+      '</div><div class="prow2"><button class="btn" data-act="close">✕ Cancel <kbd>Esc</kbd></button><button class="btn primary' + (ready ? '' : ' off') + '" data-act="give-go">Give card (1 action)</button></div></div>';
+  }
+  function handLimitHTML(pi) {
+    const p = S.players[pi]; const extra = p.hand.length - E.HAND_LIMIT;
+    const cards = sortedHand(p.hand).map(o => cardHTML(o.c, { player: pi, index: o.i, playable: E.isSpecial(o.c), discardable: true })).join('');
+    return '<div class="panel" style="width:900px"><h2>✋ Too many cards!</h2><p><b>' + esc(p.name) + '</b> (' + RI[p.role].name + ') has ' + p.hand.length + ' cards. The limit is 5.</p>' +
+      '<p>Discard <b>' + extra + '</b> card' + (extra > 1 ? 's' : '') + ' (✕), or PLAY a special card.</p><div class="hlcards">' + cards + '</div>' +
+      (undo.length && S.phase === 'actions' ? '<div class="prow2"><button class="btn" data-act="undo">↶ Undo last action (cancel the give)</button></div>' : '') + '</div>';
+  }
+  function heliWinHTML() {
+    return '<div class="panel" style="width:820px;text-align:center"><button class="xclose" data-act="close" title="Cancel (Esc)">✕</button><h1>🚁</h1><h2>Everyone is on Fools\' Landing with all 4 treasures!</h2><p>Play the Helicopter Lift to escape and win the game?</p>' +
+      '<div class="prow2" style="justify-content:center"><button class="btn" data-act="close">Cancel</button><button class="btn" data-act="heli-move">Just move pawns</button><button class="btn primary big" data-act="heli-win">Lift off and win!</button></div></div>';
+  }
+  function endHTML() {
+    const r = S.result; const caps = E.TREASURES.filter(t => S.captured[t]).length;
+    return '<div class="panel end ' + (r.win ? 'win' : 'lose') + '"><h1>' + (r.win ? '🚁 You escaped!' : '🌊 The island is lost') + '</h1>' +
+      '<p class="reason">' + esc(r.reason) + '</p>' +
+      '<div class="stats"><div><b>' + S.turn + '</b>turns played</div><div><b>' + caps + '/4</b>treasures captured</div><div><b>' + S.water + '</b>water level</div></div>' +
+      '<div class="prow2"><button class="btn primary big" data-act="again">Play again (same settings)</button><button class="btn" data-act="newsetup">New setup</button></div></div>';
+  }
+  function renderModal() {
+    const m = $('#modal'); let h = '';
+    if (ui.modal) {
+      switch (ui.modal.type) {
+        case 'setup': h = setupHTML(); break;
+        case 'rules': h = rulesHTML(); break;
+        case 'give': h = S ? giveHTML() : ''; break;
+        case 'heliwin': h = S ? heliWinHTML() : ''; break;
+      }
+    } else if (S && S.result) {
+      if (Date.now() >= ui.endAt) h = endHTML();
+    } else if (S && !ui.mode && !ui.revealing && S.interrupts[0] && S.interrupts[0].type === 'handlimit') {
+      h = handLimitHTML(S.interrupts[0].player);
+    }
+    m.classList.toggle('hidden', !h);
+    if (m._h !== h) { m.innerHTML = h; m._h = h; }
+  }
+  function renderDebug() {
+    const d = $('#debug');
+    d.classList.toggle('hidden', !(ui.debug && S && !S.result));
+    if (!ui.debug || !S || S.result) return;
+    const alive = S.tiles.filter(t => t.state !== 'sunk');
+    if (!alive.some(t => t.id === ui.dbg.tile)) ui.dbg.tile = alive.length ? alive[0].id : 0;
+    if (!S.players[ui.dbg.p]) ui.dbg.p = 0;
+    d.innerHTML = '<b>🛠 Debug panel (Shift+D)</b>' +
+      '<div class="r">Water: <button data-act="dbg-w" data-v="-1">−</button><b>' + S.water + '</b><button data-act="dbg-w" data-v="1">+</button></div>' +
+      '<div class="r"><select data-dbg="tile">' + alive.slice().sort((a, b) => a.name.localeCompare(b.name)).map(t => '<option value="' + t.id + '"' + (t.id === ui.dbg.tile ? ' selected' : '') + '>' + esc(t.name) + ' (' + t.state + ')</option>').join('') + '</select>' +
+      '<button data-act="dbg-t" data-v="normal">Normal</button><button data-act="dbg-t" data-v="flooded">Flood</button><button data-act="dbg-t" data-v="sunk">Sink</button></div>' +
+      '<div class="r"><select data-dbg="p">' + S.players.map((p, i) => '<option value="' + i + '"' + (i === ui.dbg.p ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') + '</select>' +
+      '<select data-dbg="c">' + ['earth', 'wind', 'fire', 'ocean', 'heli', 'sand'].map(c => '<option value="' + c + '"' + (c === ui.dbg.c ? ' selected' : '') + '>' + E.CARD_NAME[c] + '</option>').join('') + '</select>' +
+      '<button data-act="dbg-c">Give card</button></div>';
+  }
+  function renderAll() {
+    renderTop(); renderLeft(); renderActionbar(); renderBanner(); renderIsland(); renderRight(); renderLog(); renderModal(); renderDebug();
+  }
+
+  // ---------------- game lifecycle ----------------
+  function optsFromSetup() {
+    const st = ui.setup;
+    const players = [];
+    for (let i = 0; i < st.n; i++) players.push({ name: st.names[i], role: st.roles[i] || null });
+    return { players, difficulty: st.diff, first: st.first === 'random' || st.first == null || +st.first >= st.n ? 'random' : +st.first };
+  }
+  function startGame(opts) {
+    let s;
+    try { s = E.newGame(opts); }
+    catch (e) { if (e.rule) { ui.setupErr = e.message; renderModal(); Sfx.err(); return; } throw e; }
+    S = s; lastOpts = opts; undo = []; clearModes(); ui.modal = null; ui.setupErr = ''; ui.hint = '';
+    ui.sinking.clear();
+    ui.hideFlood = new Set(S.setupFlooded); ui.revealing = true;
+    save();
+    buildIsland(true); renderAll();
+    const base = 24 * 40 + 600;
+    S.setupFlooded.forEach((id, k) => setTimeout(() => {
+      ui.hideFlood.delete(id); renderIsland(); anim(id, 'anim-flood'); Sfx.flood();
+    }, base + k * 420));
+    setTimeout(() => {
+      ui.revealing = false;
+      Object.values(tileEls).forEach(el => el.classList.remove('deal'));
+      renderAll();
+      hint('6 tiles flooded. ' + S.players[S.current].name + ' goes first!');
+    }, base + 6 * 420 + 250);
+  }
+  function resumeGame(d) {
+    S = d.state; S.events = []; lastOpts = d.opts || null; undo = []; clearModes(); ui.modal = null;
+    ui.hideFlood = new Set(); ui.sinking.clear(); ui.revealing = false;
+    buildIsland(false); renderAll();
+  }
+  function openSetup() {
+    ui.setup = setupDefaults(); ui.setupErr = ''; clearModes(); ui.modal = { type: 'setup' }; renderAll();
+  }
+  function persistSetup() { LS.set(SETUP_KEY, JSON.stringify(ui.setup)); }
+
+  // ---------------- input ----------------
+  document.addEventListener('click', e => {
+    if (e.target.id === 'modal' && ui.modal && ['give', 'heliwin', 'rules'].includes(ui.modal.type)) {
+      ui.modal = ui.modal.type === 'rules' && ui.modal.back ? ui.modal.back : null; renderAll(); return;
+    }
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const k = b.dataset.act, v = b.dataset.v;
+    switch (k) {
+      case 'primary': runPrimary(); break;
+      case 'undo': doUndo(); break;
+      case 'rules': ui.modal = { type: 'rules', back: ui.modal }; renderAll(); break;
+      case 'close-rules': ui.modal = ui.modal && ui.modal.back ? ui.modal.back : null; renderAll(); break;
+      case 'sound': Sfx.toggle(); renderTop(); break;
+      case 'theme': toggleTheme(); break;
+      case 'mode': startMode(b.dataset.k); break;
+      case 'cancel': clearModes(); renderAll(); break;
+      case 'shore-one': if (ui.sel.length) act({ type: 'shore', tiles: [ui.sel[0]] }); break;
+      case 'nav-pick': ui.nav = { target: +v, path: [] }; Sfx.click(); renderAll(); break;
+      case 'nav-done': if (ui.nav && ui.nav.path.length) act({ type: 'navigate', target: ui.nav.target, path: ui.nav.path }); break;
+      case 'heli-tog': {
+        const i = +v; const m = ui.heli.movers;
+        if (m.includes(i)) { if (m.length > 1) m.splice(m.indexOf(i), 1); } else m.push(i);
+        renderAll(); break;
+      }
+      case 'play': playSpecial(+b.dataset.p, b.dataset.card); break;
+      case 'disc': act({ type: 'discard', player: +b.dataset.p, index: +b.dataset.i }); break;
+      case 'give-card': ui.modal.card = v; renderModal(); break;
+      case 'give-to': ui.modal.to = +v; renderModal(); break;
+      case 'give-go':
+        if (!ui.modal.card || ui.modal.to == null) { Sfx.err(); break; }
+        { const g = ui.modal; ui.modal = null; if (!act({ type: 'give', card: g.card, to: g.to })) { ui.modal = g; renderAll(); } }
+        break;
+      case 'close': ui.modal = null; renderAll(); break;
+      case 'heli-win': { const p = ui.modal.p; ui.modal = null; act({ type: 'heli', player: p, win: true }); break; }
+      case 'heli-move': { const p = ui.modal.p; ui.modal = null; ui.mode = 'heli'; ui.heli = { p, from: null, movers: [] }; renderAll(); break; }
+      case 'set-n': ui.setup.n = +v; if (ui.setup.first !== 'random' && +ui.setup.first >= ui.setup.n) ui.setup.first = 'random'; persistSetup(); renderModal(); break;
+      case 'set-diff': ui.setup.diff = v; persistSetup(); renderModal(); break;
+      case 'start': {
+        const used = ui.setup.roles.slice(0, ui.setup.n).filter(Boolean);
+        if (new Set(used).size !== used.length) { ui.setupErr = 'Two players chose the same adventurer. Pick different ones (or Random).'; renderModal(); Sfx.err(); break; }
+        persistSetup(); startGame(optsFromSetup()); break;
+      }
+      case 'resume': { const d = loadSave(); if (d) resumeGame(d); break; }
+      case 'again': if (lastOpts) startGame(lastOpts); else openSetup(); break;
+      case 'newsetup': openSetup(); break;
+      case 'dbg-w': act({ type: 'debugWater', level: S.water + (+v) }); break;
+      case 'dbg-t': act({ type: 'debugTile', tile: ui.dbg.tile, state: v }); break;
+      case 'dbg-c': act({ type: 'debugCard', player: ui.dbg.p, card: ui.dbg.c }); break;
+    }
+  });
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.dataset && t.dataset.set === 'name' && ui.setup) { ui.setup.names[+t.dataset.i] = t.value; persistSetup(); }
+  });
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.dataset && t.dataset.set && ui.setup) {
+      if (t.dataset.set === 'name') ui.setup.names[+t.dataset.i] = t.value;
+      if (t.dataset.set === 'role') { ui.setup.roles[+t.dataset.i] = t.value; ui.setupErr = ''; }
+      if (t.dataset.set === 'first') ui.setup.first = t.value;
+      persistSetup(); renderModal();
+    }
+    if (t.dataset && t.dataset.dbg) {
+      if (t.dataset.dbg === 'c') ui.dbg.c = t.value; else ui.dbg[t.dataset.dbg] = +t.value;
+    }
+  });
+  $('#island').addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) onTileClick(+t.dataset.id); });
+
+  document.addEventListener('keydown', e => {
+    if (e.target && e.target.matches && e.target.matches('input,select,textarea')) return;
+    if (e.shiftKey && (e.key === 'D' || e.key === 'd')) { ui.debug = !ui.debug; renderDebug(); e.preventDefault(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') {
+      if (ui.modal && ['rules', 'give', 'heliwin'].includes(ui.modal.type)) { ui.modal = ui.modal.type === 'rules' && ui.modal.back ? ui.modal.back : null; renderAll(); }
+      else if (ui.mode) { clearModes(); renderAll(); }
+      return;
+    }
+    if (ui.modal || !S || S.result) return;
+    const k = e.key.toLowerCase();
+    if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (S.phase !== 'actions') runPrimary(); return; }
+    switch (k) {
+      case 'm': startMode('move'); break;
+      case 's': startMode('shore'); break;
+      case 'g': startMode('give'); break;
+      case 'c': startMode('capture'); break;
+      case 'a': startMode('ability'); break;
+      case 'e': if (S.phase === 'actions') runPrimary(); break;
+      case 'z': doUndo(); break;
+    }
+  });
+
+  // ---------------- boot ----------------
+  fit();
+  const sv = loadSave();
+  ui.setup = setupDefaults();
+  if (sv) { lastOpts = sv.opts || null; }
+  ui.modal = { type: 'setup' };
+  renderAll();
+  window.__fi = { get state() { return S; }, act, startGame, ui };
+})();
+</script>
+</body>
+</html>

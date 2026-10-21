@@ -130,6 +130,16 @@ select{font:inherit;font-size:16px;padding:8px 10px;border-radius:10px;border:1p
 #viewing button{background:var(--accent-ink);color:var(--accent);padding:4px 10px}
 
 #tray{grid-area:tray;background:var(--panel2);border-top:1px solid var(--line);display:flex;align-items:stretch;gap:10px;padding:10px 12px;overflow-x:auto;min-height:132px}
+#tray.dock{flex-direction:column;align-items:stretch;gap:8px;max-height:44vh;overflow:auto;border-top:4px solid var(--accent);background:var(--panel)}
+#tray.dock .dh{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#tray.dock h2{font-size:24px;display:flex;align-items:center;gap:8px}
+#tray.dock .why{margin:0;color:var(--mute);font-size:16px;flex:1;min-width:200px}
+#tray.dock .mine{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#tray.dock .pend{margin:0}
+#tray.dock .opts{grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:8px}
+#tray.dock .opts h4{margin:2px 0 0}
+#tray.dock .ob{min-height:96px;padding:8px 6px;gap:5px}
+#tray.dock .mfoot{margin-top:4px}
 #tray .lab{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;font-size:13px;text-align:center}
 .tp{background:var(--panel);border:3px solid transparent;border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:96px;position:relative}
 .tp .nm{font-size:13px;font-weight:700;color:var(--mute);white-space:nowrap}
@@ -991,7 +1001,9 @@ function boardSVG(lay, cell) {
 // ======================= state =======================
 let S = null, hist = [], timers = [];
 let sel = null, staged = null, hover = null, viewTeam = null, busy = false, reviewing = false;
-let modalIdx = 0, hintIdx = 0, crewHover = null;
+let modalIdx = 0, hintIdx = 0, crewHover = null, dock = null;
+function openDock(html, bind) { dock = { html, bind }; autoFit = true; renderAll(); }
+function closeDock() { dock = null; }
 let view = { s: 40, ox: 0, oy: 0 }, autoFit = true;
 const anims = [];
 const setupPrefs = Object.assign({ n: 2, teams: [], first: -1, achOn: false, ach: BP.ACH_RECOMMENDED.slice(), pit: false, dots: true }, store.get(SETUP) || {});
@@ -1203,15 +1215,16 @@ function process() {
 // ---------- rewards ----------
 function optLabel(o) {
   if (o.t === 'green') return { svg: pieceSVG({ k: o.k }, 0, 30), nm: BP.NAMES[o.k], v: `${S.supply.green[o.k]} left` };
-  if (o.t === 'house') return { svg: pieceSVG({ k: 'house', sp: o.sp, v: o.v }, 0, 26), nm: BP.NAMES[o.sp] + ' House', v: `${o.v} points · ${S.supply.houses[o.sp].length} left` };
-  if (o.t === 'enc') return { svg: pieceSVG({ k: 'enc', sp: o.sp, sh: o.sh, v: o.v }, 0, 20), nm: BP.NAMES[o.sp] + ' Enclosure', v: `${o.v} points` };
-  if (o.t === 'board') return { svg: boardSVG(o.lay, 24), nm: `Pile ${o.pile + 1}`, v: `${S.supply.piles[o.pile].length} Park Area${S.supply.piles[o.pile].length === 1 ? '' : 's'} in this pile` };
+  if (o.t === 'house') return { svg: pieceSVG({ k: 'house', sp: o.sp, v: o.v }, 0, 20), nm: BP.NAMES[o.sp] + ' House', v: `${o.v} points · ${S.supply.houses[o.sp].length} left` };
+  if (o.t === 'enc') return { svg: pieceSVG({ k: 'enc', sp: o.sp, sh: o.sh, v: o.v }, 0, 15), nm: BP.NAMES[o.sp] + ' Enclosure', v: `${o.v} points` };
+  if (o.t === 'board') return { svg: boardSVG(o.lay, 20), nm: `Pile ${o.pile + 1}`, v: `${S.supply.piles[o.pile].length} Park Area${S.supply.piles[o.pile].length === 1 ? '' : 's'} in this pile` };
 }
 function openReward() {
   if (S.phase !== 'reward' || !S.pending.length) return process();
   modalIdx = Math.min(modalIdx, S.pending.length - 1);
   const e = S.pending[modalIdx], opts = BP.rewardOptions(S, e.ch);
-  let h = `<h2>${iconSVG('ico-' + e.ch, 46)} ${ICON_NAME[e.ch]}</h2><p class="why">${esc(team(S.turn).name)}: ${ICON_GIVES[e.ch]}</p>`;
+  const mine = curTeam().hand.map(p => pieceSVG(p, 0, 11)).join('');
+  let h = `<div class="dh"><h2>${iconSVG('ico-' + e.ch, 34)} ${ICON_NAME[e.ch]}</h2><p class="why">${esc(team(S.turn).name)}: ${ICON_GIVES[e.ch]}</p>${mine ? `<span class="mine"><span class="hint">Your supply:</span>${mine}</span>` : ''}</div>`;
   if (S.pending.length > 1) {
     h += `<div class="pend"><span class="hint" style="align-self:center">You covered ${S.pending.length} icons — any order:</span>` +
       S.pending.map((p, i) => `<button data-p="${i}" class="${i === modalIdx ? 'on' : ''}">${iconSVG('ico-' + p.ch, 26)} ${ICON_NAME[p.ch]}</button>`).join('') + '</div>';
@@ -1230,23 +1243,24 @@ function openReward() {
     });
     h += '</div>';
   }
-  const card = $('#modal .mcard'); card.innerHTML = h; $('#modal').hidden = false;
+  openDock(h, card => {
   card.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { modalIdx = +b.dataset.p; sfx('click'); openReward(); });
   card.querySelectorAll('[data-i]').forEach(b => b.onclick = () => chooseReward(opts[+b.dataset.i]));
-  if ($('#skipBtn')) $('#skipBtn').onclick = () => { BP.skipReward(S, modalIdx); modalIdx = 0; $('#modal').hidden = true; save(); renderAll(); process(); };
-  renderAll();
+  const sk = card.querySelector('#skipBtn');
+  if (sk) sk.onclick = () => { BP.skipReward(S, modalIdx); modalIdx = 0; closeDock(); save(); renderAll(); process(); };
+  });
 }
 function chooseReward(o) {
   if (o.t === 'board') {
     S.phase = 'crew'; S.crew = { idx: modalIdx, pile: o.pile };
-    $('#modal').hidden = true; autoFit = true; sfx('click'); save(); renderAll();
+    closeDock(); autoFit = true; sfx('click'); save(); renderAll();
     showBanner('Click a glowing spot to attach the new Park Area. It may not go below your Entrance.');
     return;
   }
   const got = BP.takeReward(S, modalIdx, o);
   logTurn(`took ${articled(BP.pieceName(got))}`);
   modalIdx = 0; sfx('chime'); toast('+ ' + BP.pieceName(got) + (got.v ? ` (${got.v})` : ''));
-  $('#modal').hidden = true; save(); renderAll(); process();
+  closeDock(); save(); renderAll(); process();
 }
 function crewBack() {
   if (S.phase !== 'crew') return;
@@ -1296,25 +1310,28 @@ function openPass() {
   if (!interactive() || S.phase !== 'place') return;
   if (BP.anyLegal(S, S.turn)) { toast('A tile still fits — you can only pass when nothing fits.', true); return; }
   const g = BP.GREENS.filter(k => S.supply.green[k] > 0);
-  let h = `<h2>Pass</h2><p class="why">${esc(team(S.turn).name)} can't place anything. Take one free Green Area — you can place it next turn.</p>`;
+  let h = `<div class="dh"><h2>Pass</h2><p class="why">${esc(team(S.turn).name)} can't place anything. Take one free Green Area — you can place it next turn.</p><button id="pBack">← Back</button></div>`;
   if (g.length) h += '<div class="opts">' + g.map(k => { const L = optLabel({ t: 'green', k }); return `<button class="ob" data-k="${k}">${L.svg}<span class="nm">${L.nm}</span><span class="v">${L.v}</span></button>`; }).join('') + '</div>';
   else h += `<p style="font-size:20px">No Green Areas are left, so your turn simply ends.</p><div class="mfoot"><button id="pEnd">End game now and score</button><button class="primary" id="pOk">End my turn</button></div>`;
-  const card = $('#modal .mcard'); card.innerHTML = h; $('#modal').hidden = false;
   const done = k => {
-    $('#modal').hidden = true;
+    closeDock();
     const got = BP.pass(S, k || null);
     logTurn(got ? `passed and took ${articled(BP.pieceName(got))}` : 'passed');
     sfx('thud'); finishTurn();
   };
-  card.querySelectorAll('[data-k]').forEach(b => b.onclick = () => done(b.dataset.k));
-  if ($('#pOk')) $('#pOk').onclick = () => done(null);
-  if ($('#pEnd')) $('#pEnd').onclick = () => { $('#modal').hidden = true; endNow(); };
+  openDock(h, card => {
+    card.querySelectorAll('[data-k]').forEach(b => b.onclick = () => done(b.dataset.k));
+    const q = s => card.querySelector(s);
+    if (q('#pOk')) q('#pOk').onclick = () => done(null);
+    if (q('#pEnd')) q('#pEnd').onclick = () => { closeDock(); endNow(); };
+    q('#pBack').onclick = () => { closeDock(); renderAll(); };
+  });
 }
-function endNow() { clearTimers(); S.over = true; S.phase = 'over'; save(); sfx('end'); showFinal(); }
+function endNow() { clearTimers(); closeDock(); S.over = true; S.phase = 'over'; save(); sfx('end'); showFinal(); }
 
 // ---------- final ----------
 function showFinal() {
-  $('#modal').hidden = true; $('#handoff').hidden = true; hideBanner();
+  closeDock(); $('#modal').hidden = true; $('#handoff').hidden = true; hideBanner();
   const rows = BP.ranking(S), hasAch = S.opts.ach.length > 0;
   const winners = rows.filter(r => r.place === 1);
   const tieBroken = rows.length > 1 && rows[0].total === rows[1].total && rows[0].place !== rows[1].place;
@@ -1356,7 +1373,7 @@ function undo() {
   }
   clearTimers();
   S = JSON.parse(hist[hist.length - 1]);
-  ['#modal', '#handoff', '#final', '#menu'].forEach(id => $(id).hidden = true);
+  ['#modal', '#handoff', '#final', '#menu'].forEach(id => $(id).hidden = true); closeDock();
   reviewing = false; viewTeam = null; sel = staged = null; crewHover = null; autoFit = true; hideBanner();
   save(); renderAll(); toast(`Undone — back to the start of ${esc(team(S.turn).name)}'s turn.`); sfx('click');
 }
@@ -1423,7 +1440,10 @@ function renderSupply() {
   $('#supply').innerHTML = h;
 }
 function renderTray() {
-  const ti = shownTeam(), t = S.teams[ti], tray = $('#tray');
+  const tray = $('#tray');
+  if (dock && viewTeam === null) { tray.classList.add('dock'); tray.innerHTML = dock.html; dock.bind(tray); return; }
+  tray.classList.remove('dock');
+  const ti = shownTeam(), t = S.teams[ti];
   const mine = ti === S.turn && interactive() && S.phase === 'place';
   const c = mine ? BP.ctxFor(S, ti) : null;
   let h = `<div class="lab">${viewTeam === null ? 'Supply' : esc(team(ti).name)}</div>`;
@@ -1445,7 +1465,8 @@ function renderSide() {
   else if (viewTeam !== null) msg = `You are looking at <b>${esc(team(viewTeam).name)}</b>'s park.`;
   else if (busy) msg = '…';
   else if (S.phase === 'crew') msg = 'Click a glowing spot next to your park to attach the new Park Area.';
-  else if (S.phase === 'reward') msg = 'Choose your rewards.';
+  else if (S.phase === 'reward') msg = 'Choose your reward in the bar below the park. The glowing icon is the one you are choosing for.';
+  else if (dock) msg = 'Choose a free Green Area below.';
   else if (stuck) msg = 'Nothing in your supply fits. Press <b>Pass</b> to take a free Green Area.';
   else if (!sel) msg = 'Choose a tile from your supply at the bottom.';
   else if (!st) msg = `Click your park to put down the <b>${BP.pieceName(selPiece())}</b>. Use ⟳ and ⇋ to turn it.`;
@@ -1572,6 +1593,16 @@ function draw() {
   if (S.lastPlaced && S.lastPlaced.ti === ti && t.placed[S.lastPlaced.i] && !S.over) {
     ctx.save(); ctx.setLineDash([s * .18, s * .12]); ctx.lineWidth = Math.max(2, s * .05); ctx.strokeStyle = 'rgba(255,255,255,.85)';
     outline(ctx, t.placed[S.lastPlaced.i].cells, X, Y, s, -s * .02); ctx.restore();
+  }
+  // icons being rewarded
+  if (S.phase === 'reward' && viewTeam === null && !S.over) {
+    const pulse = REDUCED ? 1 : .5 + .5 * Math.sin(now / 220); animating = animating || !REDUCED;
+    S.pending.forEach((e, i) => {
+      const cx = X(e.x) + s / 2, cy = Y(e.y) + s / 2, act = i === modalIdx;
+      if (IMG[e.ch] && IMG[e.ch].complete) { ctx.globalAlpha = act ? 1 : .75; ctx.drawImage(IMG[e.ch], cx - s * .3, cy - s * .3, s * .6, s * .6); ctx.globalAlpha = 1; }
+      ctx.beginPath(); ctx.arc(cx, cy, s * (act ? .44 + .04 * pulse : .4), 0, 7);
+      ctx.lineWidth = act ? Math.max(3, s * .08) : 2; ctx.strokeStyle = act ? `rgba(243,179,61,${.6 + .4 * pulse})` : 'rgba(255,255,255,.7)'; ctx.stroke();
+    });
   }
   // ghost + legal dots
   if (interactive() && S.phase === 'place' && sel) {

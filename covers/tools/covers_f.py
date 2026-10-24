@@ -125,26 +125,62 @@ def vocab_toolkit():
 
 
 def wave():
-    d = lin("spec", [(0, "#4f46e5"), (.5, "#a5b4fc"), (1, "#06b6d4")], x2=1, y2=0)
-    b = [rect(0, 0, 600, 800, "#0f172a"), '<circle cx="300" cy="520" r="280" fill="#4f46e5" opacity=".14" filter="url(#k-glow)"/>']
-    b.append(text(300, 132, "Wave", "Inter", 120, "#f1f5f9", 900, ls=-3))
-    b.append(text(300, 182, "Read your team's mind. Find the spot.", "Inter", 21, "#94a3b8", 500))
-    cx, cy, R = 300, 560, 250
-    b.append(f'<path d="M{cx-R} {cy} A {R} {R} 0 0 1 {cx+R} {cy} Z" fill="url(#spec)" stroke="#1e293b" stroke-width="6"/>')
-    # target wedge
-    def wedge(a0, a1, col):
-        p0 = (cx + R * math.cos(math.radians(a0)), cy - R * math.sin(math.radians(a0)))
-        p1 = (cx + R * math.cos(math.radians(a1)), cy - R * math.sin(math.radians(a1)))
-        return f'<path d="M{cx} {cy} L{p0[0]:.1f} {p0[1]:.1f} A {R} {R} 0 0 0 {p1[0]:.1f} {p1[1]:.1f} Z" fill="{col}"/>'
-    b.append(wedge(52, 40, "#f59e0b") + wedge(64, 52, "#fde68a") + wedge(40, 28, "#fde68a"))
-    b.append(text(cx + 150 * math.cos(math.radians(46)), cy - 150 * math.sin(math.radians(46)) + 10, "4", "Inter", 30, "#1e293b", 900))
-    a = math.radians(58)
-    b.append(f'<line x1="{cx}" y1="{cy}" x2="{cx + (R-20)*math.cos(a):.1f}" y2="{cy - (R-20)*math.sin(a):.1f}" stroke="#ef4444" stroke-width="9" stroke-linecap="round" filter="url(#k-drop-s)"/>'
-             f'<circle cx="{cx}" cy="{cy}" r="26" fill="#ef4444" stroke="#fff" stroke-width="5"/>')
-    b.append(rect(30, cy + 16, 540, 6, "#1e293b"))
-    b.append(text(70, cy + 70, "← MILD", "Inter", 26, "#a5b4fc", 900, "start") + text(530, cy + 70, "SPICY →", "Inter", 26, "#67e8f9", 900, "end"))
-    b.append(f'<g filter="url(#k-drop)">{rect(150, 220, 300, 76, "#1e293b", 16, "stroke=\"#4f46e5\" stroke-width=\"3\"")}</g>'
-             + text(300, 248, "PSYCHIC'S CLUE", "Inter", 13, "#94a3b8", 800, ls=3) + text(300, 282, "“chili sauce”", "Inter", 26, "#f1f5f9", 800))
+    """Wave: teal radio-dial device, cream face, scoring wedge, red needle, smoked-glass screen swinging open."""
+    d = (lin("sky", [(0, "#050b20"), (.6, "#0d2145"), (1, "#17406a")])
+         + lin("shell", [(0, "#3aa0a9"), (.45, "#187180"), (1, "#0d4651")])
+         + rad("face", [(0, "#fffaf0"), (.8, "#f7eed8"), (1, "#dccca5")], cy="100%", r="100%")
+         + rad("glass", [(0, "#3a46a0"), (.7, "#1d2457"), (1, "#0c1033")], cy="100%", r="100%")
+         + rad("cap", [(0, "#ffffff"), (.55, "#cbd6db"), (1, "#6f8188")], cx="38%", cy="30%", r="80%")
+         + '<clipPath id="wv-win"><path d="M70 470 A230 230 0 0 1 530 470Z"/></clipPath>')
+    cx, cy, R = 300, 470, 230
+    def P(a, r):
+        t = math.radians(a)
+        return (cx + r * math.sin(t), cy - r * math.cos(t))
+    def sec(r0, r1, a0, a1, fill):
+        p0, p1, q1, q0 = P(a0, r1), P(a1, r1), P(a1, r0), P(a0, r0)
+        return (f'<path d="M{p0[0]:.1f} {p0[1]:.1f} A{r1} {r1} 0 0 1 {p1[0]:.1f} {p1[1]:.1f} L{q1[0]:.1f} {q1[1]:.1f} '
+                f'A{r0} {r0} 0 0 0 {q0[0]:.1f} {q0[1]:.1f}Z" fill="{fill}" stroke="rgba(28,26,43,.25)" stroke-width="1.5"/>')
+    b = [rect(0, 0, 600, 800, "url(#sky)"), stars(41, 60, y1=330)]
+    for k in range(6):
+        b.append(f'<circle cx="300" cy="470" r="{290 + k * 70}" fill="none" stroke="rgba(120,200,230,.12)" stroke-width="{4 - k * .5}" stroke-dasharray="{"40 18" if k % 2 == 0 else "2 14"}"/>')
+    sea = lambda base, amp, ln, ph: "M-20 800 L-20 %d " % base + " ".join(
+        f"L{x} {base + math.sin((x + ph) / ln * math.pi * 2) * amp:.1f}" for x in range(-20, 621, 10)) + " L620 800Z"
+    b.append(f'<path d="{sea(640, 10, 200, 0)}" fill="#1a4c74"/><path d="{sea(700, 9, 160, 60)}" fill="#123a5e"/><path d="{sea(752, 8, 130, 20)}" fill="#0b2a47"/>')
+    b.append(text(300, 150, "Wave", "Bowlby One", 128, "#f7eed8", 400, ls=2, extra='filter="url(#k-drop)"'))
+    b.append(text(300, 196, "One clue. Find the hidden target.", "Figtree", 23, "#a9c3d6", 700))
+    # device housing
+    b.append('<g filter="url(#k-drop)"><path d="M40 650 Q40 676 66 676 L534 676 Q560 676 560 650 L560 470 A260 260 0 0 0 40 470Z" fill="url(#shell)"/></g>')
+    b.append(f'<path d="M{cx-242} {cy} A242 242 0 0 1 {cx+242} {cy}" fill="none" stroke="#cbd6db" stroke-width="14"/>')
+    b.append(f'<path d="M{cx-R} {cy} A{R} {R} 0 0 1 {cx+R} {cy}Z" fill="url(#face)"/>')
+    for u in range(0, 101, 5):
+        a = (u - 50) * 1.8; ln = 16 if u % 10 == 0 else 8
+        p0, p1 = P(a, R - 4 - ln), P(a, R - 4)
+        b.append(f'<line x1="{p0[0]:.1f}" y1="{p0[1]:.1f}" x2="{p1[0]:.1f}" y2="{p1[1]:.1f}" stroke="#b9a77d" stroke-width="2.5" stroke-linecap="round"/>')
+    tgt = 34  # degrees right of center
+    w = []
+    for lo, hi, col, n in [(-10, -6, "#f5d45e", 2), (-6, -2, "#ef8a3a", 3), (-2, 2, "#25b2c2", 4), (2, 6, "#ef8a3a", 3), (6, 10, "#f5d45e", 2)]:
+        a0, a1 = tgt + lo * 1.8, tgt + hi * 1.8
+        w.append(sec(30, R - 2, a0, a1, col))
+        lp = P((a0 + a1) / 2, 202)
+        w.append(text(f"{lp[0]:.1f}", f"{lp[1] + 8:.1f}", str(n), "Bowlby One", 22, "#1c1a2b", 400,
+                      extra=f'transform="rotate({(a0 + a1) / 2:.1f} {lp[0]:.1f} {lp[1] + 0:.1f})"'))
+    # smoked-glass screen swinging away (rotated 125deg around the hub)
+    sh = (f'<g transform="rotate(152 {cx} {cy})"><path d="M{cx-234} {cy} A234 234 0 0 1 {cx+234} {cy}Z" fill="url(#glass)"/>'
+          f'<path d="M{cx-234} {cy} A234 234 0 0 1 {cx+234} {cy}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"/></g>')
+    b.append(f'<g clip-path="url(#wv-win)">{"".join(w)}{sh}</g>')
+    b.append(rect(52, 465, 496, 11, "#05232a", 5))
+    # needle into the 4
+    na = tgt + 0.6
+    tip, gp = P(na, 236), P(na, 192)
+    b.append(f'<g filter="url(#k-drop-s)"><line x1="{cx}" y1="{cy}" x2="{tip[0]:.1f}" y2="{tip[1]:.1f}" stroke="#e3243c" stroke-width="7" stroke-linecap="round"/>'
+             f'<circle cx="{gp[0]:.1f}" cy="{gp[1]:.1f}" r="11" fill="#e3243c" stroke="#fff" stroke-width="3.5"/></g>')
+    b.append(f'<circle cx="{cx}" cy="{cy}" r="28" fill="url(#cap)"/><circle cx="{cx}" cy="{cy}" r="11" fill="#e3243c"/>')
+    # spectrum card in the slot
+    b.append(rect(120, 500, 360, 10, "#05232a", 5))
+    b.append(f'<g filter="url(#k-drop-s)"><path d="M126 506 L306 506 L290 646 L126 646 Q118 646 118 638 L118 514 Q118 506 126 506Z" fill="#9fe2ea"/>'
+             f'<path d="M306 506 L474 506 Q482 506 482 514 L482 638 Q482 646 474 646 L290 646Z" fill="#ffd59a"/></g>')
+    b.append(text(208, 588, "Cold", "Bowlby One", 40, "#1c1a2b") + text(392, 588, "Hot", "Bowlby One", 40, "#1c1a2b"))
+    b.append(text(300, 740, "Talk. Turn. Reveal.", "Figtree", 22, "#f7eed8", 800, extra='opacity=".85"'))
     return svg(d, "".join(b))
 
 

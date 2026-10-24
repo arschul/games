@@ -98,9 +98,9 @@ body.playing a[title="Classroom Hub"]{display:none!important}
 @keyframes firePulse{50%{box-shadow:0 8px 0 #6b2405,0 0 0 8px rgba(255,170,60,.35),0 0 60px rgba(255,150,40,.7),inset 0 3px 0 rgba(255,255,255,.55)}}
 #tools .grid3{margin-top:2px}
 .iconrow{display:flex;gap:8px;justify-content:space-between;margin-top:12px}
-.icon-btn{background-color:#3a3128;width:50px;height:50px;border-radius:10px 3px 10px 3px;border:0;color:var(--ivory);cursor:pointer;display:grid;place-items:center;
+.icon-btn{background-color:#3a3128;width:40px;height:48px;border-radius:10px 3px 10px 3px;border:0;color:var(--ivory);cursor:pointer;display:grid;place-items:center;
   background:linear-gradient(180deg,#463b30,#2a231c);box-shadow:0 4px 0 #0e0b08,inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(226,176,74,.3)}
-.icon-btn svg{width:26px;height:26px}
+.icon-btn svg{width:23px;height:23px}
 .icon-btn[aria-pressed="true"]{color:var(--gold);box-shadow:0 4px 0 #0e0b08,inset 0 0 0 2px var(--gold)}
 .icon-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0b08}
 #endBtn.armed{background:linear-gradient(180deg,#e0442a,#8d1d0c);color:#fff}
@@ -270,6 +270,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       <div class="iconrow">
         <button class="icon-btn" id="ghostBtn" type="button" title="Show last beam (L)" aria-label="Show last beam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V9h9V4h9"/><circle cx="3" cy="20" r="1.6" fill="currentColor"/></svg></button>
         <button class="icon-btn" id="weatherBtn" type="button" title="Desert weather (Shift+W)" aria-label="Desert weather"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 13h16a3 3 0 1 1-3 3"/><path d="M3 18h7"/></svg></button>
+        <button class="icon-btn" id="musicBtn" type="button" title="Music (Shift+N)" aria-label="Music"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg></button>
         <button class="icon-btn sound-toggle" type="button" title="Sound (M)" aria-label="Sound"></button>
         <button class="icon-btn theme-toggle" type="button" title="Theme (Shift+T)" aria-label="Theme"></button>
         <button class="icon-btn" id="fsBtn" type="button" title="Fullscreen (F)" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
@@ -324,6 +325,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
           <label><input type="checkbox" id="optSwap"> Swap colors on rematch</label>
           <label><input type="checkbox" id="optSound" checked> Sound</label>
           <label><input type="checkbox" id="optWeather" checked> Desert weather</label>
+          <label><input type="checkbox" id="optMusic" checked> Music</label>
           <label>Move limit <select id="optLimit"><option value="0">Off</option><option value="40">40 moves</option><option value="60">60 moves</option><option value="100">100 moves</option></select></label>
         </div>
         <div class="startRow">
@@ -343,7 +345,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
         </ol>
         <div class="plbl" style="margin-top:16px">How pieces react</div>
         <div class="legend" id="legend"></div>
-        <div class="keys"><kbd>Q</kbd>/<kbd>E</kbd> turn, <kbd>Enter</kbd> confirm, <kbd>Space</kbd> fire, <kbd>Esc</kbd> cancel, <kbd>Shift+U</kbd> undo, <kbd>M</kbd> sound, <kbd>Shift+W</kbd> weather, <kbd>F</kbd> fullscreen</div>
+        <div class="keys"><kbd>Q</kbd>/<kbd>E</kbd> turn, <kbd>Enter</kbd> confirm, <kbd>Space</kbd> fire, <kbd>Esc</kbd> cancel, <kbd>Shift+U</kbd> undo, <kbd>M</kbd> sound, <kbd>Shift+W</kbd> weather, <kbd>Shift+N</kbd> music, <kbd>F</kbd> fullscreen</div>
       </div>
     </div>
   </section>
@@ -1010,6 +1012,193 @@ const Scene = (function () {
   };
 })();
 
+// ===================== MUSIC: generative desert score (Web Audio only, no files) =====================
+// Maqam Hijaz on D (D Eb F# G A Bb C). Day = oud ostinato + ney melody + darbuka in maqsum rhythm.
+// Night = slow, spacious: drone, ney phrases, sparse oud, a soft frame drum. Never auto-advances anything.
+const Music = (function () {
+  const HIJAZ = [0, 1, 4, 5, 7, 8, 10];
+  const BASE = 62; // D4
+  const mf = m => 440 * Math.pow(2, (m - 69) / 12);
+  const deg = i => { const o = Math.floor(i / 7), d = ((i % 7) + 7) % 7; return BASE + 12 * o + HIJAZ[d]; };
+  const MODES = {
+    day: { bpm: 104, drone: 0.02, wet: 0.24, drums: true },
+    night: { bpm: 66, drone: 0.055, wet: 0.5, drums: false }
+  };
+
+  // One player per audio context (live or offline). Pure scheduling on the context clock.
+  function createPlayer(ctx, opts) {
+    opts = opts || {};
+    let seed = opts.seed || (Date.now() % 2147483646) + 1;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const pick = a => a[(rnd() * a.length) | 0];
+    let mode = opts.mode || 'night';
+    // graph: instruments -> dry + reverb send -> master -> compressor -> out
+    const master = ctx.createGain(); master.gain.value = 0;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3;
+    master.connect(comp).connect(opts.out || ctx.destination);
+    const dry = ctx.createGain(); dry.gain.value = 1; dry.connect(master);
+    const conv = ctx.createConvolver(); const wet = ctx.createGain(); wet.gain.value = MODES[mode].wet;
+    conv.connect(wet).connect(master);
+    { // synthetic hall: decaying stereo noise
+      const len = Math.floor(ctx.sampleRate * 2.8), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (rnd() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+      conv.buffer = ir;
+    }
+    const send = ctx.createGain(); send.gain.value = 1; send.connect(conv);
+    const bus = ctx.createGain(); bus.connect(dry); bus.connect(send);
+    // shared noise
+    const nlen = ctx.sampleRate * 2, noiseBuf = ctx.createBuffer(1, nlen, ctx.sampleRate);
+    { const d = noiseBuf.getChannelData(0); for (let i = 0; i < nlen; i++) d[i] = rnd() * 2 - 1; }
+    const noise = (t, dur, type, freq, q, vol, out) => {
+      const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
+      const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(f).connect(g).connect(out || bus); s.start(t, rnd() * 1.5); s.stop(t + dur + 0.05);
+    };
+    // oud: Karplus-Strong plucked string, cached per pitch
+    const ksCache = {};
+    function ks(m) {
+      if (ksCache[m]) return ksCache[m];
+      const sr = ctx.sampleRate, N = Math.max(2, Math.round(sr / mf(m))), len = Math.floor(sr * 1.6);
+      const b = ctx.createBuffer(1, len, sr), d = b.getChannelData(0), ring = new Float32Array(N);
+      for (let i = 0; i < N; i++) ring[i] = rnd() * 2 - 1;
+      for (let i = 1; i < N; i++) ring[i] = 0.6 * ring[i] + 0.4 * ring[i - 1]; // a little softer attack
+      let p = 0; for (let i = 0; i < len; i++) { const v = ring[p], nx = ring[(p + 1) % N]; ring[p] = 0.5 * (v + nx) * 0.9965; d[i] = v; p = (p + 1) % N; }
+      return (ksCache[m] = b);
+    }
+    function oud(t, m, vel) {
+      const s = ctx.createBufferSource(); s.buffer = ks(m);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2600; f.Q.value = 0.8;
+      const g = ctx.createGain(); g.gain.setValueAtTime(vel * 0.55, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
+      s.connect(f).connect(g).connect(bus); s.start(t); s.stop(t + 1.6);
+    }
+    function ney(t, m, dur, vel) {
+      const f0 = mf(m), o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), g2 = ctx.createGain();
+      o.type = 'sine'; o2.type = 'triangle';
+      o.frequency.setValueAtTime(f0 * 0.972, t); o.frequency.exponentialRampToValueAtTime(f0, t + 0.09);
+      o2.frequency.setValueAtTime(f0 * 2 * 0.972, t); o2.frequency.exponentialRampToValueAtTime(f0 * 2, t + 0.09);
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 5.1; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f0 * 0.007, t + Math.min(0.5, dur * 0.6));
+      lfo.connect(lg); lg.connect(o.frequency); const lg2 = ctx.createGain(); lg2.gain.value = 2; lg.connect(lg2).connect(o2.frequency);
+      const end = t + dur;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel * 0.16, t + 0.12); g.gain.setValueAtTime(vel * 0.16, Math.max(t + 0.12, end - 0.12)); g.gain.exponentialRampToValueAtTime(0.0001, end + 0.18);
+      g2.gain.value = 0.18;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f0 * 5;
+      o.connect(g); o2.connect(g2).connect(g); g.connect(lp).connect(bus);
+      [o, o2, lfo].forEach(x => { x.start(t); x.stop(end + 0.25); });
+      noise(t, 0.18, 'bandpass', f0 * 1.6, 1.2, vel * 0.05); // breath on the attack
+    }
+    function doum(t, vel) {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(100, t); o.frequency.exponentialRampToValueAtTime(52, t + 0.28);
+      g.gain.setValueAtTime(vel * 0.75, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+      o.connect(g).connect(dry); o.start(t); o.stop(t + 0.45);
+      noise(t, 0.08, 'lowpass', 500, 0, vel * 0.25, dry);
+    }
+    function tek(t, vel) { noise(t, 0.07, 'highpass', 2200, 0, vel * 0.42); const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = 820; g.gain.setValueAtTime(vel * 0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04); o.connect(g).connect(bus); o.start(t); o.stop(t + 0.05); }
+    function riq(t, vel) { noise(t, 0.16, 'highpass', 7000, 0, vel * 0.14); }
+    // drone (tonic + fifth), swells slowly
+    const drone = [];
+    function droneOn(t) {
+      for (const [m, det] of [[38, -4], [38, 5], [45, 0]]) {
+        const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+        o.type = 'sawtooth'; o.frequency.value = mf(m); o.detune.value = det;
+        f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 0.6;
+        const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 0.07 + drone.length * 0.03; lg.gain.value = 180; l.connect(lg).connect(f.frequency);
+        g.gain.value = 0; o.connect(f).connect(g).connect(bus); o.start(t); l.start(t);
+        drone.push({ o, l, g });
+      }
+      droneLevel(t);
+    }
+    function droneLevel(t) { drone.forEach(d => { d.g.gain.cancelScheduledValues(t); d.g.gain.setTargetAtTime(MODES[mode].drone, t, 1.5); }); }
+
+    // ---------- composer ----------
+    let bar = 0, lastPhrase = null;
+    function phrase(len) {
+      const notes = []; let i = pick([0, 2, 4, 4, 7]), pos = 0;
+      while (pos < len - 2) {
+        const d = pick([1, 1, 2, 2, 2, 3]);
+        notes.push({ pos, idx: i, dur: Math.min(d, len - 2 - pos), grace: rnd() < 0.22 });
+        pos += d; i = Math.max(-2, Math.min(9, i + pick([-1, -1, 1, 1, 2, -2, 0, -1])));
+      }
+      notes.push({ pos, idx: pick([0, 0, 4, 7]), dur: len - pos, grace: false }); // land on D or A
+      return notes;
+    }
+    function scheduleBar(t0, e) { // e = seconds per eighth
+      const M = MODES[mode], b = bar++, inGroup = b % 4, section = Math.floor(b / 4) % 4;
+      if (mode === 'day') {
+        // darbuka: maqsum  D T . T D . T .  (fills every 4th bar)
+        if (b >= 2) {
+          doum(t0, 0.9); tek(t0 + e, 0.7); tek(t0 + 3 * e, 0.6); doum(t0 + 4 * e, 0.8); tek(t0 + 6 * e, 0.7);
+          if (inGroup === 3) { tek(t0 + 5 * e, 0.5); tek(t0 + 6.5 * e, 0.45); tek(t0 + 7 * e, 0.55); tek(t0 + 7.5 * e, 0.6); }
+          else if (rnd() < 0.5) tek(t0 + 7 * e, 0.35);
+          riq(t0 + 2 * e, 0.6); riq(t0 + 6 * e, 0.5);
+        }
+        // oud ostinato on the low strings
+        const ost = [[0, deg(-7), 0.9], [3, deg(-3), 0.6], [4, deg(-7), 0.8], [6, deg(-6), 0.55], [7, deg(-7), 0.5]];
+        ost.forEach(([p, m, v]) => oud(t0 + p * e, m, v * 0.7));
+        // melody: ney phrase (bars 0-1 of each group), oud answers it an octave lower (bars 2-3)
+        if (inGroup === 0 && section !== 3) { lastPhrase = phrase(16); playNey(lastPhrase, t0, e, 0.9); }
+        if (inGroup === 2 && lastPhrase && section !== 0) playOud(lastPhrase, t0, e);
+        if (section === 3 && inGroup === 0) playOud(phrase(16), t0, e, true);
+      } else {
+        // night: soft frame drum, long ney lines, sparse oud
+        if (b % 2 === 0) doum(t0, 0.45);
+        if (b % 2 === 1 && rnd() < 0.5) doum(t0 + 6 * e, 0.25);
+        if (inGroup === 0) { lastPhrase = phrase(14).map(n => ({ ...n, dur: n.dur })); playNey(lastPhrase, t0 + e, e, 0.8); }
+        if (inGroup === 2 && lastPhrase) { [0, 3, 5].forEach(k => { const n = lastPhrase[k]; if (n) oud(t0 + n.pos * e * 0.5, deg(n.idx - 7), 0.45); }); }
+        if (rnd() < 0.4) oud(t0 + pick([2, 5, 6]) * e, deg(pick([-7, -3, 0])), 0.3);
+      }
+    }
+    function playNey(ph, t0, e, vel) { ph.forEach(n => { const m = deg(n.idx); if (n.grace) ney(t0 + n.pos * e - 0.07, deg(n.idx + 1), 0.09, vel * 0.6); ney(t0 + n.pos * e, m, n.dur * e * 0.96, vel); }); }
+    function playOud(ph, t0, e, solo) {
+      ph.forEach(n => {
+        const m = deg(n.idx - 7), t = t0 + n.pos * e;
+        oud(t, m, 0.75);
+        if (n.dur >= 2 && (solo || rnd() < 0.5)) for (let k = 1; k < n.dur * 2; k++) oud(t + k * e / 2, m, 0.35); // tremolo
+        if (n.grace) oud(t - 0.06, deg(n.idx - 6), 0.4);
+      });
+    }
+
+    let nextBar = 0, started = false, notes = 0;
+    return {
+      start(t, vol) { droneOn(t); master.gain.setValueAtTime(0.0001, t); master.gain.exponentialRampToValueAtTime(vol || 0.5, t + 2.5); nextBar = t + 0.3; started = true; },
+      scheduleUntil(tEnd) {
+        while (started && nextBar < tEnd) {
+          const e = 60 / MODES[mode].bpm / 2; scheduleBar(nextBar, e); nextBar += 8 * e; notes++;
+        }
+      },
+      setMode(m, t) { if (!MODES[m] || m === mode) return; mode = m; wet.gain.setTargetAtTime(MODES[m].wet, t, 1); droneLevel(t); },
+      setVolume(v, t) { master.gain.cancelScheduledValues(t); master.gain.setTargetAtTime(Math.max(0.0001, v), t, 0.4); },
+      stop(t) { master.gain.cancelScheduledValues(t); master.gain.setTargetAtTime(0.0001, t, 0.3); drone.forEach(d => { try { d.o.stop(t + 1.5); d.l.stop(t + 1.5); } catch (er) { } }); started = false; setTimeout(() => { try { master.disconnect(); } catch (er) { } }, 2000); },
+      get bars() { return notes; }, get mode() { return mode; }
+    };
+  }
+
+  // ---------- live controller ----------
+  const VOL = 0.42;
+  let player = null, timer = 0, ctxRef = null, mode = 'night', duckUntil = 0, stormLevel = () => 0;
+  function tick() {
+    if (!player || !ctxRef) return;
+    if (document.hidden) return;
+    const t = ctxRef.currentTime;
+    player.scheduleUntil(t + 0.6);
+    const duck = (t < duckUntil ? 0.25 : 1) * (1 - 0.55 * Math.min(1, stormLevel() || 0));
+    if (Math.abs(duck - (tick.d || 1)) > 0.02) { player.setVolume(VOL * duck, t); tick.d = duck; }
+  }
+  return {
+    createPlayer,
+    start(ctx) {
+      if (player || !ctx) return;
+      ctxRef = ctx; player = createPlayer(ctx, { mode }); player.start(ctx.currentTime, VOL); tick.d = 1;
+      timer = setInterval(tick, 50); tick();
+    },
+    stop() { if (!player) return; player.stop(ctxRef.currentTime); player = null; clearInterval(timer); timer = 0; },
+    setMode(m) { mode = m; if (player) player.setMode(m, ctxRef.currentTime); },
+    duck(sec) { if (ctxRef) duckUntil = ctxRef.currentTime + sec; },
+    set stormLevel(fn) { stormLevel = fn; },
+    get state() { return { playing: !!player, mode, bars: player ? player.bars : 0 }; }
+  };
+})();
+
 (function () {
 'use strict';
 // ===================== ART: pieces (original, drawn in code) =====================
@@ -1270,7 +1459,7 @@ let ghostOn = true, previewOn = true, debugOpen = false;
 let anim = null, hop = null, flashes = [], fireworks = 0;
 let endArmed = 0, endTimer = 0, capOverride = '', capTimer = 0;
 const dbg = { mode: 'place' };
-let setupPrefs = Object.assign({ silver: '', red: '', setup: 'classic', practice: false, swap: false, limit: 0, weather: true }, store.get(KEY.setup, {}));
+let setupPrefs = Object.assign({ silver: '', red: '', setup: 'classic', practice: false, swap: false, limit: 0, weather: true, music: true }, store.get(KEY.setup, {}));
 let muted = !!store.get(KEY.mute, false);
 
 // ---------- stage scaling ----------
@@ -1475,7 +1664,17 @@ const SVG = {
   system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>'
 };
 function paintSound() { document.querySelectorAll('.sound-toggle').forEach(b => { b.innerHTML = muted ? SVG.soundOff : SVG.soundOn; b.setAttribute('aria-pressed', String(!muted)); b.title = muted ? 'Sound off (M)' : 'Sound on (M)'; }); }
-function toggleMute() { muted = !muted; store.set(KEY.mute, muted); if (muted) humStop(); paintSound(); $('optSound').checked = !muted; }
+function toggleMute() { muted = !muted; store.set(KEY.mute, muted); if (muted) humStop(); paintSound(); $('optSound').checked = !muted; applyMusic(); wakeMusic(); }
+// music plays when sound is on and the Music option is on; the audio context needs a first click or key
+function applyMusic() {
+  const on = setupPrefs.music !== false;
+  $('musicBtn').setAttribute('aria-pressed', String(on)); $('musicBtn').title = on ? 'Music: on (Shift+N)' : 'Music: off (Shift+N)'; $('optMusic').checked = on;
+  Music.setMode(isLight() ? 'day' : 'night');
+  if (on && !muted) { if (AC && AC.state === 'running') Music.start(AC); } else Music.stop();
+}
+function wakeMusic() { if (setupPrefs.music !== false && !muted) { const a = ac(); if (a) { if (a.state === 'running') Music.start(a); else a.resume().then(() => applyMusic()).catch(() => { }); } } }
+function toggleMusic() { setupPrefs.music = setupPrefs.music === false; saveSetup(); applyMusic(); wakeMusic(); }
+addEventListener('pointerdown', wakeMusic, true); addEventListener('keydown', wakeMusic, true);
 
 // ---------- theme ----------
 const THEME_LABEL = { dark: 'Theme: freezing night (Shift+T)', light: 'Theme: scorching day (Shift+T)', system: 'Theme: follow the computer (Shift+T)' };
@@ -1495,7 +1694,7 @@ function syncTheme() {
   const eff = isLight() ? 'light' : 'dark';
   if (eff === paintedTheme) return;
   paintedTheme = eff;
-  boardTex = null; Scene.setTheme(eff === 'light'); drawMinis(); kick(); renderPanels();
+  boardTex = null; Scene.setTheme(eff === 'light'); Music.setMode(eff === 'light' ? 'day' : 'night'); drawMinis(); kick(); renderPanels();
 }
 try { new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) { }
 addEventListener('storage', e => { if (e.key === KEY.theme) setTimeout(syncTheme, 0); });
@@ -1561,6 +1760,7 @@ function armEnd() {
 }
 function onOver() {
   const r = S.result;
+  Music.duck(4);
   if (r.winner) { SFX.fanfare(); launchConfetti(r.winner); }
   else SFX.draw();
   render();
@@ -2154,6 +2354,7 @@ document.addEventListener('keydown', e => {
   if (anim && !e.shiftKey) { e.preventDefault(); finishAnim(); return; }
   if (e.shiftKey && lk === 't') { toggleTheme(); return; }
   if (e.shiftKey && lk === 'w') { toggleWeather(); return; }
+  if (e.shiftKey && lk === 'n') { toggleMusic(); return; }
   if (!e.shiftKey && lk === 'm') { toggleMute(); return; }
   if (!e.shiftKey && lk === 'f' && !e.ctrlKey && !e.metaKey) { toggleFs(); return; }
   if (screen === 'editor') {
@@ -2207,6 +2408,8 @@ $('dbgLoad').onclick = () => { if (!S) return; pushUndo(); S = BR.setBoard(S, BR
 $('dbgClose').onclick = () => setDebug(false);
 $('dbgStorm').onclick = () => Scene.storm(); $('dbgScorp').onclick = () => Scene.scorpion();
 $('weatherBtn').onclick = toggleWeather;
+$('musicBtn').onclick = toggleMusic;
+$('optMusic').onchange = e => { setupPrefs.music = e.target.checked; saveSetup(); applyMusic(); wakeMusic(); };
 $('optWeather').onchange = e => { setupPrefs.weather = e.target.checked; saveSetup(); applyWeather(); };
 // setup
 $('inSilver').oninput = e => { setupPrefs.silver = e.target.value; saveSetup(); };
@@ -2227,10 +2430,10 @@ $('edSave').onclick = () => { if (BR.validateBoard(ed.board).length) return; sto
 $('edBack').onclick = () => showScreen('setup');
 
 // test hook (read-only views + flows)
-window.__BR = { get S() { return S; }, get ui() { return { screen, sel, pending, cursor, anim: !!anim, hop: !!hop, undo: undo.length, debugOpen }; }, Scene, finishHop, startGame, clickSquare, commit, doFire, doUndo, rotateSel, finishAnim, openEditor, ed, BX, BY, CELL, drawPiece };
+window.__BR = { get S() { return S; }, get ui() { return { screen, sel, pending, cursor, anim: !!anim, hop: !!hop, undo: undo.length, debugOpen }; }, Scene, Music, finishHop, startGame, clickSquare, commit, doFire, doUndo, rotateSel, finishAnim, openEditor, ed, BX, BY, CELL, drawPiece };
 
 // ---------- boot ----------
-Scene.audio = ac; Scene.setStill(reduced); fit(); paintTheme(readTheme()); paintSound(); applyWeather();
+Scene.audio = ac; Scene.setStill(reduced); Music.stormLevel = () => Scene.state.storm; fit(); paintTheme(readTheme()); paintSound(); applyWeather(); applyMusic();
 try { document.fonts.ready.then(() => { boardTex = null; drawMinis(); kick(); }); } catch (e) { }
 // No blank state: the setup screen draws the chosen layout full-size behind the panel.
 // Resume straight into a game in progress (mid-turn selection and ghost included).

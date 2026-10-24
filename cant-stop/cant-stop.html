@@ -89,6 +89,9 @@ html[data-theme="dark"] .cell.top{background:linear-gradient(180deg,#e9f1ff 0%,#
 .banner{height:58px;border-radius:12px 12px 4px 4px;background:var(--oc);display:flex;align-items:center;justify-content:center;gap:4px;color:#fff;font:800 34px Sora,Inter,system-ui,sans-serif;text-shadow:0 2px 4px rgba(0,0,0,.5);box-shadow:0 6px 16px rgba(0,0,0,.3);position:relative}
 .banner::after{content:"";position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);border:12px solid transparent;border-top-color:var(--oc);border-bottom:0}
 .peg{flex:0 0 auto;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+.mk{display:inline-grid;place-items:center;border-radius:50%;background:var(--mc);border:2.5px solid var(--peg-stroke);line-height:1;overflow:hidden;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.mk.climber{background:#fff;border:3.5px solid #0b1220}
+.mk.ghost{background:rgba(255,255,255,.4);border-style:dashed}
 .peg.climber{filter:drop-shadow(0 0 7px rgba(255,255,255,.95)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 .peg.ghost{opacity:.85;filter:none;animation:ghost 1s ease-in-out infinite alternate}
 @keyframes ghost{from{opacity:.45}to{opacity:.95}}
@@ -173,7 +176,13 @@ html[data-theme="dark"] .cell.top{background:linear-gradient(180deg,#e9f1ff 0%,#
 .resume{display:flex;align-items:center;gap:22px;padding:20px 24px;border-radius:20px;border:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--panel));margin-bottom:26px}
 .resume .t{flex:1;font:700 22px Inter,system-ui,sans-serif}
 .resume .t b{font:800 28px Sora,Inter,system-ui,sans-serif;display:block}
-.trow{display:grid;grid-template-columns:70px 1fr auto auto 56px;align-items:center;gap:18px;padding:14px 0;border-bottom:1px solid var(--line)}
+.trow{display:grid;grid-template-columns:76px 1fr auto 56px;align-items:center;column-gap:18px;row-gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.tname{font:800 36px Sora,Inter,system-ui,sans-serif}
+.animals{grid-column:2/-1;display:flex;gap:8px}
+.an{width:62px;height:62px;border-radius:14px;border:3px solid transparent;background:var(--panel2);font-size:36px;line-height:1;padding:0;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.an:hover{border-color:var(--line)}
+.an.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel2))}
+.an.taken{opacity:.3}
 .trow input{height:64px;border-radius:14px;border:2px solid var(--line);background:var(--panel2);color:var(--ink);font:800 28px Sora,Inter,system-ui,sans-serif;padding:0 18px;width:100%}
 .trow input:focus{outline:none;border-color:var(--accent)}
 .picks{display:flex;gap:8px}
@@ -278,7 +287,7 @@ html[data-theme="dark"] .cell.top{background:linear-gradient(180deg,#e9f1ff 0%,#
     var claimed = {}; COLS.forEach(function (c) { claimed[c] = null; });
     return {
       v: 1,
-      players: players.map(function (p) { return { name: String(p.name), color: p.color, shape: p.shape }; }),
+      players: players.map(function (p) { return { name: String(p.name), color: p.color, animal: p.animal }; }),
       bases: bases, claimed: claimed, climbers: {},
       current: 0, phase: 'awaitRoll', dice: null, options: [],
       winner: null, undo: null, lost: null, banked: null, turn: 1
@@ -512,14 +521,22 @@ var COLORS = [
   { id: 'gold', hex: '#eab308', name: 'Gold' }, { id: 'green', hex: '#22c55e', name: 'Green' },
   { id: 'purple', hex: '#a855f7', name: 'Purple' }, { id: 'orange', hex: '#f97316', name: 'Orange' }
 ];
-var SHAPES = ['circle', 'triangle', 'square', 'diamond'];
+var ANIMALS = [
+  { id: 'fox', e: '🦊', name: 'Foxes' }, { id: 'shark', e: '🦈', name: 'Sharks' },
+  { id: 'lion', e: '🦁', name: 'Lions' }, { id: 'frog', e: '🐸', name: 'Frogs' },
+  { id: 'panda', e: '🐼', name: 'Pandas' }, { id: 'penguin', e: '🐧', name: 'Penguins' },
+  { id: 'owl', e: '🦉', name: 'Owls' }, { id: 'octopus', e: '🐙', name: 'Octopuses' },
+  { id: 'turtle', e: '🐢', name: 'Turtles' }, { id: 'koala', e: '🐨', name: 'Koalas' }
+];
+var LEGACY_SHAPE = { circle: 'fox', triangle: 'shark', square: 'lion', diamond: 'frog' };
+function animal(id) { return ANIMALS.find(function (a) { return a.id === id; }) || ANIMALS[0]; }
 var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 var G = null;
 var ui = { preview: null, busy: false, showRisk: false, prevClimbers: {}, tumble: null, debug: false };
 var setupTeams = [
-  { name: 'Red', color: 'red', shape: 'circle' },
-  { name: 'Blue', color: 'blue', shape: 'triangle' }
+  { color: 'red', animal: 'fox' },
+  { color: 'blue', animal: 'shark' }
 ];
 
 function $(id) { return document.getElementById(id); }
@@ -586,23 +603,14 @@ function paintMute() { $('mute-btn').textContent = muted ? '🔇' : '🔊'; $('m
 paintMute();
 
 /* ---------- svg ---------- */
-function shapeEl(shape, fill, stroke, sw, scale) {
-  var k = scale || 1, c = 50;
-  function sc(pts) { return pts.map(function (p) { return (c + (p[0] - c) * k).toFixed(1) + ',' + (c + (p[1] - c) * k).toFixed(1); }).join(' '); }
-  var a = 'fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '" stroke-linejoin="round"';
-  if (shape === 'triangle') return '<polygon points="' + sc([[50, 8], [95, 88], [5, 88]]) + '" ' + a + '/>';
-  if (shape === 'square') { var h = 38 * k; return '<rect x="' + (50 - h) + '" y="' + (50 - h) + '" width="' + 2 * h + '" height="' + 2 * h + '" rx="' + 9 * k + '" ' + a + '/>'; }
-  if (shape === 'diamond') return '<polygon points="' + sc([[50, 3], [97, 50], [50, 97], [3, 50]]) + '" ' + a + '/>';
-  return '<circle cx="50" cy="50" r="' + 41 * k + '" ' + a + '/>';
+// Team marker: the team's animal on a disc in the team color.
+function peg(animalId, color, size, cls) {
+  return '<span class="peg mk ' + (cls || '') + '" style="width:' + size + 'px;height:' + size + 'px;--mc:' + color + ';font-size:' + Math.round(size * 0.66) + 'px">' + animal(animalId).e + '</span>';
 }
-function peg(shape, color, size, cls) {
-  return '<svg class="peg ' + (cls || '') + '" width="' + size + '" height="' + size + '" viewBox="0 0 100 100">' + shapeEl(shape, color, 'var(--peg-stroke)', 9) + '</svg>';
-}
+// Climber: white disc with dark outline and glow, carrying the active team's animal.
 function climberSVG(size, p, cls) {
-  var inner = p == null ? '' : shapeEl(G.players[p].shape, pcol(p), 'none', 0, 0.42);
-  var ghost = /ghost/.test(cls || '');
-  return '<svg class="peg climber ' + (cls || '') + '" width="' + size + '" height="' + size + '" viewBox="0 0 100 100">' +
-    '<circle cx="50" cy="50" r="42" fill="' + (ghost ? 'rgba(255,255,255,.35)' : '#fff') + '" stroke="#0b1220" stroke-width="' + (ghost ? 7 : 11) + '"' + (ghost ? ' stroke-dasharray="14 9"' : '') + '/>' + inner + '</svg>';
+  var e = p == null ? '' : animal(G.players[p].animal).e;
+  return '<span class="peg mk climber ' + (cls || '') + '" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.58) + 'px">' + e + '</span>';
 }
 var PIPS = { 1: [[50, 50]], 2: [[28, 28], [72, 72]], 3: [[28, 28], [50, 50], [72, 72]], 4: [[28, 28], [72, 28], [28, 72], [72, 72]],
   5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]], 6: [[28, 26], [72, 26], [28, 50], [72, 50], [28, 74], [72, 74]] };
@@ -620,7 +628,10 @@ function save() {
 function loadSave() {
   try {
     var d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-    if (d && d.state && d.state.v === 1 && Array.isArray(d.state.players)) return d;
+    if (d && d.state && d.state.v === 1 && Array.isArray(d.state.players)) {
+      d.state.players.forEach(function (p) { if (!p.animal) p.animal = LEGACY_SHAPE[p.shape] || 'fox'; });
+      return d;
+    }
   } catch (e) {}
   return null;
 }
@@ -694,7 +705,7 @@ function renderTeams() {
     var banked = CS.COLS.reduce(function (a, c) { return a + G.bases[p][c]; }, 0);
     var active = p === G.current && G.phase !== 'won';
     return '<div class="team' + (active ? ' active' : '') + '" style="--tc:' + hex(pl.color) + '">' +
-      '<div class="row">' + peg(pl.shape, hex(pl.color), 44) + '<div class="nm">' + esc(pl.name) + '</div></div>' +
+      '<div class="row">' + peg(pl.animal, hex(pl.color), 44) + '<div class="nm">' + esc(pl.name) + '</div></div>' +
       '<div class="turnflag">' + (active ? '▶ climbing now' : '') + '</div>' +
       '<div class="slots">' + slots + '</div>' +
       '<div class="stat">' + banked + ' spaces banked</div></div>';
@@ -717,23 +728,23 @@ function renderBoard() {
     var H = CS.HEIGHTS[c], owner = G.claimed[c];
     var oc = owner !== null ? pcol(owner) : '';
     html += '<div class="col' + (owner !== null ? ' claimed' : '') + '" data-col="' + c + '"' + (owner !== null ? ' style="--oc:' + oc + '"' : '') + '>';
-    if (owner !== null) html += '<div class="banner">' + peg(G.players[owner].shape, '#fff', 26) + c + '</div>';
+    if (owner !== null) html += '<div class="banner">' + peg(G.players[owner].animal, '#fff', 26) + c + '</div>';
     else html += '<div class="num">' + c + '</div>';
     for (var pos = H; pos >= 1; pos--) {
       var cls = 'cell' + (pos === H ? ' top' : '');
       var marks = [];
       if (owner !== null) {
-        if (pos === H) { cls += ' owner'; marks.push(peg(G.players[owner].shape, oc, 34)); }
+        if (pos === H) { cls += ' owner'; marks.push(peg(G.players[owner].animal, oc, 44)); }
       } else {
         G.bases.forEach(function (b, p) { if (b[c] === pos) marks.push({ base: p }); });
         if (G.climbers[c] === pos) marks.push({ climber: true });
         if (G.phase === 'bust' && G.lost && G.lost[c] === pos) marks.push({ lost: true });
         if (pv && pv[c] && pv[c].to === pos) marks.push({ ghost: true });
         if (pv && pv[c] && pos > pv[c].from && pos <= pv[c].to) cls += ' path';
-        var n = marks.length, size = n <= 2 ? 34 : n === 3 ? 25 : n === 4 ? 19 : 15;
-        var csize = Math.min(42, size + 8);
+        var n = marks.length, size = n <= 1 ? 44 : n === 2 ? 37 : n === 3 ? 25 : n === 4 ? 19 : 15;
+        var csize = Math.min(48, size + 6);
         marks = marks.map(function (m) {
-          if (m.base !== undefined) return peg(G.players[m.base].shape, pcol(m.base), size);
+          if (m.base !== undefined) return peg(G.players[m.base].animal, pcol(m.base), size);
           if (m.climber) { var moved = ui.prevClimbers[c] !== pos; return climberSVG(csize, G.current, moved ? 'pop' : ''); }
           if (m.lost) return climberSVG(csize, G.current, 'fall');
           return climberSVG(csize, G.current, 'ghost');
@@ -789,7 +800,7 @@ function renderPanel() {
   var used = Object.keys(G.climbers).length, tray = '';
   for (var i = 0; i < CS.MAX_CLIMBERS; i++) tray += climberSVG(40, p, i < used ? 'used' : '');
 
-  h += '<div class="card"><div class="whose">' + peg(pl.shape, pcol(p), 46) + '<div><span class="lbl">Turn ' + G.turn + '</span>' + esc(pl.name) + '</div></div>' +
+  h += '<div class="card"><div class="whose">' + peg(pl.animal, pcol(p), 46) + '<div><span class="lbl">Turn ' + G.turn + '</span>' + esc(pl.name) + '</div></div>' +
     '<div class="dice" id="diceRow">' + dice + '</div>' +
     '<div class="tray"><div class="pegs">' + tray + '</div><span>' + (CS.MAX_CLIMBERS - used) + ' of 3 climbers free</span></div>';
   if (ui.showRisk && (G.phase === 'awaitDecision' || G.phase === 'awaitRoll')) {
@@ -856,14 +867,13 @@ function renderWin() {
   $('winSheet').innerHTML = confetti() + '<div style="font-size:90px">🏔️</div><h1 style="color:' + pcol(G.winner) + '">' + esc(w.name) + ' wins!</h1>' +
     '<p class="sub">First to claim three columns.</p><div class="stand">' + rows.map(function (r, i) {
       var pl = G.players[r.p];
-      return '<div class="r' + (i === 0 ? ' first' : '') + '"><span class="pl">' + (i + 1) + '</span>' + peg(pl.shape, pcol(r.p), 40) +
+      return '<div class="r' + (i === 0 ? ' first' : '') + '"><span class="pl">' + (i + 1) + '</span>' + peg(pl.animal, pcol(r.p), 40) +
         '<span class="n">' + esc(pl.name) + '</span><span class="c">' + r.claims + ' column' + (r.claims === 1 ? '' : 's') + ' claimed</span></div>';
     }).join('') + '</div><div class="row2"><button class="bigbtn b-roll" onclick="CSui.again()">↺ Play again</button><button class="bigbtn b-next" onclick="showSetup()">New game</button></div>';
   ov.classList.remove('hidden');
 }
 
 /* ---------- setup ---------- */
-function defaultName(t) { return COLORS.some(function (c) { return c.name === t.name; }) || /^Team \d$/.test(t.name); }
 function renderSetup() {
   var saved = loadSave(), h = '';
   h += '<h1>⛰️ Can’t Stop</h1><p class="sub">Roll four dice, climb the mountain, and know when to stop. First team to claim three columns wins.</p>';
@@ -874,17 +884,18 @@ function renderSetup() {
   }
   h += '<h2>Teams</h2>';
   setupTeams.forEach(function (t, i) {
-    h += '<div class="trow"><div>' + peg(t.shape, hex(t.color), 58) + '</div>' +
-      '<input maxlength="16" value="' + esc(t.name) + '" oninput="CSui.setName(' + i + ',this.value)" aria-label="Team ' + (i + 1) + ' name">' +
+    var a = animal(t.animal);
+    h += '<div class="trow"><div class="tprev">' + peg(t.animal, hex(t.color), 64) + '</div>' +
+      '<div class="tname" style="color:' + hex(t.color) + '">' + esc(a.name) + '</div>' +
       '<div class="picks">' + COLORS.map(function (c) {
         var taken = setupTeams.some(function (o, j) { return j !== i && o.color === c.id; });
         return '<button class="sw' + (t.color === c.id ? ' sel' : '') + (taken ? ' taken' : '') + '" style="background:' + c.hex + '" title="' + c.name + '" onclick="CSui.setColor(' + i + ',\'' + c.id + '\')"></button>';
       }).join('') + '</div>' +
-      '<div class="picks">' + SHAPES.map(function (sh) {
-        var taken = setupTeams.some(function (o, j) { return j !== i && o.shape === sh; });
-        return '<button class="sw' + (t.shape === sh ? ' sel' : '') + (taken ? ' taken' : '') + '" title="' + sh + '" onclick="CSui.setShape(' + i + ',\'' + sh + '\')">' + peg(sh, 'var(--muted)', 30) + '</button>';
-      }).join('') + '</div>' +
-      (setupTeams.length > 2 ? '<button class="rm" title="Remove team" onclick="CSui.removeTeam(' + i + ')">✕</button>' : '<span></span>') + '</div>';
+      (setupTeams.length > 2 ? '<button class="rm" title="Remove team" onclick="CSui.removeTeam(' + i + ')">✕</button>' : '<span></span>') +
+      '<div class="animals">' + ANIMALS.map(function (an) {
+        var taken = setupTeams.some(function (o, j) { return j !== i && o.animal === an.id; });
+        return '<button class="an' + (t.animal === an.id ? ' sel' : '') + (taken ? ' taken' : '') + '" title="' + an.name + '" data-animal="' + an.id + '" onclick="CSui.setAnimal(' + i + ',\'' + an.id + '\')">' + an.e + '</button>';
+      }).join('') + '</div></div>';
   });
   h += '<div class="setupBtns">' + (setupTeams.length < 4 ? '<button class="add" onclick="CSui.addTeam()">＋ Add team</button>' : '') +
     '<div class="spacer"></div><button class="tbtn" onclick="openRules()">📖 How to play</button>' +
@@ -893,17 +904,12 @@ function renderSetup() {
 }
 window.showSetup = function () {
   $('win').classList.add('hidden');
-  if (G) setupTeams = G.players.map(function (p) { return { name: p.name, color: p.color, shape: p.shape }; });
+  if (G) setupTeams = G.players.map(function (p) { return { color: p.color, animal: p.animal }; });
   renderSetup(); $('setup').classList.remove('hidden');
 };
 function swapPick(i, key, val) {
   var other = setupTeams.findIndex(function (o, j) { return j !== i && o[key] === val; });
-  if (other >= 0) {
-    var o = setupTeams[other];
-    if (key === 'color' && defaultName(o)) o.name = COLORS.find(function (c) { return c.id === setupTeams[i].color; }).name;
-    o[key] = setupTeams[i][key];
-  }
-  if (key === 'color' && defaultName(setupTeams[i])) setupTeams[i].name = COLORS.find(function (c) { return c.id === val; }).name;
+  if (other >= 0) setupTeams[other][key] = setupTeams[i][key];
   setupTeams[i][key] = val;
   renderSetup();
 }
@@ -1012,18 +1018,17 @@ window.CSui = {
     ui.preview = i; renderBoard();
     var row = $('diceRow'); if (row) row.innerHTML = diceHTML();
   },
-  setName: function (i, v) { setupTeams[i].name = v; },
   setColor: function (i, c) { swapPick(i, 'color', c); },
-  setShape: function (i, s) { swapPick(i, 'shape', s); },
+  setAnimal: function (i, a) { swapPick(i, 'animal', a); },
   addTeam: function () {
     if (setupTeams.length >= 4) return;
-    var c = freeOf('color', COLORS.map(function (x) { return x.id; })), sh = freeOf('shape', SHAPES);
-    setupTeams.push({ name: COLORS.find(function (x) { return x.id === c; }).name, color: c, shape: sh });
+    var c = freeOf('color', COLORS.map(function (x) { return x.id; })), an = freeOf('animal', ANIMALS.map(function (x) { return x.id; }));
+    setupTeams.push({ color: c, animal: an });
     renderSetup();
   },
   removeTeam: function (i) { if (setupTeams.length > 2) { setupTeams.splice(i, 1); renderSetup(); } },
   start: function () {
-    setupTeams.forEach(function (t, i) { t.name = (t.name || '').trim() || ('Team ' + (i + 1)); });
+    setupTeams.forEach(function (t) { t.name = animal(t.animal).name; });
     ui.preview = null; ui.prevClimbers = {};
     commit(CS.createGame(setupTeams));
     $('setup').classList.add('hidden');

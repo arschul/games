@@ -269,7 +269,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       </div>
       <div class="iconrow">
         <button class="icon-btn" id="ghostBtn" type="button" title="Show last beam (L)" aria-label="Show last beam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V9h9V4h9"/><circle cx="3" cy="20" r="1.6" fill="currentColor"/></svg></button>
-        <button class="icon-btn" id="weatherBtn" type="button" title="Desert weather (W)" aria-label="Desert weather"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 13h16a3 3 0 1 1-3 3"/><path d="M3 18h7"/></svg></button>
+        <button class="icon-btn" id="weatherBtn" type="button" title="Desert weather (Shift+W)" aria-label="Desert weather"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 13h16a3 3 0 1 1-3 3"/><path d="M3 18h7"/></svg></button>
         <button class="icon-btn sound-toggle" type="button" title="Sound (M)" aria-label="Sound"></button>
         <button class="icon-btn theme-toggle" type="button" title="Theme (Shift+T)" aria-label="Theme"></button>
         <button class="icon-btn" id="fsBtn" type="button" title="Fullscreen (F)" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
@@ -1484,9 +1484,21 @@ function paintTheme(v) {
   let eff = v;
   if (v === 'system') { try { eff = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) { eff = 'dark'; } }
   document.documentElement.setAttribute('data-theme', eff);
+  syncTheme();
+}
+// The shared hub script (leaf.v1.js) loads after this one, takes over window.toggleTheme and sets
+// data-theme itself. So the canvases follow the attribute, whoever changes it.
+let paintedTheme = null;
+function syncTheme() {
+  const v = readTheme();
   document.querySelectorAll('.theme-toggle').forEach(b => { b.innerHTML = SVG[v] || SVG.dark; b.title = THEME_LABEL[v] || THEME_LABEL.dark; b.setAttribute('aria-label', b.title); });
+  const eff = isLight() ? 'light' : 'dark';
+  if (eff === paintedTheme) return;
+  paintedTheme = eff;
   boardTex = null; Scene.setTheme(eff === 'light'); drawMinis(); kick(); renderPanels();
 }
+try { new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) { }
+addEventListener('storage', e => { if (e.key === KEY.theme) setTimeout(syncTheme, 0); });
 function toggleTheme() {
   const order = ['dark', 'light', 'system'], n = order[(order.indexOf(readTheme()) + 1) % 3];
   try { localStorage.setItem(KEY.theme, n); } catch (e) { }
@@ -2182,7 +2194,7 @@ $('newBtn').onclick = () => { showScreen('setup'); };
 $('awardS').onclick = () => { S.result.winner = 'silver'; save(); onOver(); };
 $('awardR').onclick = () => { S.result.winner = 'red'; save(); onOver(); };
 document.querySelectorAll('.sound-toggle').forEach(b => b.onclick = toggleMute);
-document.querySelectorAll('.theme-toggle').forEach(b => b.onclick = () => window.toggleTheme());
+document.querySelectorAll('.theme-toggle').forEach(b => b.onclick = () => { window.toggleTheme(); syncTheme(); });
 document.querySelectorAll('[data-dm]').forEach(b => b.onclick = () => { dbg.mode = b.dataset.dm; document.querySelectorAll('[data-dm]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
 document.querySelector('[data-dm="place"]').setAttribute('aria-pressed', 'true');
 $('dbgTurn').onclick = () => { if (!S || S.phase === 'over') return; pushUndo(); const T = BR.clone(S); T.turn = BR.other(T.turn); T.phase = 'choose'; T.last = null; S = BR.setBoard(T, T.board); clearSel(); save(); render(); };

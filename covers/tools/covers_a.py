@@ -10,110 +10,114 @@ def wrap(defs, body):
 
 # ------------------------------------------------------------------ Beam of Ra
 def beam_of_ra():
-    defs = '''
-    <radialGradient id="sky" cx="50%" cy="22%" r="80%">
-      <stop offset="0" stop-color="#3a2a12"/><stop offset=".45" stop-color="#17130e"/><stop offset="1" stop-color="#0a0806"/>
-    </radialGradient>
-    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#ffe9a8"/><stop offset=".55" stop-color="#e8b94e"/><stop offset="1" stop-color="#a67c22"/>
-    </radialGradient>
-    <linearGradient id="goldtxt" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff1c2"/><stop offset=".5" stop-color="#e8b94e"/><stop offset="1" stop-color="#a67c22"/>
-    </linearGradient>
-    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f4f4f6"/><stop offset="1" stop-color="#8d929c"/>
-    </linearGradient>
-    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f06a55"/><stop offset="1" stop-color="#8e2316"/>
-    </linearGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
-    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.5"/></filter>
-    <filter id="drop"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".6"/></filter>
-    '''
+    """Scorching desert noon; a green laser bounces off a stepped pyramid and a scarab into a pharaoh mask."""
+    defs = (
+        '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3c675"/><stop offset=".55" stop-color="#fbe3ad"/><stop offset="1" stop-color="#fff3d6"/></linearGradient>'
+        '<radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fffef5"/><stop offset=".25" stop-color="#fff6d0"/><stop offset=".6" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffc86a" stop-opacity="0"/></radialGradient>'
+        '<linearGradient id="d1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efc488"/><stop offset="1" stop-color="#e2ad6b"/></linearGradient>'
+        '<linearGradient id="d2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6aa62"/><stop offset="1" stop-color="#cf914b"/></linearGradient>'
+        '<linearGradient id="d3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d48f45"/><stop offset="1" stop-color="#a86a2c"/></linearGradient>'
+        '<linearGradient id="lime" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#dfe5ee"/><stop offset="1" stop-color="#8c97a8"/></linearGradient>'
+        '<linearGradient id="limeD" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c9d1dd"/><stop offset="1" stop-color="#6c7789"/></linearGradient>'
+        '<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#e8bb4f"/><stop offset="1" stop-color="#8a5f12"/></linearGradient>'
+        '<linearGradient id="mirror" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6f1ff"/><stop offset=".4" stop-color="#ffffff"/><stop offset="1" stop-color="#7fd0ee"/></linearGradient>'
+        '<radialGradient id="shell" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ffb39f"/><stop offset=".45" stop-color="#d9472f"/><stop offset="1" stop-color="#5e1208"/></radialGradient>'
+        '<radialGradient id="plinth" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ff9e86"/><stop offset=".5" stop-color="#c2412d"/><stop offset="1" stop-color="#5e1208"/></radialGradient>'
+        '<linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9b07a"/><stop offset="1" stop-color="#a8673a"/></linearGradient>'
+        '<clipPath id="nemes"><path d="M450 336 C 520 336 536 392 534 430 L 560 520 L 506 520 L 498 456 L 402 456 L 394 520 L 340 520 L 366 430 C 364 392 380 336 450 336 Z"/></clipPath>'
+        '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>'
+        '<filter id="drop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="4" dy="9" stdDeviation="6" flood-color="#3a1d05" flood-opacity=".45"/></filter>'
+    )
     b = ['<rect width="600" height="800" fill="url(#sky)"/>']
-    # sun disc + rays
     rays = []
-    for k in range(24):
-        a = k * math.pi / 12
-        x1, y1 = 300 + 128 * math.cos(a), 170 + 128 * math.sin(a)
-        x2, y2 = 300 + 300 * math.cos(a), 170 + 300 * math.sin(a)
-        rays.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}"/>')
-    b.append(f'<g stroke="#e8b94e" stroke-opacity=".13" stroke-width="10" stroke-linecap="round">{"".join(rays)}</g>')
-    b.append('<circle cx="300" cy="170" r="118" fill="url(#sun)" opacity=".9"/>')
-    b.append('<circle cx="300" cy="170" r="118" fill="none" stroke="#fff1c2" stroke-opacity=".35" stroke-width="2"/>')
-    b.append('<circle cx="300" cy="170" r="98" fill="none" stroke="#5f3f04" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="3 6"/>')
-    # title
-    b.append('<g filter="url(#drop)">'
-             '<text x="300" y="196" text-anchor="middle" font-family="Cinzel" font-weight="900" font-size="76" '
-             'fill="url(#goldtxt)" stroke="#2b1d06" stroke-width="2.5" paint-order="stroke" letter-spacing="2">Beam of Ra</text></g>')
-    b.append('<text x="300" y="320" text-anchor="middle" font-family="Inter" font-weight="700" font-size="15" '
-             'letter-spacing="5" fill="#c2b393">LASER · MIRRORS · STRATEGY</text>')
-    # board
-    x0, y0, cs, cols, rows = 60, 350, 60, 8, 7
-    b.append(f'<rect x="{x0-10}" y="{y0-10}" width="{cs*cols+20}" height="{cs*rows+20}" rx="10" fill="#1d1912" stroke="#4b3f2c" stroke-width="2"/>')
-    for r in range(rows):
-        for c in range(cols):
-            fill = "#262017" if (r + c) % 2 == 0 else "#1f1a12"
-            b.append(f'<rect x="{x0+c*cs}" y="{y0+r*cs}" width="{cs}" height="{cs}" fill="{fill}" stroke="#3a3122" stroke-width="1"/>')
-    # tinted home columns
-    b.append(f'<rect x="{x0}" y="{y0}" width="{cs}" height="{cs*rows}" fill="#c0392b" opacity=".08"/>')
-    b.append(f'<rect x="{x0+cs*(cols-1)}" y="{y0}" width="{cs}" height="{cs*rows}" fill="#cfd4dc" opacity=".06"/>')
-    cx = lambda c: x0 + cs * c + cs / 2
-    cy = lambda r: y0 + cs * r + cs / 2
-    h = 23
+    for k in range(20):
+        a = k * math.pi / 10
+        rays.append(f'<line x1="{300+120*math.cos(a):.1f}" y1="{150+120*math.sin(a):.1f}" x2="{300+520*math.cos(a):.1f}" y2="{150+520*math.sin(a):.1f}"/>')
+    b.append(f'<g stroke="#fff1c4" stroke-opacity=".5" stroke-width="22" stroke-linecap="round">{"".join(rays)}</g>')
+    b.append('<circle cx="300" cy="150" r="230" fill="url(#sun)"/>')
 
-    def pyramid(c, r, corner, grad):
-        X, Y = cx(c), cy(r)
-        pts = {
-            "tl": [(X-h, Y-h), (X+h, Y-h), (X-h, Y+h)],
-            "tr": [(X-h, Y-h), (X+h, Y-h), (X+h, Y+h)],
-            "bl": [(X-h, Y-h), (X-h, Y+h), (X+h, Y+h)],
-            "br": [(X+h, Y-h), (X+h, Y+h), (X-h, Y+h)],
-        }[corner]
-        p = " ".join(f"{a:.1f},{b_:.1f}" for a, b_ in pts)
-        # mirrored hypotenuse highlighted
-        hyp = [q for q in pts if not (q[0] == (X-h if "l" in corner else X+h) and q[1] == (Y-h if "t" in corner else Y+h))]
-        return (f'<polygon points="{p}" fill="url(#{grad})" stroke="#1a1208" stroke-width="2" filter="url(#drop)"/>'
-                f'<line x1="{hyp[0][0]:.1f}" y1="{hyp[0][1]:.1f}" x2="{hyp[1][0]:.1f}" y2="{hyp[1][1]:.1f}" '
-                f'stroke="#e9fff1" stroke-width="3.5" stroke-linecap="round"/>')
-
-    # beam path: sphinx (1,6) up -> mirror (1,1) -> right -> (5,1) -> down -> (5,4) -> right -> pharaoh (7,4)
-    path = [(cx(1), cy(6) - 18), (cx(1), cy(1)), (cx(5), cy(1)), (cx(5), cy(4)), (cx(7) - 16, cy(4))]
-    pts = " ".join(f"{a:.1f},{c:.1f}" for a, c in path)
-    b.append(f'<polyline points="{pts}" fill="none" stroke="#0aa543" stroke-width="16" stroke-linejoin="round" filter="url(#glow)" opacity=".9"/>')
-    b.append(f'<polyline points="{pts}" fill="none" stroke="#5cff8f" stroke-width="5" stroke-linejoin="round"/>')
-    b.append(f'<polyline points="{pts}" fill="none" stroke="#eafff0" stroke-width="1.6" stroke-linejoin="round"/>')
-    # mirrors
-    b.append(pyramid(1, 1, "tl", "silver"))
-    b.append(pyramid(5, 1, "tr", "silver"))
-    b.append(pyramid(5, 4, "bl", "silver"))
-    # decoys
-    b.append(pyramid(3, 3, "br", "red"))
-    b.append(pyramid(6, 6, "tl", "red"))
-    b.append(pyramid(2, 4, "tr", "silver"))
-    b.append(pyramid(3, 0, "bl", "red"))
-    # anubis-like blocks (rounded shields)
-    for (c, r, g) in [(4, 5, "silver"), (6, 2, "red"), (0, 3, "red")]:
-        b.append(f'<rect x="{cx(c)-20}" y="{cy(r)-22}" width="40" height="44" rx="12" fill="url(#{g})" stroke="#1a1208" stroke-width="2" filter="url(#drop)"/>'
-                 f'<rect x="{cx(c)-12}" y="{cy(r)-22}" width="24" height="9" rx="3" fill="#1a1208" opacity=".35"/>')
-    # sphinx (laser source)
-    X, Y = cx(1), cy(6)
-    b.append(f'<circle cx="{X}" cy="{Y}" r="22" fill="url(#silver)" stroke="#1a1208" stroke-width="2" filter="url(#drop)"/>'
-             f'<rect x="{X-6}" y="{Y-30}" width="12" height="16" rx="3" fill="#2b241a"/>'
-             f'<circle cx="{X}" cy="{Y}" r="7" fill="#5cff8f"/>')
-    # pharaoh hit + burst
-    X, Y = cx(7), cy(4)
+    def dune(base, amp, k, ph, fill, crest=None):
+        pts = [(x, base + amp * math.sin(x * k + ph) + amp * .4 * math.sin(x * k * 2.7 + ph * 2)) for x in range(-10, 611, 10)]
+        out = '<path d="M-10 800 ' + " ".join(f"L{x} {y:.1f}" for x, y in pts) + f' L610 800 Z" fill="{fill}"/>'
+        if crest:
+            out += '<path d="M' + " L".join(f"{x} {y:.1f}" for x, y in pts) + f'" fill="none" stroke="{crest}" stroke-width="3"/>'
+        return out
+    b.append(dune(372, 10, .012, 1.1, "url(#d1)"))
+    for (x, base, s) in [(92, 382, 74), (176, 386, 44), (514, 378, 60)]:
+        b.append(f'<path d="M{x-s} {base} L{x} {base-s*.9} L{x+s} {base} Z" fill="#e3ad6b"/><path d="M{x} {base-s*.9} L{x+s} {base} L{x+s*.25} {base} Z" fill="#c98e4c"/>')
+    b.append(dune(470, 16, .009, 2.3, "url(#d2)", "#fff0c8"))
+    b.append(dune(640, 20, .007, .4, "url(#d3)", "#ffe0a8"))
+    b.append('<text x="300" y="214" text-anchor="middle" font-family="Rakkas" font-size="104" fill="#8f2412" '
+             'stroke="#fff3d0" stroke-width="7" paint-order="stroke" filter="url(#drop)">Beam of Ra</text>')
+    path = [(-10, 620), (150, 620), (150, 430), (392, 430)]
+    pts = " ".join(f"{x},{y}" for x, y in path)
+    b.append(f'<polyline points="{pts}" fill="none" stroke="#0aa543" stroke-width="22" stroke-linejoin="round" filter="url(#glow)"/>')
+    b.append(f'<polyline points="{pts}" fill="none" stroke="#5cff8f" stroke-width="8" stroke-linejoin="round"/>')
+    b.append(f'<polyline points="{pts}" fill="none" stroke="#f0fff4" stroke-width="2.5" stroke-linejoin="round"/>')
+    # stepped pyramid, mirror on the long face (faces up-left)
+    X, Y, h = 150, 620, 62
+    g = ['<g filter="url(#drop)">',
+         f'<path d="M{X+h} {Y-h} L{X+h} {Y+h} L{X-h} {Y+h} Z" fill="#3d4757"/>',
+         f'<path d="M{X+h} {Y-h} L{X} {Y} L{X+h} {Y+h} Z" fill="url(#limeD)"/>',
+         f'<path d="M{X+h} {Y+h} L{X} {Y} L{X-h} {Y+h} Z" fill="url(#lime)"/>']
+    for f in (.28, .5, .72, .9):
+        s = h * f
+        g.append(f'<path d="M{X+s} {Y-s} L{X+s} {Y+s} L{X-s} {Y+s}" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="2"/>')
+    c = h * .27
+    g.append(f'<path d="M{X+c} {Y-c} L{X} {Y} L{X+c} {Y+c} Z" fill="#a8761c"/><path d="M{X+c} {Y+c} L{X} {Y} L{X-c} {Y+c} Z" fill="url(#gold)"/>')
+    g.append(f'<line x1="{X+h*.97}" y1="{Y-h*.97}" x2="{X-h*.97}" y2="{Y+h*.97}" stroke="#0a141e" stroke-opacity=".7" stroke-width="15" stroke-linecap="round"/>'
+             f'<line x1="{X+h*.97}" y1="{Y-h*.97}" x2="{X-h*.97}" y2="{Y+h*.97}" stroke="url(#mirror)" stroke-width="10" stroke-linecap="round"/></g>')
+    b.append("".join(g))
+    # scarab: beetle along its mirror diagonal
+    X, Y = 150, 430
+    sc = [f'<g transform="translate({X} {Y}) rotate(-45)" filter="url(#drop)">']
+    for u, k in ((-24, -16), (2, 0), (28, 16)):
+        for sg in (-1, 1):
+            sc.append(f'<path d="M{u} {sg*22} L{u+k*.5} {sg*38} L{u+k*1.1+4} {sg*46}" fill="none" stroke="#2b1a0c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>')
+    sc.append('<path d="M-60 0 C -60 -16 -48 -18 -44 -14 L -40 0 L -44 14 C -48 18 -60 16 -60 0 Z" fill="#2a1d0e" stroke="#e3b24a" stroke-width="2"/>')
+    sc.append('<ellipse cx="-30" cy="0" rx="14" ry="26" fill="url(#shell)" stroke="#e3b24a" stroke-width="3"/>')
+    sc.append('<ellipse cx="16" cy="0" rx="38" ry="33" fill="url(#shell)" stroke="#e3b24a" stroke-width="3"/>')
+    sc.append('<path d="M-6 -16 C 14 -26 36 -20 44 -10 M-6 16 C 14 26 36 20 44 10" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2.5"/>')
+    sc.append('<line x1="-78" y1="0" x2="78" y2="0" stroke="#0a141e" stroke-opacity=".7" stroke-width="13" stroke-linecap="round"/>'
+              '<line x1="-78" y1="0" x2="78" y2="0" stroke="#e6fbff" stroke-width="8" stroke-linecap="round"/></g>')
+    b.append("".join(sc))
+    # pharaoh mask, hit by the beam
     burst = []
-    for k in range(12):
-        a = k * math.pi / 6 + .2
-        burst.append(f'<line x1="{X+26*math.cos(a):.1f}" y1="{Y+26*math.sin(a):.1f}" x2="{X+44*math.cos(a):.1f}" y2="{Y+44*math.sin(a):.1f}"/>')
-    b.append(f'<g stroke="#ffe9a8" stroke-width="3" stroke-linecap="round" opacity=".9">{"".join(burst)}</g>')
-    b.append(f'<circle cx="{X}" cy="{Y}" r="34" fill="#5cff8f" opacity=".35" filter="url(#glow)"/>')
-    b.append(f'<circle cx="{X}" cy="{Y}" r="22" fill="url(#red)" stroke="#1a1208" stroke-width="2"/>'
-             f'<path d="M{X-12} {Y-6} L{X-6} {Y-16} L{X} {Y-8} L{X+6} {Y-16} L{X+12} {Y-6} Z" fill="#e8b94e" stroke="#5f3f04" stroke-width="1.5"/>'
-             f'<rect x="{X-10}" y="{Y-4}" width="20" height="14" rx="3" fill="#e8b94e" stroke="#5f3f04" stroke-width="1.5"/>')
-    # footer
-    b.append('<text x="300" y="784" text-anchor="middle" font-family="Inter" font-weight="600" font-size="13" letter-spacing="3" fill="#7a6a4c">2 PLAYERS OR TEAMS</text>')
+    for k in range(14):
+        a = k * math.pi / 7 + .15
+        burst.append(f'<line x1="{450+96*math.cos(a):.1f}" y1="{430+96*math.sin(a):.1f}" x2="{450+136*math.cos(a):.1f}" y2="{430+136*math.sin(a):.1f}"/>')
+    b.append(f'<g stroke="#fff6c8" stroke-width="7" stroke-linecap="round" opacity=".95">{"".join(burst)}</g>')
+    b.append('<circle cx="450" cy="430" r="104" fill="#5cff8f" opacity=".35" filter="url(#glow)"/>')
+    b.append('<circle cx="450" cy="432" r="92" fill="url(#plinth)" stroke="#e3b24a" stroke-width="6" filter="url(#drop)"/>')
+    nem = 'M450 336 C 520 336 536 392 534 430 L 560 520 L 506 520 L 498 456 L 402 456 L 394 520 L 340 520 L 366 430 C 364 392 380 336 450 336 Z'
+    b.append(f'<path d="{nem}" fill="#f1d27a"/>')
+    b.append('<g clip-path="url(#nemes)" stroke="#1d1a17" stroke-width="10">' + "".join(f'<line x1="{450+k*15}" y1="320" x2="{450+k*22}" y2="530"/>' for k in range(-8, 9)) + '</g>')
+    b.append(f'<path d="{nem}" fill="none" stroke="#3a2607" stroke-width="3"/>')
+    b.append('<ellipse cx="450" cy="420" rx="40" ry="52" fill="url(#skin)" stroke="#5a3418" stroke-width="2.5"/>')
+    b.append('<rect x="408" y="372" width="84" height="11" fill="url(#gold)"/>')
+    b.append('<path d="M450 340 Q 464 356 456 376 L 444 376 Q 436 356 450 340 Z" fill="#ffd25a" stroke="#5a3d06" stroke-width="2"/>')
+    b.append('<g stroke="#140c06" stroke-width="4" stroke-linecap="round" fill="none"><path d="M414 396 Q 426 388 438 394"/><path d="M462 394 Q 474 388 486 396"/></g><g fill="#fff" stroke="#140c06" stroke-width="3"><ellipse cx="427" cy="412" rx="9" ry="10"/><ellipse cx="473" cy="412" rx="9" ry="10"/></g><g fill="#140c06"><circle cx="428" cy="414" r="4"/><circle cx="472" cy="414" r="4"/><ellipse cx="450" cy="447" rx="7" ry="9"/></g>')
+    b.append('<rect x="441" y="468" width="18" height="40" rx="6" fill="#1d1a17" stroke="#f1d27a" stroke-width="2.5"/>')
+    # scorpion strolling over the sand
+    sp = ['<g transform="translate(386 712) scale(1.6)" fill="#3a230f" stroke="#3a230f" stroke-linecap="round">',
+          '<ellipse cx="-4" cy="8" rx="46" ry="9" fill="#000" fill-opacity=".18" stroke="none"/>']
+    for k in range(4):
+        for sg in (-1, 1):
+            bx = 6 - k * 7
+            sp.append(f'<path d="M{bx} {sg*4} L{bx-3+sg*2} {sg*13} L{bx-8+sg*3} {sg*20}" fill="none" stroke-width="2.6"/>')
+    for sg in (-1, 1):
+        sp.append(f'<path d="M10 {sg*4} L20 {sg*11} L30 {sg*10}" fill="none" stroke-width="3.2"/><ellipse cx="35" cy="{sg*10}" rx="7" ry="4.5" stroke="none"/>')
+    sp.append('<ellipse cx="4" cy="0" rx="12" ry="8" stroke="none"/>' + "".join(f'<ellipse cx="{-8-k*6}" cy="0" rx="{7-k*.5}" ry="{8.5-k*.6}" stroke="none"/>' for k in range(5)))
+    tail = []
+    for k in range(7):
+        u = k / 6
+        a = math.pi * .95 * u
+        tail.append((-36 - math.sin(a) * 24, -(1 - math.cos(a)) * 17))
+    sp.append("".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{6.4-k*.55:.1f}" stroke="none"/>' for k, (x, y) in enumerate(tail)))
+    tx, ty = tail[-1]
+    sp.append(f'<ellipse cx="{tx+4:.1f}" cy="{ty+1:.1f}" rx="5.5" ry="4" fill="#7a3a12" stroke="none"/><path d="M{tx+8:.1f} {ty+2:.1f} Q {tx+13:.1f} {ty+3:.1f} {tx+13:.1f} {ty+8:.1f}" fill="none" stroke-width="2.2"/></g>')
+    b.append("".join(sp))
+    b.append('<text x="300" y="776" text-anchor="middle" font-family="Figtree" font-weight="800" font-size="22" fill="#fff3d0">Laser and mirrors · 2 players or teams</text>')
     return wrap(defs, "".join(b))
 
 

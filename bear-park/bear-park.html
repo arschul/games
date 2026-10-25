@@ -45,6 +45,7 @@ h1,h2,h3{font-family:Fredoka,Inter,sans-serif;margin:0;font-weight:700}
 .back-link{position:fixed;top:12px;left:12px;z-index:20;background:var(--panel);border:1px solid var(--line);color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:700}
 body.playing .back-link{display:none}
 body.playing a[title="Classroom Hub"]{display:none!important}
+.music-toggle.off{opacity:.42}
 .icon-btn{width:42px;height:42px;padding:0;display:grid;place-items:center;font-size:19px;border-radius:10px;flex:none}
 .corner{position:fixed;top:12px;right:12px;z-index:20;display:flex;gap:8px}
 .dot{display:inline-block;width:.9em;height:.9em;border-radius:50%;flex:none;box-shadow:0 0 0 2px rgba(0,0,0,.25)}
@@ -228,7 +229,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="defs"></defs></svg>
 
 <section id="setup">
-  <div class="corner"><button class="icon-btn sound-toggle" type="button"></button><button class="icon-btn theme-toggle" type="button"></button></div>
+  <div class="corner"><button class="icon-btn music-toggle" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="3" fill="currentColor"/><circle cx="17.5" cy="16" r="3" fill="currentColor"/></svg></button><button class="icon-btn sound-toggle" type="button"></button><button class="icon-btn theme-toggle" type="button"></button></div>
   <div class="card">
     <div class="head"><svg viewBox="0 0 100 100"><use href="#face-gobi"/></svg><div><h1>Bear Park</h1><p class="sub">Fit bear houses, enclosures and park tiles to build the best bear park · 2–4 teams</p></div></div>
     <div>
@@ -245,6 +246,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       </div>
       <label class="opt"><input type="checkbox" id="optPit"> Pit variant (on last turns, tiles may cover Pits — no statue there)</label>
       <label class="opt"><input type="checkbox" id="optDots"> Show where the selected tile fits</label>
+      <label class="opt"><input type="checkbox" id="optMusic"> Background music (Shift+N)</label>
     </div>
     <div>
       <p class="lbl">How to play</p>
@@ -268,7 +270,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
     <span id="lastTag" hidden>LAST TURN</span>
     <span id="roundTag"></span>
     <span class="spacer"></span>
-    <div class="tools"><button class="icon-btn" id="menuBtn" title="Teacher menu" aria-label="Teacher menu">☰</button><button class="icon-btn sound-toggle" type="button"></button><button class="icon-btn theme-toggle" type="button"></button></div>
+    <div class="tools"><button class="icon-btn" id="menuBtn" title="Teacher menu" aria-label="Teacher menu">☰</button><button class="icon-btn music-toggle" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="3" fill="currentColor"/><circle cx="17.5" cy="16" r="3" fill="currentColor"/></svg></button><button class="icon-btn sound-toggle" type="button"></button><button class="icon-btn theme-toggle" type="button"></button></div>
   </header>
   <aside id="supply" aria-label="Supply board"></aside>
   <main id="boardWrap">
@@ -291,7 +293,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
       <button id="crewBackBtn" class="wide" hidden>← Choose another reward</button>
     </div>
     <div id="scores"></div>
-    <div class="keys">Click a tile below, then click your park. R rotate · F flip · Enter confirm · Esc cancel · H hint · drag / wheel / arrows move the park · 0 fit · M sound · click a team to look at its park</div>
+    <div class="keys">Click a tile below, then click your park. R rotate · F flip · Enter confirm · Esc cancel · H hint · drag / wheel / arrows move the park · 0 fit · M sound · Shift+N music · click a team to look at its park</div>
   </aside>
 </section>
 
@@ -1224,6 +1226,317 @@ const REASON = { off: 'That spot is outside your park.', overlap: "Tiles can't o
 const pieceCol = p => PIECE_COL[p.sp || p.k];
 const pieceEdge = p => EDGE_COL[p.sp || p.k];
 
+// ======================= music (generative, Web Audio — no files) =======================
+// Bear Park score: F major, pentatonic tunes. Day = sunny afternoon bounce (marimba oom, ukulele pah,
+// whistle + glockenspiel call-and-response, brushes). Night = lantern-lit evening (pad, music box,
+// picked ukulele). Intensity follows how close the game is to its end; cues come from game events.
+const Music = (function () {
+  const MAJ = [0, 2, 4, 5, 7, 9, 11], PEN = [0, 2, 4, 7, 9];
+  const BASE = 65; // F4
+  const mf = m => 440 * Math.pow(2, (m - 69) / 12);
+  const dM = i => { const o = Math.floor(i / 7), d = ((i % 7) + 7) % 7; return BASE + 12 * o + MAJ[d]; };
+  const dP = i => { const o = Math.floor(i / 5), d = ((i % 5) + 5) % 5; return BASE + 12 * o + PEN[d]; };
+  // chord roots as major-scale degrees (0 = F): A I vi IV V · A' I vi IV V · B IV I ii V · breakdown I IV I V
+  const PROG = [[0, 5, 3, 4], [0, 5, 3, 4], [3, 0, 1, 4], [0, 3, 0, 4]];
+  // the "Bear Park" tune (pentatonic index, position in eighths, length in eighths), two bars
+  const THEME = [[3, 0, 1], [2, 1, 1], [3, 2, 2], [4, 4, 1], [3, 5, 1], [2, 6, 2], [0, 8, 1], [1, 9, 1], [2, 10, 2], [1, 12, 1], [2, 13, 3]];
+  const MODES = {
+    day: { bpm: 112, swing: 0.6, wet: 0.16, pad: 0.012 },
+    night: { bpm: 88, swing: 0.54, wet: 0.32, pad: 0.03 }
+  };
+
+  function createPlayer(ctx, opts) {
+    opts = opts || {};
+    let seed = opts.seed || (Date.now() % 2147483646) + 1;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const pick = a => a[(rnd() * a.length) | 0];
+    let mode = MODES[opts.mode] ? opts.mode : 'night', inten = 0, triumph = 0;
+
+    // graph: bed -> bus, cues -> bus; bus -> dry + reverb send -> master -> compressor -> out
+    const master = ctx.createGain(); master.gain.value = 0.0001;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.25;
+    master.connect(comp).connect(opts.out || ctx.destination);
+    const conv = ctx.createConvolver(), wet = ctx.createGain(); wet.gain.value = MODES[mode].wet;
+    {
+      const len = Math.floor(ctx.sampleRate * 2.4), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (rnd() * 2 - 1) * Math.pow(1 - i / len, 3.4); }
+      conv.buffer = ir;
+    }
+    conv.connect(wet).connect(master);
+    const bus = ctx.createGain(); bus.connect(master); bus.connect(conv);
+    const bed = ctx.createGain(); bed.connect(bus);              // the background bed (dropped/ducked by cues)
+    const cueBus = ctx.createGain(); cueBus.gain.value = 1.1; cueBus.connect(bus);
+    const drumBed = ctx.createGain(); drumBed.connect(master);   // percussion stays dry, but drops with the bed
+    const dry = ctx.createGain(); dry.connect(drumBed);
+    const nlen = ctx.sampleRate * 2, noiseBuf = ctx.createBuffer(1, nlen, ctx.sampleRate);
+    { const d = noiseBuf.getChannelData(0); for (let i = 0; i < nlen; i++) d[i] = rnd() * 2 - 1; }
+    function noise(t, dur, type, freq, q, vol, out, attack) {
+      const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
+      const g = ctx.createGain();
+      if (attack) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + attack + dur); }
+      else { g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+      s.connect(f).connect(g).connect(out || dry); s.start(t, rnd() * 1.5); s.stop(t + (attack || 0) + dur + 0.05);
+    }
+    function partials(t, f0, list, vel, out) { // list: [ratio, amp, decay]
+      for (const [r, a, dec] of list) {
+        if (f0 * r > 16000) continue;
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f0 * r;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel * a, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+        o.connect(g).connect(out || bed); o.start(t); o.stop(t + dec + 0.02);
+      }
+    }
+    // ---- instruments ----
+    function marimba(t, m, vel, out) {
+      const f = mf(m), k = m < 55 ? 1.6 : m < 67 ? 1 : 0.6;
+      partials(t, f, [[1, 1, 0.9 * k], [3.93, 0.22, 0.25 * k], [9.9, 0.05, 0.08]], vel * 0.32, out);
+      noise(t, 0.02, 'bandpass', Math.min(6000, f * 4), 2, vel * 0.03, out || bed);
+    }
+    function glock(t, m, vel, out) { partials(t, mf(m), [[1, 1, 1.4], [2.76, 0.32, 0.45], [5.4, 0.12, 0.2]], vel * 0.13, out); }
+    const ksCache = {};
+    function ks(m) {
+      if (ksCache[m]) return ksCache[m];
+      const sr = ctx.sampleRate, N = Math.max(2, Math.round(sr / mf(m))), len = Math.floor(sr * 1.1);
+      const b = ctx.createBuffer(1, len, sr), d = b.getChannelData(0), ring = new Float32Array(N);
+      for (let i = 0; i < N; i++) ring[i] = rnd() * 2 - 1;
+      for (let i = 1; i < N; i++) ring[i] = 0.55 * ring[i] + 0.45 * ring[i - 1];
+      let p = 0; for (let i = 0; i < len; i++) { const v = ring[p], nx = ring[(p + 1) % N]; ring[p] = 0.5 * (v + nx) * 0.993; d[i] = v; p = (p + 1) % N; }
+      return (ksCache[m] = b);
+    }
+    function uke(t, m, vel, out, len) {
+      const s = ctx.createBufferSource(); s.buffer = ks(m);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2800; f.Q.value = 0.7;
+      const g = ctx.createGain(), L = len || 0.9; g.gain.setValueAtTime(vel * 0.42, t); g.gain.exponentialRampToValueAtTime(0.0001, t + L);
+      s.connect(f).connect(g).connect(out || bed); s.start(t); s.stop(t + L + 0.02);
+    }
+    function strum(t, ms, vel, up, len) { (up ? ms.slice().reverse() : ms).forEach((m, i) => uke(t + i * 0.014, m, vel * (1 - i * 0.08), null, len)); }
+    function whistle(t, m, dur, vel, out) {
+      const f0 = mf(m), o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), g2 = ctx.createGain();
+      o.type = 'sine'; o2.type = 'triangle';
+      o.frequency.setValueAtTime(f0 * 0.971, t); o.frequency.exponentialRampToValueAtTime(f0, t + 0.08);
+      o2.frequency.setValueAtTime(f0 * 2 * 0.971, t); o2.frequency.exponentialRampToValueAtTime(f0 * 2, t + 0.08);
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(), lg2 = ctx.createGain(); lfo.frequency.value = 5;
+      lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f0 * 0.006, t + Math.max(0.05, Math.min(0.45, dur * 0.7)));
+      lfo.connect(lg); lg.connect(o.frequency); lg2.gain.value = 2; lg.connect(lg2).connect(o2.frequency);
+      const end = t + Math.max(0.08, dur), atk = Math.min(0.06, dur * 0.4);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel * 0.11, t + atk); g.gain.setValueAtTime(vel * 0.11, Math.max(t + atk, end - 0.06)); g.gain.exponentialRampToValueAtTime(0.0001, end + 0.05);
+      g2.gain.value = 0.18;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(9000, f0 * 5);
+      o.connect(g); o2.connect(g2).connect(g); g.connect(lp).connect(out || bed);
+      [o, o2, lfo].forEach(x => { x.start(t); x.stop(end + 0.1); });
+      noise(t, 0.09, 'bandpass', f0 * 1.5, 1.4, vel * 0.025, out || bed);
+    }
+    function brass(t, m, dur, vel, out, wah) {
+      const f0 = mf(m), g = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = wah ? 4 : 1.2;
+      const oscs = [-7, 7].map(det => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f0; o.detune.value = det; o.connect(lp); return o; });
+      const end = t + dur, top = Math.min(4200, f0 * (wah ? 4 : 7)), body = Math.min(2600, f0 * (wah ? 1.6 : 3.2));
+      lp.frequency.setValueAtTime(f0 * 1.2, t); lp.frequency.exponentialRampToValueAtTime(top, t + 0.07); lp.frequency.exponentialRampToValueAtTime(body, t + Math.min(dur, 0.45));
+      if (wah) { lp.frequency.setValueAtTime(body, Math.max(t + 0.08, end - 0.2)); lp.frequency.exponentialRampToValueAtTime(f0 * 1.1, end); }
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel * 0.075, t + 0.06); g.gain.setValueAtTime(vel * 0.07, Math.max(t + 0.06, end - 0.1)); g.gain.exponentialRampToValueAtTime(0.0001, end + 0.15);
+      if (dur > 0.5) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = wah ? 5.5 : 5; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(wah ? 35 : 9, t + 0.4); l.connect(lg); oscs.forEach(o => lg.connect(o.detune)); l.start(t); l.stop(end + 0.2); }
+      lp.connect(g).connect(out || cueBus); oscs.forEach(o => { o.start(t); o.stop(end + 0.2); });
+      return oscs;
+    }
+    function pad(t, ms, dur, lvl) {
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5;
+      lp.frequency.setValueAtTime(800 + 1300 * inten, t); lp.frequency.linearRampToValueAtTime(1100 + 1500 * inten, t + dur);
+      const g = ctx.createGain(), end = t + dur, a = Math.min(0.7, dur * 0.4);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(lvl, t + a); g.gain.setValueAtTime(lvl, end); g.gain.linearRampToValueAtTime(0.0001, end + 0.5);
+      lp.connect(g).connect(bed);
+      ms.forEach(m => [-8, 8].forEach(det => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = mf(m); o.detune.value = det; o.connect(lp); o.start(t); o.stop(end + 0.55); }));
+    }
+    function kick(t, vel) {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.22);
+      g.gain.setValueAtTime(vel * 0.6, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      o.connect(g).connect(dry); o.start(t); o.stop(t + 0.35);
+    }
+    const brush = (t, vel) => noise(t, 0.13, 'bandpass', 3800, 0.7, vel * 0.11);
+    const shaker = (t, vel) => noise(t, 0.06, 'highpass', 7200, 0, vel * 0.07);
+    function block(t, vel, hi) {
+      const o = ctx.createOscillator(), g = ctx.createGain(), f = hi ? 1250 : 880; o.type = 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.92, t + 0.05);
+      g.gain.setValueAtTime(vel * 0.16, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07); o.connect(g).connect(dry); o.start(t); o.stop(t + 0.09);
+      noise(t, 0.015, 'bandpass', f * 2, 3, vel * 0.05);
+    }
+    function timp(t, m, vel, out) {
+      const f = mf(m), o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(f * 1.07, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08);
+      g.gain.setValueAtTime(vel * 0.42, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+      o.connect(g).connect(out || cueBus); o.start(t); o.stop(t + 1.35);
+      noise(t, 0.18, 'lowpass', 260, 0, vel * 0.12, out || cueBus);
+    }
+    const swell = (t, dur, vel) => noise(t, 0.8, 'highpass', 5200, 0, vel * 0.09, cueBus, dur);
+
+    // ---- composer ----
+    const sw = (p, e) => { const q = Math.floor(p), beat = Math.floor(q / 2) * 2 * e, odd = q % 2 ? 2 * MODES[mode].swing * e : 0; return beat + odd + (p - q) * e; };
+    const triad = (r, oct) => [dM(r + 7 * oct), dM(r + 2 + 7 * oct), dM(r + 4 + 7 * oct)];
+    const chordPen = r => { const pcs = triad(r, 0).map(m => ((m % 12) + 12) % 12); const out = []; for (let i = -1; i < 9; i++) if (pcs.includes(((dP(i) % 12) + 12) % 12)) out.push(i); return out; };
+    const landOn = (i, r) => { const tones = chordPen(r).filter(x => x >= 0 && x <= 7); return tones.reduce((a, x) => Math.abs(x - i) < Math.abs(a - i) ? x : a, tones[0]); };
+    function phrase(endChord) {
+      const notes = []; let i = pick([2, 3, 3, 4, 5]), pos = 0;
+      while (pos < 13) {
+        const d = pick([1, 1, 1, 2, 2, 3]);
+        if (pos > 0 && rnd() < 0.1) { pos += 1; continue; }
+        notes.push([i, pos, Math.min(d, 14 - pos)]); pos += d;
+        i = Math.max(0, Math.min(7, i + pick([-1, -1, 1, 1, 2, -2, 0])));
+      }
+      notes.push([landOn(i, endChord), Math.max(pos, 14), 2]);
+      return notes;
+    }
+    const mutate = ph => ph.map((n, k) => (k > 0 && k < ph.length - 1 && rnd() < 0.25) ? [Math.max(0, Math.min(7, n[0] + pick([-1, 1]))), n[1], n[2]] : n);
+    let bar = 0, lead = null, themeCount = 0;
+    function scheduleBar(t0, e) {
+      const M = MODES[mode], b = bar++, g = b % 4, sec = Math.floor(b / 4) % 4, r = PROG[sec][g], I = inten;
+      const T = p => t0 + sw(p, e), tri = triad(r, -1), root = dM(r - 14), fifth = dM(r + 4 - 14);
+      const tr = triumph > 0; if (tr) triumph--;
+      // melody: phrase on bars 0 and 2 of each group (call, then answer)
+      if (g === 0) lead = sec === 0 ? (themeCount++ % 2 ? mutate(THEME) : THEME) : phrase(PROG[sec][1]);
+      if (g === 2 && lead) lead = mutate(lead).map((n, k, a) => k === a.length - 1 ? [landOn(a[k - 1][0], PROG[sec][3]), n[1], n[2]] : n);
+      pad(t0, tri, 8 * e, M.pad * (1 + I * 0.6));
+      if (mode === 'day') {
+        // marimba oom, ukulele pah
+        marimba(T(0), root, 0.95); if (sec !== 3) marimba(T(4), fifth, 0.75);
+        if (I > 0.5 || tr) marimba(T(6), root + 12, 0.45);
+        if (sec !== 3) { strum(T(2), tri.map(m => m + 12), 0.55); strum(T(6), tri.map(m => m + 12), 0.5); if (rnd() < 0.45) strum(T(7), tri.map(m => m + 12), 0.25, true, 0.35); }
+        else strum(T(0), tri.map(m => m + 12), 0.4, false, 1.4);
+        if (sec !== 3 && b >= 2) {
+          kick(T(0), 0.55); kick(T(4), 0.45); if (tr) { kick(T(2), 0.4); kick(T(6), 0.4); } else if (I > 0.4) kick(T(7), 0.3);
+          brush(T(2), 0.8); brush(T(6), 0.8);
+          for (let p = 0; p < 8; p++) shaker(T(p), (p % 2 ? 0.55 : 0.3) * (1 + I * 0.5));
+          if (I > 0.7) for (let p = 0; p < 8; p += 2) block(T(p), 0.45, (p / 2) % 2 === 0);
+          else if (g === 3) { block(T(6), 0.5, true); block(T(6.66), 0.4, false); block(T(7.33), 0.45, true); }
+        } else for (let p = 1; p < 8; p += 2) shaker(T(p), 0.35);
+        if (g === 0 || g === 2) {
+          const first = (g === 0) !== (sec === 2); // A sections: whistle calls, glock answers; B: swapped
+          if (sec === 3) playMel(lead, T, (t, m, d) => marimba(t, m, 0.6));
+          else if (first || tr) playMel(lead, T, (t, m, d) => whistle(t, m, d, 0.9));
+          if (sec !== 3 && (!first || tr)) playMel(lead, T, (t, m, d) => glock(t, m + 12, 0.7));
+        }
+      } else {
+        // evening: soft bass, picked ukulele, music box lead, whistle answers low
+        marimba(T(0), root, 0.7); if (rnd() < 0.5 || I > 0.4) marimba(T(4), fifth, 0.45);
+        if (sec !== 3) { const pat = [0, 1, 2, 1, 0, 1, 2, 1]; for (let p = 0; p < 8; p++) uke(T(p), tri[pat[p]] + 12 + (p === 2 || p === 6 ? 12 : 0), p % 2 ? 0.22 : 0.3, null, 0.7); }
+        if (b % 2 === 0 || I > 0.4 || tr) kick(T(0), 0.3); if (I > 0.4 || tr) kick(T(4), 0.25);
+        const shk = sec === 1 || sec === 2 || I > 0.2;
+        if (shk) for (let p = 0; p < 8; p++) if (p % 2 || I > 0.4) shaker(T(p), p % 2 ? 0.4 : 0.22);
+        if (I > 0.7) for (let p = 0; p < 8; p += 2) block(T(p), 0.35, (p / 2) % 2 === 0);
+        if (g === 0) playMel(lead, T, (t, m, d) => glock(t, m + 12, 0.6));
+        if (g === 2) playMel(lead, T, (t, m, d) => { if (tr) glock(t, m + 12, 0.55); whistle(t, m - 12 + (sec === 3 ? 12 : 0), d, 0.75); });
+      }
+    }
+    function playMel(ph, T, fn) {
+      if (!ph) return;
+      ph.forEach(([i, pos, d]) => { const t = T(pos), dur = T(pos + d) - t; fn(t, dP(i), dur * 0.92); });
+    }
+
+    // ---- cues (one-shots, scheduled on the next beat) ----
+    let nextBar = 0, started = false, bars = 0;
+    const grid = []; // recent bar starts [{t, e}]
+    function nextBeat(t) {
+      let g0 = null; for (const x of grid) if (x.t <= t + 0.04) g0 = x;
+      if (!g0) return Math.max(t + 0.04, nextBar || t + 0.04);
+      const beat = 2 * g0.e, k = Math.ceil((t + 0.04 - g0.t) / beat);
+      return g0.t + k * beat;
+    }
+    function bedTo(t, v, tc) { bed.gain.cancelScheduledValues(t); bed.gain.setTargetAtTime(v, t, tc); drumBed.gain.cancelScheduledValues(t); drumBed.gain.setTargetAtTime(v, t, tc); }
+    function bedBack(t, tc) { bed.gain.setTargetAtTime(1, t, tc); drumBed.gain.setTargetAtTime(1, t, tc); }
+    const CUES = {
+      statue(tc, e) { // rising horn call into a held F major chord, cymbal swell, glock sparkle
+        bedTo(tc, 0.28, 0.06);
+        [60, 65, 69].forEach((m, k) => brass(tc + k * e, m, e * 0.9, 0.85));
+        const tch = tc + 3 * e; swell(tc, 3 * e, 1);
+        [53, 60, 65, 69, 72].forEach(m => brass(tch, m, 1.4, 0.55));
+        timp(tch, 41, 0.9);
+        [77, 81, 84, 89].forEach((m, k) => glock(tch + 0.25 + k * e / 2, m, 0.7, cueBus));
+        bedBack(tch + 1.6, 0.5); return tch + 2.2;
+      },
+      achieve(tc, e) { // glockenspiel sparkle up the F chord
+        bedTo(tc, 0.5, 0.05);
+        [77, 81, 84, 89, 93].forEach((m, k) => glock(tc + k * e / 2, m, 0.85, cueBus));
+        strumCue(tc, [65, 69, 72, 77], 0.5); noise(tc + 5 * e / 2, 0.5, 'highpass', 8000, 0, 0.04, cueBus);
+        bedBack(tc + 1.3, 0.4); return tc + 1.8;
+      },
+      pass(tc, e) { // nothing fits: the bed drops out, a muted "wah-wah" horn sighs down, then the park wakes back up
+        bedTo(tc, 0.03, 0.05);
+        const step = Math.max(0.36, e * 1.6);
+        [60, 59, 58].forEach((m, k) => brass(tc + k * step, m, step * 0.85, 0.7, cueBus, true));
+        brass(tc + 3 * step, 57, 1.3, 0.7, cueBus, true);
+        timp(tc + 3 * step, 41, 0.5); timp(tc + 3 * step + 0.9, 36, 0.35);
+        bedBack(tc + 3 * step + 1.4, 1.1); return tc + 3 * step + 4;
+      },
+      lastround(tc, e) { // timpani roll + cymbal swell into a two-horn call: hurry, last turns!
+        bedTo(tc, 0.25, 0.08);
+        const roll = 1.3; for (let k = 0; k < 16; k++) timp(tc + k * roll / 16, 36, 0.12 + 0.5 * (k / 15) ** 1.5);
+        swell(tc, roll, 1.1);
+        const tch = tc + roll;
+        brass(tch, 60, 0.32, 0.9); brass(tch + 0.36, 65, 1.1, 0.9); brass(tch + 0.36, 69, 1.1, 0.6); brass(tch + 0.36, 53, 1.1, 0.5);
+        timp(tch, 41, 0.9);
+        bedBack(tch + 1.3, 0.5); return tch + 2;
+      },
+      win(tc, e) { // the Bear Park tune on horns + glock, big F major landing, then a triumphant bed
+        bedTo(tc, 0.1, 0.06);
+        const E = Math.max(e, 0.25), T = p => tc + p * E;
+        THEME.slice(0, 6).forEach(([i, pos, d]) => { brass(T(pos), dP(i), d * E * 0.92, 0.85); glock(T(pos), dP(i) + 12, 0.5, cueBus); brass(T(pos), dP(i) - 12, d * E * 0.92, 0.35); });
+        const tch = T(8); swell(T(5), 3 * E, 1.2);
+        for (let k = 0; k < 8; k++) timp(T(6) + k * E / 4, 36, 0.15 + 0.06 * k);
+        [41, 53, 60, 65, 69, 72, 77].forEach(m => brass(tch, m, 2.2, 0.5));
+        timp(tch, 41, 1);
+        [77, 81, 84, 89, 93].forEach((m, k) => glock(tch + 0.3 + k * E / 2, m, 0.8, cueBus));
+        triumph = 8; bedBack(tch + 2.2, 0.6); return tch + 3;
+      }
+    };
+    function strumCue(t, ms, vel) { ms.forEach((m, i) => uke(t + i * 0.016, m, vel, cueBus, 1.2)); }
+
+    return {
+      start(t, vol) { master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(0.0001, t); master.gain.exponentialRampToValueAtTime(vol || 0.42, t + 2.5); nextBar = t + 0.25; started = true; },
+      scheduleUntil(tEnd) {
+        if (!started) return;
+        if (nextBar < ctx.currentTime - 0.05) nextBar = ctx.currentTime + 0.1; // back from a hidden tab: don't burst
+        while (nextBar < tEnd) {
+          const e = 60 / (MODES[mode].bpm + 10 * inten) / 2;
+          grid.push({ t: nextBar, e }); if (grid.length > 6) grid.shift();
+          scheduleBar(nextBar, e); nextBar += 8 * e; bars++;
+        }
+      },
+      setMode(m, t) { if (!MODES[m] || m === mode) return; mode = m; wet.gain.setTargetAtTime(MODES[m].wet, t, 1); },
+      setIntensity(x, t) { inten = Math.max(0, Math.min(1, +x || 0)); },
+      cue(name, t) {
+        if (!started || !CUES[name]) return 0;
+        const tc = nextBeat(t), g0 = grid.length ? grid[grid.length - 1] : { e: 60 / MODES[mode].bpm / 2 };
+        return CUES[name](tc, g0.e);
+      },
+      setVolume(v, t) { master.gain.cancelScheduledValues(t); master.gain.setTargetAtTime(Math.max(0.0001, v), t, 0.4); },
+      stop(t) { master.gain.cancelScheduledValues(t); master.gain.setTargetAtTime(0.0001, t, 0.3); started = false; },
+      get bars() { return bars; }, get mode() { return mode; }, get intensity() { return inten; }
+    };
+  }
+
+  // ---------- live controller ----------
+  const VOL = 0.42;
+  let player = null, timer = 0, ctxRef = null, mode = 'night', inten = 0, duckUntil = 0, cues = 0, lastCue = null;
+  function tick() {
+    if (!player || !ctxRef || document.hidden) return;
+    const t = ctxRef.currentTime;
+    player.scheduleUntil(t + 0.6);
+    const d = t < duckUntil ? 0.3 : 1;
+    if (Math.abs(d - tick.d) > 0.02) { player.setVolume(VOL * d, t); tick.d = d; }
+  }
+  return {
+    createPlayer,
+    start(ctx) {
+      if (player || !ctx) return;
+      ctxRef = ctx; player = createPlayer(ctx, { mode }); player.setIntensity(inten, ctx.currentTime); player.start(ctx.currentTime, VOL); tick.d = 1;
+      timer = setInterval(tick, 50); tick();
+    },
+    stop() { if (!player) return; player.stop(ctxRef.currentTime); player = null; clearInterval(timer); timer = 0; },
+    setMode(m) { if (!MODES[m]) return; mode = m; if (player) player.setMode(m, ctxRef.currentTime); },
+    setIntensity(x) { inten = Math.max(0, Math.min(1, +x || 0)); if (player) player.setIntensity(inten, ctxRef.currentTime); },
+    cue(name) { if (!player) return; player.cue(name, ctxRef.currentTime); cues++; lastCue = name; },
+    duck(sec) { if (ctxRef) duckUntil = ctxRef.currentTime + sec; },
+    get state() { return { playing: !!player, mode, intensity: inten, bars: player ? player.bars : 0, cues, lastCue }; }
+  };
+})();
+
 // ---------- sound ----------
 const snd = { ctx: null, muted: !!store.get(MUTE) };
 function ac() {
@@ -1250,8 +1563,32 @@ const SFX = {
   bad() { tone(200, .16, 'sawtooth', .05, 140); },
   end() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, .38, 'triangle', .12, 0, i * .13)); }
 };
-function sfx(n) { if (snd.muted) return; try { SFX[n](); } catch (e) { } }
-function toggleSound() { snd.muted = !snd.muted; store.set(MUTE, snd.muted); paintUtil(); if (!snd.muted) sfx('pick'); }
+const MUSIC_CUE = { fanfare: 'statue', jingle: 'achieve', thud: 'pass', end: 'win' };
+function sfx(n) { if (snd.muted) return; if (MUSIC_CUE[n] && Music.state.playing) { Music.cue(MUSIC_CUE[n]); return; } try { SFX[n](); } catch (e) { } }
+function toggleSound() { snd.muted = !snd.muted; store.set(MUTE, snd.muted); paintUtil(); applyMusic(); if (!snd.muted) { sfx('pick'); wakeMusic(); } }
+
+// ---------- music controls ----------
+const musicOn = () => setupPrefs.music !== false;
+function musicMode() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'day' : 'night'; }
+function applyMusic() {
+  const on = musicOn();
+  document.querySelectorAll('.music-toggle').forEach(b => { b.classList.toggle('off', !on); b.setAttribute('aria-pressed', String(on)); b.title = on ? 'Music on (Shift+N)' : 'Music off (Shift+N)'; b.setAttribute('aria-label', b.title); });
+  const o = $('#optMusic'); if (o) o.checked = on;
+  Music.setMode(musicMode());
+  if (on && !snd.muted) { if (snd.ctx && snd.ctx.state === 'running') Music.start(snd.ctx); } else Music.stop();
+}
+function wakeMusic() {
+  if (!musicOn() || snd.muted || Music.state.playing) return;
+  const a = ac(); if (!a) return;
+  if (a.state === 'running') applyMusic(); else a.resume().then(applyMusic).catch(() => { });
+}
+function toggleMusic() { setupPrefs.music = !musicOn(); store.set(SETUP, setupPrefs); applyMusic(); wakeMusic(); }
+function musicIntensity() {
+  if (!S || S.over) return 0;
+  if (S.endBy != null) return 1;
+  let m = 0; S.teams.forEach(t => { m = Math.max(m, t.boards.filter(b => b.done).length); });
+  return Math.min(0.6, m * 0.15);
+}
 
 // ---------- theme ----------
 const THEME_FACE = { dark: '\u{1F319}', light: '☀️', system: '\u{1F5A5}️' };
@@ -1641,6 +1978,7 @@ function finishTurn() {
   sel = staged = null; viewTeam = null;
   save(); renderAll();
   if (r.over) { sfx('end'); return showFinal(); }
+  if (r.triggered && !snd.muted) Music.cue('lastround');
   showHandoff(r.triggered ? `🏁 ${esc(who)} filled all four Park Areas! Every other team gets <b>one last turn</b>.` : null);
 }
 function openPass() {
@@ -1668,6 +2006,7 @@ function endNow() { clearTimers(); closeDock(); S.over = true; S.phase = 'over';
 
 // ---------- final ----------
 function showFinal() {
+  Music.setIntensity(0);
   closeDock(); $('#modal').hidden = true; $('#handoff').hidden = true; hideBanner();
   const rows = BP.ranking(S), hasAch = S.opts.ach.length > 0;
   const winners = rows.filter(r => r.place === 1);
@@ -1745,6 +2084,7 @@ function renderTop() {
   $('#turnTag').style.boxShadow = S.over ? 'none' : `inset 0 -4px 0 ${c}`;
   $('#roundTag').textContent = S.over ? '' : `Round ${S.round}`;
   $('#lastTag').hidden = S.over || !BP.isLastTurn(S, i);
+  Music.setIntensity(musicIntensity());
 }
 function renderSupply() {
   const sup = S.supply;
@@ -2062,6 +2402,7 @@ function bindKeys() {
     if (e.target.matches('input,select,textarea')) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
+    if (e.shiftKey && k === 'n') { toggleMusic(); return; }
     if (k === 'm') { toggleSound(); return; }
     if (!$('#rules').hidden) { if (k === 'escape' || k === 'enter') $('#rules').hidden = true; return; }
     if (!$('#menu').hidden) { if (k === 'escape') $('#menu').hidden = true; return; }
@@ -2097,6 +2438,11 @@ function init() {
   injectDefs(); loadImages(); paintUtil();
   document.querySelectorAll('.theme-toggle').forEach(b => b.onclick = toggleTheme);
   document.querySelectorAll('.sound-toggle').forEach(b => b.onclick = toggleSound);
+  document.querySelectorAll('.music-toggle').forEach(b => b.onclick = toggleMusic);
+  $('#optMusic').onchange = e => { setupPrefs.music = e.target.checked; store.set(SETUP, setupPrefs); applyMusic(); wakeMusic(); };
+  ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, wakeMusic, true));
+  new MutationObserver(() => Music.setMode(musicMode())).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  applyMusic();
   bindSetup(); bindMenu(); bindPointer(); bindKeys();
   $('#rotBtn').onclick = rotate; $('#flipBtn').onclick = flip; $('#okBtn').onclick = confirmPlace; $('#cancelBtn').onclick = cancel;
   $('#hintBtn').onclick = hint; $('#passBtn').onclick = openPass; $('#crewBackBtn').onclick = crewBack;

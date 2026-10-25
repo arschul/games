@@ -252,6 +252,7 @@ kbd{font:700 12px Inter;padding:1px 6px;border-radius:5px;border:1px solid curre
 
 /* ---------- reveal ---------- */
 #reveal{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:40}
+#reveal.dock{place-items:center start;padding:150px 0 0 362px}
 .bigcard{width:250px;height:340px;border-radius:22px;background:var(--panel);border:6px solid var(--kc,var(--accent));box-shadow:0 30px 80px rgba(0,0,0,.6);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;animation:cardIn .45s cubic-bezier(.2,.9,.3,1.15) both}
 .bigcard .bn{font:900 26px/1.15 Cinzel}
@@ -1187,14 +1188,16 @@ const FI = (() => {
     const doomed = [...new Set(evs.filter(e => e.type === 'flood' || e.type === 'sink').map(e => e.tile))];
     if (fc) {
       // flood card: show the tile name straight away (no face-down card), the outcome waits for the drumroll
+      r.classList.add('dock');
       r.innerHTML = '<div class="bigcard k-flood"><div class="bs">Flood card</div><div class="bn">' + esc(S.tiles[fc.tile].name) + '</div></div>';
       r.classList.remove('hidden');
     } else if (isRise) {
+      r.classList.remove('dock');
       r.innerHTML = '<div class="bigcard k-drum td"><div class="q">?</div></div>';
       r.classList.remove('hidden');
     }
     doomed.forEach(id => tileEls[id] && tileEls[id].classList.add('doom'));
-    showTiles(doomed, 0);
+    showTiles(doomed, 0, fc ? DOCK_W : 0);
     Sfx.drumroll(drum / 1000);
     setTimeout(() => {
       ui.revealing = false;
@@ -1238,6 +1241,7 @@ const FI = (() => {
   }
   function showReveal(html, cls) {
     const r = $('#reveal');
+    r.classList.toggle('dock', /k-flood/.test(cls));
     r.innerHTML = '<div class="bigcard ' + cls + '">' + html + '</div>';
     r.classList.remove('hidden');
     clearTimeout(ui.revT);
@@ -1437,10 +1441,10 @@ const FI = (() => {
     applyCam(glide);
   }
   function camFit(glide) { const b = liveBox(); centerBox(b[0], b[1], b[2], b[3], fitZ(), glide); }
-  function showBox(c0, r0, c1, r1, glide) {
+  function showBox(c0, r0, c1, r1, glide, left) {
     // nudge the view the least amount needed to bring these tiles into sight (centre them if they can't all fit)
     const z = cam.z, x0 = cam.x + c0 * TILE * z, x1 = cam.x + (c1 + 1) * TILE * z, y0 = cam.y + r0 * TILE * z, y1 = cam.y + (r1 + 1) * TILE * z;
-    const L = PAD, R = vpW() - PAD, T = TOP + PAD, B = vpH() - PAD;
+    const L = (left || 0) + PAD, R = vpW() - PAD, T = TOP + PAD, B = vpH() - PAD;
     if (x1 - x0 > R - L || y1 - y0 > B - T) { centerBox(c0, r0, c1, r1, z, glide); return; }
     let dx = 0, dy = 0;
     if (x0 < L) dx = L - x0; else if (x1 > R) dx = R - x1;
@@ -1453,7 +1457,8 @@ const FI = (() => {
     ids.forEach(id => { const t = S.tiles[id]; if (!t) return; const [r, c] = E.rc(t.cell); c0 = Math.min(c0, c - grow); r0 = Math.min(r0, r - grow); c1 = Math.max(c1, c + grow); r1 = Math.max(r1, r + grow); });
     return [Math.max(0, c0), Math.max(0, r0), Math.min(5, c1), Math.min(5, r1)];
   }
-  function showTiles(ids, grow) { ids = ids.filter(id => S && S.tiles[id]); if (ids.length) { const b = boxOf(ids, grow || 0); showBox(b[0], b[1], b[2], b[3], true); } }
+  const DOCK_W = 290;   // the docked flood card covers this much of the sea's left side
+  function showTiles(ids, grow, left) { ids = ids.filter(id => S && S.tiles[id]); if (ids.length) { const b = boxOf(ids, grow || 0); showBox(b[0], b[1], b[2], b[3], true, left); } }
   function activePos() { const p = S && S.players[S.current]; return p && p.pos >= 0 ? p.pos : -1; }
   function camFocus(glide) {
     // default view: big tiles, centred on the current player's pawn

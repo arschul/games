@@ -239,22 +239,49 @@ def order_up():
 
 
 def perfect_fit():
-    d = rad("bg", [(0, "#2a1f4a"), (1, "#0f1220")], cy="35%")
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(f'<circle cx="104" cy="112" r="28" fill="#a855f7"/>' + text(146, 132, "Perfect Fit", "Montserrat", 64, "#f2f3fb", 900, "start"))
-    b.append(text(300, 182, "FIT EVERY SHAPE BEFORE THE BOARD POPS!", "Open Sans", 15, "#9aa1c4", 700, ls=2))
-    b.append(f'<g filter="url(#k-drop)">{rect(70, 220, 460, 420, "#f59e0b", 28, "stroke=\"#b45309\" stroke-width=\"6\"")}</g>')
-    shapes = ["circle", "star", "tri", "square", "hex", "heart", "cross", "diamond", "moon"]
-    filled = {0: "#ef4444", 3: "#22c55e", 4: "#3b82f6", 7: "#a855f7"}
+    """Molded-plastic pop-up toy: teal tray on a pegboard, chrome wind-up timer, Shrikhand title."""
+    d = (rad("pfLamp", [(0, "#ffbf6e"), (1, "#22313f")], cx="20%", cy="0%", r="90%")
+         + lin("pfTray", [(0, "#2cc6bb"), (.5, "#14a39b"), (1, "#0f8c84")], x2=.2, y2=1)
+         + rad("pfGloss", [(0, "#ffffff"), (1, "#ffffff00")], cx="34%", cy="24%", r="60%")
+         + rad("pfFace", [(0, "#fffdf6"), (1, "#ece2cc")])
+         + rad("pfBezel", [(0, "#ffffff"), (.45, "#d9dee4"), (.85, "#7d8794"), (1, "#5a636e")], cx="38%", cy="30%", r="80%")
+         + '<pattern id="pfPeg" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="16" r="4" fill="#ffffff" opacity=".07"/><circle cx="15" cy="15" r="3.8" fill="#121a23"/></pattern>'
+         + '<filter id="pfIn" x="-20%" y="-20%" width="140%" height="140%"><feOffset in="SourceAlpha" dy="5"/><feGaussianBlur stdDeviation="2.5" result="b"/>'
+           '<feComposite in="SourceAlpha" in2="b" operator="arithmetic" k2="-1" k3="1" result="i"/><feFlood flood-color="#000" flood-opacity=".8"/>'
+           '<feComposite in2="i" operator="in" result="s"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="s"/></feMerge></filter>')
+    b = [rect(0, 0, 600, 800, "#22313f"), rect(0, 0, 600, 800, "url(#pfLamp)", 0, 'opacity=".45"'), rect(0, 0, 600, 800, "url(#pfPeg)")]
+    # title
+    b.append(text(300, 128, "Perfect Fit", "Shrikhand", 92, "#063f3b", extra='transform="translate(0,7)"'))
+    b.append(text(300, 128, "Perfect Fit", "Shrikhand", 92, "#fbf3e2"))
+    b.append(text(300, 172, "Fit every shape before the board pops!", "Atkinson Hyperlegible", 22, "#e9dcc2", 700))
+    # tray
+    b.append(rect(64, 214, 472, 26, "#9aa4af", 13, 'stroke="#5c656f" stroke-width="2"'))
+    b.append(rect(40, 238, 520, 470, "#0b6762", 36))
+    b.append(f'<g filter="url(#k-drop)">{rect(40, 228, 520, 470, "url(#pfTray)", 36)}</g>')
+    b.append(rect(40, 228, 520, 200, "url(#pfGloss)", 36, 'opacity=".18"'))
+    shapes = ["circle", "star", "tri", "square", "hex", "heart", "cross", "diamond", "square"]
+    cols = {0: "#e8453c", 1: "#f5b300", 3: "#2f7ff0", 5: "#e84393", 6: "#8b5cf6", 8: "#ff7a1a"}
+    rims = ["#e8453c", "#f5b300", "#38cf6d", "#2f7ff0", "#ff7a1a", "#e84393", "#8b5cf6", "#2cc6bb", "#ff7a1a"]
     for k, sh in enumerate(shapes):
-        r, c = divmod(k, 3)
-        cx, cy = 160 + c * 140, 300 + r * 130
-        col = filled.get(k)
-        b.append(_shape(sh, cx, cy, 44, "#7c3e05" if not col else col, "#4a2402" if not col else "#fff"))
-    # loose piece hovering
-    b.append(f'<g filter="url(#k-drop)">{_shape("star", 480, 680, 52, "#facc15", "#fff")}</g>')
-    b.append('<path d="M440 640 Q 400 560 300 430" fill="none" stroke="#facc15" stroke-width="3" stroke-dasharray="6 8"/>')
-    b.append(rect(70, 690, 300, 22, "#1c2138", 11) + rect(70, 690, 90, 22, "#ef4444", 11) + text(70, 748, "0:09", "Montserrat", 40, "#ef4444", 900, "start"))
+        r_, c = divmod(k, 3)
+        cx, cy = 150 + c * 150, 320 + r_ * 140
+        b.append(f'<g filter="url(#pfIn)">{_shape(sh, cx, cy, 48, "#063f3b", rims[k])}</g>')
+        col = cols.get(k)
+        if col:
+            b.append(f'<g filter="url(#k-drop-s)">{_shape(sh, cx, cy, 44, col, "#ffffff55")}</g>')
+            b.append(_shape(sh, cx, cy, 44, "url(#pfGloss)", "none").replace('fill="url', 'opacity=".55" fill="url'))
+            b.append(f'<circle cx="{cx}" cy="{cy}" r="7" fill="{col}" stroke="#00000044" stroke-width="2"/>')
+    # loose piece in flight toward its hole
+    b.append('<path d="M500 640 Q 560 470 462 352" fill="none" stroke="#fbf3e2" stroke-width="3" stroke-dasharray="4 9" opacity=".7"/>')
+    b.append(f'<g filter="url(#k-drop)" transform="rotate(-18 505 690)">{_shape("tri", 505, 690, 56, "#38cf6d", "#ffffff66")}</g>')
+    # chrome kitchen timer
+    b.append('<circle cx="122" cy="690" r="88" fill="#4b535d"/><circle cx="122" cy="684" r="88" fill="url(#pfBezel)"/>'
+             '<circle cx="122" cy="684" r="72" fill="url(#pfFace)"/>'
+             '<path d="M122 684 L122 626 A58 58 0 0 1 172 713 Z" fill="#ff4b3e" opacity=".92"/>'
+             '<circle cx="122" cy="684" r="18" fill="#c8ced6" stroke="#6c7682" stroke-width="2"/>'
+             '<path d="M114 592 L130 592 L122 608 Z" fill="#ff4b3e"/>')
+    b.append(rect(0, 752, 600, 48, "#4a311c"))
+    b.append(footer("TEAMS OR SOLO \u00b7 SHAPES \u00b7 AGAINST THE CLOCK", "Atkinson Hyperlegible", "#e9dcc2", 15, 3, 782))
     return svg(d, "".join(b))
 
 

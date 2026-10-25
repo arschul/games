@@ -332,32 +332,63 @@ def city():
 
 
 def classroom_auction():
-    d = rad("bg", [(0, "#2a2140"), (1, "#0f0e17")], cy="45%") + lin("org", [(0, "#ffd166"), (1, "#ff6b35")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append('<circle cx="300" cy="470" r="230" fill="#ff6b35" opacity=".10" filter="url(#k-glow)"/>')
-    b.append(text(300, 96, "CLASSROOM", "Bebas Neue", 38, "#a7a9be", ls=12))
-    b.append(text(300, 220, "AUCTION", "Bebas Neue", 156, "url(#org)", ls=4, extra='filter="url(#k-drop)"'))
-    # gavel
-    b.append('<g transform="translate(300 470) rotate(-35)" filter="url(#k-drop)">'
-             '<rect x="-14" y="-10" width="28" height="210" rx="10" fill="#8b4a22" stroke="#3a1c0c" stroke-width="4"/>'
-             '<rect x="-90" y="-80" width="180" height="76" rx="18" fill="#a85a2a" stroke="#3a1c0c" stroke-width="5"/>'
-             '<rect x="-96" y="-84" width="26" height="84" rx="8" fill="#ffd166" stroke="#3a1c0c" stroke-width="4"/>'
-             '<rect x="70" y="-84" width="26" height="84" rx="8" fill="#ffd166" stroke="#3a1c0c" stroke-width="4"/>'
-             '</g>')
-    b.append('<ellipse cx="300" cy="640" rx="130" ry="22" fill="#000" opacity=".4"/>'
-             + rect(200, 600, 200, 40, "#6b3a1c", 10, 'stroke="#3a1c0c" stroke-width="4"'))
+    """Velvet-curtain auction house: marquee bulbs, lot card on a brass easel, gavel, team paddles."""
+    d = (lin("vel", [(0, "#22060b"), (.35, "#7d1d2b"), (.55, "#5c1420"), (1, "#22060b")], x2=1, y2=0)
+         + rad("wall", [(0, "#40121b"), (1, "#0d0406")], cy="45%", r="70%")
+         + lin("gilt", [(0, "#f3cf7a"), (.5, "#d9a441"), (1, "#8a6420")])
+         + lin("wood", [(0, "#86442a"), (1, "#3f1c10")])
+         + lin("paper", [(0, "#fbf4e2"), (1, "#ead9b2")])
+         + lin("cone", [(0, "#ffecbe"), (1, "#ffecbe00")]))
+    b = [rect(0, 0, 600, 800, "url(#wall)")]
+    b.append('<polygon points="270,90 330,90 520,700 80,700" fill="url(#cone)" opacity=".28"/>')
+    b.append('<ellipse cx="300" cy="690" rx="250" ry="40" fill="#ffe2a0" opacity=".16"/>')
+    # floor + curtains
+    b.append(rect(0, 650, 600, 150, "url(#wood)"))
+    for k in range(0, 600, 34):
+        b.append(f'<line x1="0" y1="{650+k*0.25:.0f}" x2="600" y2="{650+k*0.25:.0f}" stroke="#000" stroke-opacity=".25"/>')
+    def curtain(x, flip):
+        pts = "0,0 110,0 70,360 46,430 30,800 0,800" if not flip else "600,0 490,0 530,360 554,430 570,800 600,800"
+        stripes = "".join(f'<rect x="{x0}" y="0" width="22" height="800" fill="url(#vel)"/>' for x0 in range(x, x + 120, 22))
+        cid = "cl" if not flip else "cr"
+        return f'<clipPath id="{cid}"><polygon points="{pts}"/></clipPath><g clip-path="url(#{cid})">{stripes}</g>'
+    b.append(curtain(0, False) + curtain(490, True))
+    b.append('<rect x="22" y="404" width="64" height="14" rx="7" fill="url(#gilt)" transform="rotate(-14 54 411)"/>'
+             '<rect x="514" y="404" width="64" height="14" rx="7" fill="url(#gilt)" transform="rotate(14 546 411)"/>')
+    # valance with scallops and bulbs
+    b.append(rect(0, 0, 600, 70, "#5c1420") + rect(0, 66, 600, 5, "#8a6420"))
+    b.append("".join(f'<circle cx="{x}" cy="70" r="20" fill="#d9a441"/><circle cx="{x}" cy="68" r="18" fill="#5c1420"/>' for x in range(20, 620, 40)))
+    b.append("".join(f'<circle cx="{x}" cy="52" r="5.5" fill="#ffd98a"/><circle cx="{x}" cy="52" r="10" fill="#ffd98a" opacity=".25"/>' for x in range(18, 600, 28)))
+    # title
+    b.append(text(300, 168, "AUCTION", "Bungee", 92, "#3a0d14", extra='transform="translate(0 5)"'))
+    b.append(glow_text(300, 168, "AUCTION", "Bungee", 92, "#f3cf7a", "#ffb84d"))
+    b.append(text(300, 222, "STUNT SHOW", "Bungee", 46, "#fbf4e2", extra='filter="url(#k-drop-s)"'))
+    # easel + lot card
+    b.append('<g filter="url(#k-drop)"><polygon points="250,300 262,300 196,690 182,690" fill="#6b3a1c"/>'
+             '<polygon points="338,300 350,300 418,690 404,690" fill="#6b3a1c"/></g>')
+    b.append('<g filter="url(#k-drop)">' + rect(150, 262, 300, 210, "url(#paper)", 6)
+             + rect(160, 272, 280, 190, "none", 4, 'stroke="#d9a441" stroke-width="3"') + "</g>")
+    b.append(rect(130, 470, 340, 14, "url(#gilt)", 5))
+    b.append(text(176, 304, "LOT 7", "Bungee", 20, "#8a6420", anchor="start"))
+    b.append(chip(338, 286, 92, 26, "Stunt", "Figtree", 15, "#16856b", "#fff", weight=800, rx=4))
+    b.append(text(300, 370, "BOOK FLIPS", "Bungee", 40, "#2b1a10"))
+    b.append(text(300, 404, "10 times. Lowest bid wins.", "Figtree", 18, "#5a4330", 600))
+    b.append('<g transform="translate(372 452) rotate(-9)">' + rect(-74, -38, 148, 54, "none", 8, 'stroke="#e0342b" stroke-width="4"')
+             + text(0, 4, "SOLD", "Bungee", 34, "#e0342b") + "</g>")
+    # gavel on block
+    b.append('<ellipse cx="500" cy="660" rx="54" ry="14" fill="#3f1c10"/><g transform="translate(470 610) rotate(18)" filter="url(#k-drop-s)">'
+             '<rect x="0" y="-6" width="110" height="12" rx="6" fill="#8a4a2c"/><rect x="-26" y="-36" width="40" height="66" rx="9" fill="#9a5a34"/>'
+             '<rect x="-26" y="-26" width="40" height="6" fill="#d9a441"/><rect x="-26" y="14" width="40" height="6" fill="#d9a441"/></g>')
     # paddles
-    def paddle(x, y, rot, n, col):
+    def paddle(x, y, rot, e, col):
         return (f'<g transform="translate({x} {y}) rotate({rot})" filter="url(#k-drop-s)">'
-                '<rect x="-7" y="30" width="14" height="80" rx="6" fill="#d9c4a0"/>'
-                f'<circle cx="0" cy="0" r="46" fill="{col}" stroke="#fffffe" stroke-width="5"/>'
-                + text(0, 15, n, "Bebas Neue", 46, "#fffffe") + "</g>")
-    b.append(paddle(90, 390, -18, "12", "#ef476f") + paddle(510, 380, 16, "7", "#06d6a0") + paddle(110, 640, -8, "23", "#ffd166")
-             + paddle(490, 650, 10, "4", "#ff6b35"))
-    b.append(text(300, 300, "GOING… GOING… GONE!", "Nunito", 22, "#fffffe", 900, ls=3))
-    b.append(footer("BID · PROVE IT · WIN", "Bebas Neue", "#ffd166", 26, 8, 772, 400))
+                '<rect x="-7" y="30" width="14" height="96" rx="6" fill="#8a4a2c"/>'
+                f'<circle cx="0" cy="0" r="44" fill="{col}" stroke="#fff" stroke-opacity=".35" stroke-width="4"/>'
+                f'<circle cx="-12" cy="-14" r="14" fill="#fff" opacity=".35"/>' + emoji(0, 17, e, 44) + "</g>")
+    b.append(paddle(110, 610, -10, "🦊", "#e4572e") + paddle(225, 560, -3, "🦈", "#2f6fde")
+             + paddle(345, 620, 4, "🦁", "#f2c230"))
+    b.append(rect(0, 730, 600, 70, "url(#wood)") + rect(0, 726, 600, 5, "#d9a441"))
+    b.append(text(300, 772, "Bid it. Do it. Take a bow.", "Figtree", 24, "#f3cf7a", 800))
     return svg(d, "".join(b))
-
 
 def connect():
     d = lin("tt", [(0, "#ff3355"), (.5, "#ffd700"), (1, "#0099ff")], x2=1, y2=0)

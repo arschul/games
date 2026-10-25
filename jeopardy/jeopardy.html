@@ -1530,7 +1530,6 @@ function openClue(col, row, sourceEl) {
     col, row, tried: [], winner: null, revealed: false, mark: history.length,
     isDailyDouble: isDD,
     wager: null, // Daily Double only: null until the controlling team's wager is submitted
-    wagerExplicit: false, // true once submitWager() locks in a real wager (see isStrictDailyDouble)
   };
   pendingTeam = null;
   SFX.tileClick();
@@ -1563,9 +1562,9 @@ function wagerBounds(t) {
   return { min: 5, max };
 }
 
-// Daily Double only: the controlling team explicitly locks in a wager before the clue text
-// is revealed. This is what flips the clue into "strict" Daily Double rules (see
-// isStrictDailyDouble): only the controller may then answer, and the wager is always at risk.
+// Daily Double only: the controlling team locks in a wager BEFORE the clue text is shown.
+// Nothing else can happen on the clue until then (see ddWagerPending). Afterwards only the
+// controlling team may answer, and the wager is always at risk.
 function submitWager(amount) {
   const c = S && S.clue;
   if (!c || !c.isDailyDouble || c.wager != null) return;
@@ -1573,20 +1572,19 @@ function submitWager(amount) {
   const wager = Math.max(min, Math.min(max, Math.round(Number(amount) || 0)));
   snapshot();
   c.wager = wager;
-  c.wagerExplicit = true;
   commit();
 }
 
-// A Daily Double's real "always at risk, single-team-only" rules apply only once a wager
-// has been EXPLICITLY locked in via the wager panel (c.wagerExplicit). If a teacher skips
-// the wager UI entirely and just judges the clue like normal (via keyboard, or clicking a
-// buzz-btn for any team), it resolves as an ordinary clue at face value under the normal
-// penalty setting — the wager stepper is an optional enhancement, not a mandatory gate.
-function isStrictDailyDouble(c) { return c.isDailyDouble && c.wagerExplicit; }
+// Daily Double clue still waiting for its wager: the clue text, answer, scoring and Done are
+// all locked until submitWager() runs (Back still works, since nothing has happened yet).
+function ddWagerPending(c) { return !!c && c.isDailyDouble && c.wager == null; }
+// Daily Doubles are always single-team (the controller) and always at risk.
+function isStrictDailyDouble(c) { return !!c && c.isDailyDouble; }
 
 function markCorrect(t) {
   const c = S && S.clue;
   if (!c || c.winner !== null || c.tried.includes(t) || !S.teams[t]) return;
+  if (ddWagerPending(c)) return; // DD: wager first
   if (isStrictDailyDouble(c) && t !== S.control) return; // DD: only the wagering team may answer
   snapshot();
   S.teams[t].score += clueValue();
@@ -1602,10 +1600,10 @@ function markCorrect(t) {
 function markWrong(t) {
   const c = S && S.clue;
   if (!c || c.winner !== null || c.tried.includes(t) || !S.teams[t]) return;
+  if (ddWagerPending(c)) return; // DD: wager first
   if (isStrictDailyDouble(c) && t !== S.control) return; // DD: only the wagering team may answer
   snapshot();
-  // A strict (explicitly wagered) Daily Double is always at risk, regardless of the global
-  // penalty setting. An un-wagered/auto Daily Double follows the normal penalty rule.
+  // A Daily Double wager is always at risk, regardless of the global penalty setting.
   if (isStrictDailyDouble(c) || S.penalty) S.teams[t].score -= clueValue();
   c.tried.push(t);
   if (isStrictDailyDouble(c)) c.revealed = true; // DD: no one else gets to answer, so reveal immediately on the miss
@@ -1617,7 +1615,7 @@ function markWrong(t) {
 }
 
 function revealAnswer() {
-  if (!S || !S.clue || S.clue.revealed) return;
+  if (!S || !S.clue || S.clue.revealed || ddWagerPending(S.clue)) return;
   S.clue.revealed = true;
   SFX.reveal();
   commit();
@@ -1636,7 +1634,7 @@ function cancelClue() {
 
 // Close and spend the tile. Control stays put unless someone answered correctly.
 function doneClue() {
-  if (!S || !S.clue) return;
+  if (!S || !S.clue || ddWagerPending(S.clue)) return; // a Daily Double can't be skipped past its wager
   snapshot();
   S.used[cellKey(S.clue.col, S.clue.row)] = true;
   S.clue = null;
@@ -1846,10 +1844,9 @@ function renderModal() {
   if (hintEl) hintEl.style.display = '';
   const cat = S.cats[c.col];
   const q = S.board[c.col][c.row];
-  // Daily Double, wager not yet locked in, and nobody has judged the clue yet — once someone
-  // has (a wrong attempt or the correct answer), it's too late to wager; drop the panel so
-  // the clue/buzz row behave exactly like a normal clue that quietly skipped the wager step.
-  const ddPending = c.isDailyDouble && c.wager == null && c.winner === null && c.tried.length === 0;
+  // Daily Double with no wager yet: the clue stays hidden and the only thing on screen is the
+  // controlling team's wager panel.
+  const ddPending = ddWagerPending(c);
 
   document.getElementById('modalCat').textContent = cat.name.toUpperCase() + ' — ' + cat.diff.toUpperCase() +
     (c.isDailyDouble ? ' — DAILY DOUBLE' : '');
@@ -1860,7 +1857,7 @@ function renderModal() {
   const clueWrap = document.getElementById('modalClue');
   if (ddPending) {
     clueWrap.textContent = '';
-    clueWrap.append(el('div', 'dd-banner', 'DAILY DOUBLE'), el('div', 'dd-sub', 'Lock in a wager below, or judge normally to skip it.'));
+    clueWrap.append(el('div', 'dd-banner', 'DAILY DOUBLE'), el('div', 'dd-sub', S.teams[S.control].name + ' picked it — set the wager first. The clue appears after.'));
   } else {
     clueWrap.textContent = q.q;
   }
@@ -1874,7 +1871,9 @@ function renderModal() {
     ans.textContent = '';
   }
   ans.style.display = c.revealed ? 'block' : 'none';
-  document.getElementById('revealBtn').style.display = c.revealed ? 'none' : '';
+  document.getElementById('revealBtn').style.display = (c.revealed || ddPending) ? 'none' : '';
+  document.getElementById('doneBtn').style.display = ddPending ? 'none' : '';
+  if (hintEl) hintEl.style.display = ddPending ? 'none' : '';
   document.getElementById('backBtn').hidden = !canCancel();
 
   const buzzRow = document.getElementById('buzzRow');
@@ -1882,8 +1881,7 @@ function renderModal() {
   buzzRow.style.gridTemplateColumns = S.teams.length > 3 ? '1fr 1fr' : '1fr';
 
   if (ddPending) {
-    // Wager stepper for the controlling team, offered above the (still-usable) buzz row —
-    // a teacher in a hurry can skip it and just judge the clue at face value like normal.
+    // Mandatory wager stepper for the controlling team; no team cards until it's locked in.
     const team = S.teams[S.control];
     const { min, max } = wagerBounds(S.control);
     const wagerPanel = el('div', 'wager-panel');
@@ -1893,6 +1891,7 @@ function renderModal() {
     input.type = 'number'; input.min = String(min); input.max = String(max); input.step = '5';
     input.value = String(Math.min(max, Math.max(min, ddWagerDraft != null ? ddWagerDraft : min)));
     input.addEventListener('input', () => { ddWagerDraft = input.value; });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ddWagerDraft = null; submitWager(input.value); } });
     const stepDown = el('button', 'buzz-btn wager-step', '−100');
     const stepUp = el('button', 'buzz-btn wager-step', '+100');
     stepDown.addEventListener('click', e => { e.stopPropagation(); input.value = String(Math.max(min, (+input.value || 0) - 100)); ddWagerDraft = input.value; });
@@ -1903,11 +1902,17 @@ function renderModal() {
     row1.append(stepDown, input, stepUp);
     wagerPanel.append(row1, confirm);
     buzzRow.appendChild(wagerPanel);
+    if (!overlay.classList.contains('open')) {
+      overlay.classList.add('open', 'animating');
+      setTimeout(() => overlay.classList.remove('animating'), 450);
+    }
+    return;
   }
 
   S.teams.forEach((t, i) => {
     const tried = c.tried.includes(i), won = c.winner === i;
-    const locked = c.winner !== null || tried;
+    // Daily Double: only the team in control may answer; everyone else is locked out.
+    const locked = c.winner !== null || tried || (c.isDailyDouble && i !== S.control);
     const card = el('div', 'buzz-card' + (tried ? ' tried' : '') + (won ? ' winner' : '') + (pendingTeam === i ? ' pending' : ''));
     card.style.setProperty('--team', t.color);
     const nameWrap = el('div');
@@ -2079,9 +2084,14 @@ function onKeyDown(e) {
   if (!S || S.ended || !S.clue) return;
 
   const c = S.clue;
+  if (ddWagerPending(c)) { // Daily Double wager screen: only Esc (back to board) does anything
+    if (e.key === 'Escape') { e.preventDefault(); cancelClue(); }
+    else if (e.key === ' ' || e.key === 'Enter' || e.key === 'Backspace' || /^[1-6]$/.test(e.key)) e.preventDefault();
+    return;
+  }
   if (/^[1-6]$/.test(e.key) && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const t = +e.key - 1;
-    if (S.teams[t] && c.winner === null && !c.tried.includes(t)) { pendingTeam = t; renderModal(); }
+    if (S.teams[t] && c.winner === null && !c.tried.includes(t) && !(c.isDailyDouble && t !== S.control)) { pendingTeam = t; renderModal(); }
     e.preventDefault();
   } else if (e.key === ' ' || e.code === 'Space') {
     e.preventDefault(); revealAnswer();

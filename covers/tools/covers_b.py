@@ -69,48 +69,65 @@ def back_to_board():
 
 
 def bear_park():
-    d = lin("park", [(0, "#5f8f45"), (1, "#3f6b2f")]) + lin("amb", [(0, "#ffd27a"), (1, "#f3b33d")])
-    b = [rect(0, 0, 600, 800, "#10161d")]
-    # park board
-    cs = 60
-    x0, y0, cols, rows = 30, 230, 9, 9
-    b.append(rect(x0 - 8, y0 - 8, cols * cs + 16, rows * cs + 16, "#33414f", 14))
-    for r in range(rows):
-        for c in range(cols):
-            b.append(rect(x0 + c*cs + 1.5, y0 + r*cs + 1.5, cs - 3, cs - 3, "#6a9a4c" if (r + c) % 2 else "#5f8f45", 6))
-    pieces = [  # (cells, color)
-        ([(0, 0), (0, 1), (1, 0), (1, 1)], "#4fa3e0"),            # polar enclosure
-        ([(0, 2), (0, 3), (0, 4), (1, 3)], "#e9a23b"),            # T
-        ([(2, 0), (3, 0), (4, 0), (4, 1)], "#d8604a"),            # L
-        ([(1, 4), (1, 5), (2, 5), (2, 6)], "#a77bd6"),            # S
-        ([(0, 5), (0, 6), (0, 7), (0, 8)], "#5bbfa8"),            # I
-        ([(2, 1), (2, 2), (3, 1)], "#e8d36a"),
-        ([(5, 0), (5, 1), (6, 0), (6, 1), (7, 0)], "#c97b4a"),
-        ([(1, 7), (1, 8), (2, 8)], "#e86f9b"),
-    ]
-    for cells, col in pieces:
+    d = (lin("sky", [(0, "#0d1a2b"), (.6, "#2a3555"), (1, "#a8573a")])
+         + rad("orb", [(0, "#fbe7b5"), (1, "#fbe7b5")], r="50%")
+         + rad("felt", [(0, "#86a67c"), (.5, "#6a8a63"), (1, "#4a6847")], cy="45%")
+         + lin("cedar", [(0, "#b27c4b"), (.5, "#8a5a33"), (1, "#55331b")])
+         + lin("brass", [(0, "#fbe7a6"), (.55, "#c99a3e"), (1, "#8a6418")])
+         + lin("grass", [(0, "#a6dc86"), (1, "#6fae5a")]))
+    b = [rect(0, 0, 600, 800, "url(#sky)"), stars(21, 60, y1=300)]
+    b.append('<circle cx="470" cy="120" r="90" fill="#fbe7b5" opacity=".18"/><circle cx="470" cy="120" r="30" fill="#fbe7b5"/>')
+    def ridge(base, amp, tree, step, fill, seed):
+        r = random.Random(seed); y = base; dd = f"M0 800 L0 {base}"
+        for x in range(0, 600 + step, step):
+            y = max(base - amp * 2, min(base + amp, y + (r.random() - .5) * amp))
+            if tree:
+                h = tree * (.6 + r.random() * .7); w = step * .55
+                dd += f" L{x-w:.0f} {y:.0f} L{x} {y-h:.0f} L{x+w:.0f} {y:.0f}"
+            else:
+                dd += f" L{x} {y:.0f}"
+        return f'<path d="{dd} L{600+step} 800 Z" fill="{fill}"/>'
+    b.append(ridge(250, 30, 0, 40, "#2a3b3a", 3) + ridge(300, 14, 30, 22, "#1b2a24", 5))
+    # felt table with cedar rim
+    b.append(f'<g filter="url(#k-drop)">{rect(24, 300, 552, 470, "url(#cedar)", 26)}</g>' + rect(40, 316, 520, 438, "url(#felt)", 18))
+    # park board: cedar plate + cardboard grass cells
+    cs, x0, y0 = 92, 116, 356
+    b.append(f'<g filter="url(#k-drop)">{rect(x0-16, y0-16, 4*cs+32, 4*cs+32, "url(#cedar)", 24)}</g>')
+    for r in range(4):
+        for c in range(4):
+            if (r, c) == (2, 1):
+                b.append(rect(x0+c*cs+4, y0+r*cs+4, cs-8, cs-8, "#f5c518", 10))
+                for k in range(-2, 6):
+                    b.append(f'<path d="M{x0+c*cs+4+k*16} {y0+r*cs+cs-4} l{cs-8} {-(cs-8)}" stroke="#1a1a1a" stroke-width="7" clip-path="url(#pitc)"/>')
+                b.append(f'<clipPath id="pitc">{rect(x0+c*cs+4, y0+r*cs+4, cs-8, cs-8, "#000", 10)}</clipPath>')
+                b.append(rect(x0+c*cs+20, y0+r*cs+20, cs-40, cs-40, "#2a1d12", 6))
+            else:
+                b.append(rect(x0+c*cs+4, y0+r*cs+4, cs-8, cs-8, "url(#grass)", 10, 'stroke="#2f6b2a" stroke-opacity=".5" stroke-width="2"'))
+                b.append(rect(x0+c*cs+10, y0+r*cs+9, cs-20, 6, "#fff", 3, 'opacity=".3"'))
+    def tile(cells, fill, edge):
+        g = ""
         for (r, c) in cells:
-            b.append(rect(x0 + c*cs + 2, y0 + r*cs + 2, cs - 4, cs - 4, col, 7, 'stroke="#1d232b" stroke-opacity=".5" stroke-width="2"'))
-        b.append("".join(rect(x0 + c*cs + 6, y0 + r*cs + 6, cs - 12, 8, "#fff", 4, 'opacity=".25"') for (r, c) in cells))
-    # little park icons
-    b.append(emoji(x0 + 3*cs + cs/2, y0 + 3*cs + 42, "🌳", 36) + emoji(x0 + 6*cs + cs/2, y0 + 4*cs + 42, "🪵", 32)
-             + emoji(x0 + 5*cs + cs/2, y0 + 6*cs + 42, "🌼", 30))
-    # big bear head
-    b.append('<g transform="translate(420 600)" filter="url(#k-drop)">'
-             '<circle cx="-62" cy="-62" r="34" fill="#8b5a2b"/><circle cx="62" cy="-62" r="34" fill="#8b5a2b"/>'
-             '<circle cx="-62" cy="-62" r="17" fill="#d9a46a"/><circle cx="62" cy="-62" r="17" fill="#d9a46a"/>'
-             '<circle cx="0" cy="0" r="96" fill="#9c6633"/>'
-             '<ellipse cx="0" cy="34" rx="50" ry="38" fill="#e2b77f"/>'
-             '<ellipse cx="0" cy="16" rx="18" ry="13" fill="#2b1a10"/>'
-             '<path d="M0 30 v14 M-14 50 q 14 12 28 0" stroke="#2b1a10" stroke-width="5" fill="none" stroke-linecap="round"/>'
-             '<circle cx="-36" cy="-18" r="10" fill="#2b1a10"/><circle cx="36" cy="-18" r="10" fill="#2b1a10"/>'
-             '<circle cx="-33" cy="-21" r="3.5" fill="#fff"/><circle cx="39" cy="-21" r="3.5" fill="#fff"/>'
-             '</g>')
-    # title panel
-    b.append(f'<g filter="url(#k-drop)">{rect(40, 44, 520, 150, "#1d232b", 18, "stroke=\"#f3b33d\" stroke-width=\"3\"")}</g>')
-    b.append(text(300, 134, "Bear Park", "Fredoka", 86, "url(#amb)", 700))
-    b.append(text(300, 172, "BUILD THE BEST BEAR PARK", "Inter", 15, "#aab5c3", 800, ls=4))
-    b.append(rect(0, 750, 600, 50, "#10161d", 0, 'opacity=".85"') + footer("TILE PUZZLE · 2–4 TEAMS", "Inter", "#f3b33d", 14, 4, 782, 800))
+            g += rect(x0+c*cs+3, y0+r*cs+3, cs-6, cs-6, fill, 12, f'stroke="{edge}" stroke-width="3"')
+            g += rect(x0+c*cs+10, y0+r*cs+9, cs-20, 7, "#fff", 3, 'opacity=".4"')
+        return f'<g filter="url(#k-drop-s)">{g}</g>'
+    b.append(tile([(0, 0), (0, 1), (1, 0)], "#a8dcf7", "#2c6c90"))
+    b.append(tile([(0, 3), (1, 3), (2, 3), (1, 2)], "#e6b45c", "#7a4f12"))
+    b.append(tile([(3, 0), (3, 1)], "#cfe57f", "#56701b"))
+    b.append(emoji(x0+0.5*cs, y0+0.5*cs+20, "🐻‍❄️", 50) + emoji(x0+3.5*cs, y0+1.5*cs+20, "🐻", 50)
+             + emoji(x0+2.5*cs, y0+3.5*cs+18, "🌲", 44) + emoji(x0+0.5*cs+46, y0+3.5*cs+18, "🛝", 40))
+    # brass bear statue rising from the pit
+    sx, sy = x0+1.5*cs, y0+2.5*cs - 26
+    b.append(f'<g filter="url(#k-drop)"><circle cx="{sx-26}" cy="{sy-26}" r="16" fill="url(#brass)"/><circle cx="{sx+26}" cy="{sy-26}" r="16" fill="url(#brass)"/>'
+             f'<circle cx="{sx}" cy="{sy}" r="40" fill="url(#brass)" stroke="#6e4f12" stroke-width="4"/>'
+             f'<circle cx="{sx}" cy="{sy}" r="32" fill="none" stroke="#fff0c8" stroke-opacity=".55" stroke-width="2"/></g>'
+             + text(sx, sy + 14, "16", "Bevan", 36, "#3a2805"))
+    # routed cedar title sign
+    b.append(f'<g filter="url(#k-drop)">{rect(140, 166, 14, 150, "#4a2c12")}{rect(446, 166, 14, 150, "#4a2c12")}'
+             + rect(36, 40, 528, 170, "url(#cedar)", 20, 'stroke="#2e1a08" stroke-width="4"') + '</g>')
+    b.append(rect(48, 52, 504, 146, "none", 14, 'stroke="#fbeed3" stroke-opacity=".3" stroke-width="2"'))
+    b.append(text(300, 142, "Bear Park", "Bevan", 78, "#2a1606") + text(300, 138, "Bear Park", "Bevan", 78, "#fbeed3"))
+    b.append(text(300, 180, "Build the best bear park", "Rethink Sans", 22, "#f3dcb8", 700))
+    b.append(rect(0, 760, 600, 40, "#14231c", 0, 'opacity=".9"') + footer("TILE PUZZLE · 2–4 TEAMS", "Rethink Sans", "#e8c46c", 14, 4, 786, 800))
     return svg(d, "".join(b))
 
 

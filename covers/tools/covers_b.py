@@ -425,46 +425,76 @@ def control_deck():
 
 
 def crown_lands():
-    d = rad("bg", [(0, "#2a2114"), (1, "#0b0906")], cy="35%") + lin("gold", [(0, "#ffe39a"), (1, "#c98f12")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 110, "Crown Lands", "Cinzel", 66, "url(#gold)", 700, extra='filter="url(#k-drop)"'))
-    b.append(text(300, 152, "BUILD THE RICHEST KINGDOM", "Inter", 15, "#b8a582", 700, ls=5))
-    terr = {
-        "F": ("#2f6b33", "🌲"), "W": ("#d9b64a", "🌾"), "L": ("#2f7fc0", "〰"), "G": ("#7fbf4f", ""),
-        "S": ("#6b6a45", ""), "M": ("#6e6a68", "⛰️"), "C": ("#d6c6a4", "🏰"),
-    }
+    # matches the game: dusk hills with a castle, an oak tray of cardboard tiles, gilt Grenze title
+    d = (lin("sky", [(0, "#0d1324"), (.75, "#2a1f3d")]) + lin("gold", [(0, "#fff0b0"), (.55, "#e0b04a"), (1, "#a87a1c")])
+         + lin("oak", [(0, "#6e4b2a"), (1, "#4a3019")]) + rad("well", [(0, "#3a2716"), (1, "#22150a")], cy="45%")
+         + lin("tok", [(0, "#6fa6ff"), (1, "#1d4c96")]))
+    b = [rect(0, 0, 600, 800, "url(#sky)"), stars(41, 60, y1=330, op=(.25, .8))]
+    def ridge(base, amp, ph, fill):
+        pts = " ".join(f"{x},{base - amp * (.5 + .5 * math.sin(x / 90 + ph)) - amp * .35 * math.sin(x / 37 + ph * 2):.1f}" for x in range(0, 601, 20))
+        return f'<polygon points="0,800 {pts} 600,800" fill="{fill}"/>'
+    b.append(ridge(250, 60, 1.3, "#2a2c48"))
+    cx, cy = 455, 232   # distant castle
+    b.append(f'<g fill="#2a2c48"><rect x="{cx-40}" y="{cy-34}" width="80" height="40"/><rect x="{cx-54}" y="{cy-62}" width="22" height="68"/>'
+             f'<rect x="{cx+32}" y="{cy-62}" width="22" height="68"/><rect x="{cx-10}" y="{cy-86}" width="20" height="92"/>'
+             f'<polygon points="{cx-12},{cy-86} {cx},{cy-112} {cx+12},{cy-86}"/></g>'
+             f'<polygon points="{cx+1},{cy-126} {cx+17},{cy-121} {cx+1},{cy-116}" fill="#e0b04a"/><rect x="{cx}" y="{cy-126}" width="2" height="16" fill="#2a2c48"/>')
+    b.append(ridge(330, 50, 3.1, "#1d1f36"))
+    b.append(text(300, 112, "Crown Lands", "Grenze", 92, "url(#gold)", 800, extra='filter="url(#k-drop)" stroke="#6b4a0c" stroke-width="1.5"'))
+    b.append(text(300, 152, "Build the richest kingdom", "Alegreya Sans", 25, "#e6cf9f", 800))
+    terr = {"F": ("#3f8443", "#2a5e2e"), "W": ("#f3cb52", "#d9a42a"), "L": ("#4094d6", "#2a6ba7"), "G": ("#a6d65e", "#7db43c"),
+            "S": ("#918f4c", "#6c6833"), "M": ("#73737b", "#4d4d55"), "C": ("#e8589a", "#9e2f63")}
+    for k, (a, z) in terr.items():
+        d += lin("t" + k, [(0, a), (1, z)], 1, 1)
     grid = ["FFWWL", "FGWLL", "MGCWW", "MSGGF", "SSGFF"]
     crowns = {(0, 3): 1, (1, 3): 2, (2, 0): 2, (3, 0): 3, (0, 0): 1, (2, 4): 1, (4, 3): 1, (3, 1): 1}
-    cs = 92
-    x0, y0 = (600 - 5 * cs) / 2, 210
-    b.append(rect(x0 - 12, y0 - 12, 5 * cs + 24, 5 * cs + 24, "#43361f", 14))
+    cs, x0, y0 = 82, 95, 268
+    tw = 5 * cs
+    # oak tray with grain
+    b.append(f'<g filter="url(#k-drop)">{rect(x0 - 26, y0 - 26, tw + 52, tw + 52, "url(#oak)", 18)}</g>')
+    b.append("".join(f'<line x1="{x0-20}" y1="{y0-20+k*9}" x2="{x0+tw+20}" y2="{y0-18+k*9}" stroke="#000" stroke-opacity=".07" stroke-width="2"/>' for k in range(0, 52)))
+    b.append(rect(x0 - 8, y0 - 8, tw + 16, tw + 16, "url(#well)", 10, 'stroke="#1a0f05" stroke-width="2"'))
     for r, row in enumerate(grid):
         for c, t in enumerate(row):
-            col, ic = terr[t]
-            x, y = x0 + c * cs, y0 + r * cs
-            b.append(rect(x + 3, y + 3, cs - 6, cs - 6, col, 8, 'stroke="#1f1608" stroke-width="2"'))
+            x, y = x0 + c * cs + 2, y0 + r * cs + 2
+            s = cs - 4
+            b.append(rect(x, y, s, s, f"url(#t{t})", 7, 'stroke="#1f1608" stroke-width="1.5"'))
             if t == "L":
-                b.append("".join(f'<path d="M{x+14} {y+28+k*18} q 12 -8 24 0 t 24 0 t 24 0" fill="none" stroke="#9fd3ff" stroke-width="3"/>' for k in range(3)))
+                b.append("".join(f'<path d="M{x+10} {y+26+k*17} q 10 -7 20 0 t 20 0 t 20 0" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="3"/>' for k in range(3)))
             elif t == "W":
-                b.append("".join(f'<line x1="{x+14+k*12}" y1="{y+70}" x2="{x+18+k*12}" y2="{y+26}" stroke="#a88520" stroke-width="3"/>' for k in range(6)))
+                b.append("".join(f'<line x1="{x+12+k*11}" y1="{y+68}" x2="{x+14+k*11}" y2="{y+34}" stroke="#9a6a0e" stroke-width="2.5"/><ellipse cx="{x+14+k*11}" cy="{y+34}" rx="3.5" ry="9" fill="#fbe39a" stroke="#9a6a0e" stroke-width="1.2"/>' for k in range(5)))
             elif t == "F":
-                b.append("".join(f'<polygon points="{x+22+k*24},{y+22+(k%2)*12} {x+10+k*24},{y+60+(k%2)*12} {x+34+k*24},{y+60+(k%2)*12}" fill="#1d4a22"/>' for k in range(3)))
+                b.append("".join(f'<polygon points="{x+18+k*22},{y+24+(k%2)*12} {x+6+k*22},{y+58+(k%2)*12} {x+30+k*22},{y+58+(k%2)*12}" fill="#1d4a21" stroke="#123315" stroke-width="1.2"/>' for k in range(3)))
             elif t == "S":
-                b.append("".join(f'<line x1="{x+18+k*14}" y1="{y+64}" x2="{x+18+k*14}" y2="{y+40}" stroke="#3e3d24" stroke-width="3"/>' for k in range(4)))
+                b.append(f'<ellipse cx="{x+28}" cy="{y+56}" rx="16" ry="7" fill="#32555a" opacity=".5"/>' + "".join(f'<line x1="{x+14+k*14}" y1="{y+68}" x2="{x+16+k*14}" y2="{y+34}" stroke="#3f3a17" stroke-width="2.5"/><ellipse cx="{x+16+k*14}" cy="{y+40}" rx="2.6" ry="6" fill="#5b3818"/>' for k in range(4)))
             elif t == "M":
-                b.append(f'<polygon points="{x+16},{y+70} {x+42},{y+24} {x+70},{y+70}" fill="#4b4745"/><polygon points="{x+42},{y+24} {x+50},{y+38} {x+34},{y+38}" fill="#eee"/>')
+                b.append(f'<polygon points="{x+12},{y+40} {x+26},{y+28} {x+40},{y+36} {x+42},{y+52} {x+22},{y+58}" fill="#9a9aa3" stroke="#2f2f35" stroke-width="2"/>'
+                         f'<polygon points="{x+40},{y+58} {x+56},{y+44} {x+70},{y+52} {x+66},{y+70} {x+44},{y+72}" fill="#9a9aa3" stroke="#2f2f35" stroke-width="2"/>')
             elif t == "G":
-                b.append("".join(f'<path d="M{x+20+k*18} {y+60} l3 -10 l3 10" stroke="#4f8a30" stroke-width="2.5" fill="none"/>' for k in range(4)))
-            if ic and t == "C":
-                b.append(emoji(x + cs/2, y + cs/2 + 18, ic, 52))
+                b.append("".join(f'<path d="M{x+14+k*18} {y+56} l3 -10 l3 10 M{x+20+k*18} {y+56} l3 -12" stroke="#4c8a28" stroke-width="2.5" fill="none"/>' for k in range(3)))
+            elif t == "C":
+                b.append(f'<g stroke="#2a1c0a" stroke-width="2" stroke-linejoin="round"><line x1="{x+39}" y1="{y+28}" x2="{x+39}" y2="{y+10}"/>'
+                         f'<polygon points="{x+39},{y+10} {x+53},{y+15} {x+39},{y+20}" fill="#fff8e0"/>'
+                         f'<path d="M{x+21} {y+70} V{y+32} h7 v-6 h7 v6 h9 v-6 h7 v6 h7 V{y+70} Z" fill="#efe4c8"/></g>'
+                         f'<path d="M{x+33} {y+70} v-12 a6 6 0 0 1 12 0 v12 Z" fill="#3a2a14"/>')
+            # bevel
+            b.append(f'<path d="M{x+2} {y+s-2} V{y+2} H{x+s-2}" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="3"/>'
+                     f'<path d="M{x+s-2} {y+2} V{y+s-2} H{x+2}" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="3"/>')
             if (r, c) in crowns:
                 n = crowns[(r, c)]
+                w = 16 * n + 8
+                b.append(rect(x + s / 2 - w / 2, y + 4, w, 20, "#190e00", 6, 'opacity=".55"'))
                 for k in range(n):
-                    cx, cy = x + cs - 18 - k * 20, y + 18
-                    b.append(f'<path d="M{cx-9} {cy+6} L{cx-9} {cy-4} L{cx-4} {cy+1} L{cx} {cy-7} L{cx+4} {cy+1} L{cx+9} {cy-4} L{cx+9} {cy+6} Z" '
-                             'fill="#f2c14e" stroke="#1f1608" stroke-width="1.5"/>')
-    b.append(text(300, 718, "Crowns × squares = points", "Inter", 18, "#f4ead6", 600))
-    b.append(footer("DOMINO DRAFTING · 2–4 PLAYERS", "Inter", "#f2c14e", 13, 4, 770))
+                    px, py = x + s / 2 + (k - (n - 1) / 2) * 16, y + 14
+                    b.append(f'<path d="M{px-7} {py+6} L{px-7} {py-3} L{px-3.5} {py+1} L{px} {py-7} L{px+3.5} {py+1} L{px+7} {py-3} L{px+7} {py+6} Z" fill="#ffd23f" stroke="#3d2600" stroke-width="1.4"/>')
+    # a king token hopping onto the kingdom
+    kx, ky = 470, 236
+    b.append(f'<path d="M{kx-60} {ky+120} Q {kx-50} {ky-10} {kx} {ky}" fill="none" stroke="#e0b04a" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round" opacity=".8"/>')
+    b.append(f'<g filter="url(#k-drop)"><circle cx="{kx}" cy="{ky}" r="38" fill="url(#tok)" stroke="#123064" stroke-width="3"/>'
+             f'<path d="M{kx-22} {ky-34} L{kx-22} {ky-52} L{kx-11} {ky-43} L{kx} {ky-60} L{kx+11} {ky-43} L{kx+22} {ky-52} L{kx+22} {ky-34} Z" fill="url(#gold)" stroke="#6b4a0c" stroke-width="2"/></g>'
+             + emoji(kx, ky + 13, "🐺", 38))
+    b.append(text(300, 742, "Squares × crowns = points", "Alegreya Sans", 24, "#f4e8cc", 800))
+    b.append(footer("Domino drafting for 2–4 teams", "Alegreya Sans", "#e0b04a", 18, 1, 776, 700))
     return svg(d, "".join(b))
 
 

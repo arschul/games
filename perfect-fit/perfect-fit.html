@@ -80,8 +80,11 @@ button{font-family:inherit;cursor:pointer}
 .card .num{font:120px/1 var(--display);color:var(--ink);transition:color .3s}
 .card .num.warn{color:#d4570f}.card .num.danger{color:#d61f12}
 .card .lbl{font:700 22px var(--ui);color:var(--ink-soft);margin-top:2px}
-.card hr{border:0;border-top:3px dashed rgba(107,75,42,.3);margin:14px 30px}
+.card hr{border:0;border-top:3px dashed rgba(107,75,42,.3);margin:10px 30px}
 .card .prog{font:700 36px var(--ui);color:var(--ink)}
+.card .miss{font:700 26px var(--ui);color:#13853d;margin-top:6px}
+.card .miss.bad{color:#c2410c}
+.card .miss.bump{animation:bump .5s}
 
 /* ---------- tray ---------- */
 .tray{position:absolute;left:500px;top:150px;width:800px;height:800px;transform-origin:50% 22px}
@@ -213,6 +216,10 @@ button{font-family:inherit;cursor:pointer}
 .stat{width:220px;height:170px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fbf3e2;box-shadow:inset 0 5px 8px rgba(80,45,10,.28),0 2px 0 rgba(255,255,255,.45)}
 .stat .n{font:70px/1 var(--display);color:var(--ink);padding-bottom:8px}
 .stat .l{font:700 24px var(--ui);color:var(--ink-soft)}
+.perks{display:flex;justify-content:center;gap:14px;margin:-12px 40px 32px;flex-wrap:wrap}
+.perk{font:700 26px var(--ui);padding:8px 20px;border-radius:999px;background:#fbf3e2;color:var(--ink);box-shadow:inset 0 3px 5px rgba(80,45,10,.22)}
+.perk.clean{background:linear-gradient(180deg,#43d97a,#1fa64f);color:#fff;box-shadow:0 4px 0 #13702f}
+.perk.lost{color:var(--ink-soft)}
 .rank{width:780px;margin:4px auto 34px;text-align:left}
 .rrow{display:flex;align-items:center;gap:18px;height:92px;padding:0 26px;margin-bottom:12px;border-radius:18px;background:#fbf3e2;box-shadow:inset 0 3px 6px rgba(80,45,10,.22);animation:actIn .4s both;animation-delay:var(--d)}
 .rrow .p{font:40px/1 var(--display);width:44px;color:var(--ink-soft);padding-bottom:6px}
@@ -295,6 +302,7 @@ button{font-family:inherit;cursor:pointer}
       <div class="lbl">seconds left</div>
       <hr>
       <div class="prog" id="prog">0 of 0 placed</div>
+      <div class="miss" id="miss"></div>
     </div>
 
     <div class="tray" id="tray">
@@ -322,7 +330,7 @@ button{font-family:inherit;cursor:pointer}
         <div class="sec"><h2>Turning</h2><div class="opts" id="orientOpts"></div></div>
       </div>
     </div>
-    <p class="hint">Drag each piece into the hole with the same shape. 10 points for every piece in place. A full board earns 2 more points for every second left.</p>
+    <p class="hint">Drag each piece into the hole with the same shape. 10 points per piece, 5 more per piece with no mistakes, and 2 more per second left on a full board.</p>
     <div class="foot" id="setupFoot"></div>
   </div></div>
 
@@ -345,6 +353,7 @@ button{font-family:inherit;cursor:pointer}
       <div class="stat"><div class="n" id="resPts">+0</div><div class="l">points</div></div>
       <div class="stat"><div class="n" id="resTotal">0</div><div class="l">total</div></div>
     </div>
+    <div class="perks" id="resPerks"></div>
     <button class="act chrome" id="contBtn">Continue</button>
   </div></div>
 
@@ -449,7 +458,14 @@ var PF = (function () {
     return -1;
   }
   function isComplete(round) { return round.filled >= round.total; }
-  function roundScore(filled, perfect, secondsLeft) { return filled * 10 + (perfect ? Math.max(0, secondsLeft | 0) * 2 : 0); }
+  var PER_PIECE = 10, PER_SECOND = 2, CLEAN_PER_PIECE = 5;
+  /* scoring parts: 10 per piece; full board adds 2 per second left; no wrong drops adds 5 per piece */
+  function scoreParts(filled, perfect, secondsLeft, mistakes) {
+    var base = filled * PER_PIECE, time = perfect ? Math.max(0, secondsLeft | 0) * PER_SECOND : 0;
+    var clean = (mistakes === 0 && filled > 0) ? filled * CLEAN_PER_PIECE : 0;
+    return { base: base, time: time, clean: clean, total: base + time + clean };
+  }
+  function roundScore(filled, perfect, secondsLeft, mistakes) { return scoreParts(filled, perfect, secondsLeft, mistakes).total; }
 
   function newGame(cfg) {
     var rounds = cfg.custom ? [{ shapes: clamp(cfg.custom.shapes | 0 || 10, 4, SHAPE_TYPES.length), time: clamp(cfg.custom.time | 0 || 45, 10, 180) }]
@@ -466,11 +482,11 @@ var PF = (function () {
     if (!q) return null;
     return { roundIndex: q.r, teamIndex: q.t, round: game.rounds[q.r], team: game.roster[q.t] };
   }
-  function scoreTurn(game, filled, perfect, secondsLeft) {
-    var c = current(game); if (!c) return 0;
-    var pts = roundScore(filled, perfect, secondsLeft);
-    c.team.score += pts;
-    return pts;
+  function scoreTurn(game, filled, perfect, secondsLeft, mistakes) {
+    var c = current(game); if (!c) return scoreParts(0, false, 0, null);
+    var parts = scoreParts(filled, perfect, secondsLeft, mistakes);
+    c.team.score += parts.total;
+    return parts;
   }
   function advance(game) { game.ptr++; return current(game); }
   function isOver(game) { return game.ptr >= game.queue.length; }
@@ -493,7 +509,7 @@ var PF = (function () {
 
   return { SHAPES: SHAPES, SHAPE_TYPES: SHAPE_TYPES, ROUND_TABLE: ROUND_TABLE, ANIMALS: ANIMALS, TEAM_COLORS: TEAM_COLORS, NEUTRAL: NEUTRAL,
     shuffle: shuffle, clamp: clamp, gridDims: gridDims, assignColors: assignColors, newRound: newRound, canPlace: canPlace, place: place,
-    holeFor: holeFor, isComplete: isComplete, roundScore: roundScore, newGame: newGame, current: current, scoreTurn: scoreTurn,
+    holeFor: holeFor, isComplete: isComplete, roundScore: roundScore, scoreParts: scoreParts, newGame: newGame, current: current, scoreTurn: scoreTurn,
     advance: advance, isOver: isOver, standings: standings, serialize: serialize, restore: restore, winLine: winLine };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PF;
@@ -580,6 +596,7 @@ var sfx = {
   },
   pop: function () { noise(0.09, 0.55, 0, 'lowpass', 2600); tone(600, 0.45, 'sawtooth', 0.12, 0, 70); tone(110, 0.6, 'sine', 0.3, 0.05, 38); },
   clatter: function () { for (var i = 0; i < 16; i++) noise(0.025, 0.1 + Math.random() * 0.12, 0.3 + Math.random() * 0.9, 'bandpass', 1400 + Math.random() * 2600, 6); },
+  start: function () { tone(1318, 0.9, 'sine', 0.2); tone(1976, 0.6, 'sine', 0.08); tone(2637, 0.3, 'sine', 0.04); noise(0.02, 0.15, 0, 'highpass', 5000); },
   ding: function () { tone(1568, 1.5, 'sine', 0.2); tone(2349, 1.0, 'sine', 0.07); tone(3136, 0.6, 'sine', 0.04); },
   fanfare: function () { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, 0.28, 'triangle', 0.12, 0.25 + i * 0.11); tone(f, 0.2, 'square', 0.025, 0.25 + i * 0.11); }); tone(1318, 0.6, 'triangle', 0.1, 0.25 + 4 * 0.11); },
   whoosh: function () { noise(0.65, 0.2, 0, 'bandpass', 380, 1.4, 2200); },
@@ -722,7 +739,7 @@ function boardGeom(round) {
 
 /* ---------- state ---------- */
 var game = null, round = null, geom = null, pcs = [];
-var ui = { phase: 'setup', active: false, deadline: 0, total: 0, lastSec: -1, raf: 0, timers: [], drag: null, lastResult: null };
+var ui = { phase: 'setup', mistakes: 0, active: false, deadline: 0, total: 0, lastSec: -1, raf: 0, timers: [], drag: null, lastResult: null };
 var setupCfg = { mode: 'teams', rounds: 3, custom: { shapes: 10, time: 45 }, colorMode: 'matched', orient: 'fixed',
   teams: [{ a: 0, name: '' }, { a: 1, name: '' }], solo: { a: 2, name: '' } };
 function later(fn, ms) { var t = setTimeout(fn, ms); ui.timers.push(t); return t; }
@@ -812,7 +829,14 @@ function emptyBoard(sec) {
   clearPieces(true);
   var gone = [].slice.call($('holes').children).concat([].slice.call($('bin').children), [].slice.call($('tray').querySelectorAll('.star')));
   gone.forEach(function (el) { if (reduced) return el.remove(); el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = function () { el.remove(); }; });
-  round = null; setDial(0); $('secs').textContent = sec; $('secs').className = 'num'; $('prog').textContent = 'Get ready';
+  round = null; setDial(0); $('secs').textContent = sec; $('secs').className = 'num'; $('prog').textContent = 'Get ready'; $('miss').textContent = '';
+}
+function setMistakes(bump) {
+  var m = $('miss'), n = ui.mistakes;
+  if (!round) { m.textContent = ''; return; }
+  m.textContent = n === 0 ? 'No mistakes so far' : n + (n === 1 ? ' mistake' : ' mistakes');
+  m.className = 'miss' + (n ? ' bad' : '');
+  if (bump && !reduced) { void m.offsetWidth; m.classList.add('bump'); }
 }
 function setProgress() { $('prog').textContent = round ? round.filled + ' of ' + round.total + ' placed' : ''; }
 
@@ -887,6 +911,7 @@ function seat(pc, k, fast) {
 }
 function reject(pc) {
   sfx.buzz();
+  if (ui.active) { ui.mistakes++; setMistakes(true); }
   var q = pc.el.firstChild;
   if (!reduced) { q.classList.remove('wob'); void q.offsetWidth; q.classList.add('wob'); }
   later(function () {
@@ -937,10 +962,11 @@ function startRound() {
   var c = PF.current(game);
   ui.phase = 'deal';
   round = PF.newRound(c.round.shapes, game.colorMode, game.orient);
-  buildBoard();
+  ui.mistakes = 0;
+  buildBoard(); setMistakes();
   setDial(0); $('secs').textContent = c.round.time;
   dealPieces(function () {
-    windUp(c.round.time, function () { ui.phase = 'play'; startTimer(c.round.time); });
+    windUp(c.round.time, function () { ui.phase = 'play'; sfx.start(); startTimer(c.round.time); });
   });
 }
 function perfect() {
@@ -995,8 +1021,8 @@ function launch(pc) {
 }
 function finishRound(isPerfect, secondsLeft, delay) {
   var c = PF.current(game), t = c.team, filled = round.filled, total = round.total;
-  var pts = PF.scoreTurn(game, filled, isPerfect, secondsLeft);
-  ui.lastResult = { perfect: isPerfect, left: secondsLeft, filled: filled, total: total, pts: pts, team: t, roundIndex: c.roundIndex };
+  var parts = PF.scoreTurn(game, filled, isPerfect, secondsLeft, ui.mistakes);
+  ui.lastResult = { perfect: isPerfect, left: secondsLeft, filled: filled, total: total, pts: parts.total, parts: parts, mistakes: ui.mistakes, team: t, roundIndex: c.roundIndex };
   PF.advance(game);
   if (PF.isOver(game)) lsDel(SAVE_KEY); else lsSet(SAVE_KEY, PF.serialize(game));
   later(function () { renderStrip(t); showResult(); }, reduced ? 600 : delay);
@@ -1058,6 +1084,11 @@ function showResult() {
     who + ' placed ' + r.filled + ' of ' + r.total + ' shapes before the board popped.';
   $('resPlaced').textContent = r.filled + '/' + r.total;
   $('resPts').textContent = '+' + r.pts;
+  var perks = '<span class="perk">' + r.filled + (r.filled === 1 ? ' piece +' : ' pieces +') + r.parts.base + '</span>';
+  if (r.parts.time) perks += '<span class="perk">Time bonus +' + r.parts.time + '</span>';
+  if (r.parts.clean) perks += '<span class="perk clean">No mistakes +' + r.parts.clean + '</span>';
+  else if (r.mistakes) perks += '<span class="perk lost">' + r.mistakes + (r.mistakes === 1 ? ' mistake' : ' mistakes') + ', no bonus</span>';
+  $('resPerks').innerHTML = perks;
   $('resTotal').textContent = r.team.score;
   $('contBtn').textContent = PF.isOver(game) ? 'See final scores' : 'Next turn';
   openOv('result');
@@ -1183,7 +1214,7 @@ function demoBoard() {
     var h = PF.holeFor(round, pc.i); PF.place(round, pc.i, h); pc.placed = true; pc.el.classList.add('seat');
     put(pc, geom.holes[h].x, geom.holes[h].y, 1);
   });
-  setProgress(); setDial(0.66); $('secs').textContent = '23'; $('secs').className = 'num';
+  ui.mistakes = 0; setProgress(); setMistakes(); setDial(0.66); $('secs').textContent = '23'; $('secs').className = 'num';
 }
 
 /* ---------- debug panel (Shift+D) ---------- */

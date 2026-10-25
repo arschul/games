@@ -109,13 +109,22 @@ kbd{font:700 12px Inter;padding:1px 6px;border-radius:5px;border:1px solid curre
 .abtn kbd{margin-left:2px}
 #hint{flex:1;font:600 16px Inter;color:var(--muted);padding-left:8px;line-height:1.25;overflow:hidden}
 #hint.err{color:var(--danger)}
-#islandWrap{flex:1;min-height:0;position:relative;border-radius:22px;overflow:hidden;display:grid;place-items:center;padding-top:58px;
+#islandWrap{flex:1;min-height:0;position:relative;border-radius:22px;overflow:hidden;touch-action:none;cursor:grab;
   background:radial-gradient(ellipse at 50% 45%,var(--ocean-a),var(--ocean-b) 75%)}
+#islandWrap.grabbing{cursor:grabbing}
+#islandWrap.grabbing .tile{cursor:grabbing}
+#cam{position:absolute;left:0;top:0;transform-origin:0 0;z-index:1}
+#cam.glide{transition:transform .5s cubic-bezier(.25,.8,.3,1)}
+#islandWrap.glide .sea{transition:background-position .5s cubic-bezier(.25,.8,.3,1)}
+.camtools{position:absolute;right:12px;bottom:12px;z-index:6;display:flex;gap:6px;cursor:default}
+.camtools button{width:46px;height:46px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);font:900 20px Inter;cursor:pointer;display:grid;place-items:center;padding:0;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.camtools button:hover{border-color:var(--accent)}
+.camtools button.w{width:auto;padding:0 12px;font-size:15px}
 .sea{position:absolute;left:-160px;right:-160px;top:-60px;bottom:-60px;pointer-events:none;background-repeat:repeat}
-.sea.s1{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='46'%3E%3Cpath d='M0 23 Q20 9 40 23 T80 23 T120 23 T160 23' fill='none' stroke='white' stroke-opacity='0.16' stroke-width='2.4'/%3E%3C/svg%3E");
+.sea.s1{background-position:var(--sx,0) var(--sy,0);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='46'%3E%3Cpath d='M0 23 Q20 9 40 23 T80 23 T120 23 T160 23' fill='none' stroke='white' stroke-opacity='0.16' stroke-width='2.4'/%3E%3C/svg%3E");
   animation:seaA 9s linear infinite, swell 5s ease-in-out infinite alternate}
 .sea.s2{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='34'%3E%3Cpath d='M0 17 Q13.75 7 27.5 17 T55 17 T82.5 17 T110 17' fill='none' stroke='white' stroke-opacity='0.09' stroke-width='2'/%3E%3C/svg%3E");
-  background-position:40px 12px;animation:seaB 13s linear infinite, swell 7s ease-in-out infinite alternate-reverse}
+  background-position:calc(var(--sx,0px) * .8 + 40px) calc(var(--sy,0px) * .8 + 12px);animation:seaB 13s linear infinite, swell 7s ease-in-out infinite alternate-reverse}
 .sea.s3{background:radial-gradient(ellipse 60% 45% at 50% 55%,rgba(120,220,255,.16),transparent 70%);animation:glow 6s ease-in-out infinite alternate}
 @keyframes seaA{from{transform:translateX(0)}to{transform:translateX(160px)}}
 @keyframes seaB{from{transform:translateX(0)}to{transform:translateX(-110px)}}
@@ -124,12 +133,16 @@ kbd{font:700 12px Inter;padding:1px 6px;border-radius:5px;border:1px solid curre
 #island{position:relative;display:grid;grid-template-columns:repeat(6,var(--tile));grid-template-rows:repeat(6,var(--tile));gap:0;z-index:1}
 .cell{position:relative}
 .tile{position:absolute;inset:0;perspective:600px;transition:opacity .25s,filter .25s}
-.face{position:absolute;inset:0;border-radius:3px;color:#3a2a10;
+.face{position:absolute;inset:1.5px;border-radius:5.5px;color:#3a2a10;
   background:var(--fl,none),var(--bn,none),var(--be,none),var(--bs,none),var(--bw,none),var(--ter);
-  box-shadow:0 6px 0 rgba(30,22,8,.45),inset 0 2px 0 rgba(255,255,255,.32),inset 2px 0 0 rgba(255,255,255,.16),inset 0 -3px 0 rgba(0,0,0,.26),inset -2px 0 0 rgba(0,0,0,.18),0 0 0 1px rgba(40,30,10,.38);
+  box-shadow:3px 5px 7px rgba(0,0,0,.5),1px 2px 2px rgba(0,0,0,.3);
   padding:0;display:flex;flex-direction:column;align-items:stretch;text-align:center;overflow:hidden}
 .band{position:absolute;left:0;right:0;top:0;height:7px}
-.tname{margin:5px 5px 0;padding:3px 4px 2px;background:linear-gradient(#fffaf0,#f1e4c6);color:#3a2a10;border-radius:4px;font:800 12.5px/1.12 Inter;
+.bev{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;border:5px solid;
+  border-color:rgba(255,255,255,.34) rgba(0,0,0,.24) rgba(0,0,0,.34) rgba(255,255,255,.2);
+  box-shadow:inset 0 0 0 .6px rgba(255,255,255,.2);outline:1px solid rgba(0,0,0,.55);outline-offset:-1px}
+.tile.flooded .bev{border-color:rgba(200,225,255,.3) rgba(0,10,40,.28) rgba(0,10,40,.4) rgba(200,225,255,.18)}
+.tname{margin:7px 7px 0;padding:3px 4px 2px;background:linear-gradient(#fffaf0,#f1e4c6);color:#3a2a10;border-radius:4px;font:800 12.5px/1.12 Inter;
   box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(120,90,40,.25);border-bottom:3px solid var(--bc,#c9b48a)}
 .ticon{position:absolute!important;left:50%;top:61%;transform:translate(-50%,-50%);line-height:0}
 .ticon.glow{animation:tglowC 2.2s ease-in-out infinite!important}
@@ -163,10 +176,13 @@ kbd{font:700 12px Inter;padding:1px 6px;border-radius:5px;border:1px solid curre
 @keyframes flick{from{transform:scale(1,1)}to{transform:scale(.92,1.1)}}
 .tile.target{cursor:pointer}
 .tile.target,.tile.sel{z-index:4}
-.tile.target .face{box-shadow:inset 0 0 0 4px var(--accent),0 0 0 2px var(--accent),0 0 26px 8px var(--glow);animation:tpulse 1.3s ease-in-out infinite}
+.tile.target .face{box-shadow:inset 0 0 0 4px var(--accent),0 0 0 2px var(--accent),0 0 26px 8px var(--glow),6px 10px 16px rgba(0,0,0,.5);animation:tpulse 1.3s ease-in-out infinite}
 .tile.sunk.target .face{background:rgba(255,255,255,.08)}
 .tile.dim{opacity:.36;filter:saturate(.4)}
-.tile.sel .face{box-shadow:inset 0 0 0 4px #fff,0 0 0 2px #fff,0 0 26px 8px var(--glow)}
+.tile.target .bev{border-color:transparent;outline-color:var(--accent);box-shadow:none}
+.tile.sel .bev{border-color:transparent;outline-color:#fff;box-shadow:none}
+.tile.doom .bev{border-color:transparent;box-shadow:none}
+.tile.sel .face{box-shadow:inset 0 0 0 4px #fff,0 0 0 2px #fff,0 0 26px 8px var(--glow),6px 10px 16px rgba(0,0,0,.5)}
 @keyframes tpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 .pawns .pawn{font-size:39px}
 .pawns{position:absolute;left:0;right:0;bottom:1px;display:flex;justify-content:center;z-index:3;pointer-events:none}
@@ -358,8 +374,8 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   55%{transform:translate(calc(-50% - 3px),calc(-50% + 2px)) scale(var(--s))}
   75%{transform:translate(calc(-50% + 2px),-50%) scale(var(--s))}}
 .tile.doom{z-index:5}
-.tile.doom .face{animation:tremble .12s linear infinite;box-shadow:inset 0 0 0 4px #60a5fa,0 0 0 2px #60a5fa,0 0 28px 8px rgba(96,165,250,.7)}
-.tile.doom.flooded .face{box-shadow:inset 0 0 0 4px #ef4444,0 0 0 2px #ef4444,0 0 28px 8px rgba(239,68,68,.7)}
+.tile.doom .face{animation:tremble .12s linear infinite;box-shadow:inset 0 0 0 4px #60a5fa,0 0 0 2px #60a5fa,0 0 28px 8px rgba(96,165,250,.7),6px 10px 16px rgba(0,0,0,.5)}
+.tile.doom.flooded .face{box-shadow:inset 0 0 0 4px #ef4444,0 0 0 2px #ef4444,0 0 28px 8px rgba(239,68,68,.7),6px 10px 16px rgba(0,0,0,.5)}
 @keyframes tremble{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(-1.5px,1px) rotate(-.6deg)}50%{transform:translate(1.5px,-1px) rotate(.6deg)}75%{transform:translate(-1px,-1px) rotate(-.3deg)}100%{transform:translate(0,0) rotate(0)}}
 @media (prefers-reduced-motion: reduce){#stage.shake,#stage.shake-sm,.tile.doom .face{animation:none}.ticon.glow,.ticon.glow::after{animation:none}}
 /* ---------- debug ---------- */
@@ -389,7 +405,8 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   </aside>
   <main id="center">
     <div id="actionbar"></div>
-    <div id="islandWrap"><div class="sea s3"></div><div class="sea s1"></div><div class="sea s2"></div><div id="banner" class="hidden"></div><div id="island"></div></div>
+    <div id="islandWrap"><div class="sea s3"></div><div class="sea s1"></div><div class="sea s2"></div><div id="banner" class="hidden"></div><div id="cam"><div id="island"></div></div>
+      <div class="camtools"><button data-cam="out" title="Zoom out (−)" aria-label="Zoom out">−</button><button data-cam="in" title="Zoom in (+)" aria-label="Zoom in">+</button><button class="w" data-cam="me" title="Find the current player (Q)">◎ Player</button><button class="w" data-cam="fit" title="Whole island (F)">⤢ Island</button></div></div>
   </main>
   <aside id="right">
     <section class="box"><div class="boxt">Treasures</div><div id="treasures" class="tres"></div></section>
@@ -1176,6 +1193,7 @@ const FI = (() => {
       r.classList.remove('hidden');
     }
     doomed.forEach(id => tileEls[id] && tileEls[id].classList.add('doom'));
+    showTiles(doomed, 0);
     Sfx.drumroll(drum / 1000);
     setTimeout(() => {
       ui.revealing = false;
@@ -1382,6 +1400,132 @@ const FI = (() => {
     act(p.a);
   }
 
+  // ---------------- camera: pan & zoom (Castle Roads style) ----------------
+  const TILE = 118, ISL = TILE * 6, Z_DEF = 1.75, Z_MAX = 3.2, TOP = 60, PAD = 18;
+  const cam = { z: 1, x: 0, y: 0 };
+  let camKey = '';
+  const wrapEl = () => $('#islandWrap');
+  const vpW = () => wrapEl().clientWidth, vpH = () => wrapEl().clientHeight;
+  function liveBox() {
+    // bounding box (in tiles) of what is still above water, so "fit" tightens as the island shrinks
+    let c0 = 6, r0 = 6, c1 = -1, r1 = -1;
+    if (S) S.tiles.forEach(t => { if (t.state === 'sunk') return; const [r, c] = E.rc(t.cell); c0 = Math.min(c0, c); r0 = Math.min(r0, r); c1 = Math.max(c1, c); r1 = Math.max(r1, r); });
+    return c1 < 0 ? [0, 0, 5, 5] : [c0, r0, c1, r1];
+  }
+  function fitZ() { const [c0, r0, c1, r1] = liveBox(); return Math.min((vpW() - 2 * PAD) / ((c1 - c0 + 1.3) * TILE), (vpH() - TOP - PAD) / ((r1 - r0 + 1.3) * TILE)); }
+  const zMin = () => Math.min(.85, fitZ() * .85);
+  function applyCam(glide) {
+    const z = cam.z, w = vpW(), h = vpH(), keep = 1.5 * TILE * z;   // never lose the island entirely
+    cam.x = Math.min(w - keep, Math.max(keep - ISL * z, cam.x));
+    cam.y = Math.min(h - keep, Math.max(TOP + keep - ISL * z, cam.y));
+    const el = $('#cam'), wr = wrapEl(), g = !!glide && !reducedMotion();
+    el.classList.toggle('glide', g); wr.classList.toggle('glide', g);
+    el.style.transform = 'translate(' + cam.x.toFixed(1) + 'px,' + cam.y.toFixed(1) + 'px) scale(' + z.toFixed(4) + ')';
+    wr.style.setProperty('--sx', cam.x.toFixed(1) + 'px'); wr.style.setProperty('--sy', cam.y.toFixed(1) + 'px');
+  }
+  function reducedMotion() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  function zoomAt(px, py, f, glide) {
+    const z2 = Math.max(zMin(), Math.min(Z_MAX, cam.z * f)), k = z2 / cam.z;
+    cam.x = px - (px - cam.x) * k; cam.y = py - (py - cam.y) * k; cam.z = z2; applyCam(glide);
+  }
+  function zoomCenter(f) { zoomAt(vpW() / 2, (vpH() + TOP) / 2, f, true); }
+  function centerBox(c0, r0, c1, r1, z, glide) {
+    cam.z = Math.max(zMin(), Math.min(Z_MAX, z));
+    cam.x = vpW() / 2 - (c0 + c1 + 1) / 2 * TILE * cam.z;
+    cam.y = (vpH() + TOP) / 2 - (r0 + r1 + 1) / 2 * TILE * cam.z;
+    applyCam(glide);
+  }
+  function camFit(glide) { const b = liveBox(); centerBox(b[0], b[1], b[2], b[3], fitZ(), glide); }
+  function showBox(c0, r0, c1, r1, glide) {
+    // nudge the view the least amount needed to bring these tiles into sight (centre them if they can't all fit)
+    const z = cam.z, x0 = cam.x + c0 * TILE * z, x1 = cam.x + (c1 + 1) * TILE * z, y0 = cam.y + r0 * TILE * z, y1 = cam.y + (r1 + 1) * TILE * z;
+    const L = PAD, R = vpW() - PAD, T = TOP + PAD, B = vpH() - PAD;
+    if (x1 - x0 > R - L || y1 - y0 > B - T) { centerBox(c0, r0, c1, r1, z, glide); return; }
+    let dx = 0, dy = 0;
+    if (x0 < L) dx = L - x0; else if (x1 > R) dx = R - x1;
+    if (y0 < T) dy = T - y0; else if (y1 > B) dy = B - y1;
+    if (!dx && !dy) return;
+    cam.x += dx; cam.y += dy; applyCam(glide);
+  }
+  function boxOf(ids, grow) {
+    let c0 = 9, r0 = 9, c1 = -9, r1 = -9;
+    ids.forEach(id => { const t = S.tiles[id]; if (!t) return; const [r, c] = E.rc(t.cell); c0 = Math.min(c0, c - grow); r0 = Math.min(r0, r - grow); c1 = Math.max(c1, c + grow); r1 = Math.max(r1, r + grow); });
+    return [Math.max(0, c0), Math.max(0, r0), Math.min(5, c1), Math.min(5, r1)];
+  }
+  function showTiles(ids, grow) { ids = ids.filter(id => S && S.tiles[id]); if (ids.length) { const b = boxOf(ids, grow || 0); showBox(b[0], b[1], b[2], b[3], true); } }
+  function activePos() { const p = S && S.players[S.current]; return p && p.pos >= 0 ? p.pos : -1; }
+  function camFocus(glide) {
+    // default view: big tiles, centred on the current player's pawn
+    const id = activePos(); if (id < 0) { camFit(glide); return; }
+    const [r, c] = E.rc(S.tiles[id].cell);
+    centerBox(c, r, c, r, Math.max(cam.z, Z_DEF), glide);
+  }
+  function camFollow() {
+    // a new turn: keep the current pawn and the tiles around it in view
+    if (!S || ui.revealing) return;
+    const key = S.turn + ':' + S.current;
+    if (key === camKey) return;
+    camKey = key;
+    const id = activePos(); if (id >= 0) showTiles([id], 1);
+  }
+  function bindCamera() {
+    const wr = wrapEl(), ptrs = new Map();
+    let drag = null, pinch = null, eat = false;
+    const pos = e => { const r = wr.getBoundingClientRect(), k = r.width / wr.offsetWidth || 1; return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k }; };
+    wr.addEventListener('pointerdown', e => {
+      if (e.target.closest('.camtools,#banner .btn')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      eat = false;
+      ptrs.set(e.pointerId, pos(e));
+      if (ptrs.size === 1) drag = { s: pos(e), l: pos(e), moved: false };
+      else if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; drag = null; eat = true;
+      }
+    });
+    wr.addEventListener('pointermove', e => {
+      if (!ptrs.has(e.pointerId)) return;
+      const p = pos(e); ptrs.set(e.pointerId, p);
+      if (pinch && ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        cam.x += mx - pinch.mx; cam.y += my - pinch.my;
+        if (d > 0 && pinch.d > 0) zoomAt(mx, my, d / pinch.d); else applyCam();
+        pinch = { d, mx, my };
+        return;
+      }
+      if (!drag) return;
+      if (!drag.moved && Math.hypot(p.x - drag.s.x, p.y - drag.s.y) > 7) {
+        // only capture once it is really a drag, so a plain click still lands on the tile under it
+        drag.moved = true; eat = true; wr.classList.add('grabbing');
+        try { wr.setPointerCapture(e.pointerId); } catch (er) {}
+      }
+      if (drag.moved) { cam.x += p.x - drag.l.x; cam.y += p.y - drag.l.y; applyCam(); }
+      drag.l = p;
+    });
+    const up = e => {
+      ptrs.delete(e.pointerId);
+      if (ptrs.size < 2) pinch = null;
+      if (!ptrs.size) { drag = null; wr.classList.remove('grabbing'); }
+    };
+    wr.addEventListener('pointerup', up); wr.addEventListener('pointercancel', up);
+    wr.addEventListener('click', e => { if (eat) { eat = false; e.stopPropagation(); e.preventDefault(); } }, true);
+    wr.addEventListener('wheel', e => { e.preventDefault(); const p = pos(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * (e.deltaMode ? .05 : .0015))); }, { passive: false });
+    $('.camtools', wr).addEventListener('click', e => {
+      const b = e.target.closest('[data-cam]'); if (!b) return;
+      ({ in: () => zoomCenter(1.25), out: () => zoomCenter(.8), fit: () => camFit(true), me: () => camFocus(true) })[b.dataset.cam]();
+    });
+  }
+  function camKeys(e) {
+    const k = e.key;
+    if (k === '+' || k === '=') zoomCenter(1.25);
+    else if (k === '-' || k === '_') zoomCenter(.8);
+    else if (k === 'f' || k === 'F') camFit(true);
+    else if (k === 'q' || k === 'Q') camFocus(true);
+    else if (k.startsWith('Arrow')) { const d = 140; cam.x += k === 'ArrowLeft' ? d : k === 'ArrowRight' ? -d : 0; cam.y += k === 'ArrowUp' ? d : k === 'ArrowDown' ? -d : 0; applyCam(true); }
+    else return false;
+    e.preventDefault(); return true;
+  }
+
   // ---------------- rendering ----------------
   function buildIsland(deal) {
     const isl = $('#island'); isl.innerHTML = ''; tileEls = {};
@@ -1423,6 +1567,7 @@ const FI = (() => {
       });
       let html = '';
       if (look !== 'sunk') {
+        html += '<i class="bev"></i>';
         const bandColor = t.start ? RI[t.start].color : (t.treasure ? TI[t.treasure].color : '');
         html += '<div class="tname"' + (bandColor ? ' style="--bc:' + bandColor + '"' : '') + '>' + esc(t.name) + '</div>';
         if (look === 'flooded') html += '<div class="tflag">FLOODED</div>';
@@ -1626,7 +1771,7 @@ const FI = (() => {
       '<h3>Hand limit</h3><p>You can hold 5 cards. If you get more, discard or play cards right away.</p>' +
       '<h3>You lose if…</h3><ul><li>both tiles of a treasure sink before you capture it,</li><li>Fools\' Landing sinks,</li><li>a player cannot swim to safety, or</li><li>the water reaches the skull.</li></ul>' +
       '<h3>Adventurers</h3><table>' + roles + '</table>' +
-      '<h3>Keyboard</h3><p><kbd>M</kbd> move <kbd>S</kbd> shore up <kbd>G</kbd> give <kbd>C</kbd> capture <kbd>A</kbd> ability <kbd>E</kbd> end actions <kbd>Space</kbd> next card <kbd>Z</kbd> undo <kbd>Esc</kbd> cancel</p>' +
+      '<h3>Keyboard</h3><p><kbd>M</kbd> move <kbd>S</kbd> shore up <kbd>G</kbd> give <kbd>C</kbd> capture <kbd>A</kbd> ability <kbd>E</kbd> end actions <kbd>Space</kbd> next card <kbd>Z</kbd> undo <kbd>Esc</kbd> cancel</p><p>Drag the sea to move the map · mouse wheel or pinch to zoom · <kbd>+</kbd> <kbd>−</kbd> zoom <kbd>F</kbd> whole island <kbd>Q</kbd> find the current player · arrow keys move the map</p>' +
       '<div class="rfoot">' + (S && !S.result && !(ui.modal && ui.modal.back && ui.modal.back.type === 'setup') ? '<button class="btn" data-act="newsetup">New game…</button>' : '') + '<button class="btn primary" data-act="close-rules">Close</button></div></div>';
   }
   function giveHTML() {
@@ -1695,6 +1840,7 @@ const FI = (() => {
   }
   function renderAll() {
     renderTop(); renderLeft(); renderActionbar(); renderBanner(); renderIsland(); renderRight(); renderLog(); renderModal(); renderDebug();
+    camFollow();
   }
 
   // ---------------- game lifecycle ----------------
@@ -1712,7 +1858,7 @@ const FI = (() => {
     ui.sinking.clear();
     ui.hideFlood = new Set(S.setupFlooded); ui.revealing = true;
     save();
-    buildIsland(true); renderAll();
+    buildIsland(true); camKey = S.turn + ':' + S.current; camFit(false); renderAll();
     const base = 24 * 40 + 600;
     S.setupFlooded.forEach((id, k) => setTimeout(() => {
       ui.hideFlood.delete(id); renderIsland(); anim(id, 'anim-flood'); Sfx.flood();
@@ -1720,14 +1866,14 @@ const FI = (() => {
     setTimeout(() => {
       ui.revealing = false;
       Object.values(tileEls).forEach(el => el.classList.remove('deal'));
-      renderAll();
+      renderAll(); camFocus(true);
       hint('6 tiles flooded. ' + S.players[S.current].name + ' goes first!');
     }, base + 6 * 420 + 250);
   }
   function resumeGame(d) {
     S = d.state; S.events = []; lastOpts = d.opts || null; undo = []; clearModes(); ui.modal = null;
     ui.hideFlood = new Set(); ui.sinking.clear(); ui.revealing = false;
-    buildIsland(false); renderAll();
+    buildIsland(false); camKey = S.turn + ':' + S.current; renderAll(); camFocus(false);
   }
   function openSetup() {
     ui.setup = setupDefaults(); ui.setupErr = ''; clearModes(); ui.modal = { type: 'setup' }; renderAll();
@@ -1811,6 +1957,7 @@ const FI = (() => {
       else if (ui.mode) { clearModes(); renderAll(); }
       return;
     }
+    if (!ui.modal && S && camKeys(e)) return;
     if (ui.modal || !S || S.result) return;
     const k = e.key.toLowerCase();
     if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (S.phase !== 'actions') runPrimary(); return; }
@@ -1826,7 +1973,7 @@ const FI = (() => {
   });
 
   // ---------------- boot ----------------
-  fit();
+  fit(); bindCamera(); camFit(false);
   const sv = loadSave();
   ui.setup = setupDefaults();
   if (sv) { lastOpts = sv.opts || null; }

@@ -359,20 +359,52 @@ def question_mark():
 
 
 def record_breaker():
-    d = lin("gold", [(0, "#ffe680"), (1, "#f5c518")])
-    b = [rect(0, 0, 600, 800, "#0a0a0f"), '<circle cx="300" cy="460" r="260" fill="#f5c518" opacity=".08" filter="url(#k-glow)"/>']
-    b.append(text(300, 66, "WORLD RECORDS PARTY GAME", "Barlow", 15, "#6b6b88", 700, ls=6))
-    b.append(text(300, 168, "RECORD", "Teko", 136, "url(#gold)", 600, ls=4))
-    b.append(text(300, 270, "BREAKER", "Teko", 136, "#f0f0f8", 600, ls=4))
-    b.append(text(300, 306, "HOW HIGH DARE YOU GO?", "Barlow", 17, "#a0a0c0", 700, ls=6))
-    b.append(emoji(300, 450, "🏆", 120))
-    # gauge
-    b.append(f'<g filter="url(#k-drop)">{rect(60, 520, 480, 120, "#13131c", 16, "stroke=\"#1c1c2a\" stroke-width=\"2\"")}</g>')
-    b.append(text(300, 566, "Longest fingernails (cm)?", "Barlow", 22, "#f0f0f8", 600))
-    b.append(rect(90, 590, 420, 16, "#1c1c2a", 8) + rect(90, 590, 300, 16, "#30d158", 8) + rect(390, 590, 70, 16, "#ff2d55", 0, 'opacity=".75"'))
-    b.append(f'<polygon points="380,580 400,580 390,596" fill="#f5c518"/>' + text(390, 634, "YOU: 870", "Teko", 22, "#f5c518", 600))
-    b.append(text(300, 700, "909.6", "Teko", 64, "#f5c518", 600))
-    b.append(text(300, 740, "ACTUAL RECORD · DON'T GO OVER!", "Barlow", 14, "#ff2d55", 800, ls=4))
+    d = (lin("rbsky", [(0, "#0b0a20"), (.6, "#1d1645"), (1, "#4b2a58")]) + lin("rbpost", [(0, "#c9b38a"), (.35, "#f6ead0"), (1, "#d8c49a")], 1, 0)
+         + rad("rbbell", [(0, "#fff8d0"), (.3, "#f6d77a"), (.65, "#d4a63a"), (1, "#7d5a14")], cx="38%", cy="30%")
+         + lin("rbwood", [(0, "#a8693c"), (.45, "#7a4a2a"), (1, "#4a2a16")])
+         + '<pattern id="rbline" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="20" fill="#ffcf4a"/><rect x="10" width="10" height="20" fill="#d6332f"/></pattern>')
+    b = [rect(0, 0, 600, 800, "url(#rbsky)"), stars(31, 70, y1=520)]
+    # ferris wheel + tent silhouettes
+    b.append('<g fill="none" stroke="#2a2152" stroke-width="6"><circle cx="520" cy="560" r="170"/>' + "".join(
+        f'<line x1="520" y1="560" x2="{520 + 170*math.cos(k*math.pi/6):.0f}" y2="{560 + 170*math.sin(k*math.pi/6):.0f}" stroke-width="3"/>' for k in range(12)) + '</g>')
+    b.append('<path d="M0 800 L0 640 L90 560 L180 640 L180 800 Z" fill="#140f2c"/><path d="M90 560 l0 -30 l26 9 l-26 9" fill="#d6332f"/>')
+    b.append(rect(0, 760, 600, 40, "#2a1c10"))
+    # string lights
+    b.append('<path d="M-10 40 Q300 150 610 40" fill="none" stroke="#000" stroke-width="2" opacity=".7"/>')
+    for k in range(1, 16):
+        t = k / 16; x = (1-t)**2*-10 + 2*(1-t)*t*300 + t*t*610; y = (1-t)**2*40 + 2*(1-t)*t*150 + t*t*40
+        col = "#ff7a6b" if k % 3 == 0 else "#ffd36b"
+        b.append(f'<circle cx="{x:.0f}" cy="{y+8:.0f}" r="9" fill="{col}" filter="url(#k-glow-s)"/><circle cx="{x:.0f}" cy="{y+8:.0f}" r="5" fill="{col}"/>')
+    # title sign
+    b.append(f'<g filter="url(#k-drop)">{rect(40, 96, 520, 170, "url(#rbwood)", 18)}</g>')
+    for cx, cy in [(56, 112), (544, 112), (56, 250), (544, 250)]:
+        b.append(f'<circle cx="{cx}" cy="{cy}" r="7" fill="url(#rbbell)"/>')
+    for y, s in [(178, "RECORD"), (248, "BREAKER")]:
+        b.append(text(300, y + 5, s, "Bungee", 74, "#8e1b18"))
+        b.append(text(300, y, s, "Bungee", 74, "#efe2c4"))
+    # tower
+    b.append(f'<g filter="url(#k-drop)">{rect(150, 330, 84, 430, "#d6332f", 10)}{rect(160, 338, 64, 422, "url(#rbpost)", 6)}</g>')
+    b.append(rect(189, 330, 6, 430, "#9a9aa2"))
+    b.append(f'<path d="M144 336 Q144 272 192 272 Q240 272 240 336 Z" fill="url(#rbbell)" filter="url(#k-drop-s)"/><circle cx="192" cy="268" r="9" fill="url(#rbbell)"/>')
+    for k in range(7):
+        y = 730 - k * 58
+        b.append(rect(150, y - 4, 84, 8, "#d4a63a", 4) + text(130, y + 9, k + 1, "Bungee", 22, "#efe2c4", anchor="end"))
+    pucks = [(0, "🦁", "#f2b322", "1.26"), (1, "🦉", "#4a86ff", "2.84"), (2, "🦊", "#ff7a2e", "4.73")]
+    for k, em, col, val in pucks:
+        y = 730 - k * 58
+        b.append(f'<g filter="url(#k-drop-s)">{rect(244, y - 24, 190, 48, "#efe2c4", 9, f"stroke=\"{col}\" stroke-width=\"4\"")}</g>' + text(262, y + 12, val, "Bungee", 30, "#2a1a12", anchor="start") + text(392, y + 10, "m", "Figtree", 18, "#6b4f30", 800))
+        b.append(f'<circle cx="192" cy="{y}" r="27" fill="{col}" filter="url(#k-drop-s)"/><circle cx="184" cy="{y-9}" r="9" fill="#fff" opacity=".45"/>' + emoji(192, y + 11, em, 30))
+    # record line
+    ly = 730 - 2.5 * 58
+    b.append(rect(118, ly - 7, 360, 14, "url(#rbline)", 7, 'stroke="#5c0d0a" stroke-width="2"'))
+    b.append(f'<g filter="url(#k-drop-s)">{rect(268, ly - 50, 230, 38, "#b4231e", 9)}</g>' + text(383, ly - 23, "RECORD: 6.31 m", "Bungee", 18, "#fff6e6"))
+    # falling puck
+    b.append(f'<g transform="translate(470 470) rotate(28)"><g filter="url(#k-drop)">{rect(-10, -22, 120, 44, "#ffd2c8", 8, "stroke=\"#c41d16\" stroke-width=\"4\"")}</g>' + text(50, 11, "12.4", "Bungee", 26, "#2a1a12") + '<circle cx="-26" cy="0" r="26" fill="#22c19a"/>' + emoji(-26, 11, "🐼", 28) + '</g>')
+    for sx, sy, r in [(420, 430, 20), (445, 520, -35), (520, 420, 60), (400, 500, 10)]:
+        b.append(f'<rect x="{sx}" y="{sy}" width="22" height="5" fill="#a8693c" transform="rotate({r} {sx} {sy})"/>')
+    # stamp
+    b.append('<g transform="translate(430 360) rotate(-10)"><rect x="-120" y="-46" width="240" height="92" rx="12" fill="#fff5e6" opacity=".92" stroke="#c41d16" stroke-width="7"/><rect x="-108" y="-34" width="216" height="68" rx="6" fill="none" stroke="#c41d16" stroke-width="2"/>' + text(0, 22, "NO WAY!", "Bungee", 44, "#c41d16") + '</g>')
+    b.append(text(300, 790, "How high dare you go?", "Figtree", 22, "#f4ead2", 800))
     return svg(d, "".join(b))
 
 

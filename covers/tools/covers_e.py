@@ -310,26 +310,41 @@ def lost_signal():
 
 
 def think_on_feet():
-    d = rad("bg", [(0, "#1a1e28"), (1, "#0d0f14")], cy="30%") + lin("gold", [(0, "#f6d77a"), (1, "#e07040")], x2=1, y2=0)
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 112, "Think on", "Syne", 62, "#f4f5f8", 800))
-    b.append(text(300, 190, "your Feet", "Syne", 62, "url(#gold)", 800))
-    b.append(text(300, 236, "NAME ONE FOR EVERY CATEGORY", "DM Sans", 15, "#6b7180", 800, ls=4))
-    cats = ["Fruit", "Sport", "Job", "Color", "Country", "Animal", "Clothes", "Verb", "Drink"]
-    done = {0: "#3ecf8e", 2: "#5090f0", 4: "#3ecf8e", 6: "#5090f0", 7: "#3ecf8e"}
-    for k, c in enumerate(cats):
-        r, col = divmod(k, 3)
-        x, y = 50 + col * 172, 280 + r * 104
-        dc = done.get(k)
-        b.append(rect(x, y, 156, 88, dc + "22" if dc else "#161a23", 14, f'stroke="{dc or "#2a3045"}" stroke-width="{3 if dc else 2}"')
-                 + text(x + 78, y + 54, c, "DM Sans", 24, "#f4f5f8" if dc else "#9aa3b6", 700))
-        if dc:
-            b.append(f'<circle cx="{x+138}" cy="{y+16}" r="11" fill="{dc}"/>' + text(x + 138, y + 21, "✓", "DM Sans", 13, "#0d0f14", 900))
-    for k, (team, col, frac) in enumerate([("TEAM 1", "#3ecf8e", .62), ("TEAM 2", "#5090f0", .3)]):
-        y = 620 + k * 60
-        b.append(text(50, y + 20, team, "DM Sans", 16, col, 800, "start", 2) + rect(150, y + 4, 330, 20, "#161a23", 10) + rect(150, y + 4, 330 * frac, 20, col, 10)
-                 + text(550, y + 21, "✕" * (k + 1), "DM Sans", 20, "#e07040", 900, "end"))
-    b.append(footer("2–6 TEAMS · CEFR FILTER", "DM Sans", "#f0c040", 14, 4, 780, 800))
+    # night railway station: split-flap departure board under an arched glass roof
+    d = (lin("tsky", [(0, "#070c16"), (.6, "#122036"), (1, "#24405a")]) + lin("tbrass", [(0, "#f2d38a"), (.5, "#c99a3b"), (1, "#7a5a1c")])
+         + lin("tenam", [(0, "#257460"), (.6, "#1f5a4a"), (1, "#16473a")]) + lin("tflap", [(0, "#2a2d31"), (.49, "#1d1f22"), (.5, "#050506"), (.51, "#1a1c1f"), (1, "#141618")])
+         + rad("tface", [(0, "#fffaf0"), (1, "#e6dcc2")], cx="40%", cy="35%") + rad("tlamp", [(0, "#ffcf7a"), (1, "#ffcf7a00")], r="50%"))
+    b = [rect(0, 0, 600, 800, "url(#tsky)"), stars(41, 60, y1=420)]
+    cx, cy, R = 300, 560, 420
+    b.append('<g stroke="#2b3640" stroke-width="5" fill="none">' + "".join(
+        f'<line x1="{cx}" y1="{cy}" x2="{cx - R*math.cos(math.pi*k/10):.0f}" y2="{cy - R*math.sin(math.pi*k/10):.0f}"/>' for k in range(1, 10))
+        + "".join(f'<path d="M{cx-r} {cy} A{r} {r} 0 0 1 {cx+r} {cy}"/>' for r in (160, 290)) + f'<path d="M{cx-R} {cy} A{R} {R} 0 0 1 {cx+R} {cy}" stroke-width="14"/></g>')
+    b.append('<circle cx="40" cy="300" r="70" fill="url(#tlamp)"/><circle cx="560" cy="300" r="70" fill="url(#tlamp)"/>')
+    # title plate
+    b.append(rect(46, 40, 508, 150, "url(#tbrass)", 14) + rect(56, 50, 488, 130, "url(#tenam)", 9))
+    b.append(text(300, 116, "Think on", "Antonio", 64, "#f1e9d2", 700) + text(300, 172, "Your Feet", "Antonio", 64, "#ffd77e", 700))
+    # station clock hanging between title and board
+    b.append(rect(298, 190, 4, 26, "#7a5a1c") + '<circle cx="300" cy="258" r="46" fill="url(#tbrass)"/><circle cx="300" cy="258" r="38" fill="url(#tface)"/>'
+             + "".join(f'<line x1="{300 + 31*math.sin(k*math.pi/6):.1f}" y1="{258 - 31*math.cos(k*math.pi/6):.1f}" x2="{300 + 36*math.sin(k*math.pi/6):.1f}" y2="{258 - 36*math.cos(k*math.pi/6):.1f}" stroke="#2a2418" stroke-width="2.5"/>' for k in range(12))
+             + '<path d="M300 258 L300 222 A36 36 0 0 1 335 252 Z" fill="#ff6a1f" opacity=".55"/><line x1="300" y1="258" x2="327" y2="236" stroke="#c4261a" stroke-width="3" stroke-linecap="round"/><circle cx="300" cy="258" r="4" fill="#2a2418"/>')
+    # departure board
+    b.append(rect(30, 318, 540, 270, "url(#tbrass)", 14) + rect(40, 328, 520, 250, "#111214", 9))
+    rows = [("1", "FRUITS", "A1", "#2f9a4d"), ("2", "SPORTS", "A1", "#2f9a4d"), ("+", "JOBS", "A2", "#13867f")]
+    for k, (n, word, lv, col) in enumerate(rows):
+        y = 344 + k * 76
+        b.append(rect(52, y, 40, 64, "#ff7a2e" if n == "+" else "url(#tbrass)", 6) + text(72, y + 47, n, "Antonio", 40, "#2b1d06", 700))
+        for i in range(8):
+            x = 100 + i * 44
+            ch = word[i] if i < len(word) else ""
+            b.append(rect(x, y, 40, 64, "url(#tflap)", 4) + (text(x + 20, y + 50, ch, "Antonio", 48, "#f1e9d2", 700) if ch else ""))
+        b.append(rect(460, y, 88, 64, col, 8, 'stroke="#fff" stroke-opacity=".75" stroke-width="3"') + text(504, y + 48, lv, "Antonio", 40, "#fff", 700))
+    # answer lamps + tickets
+    b.append(rect(40, 612, 250, 66, "#c22a1a", 14) + '<circle cx="78" cy="645" r="19" fill="#ff7a63"/>' + text(180, 662, "Wrong", "Antonio", 42, "#fff", 700))
+    b.append(rect(310, 612, 250, 66, "#24934a", 14) + '<circle cx="522" cy="645" r="19" fill="#7dffa6"/>' + text(410, 662, "Correct", "Antonio", 42, "#06240f", 700))
+    for k, (em, col) in enumerate([("🦊", "#ff6a1f"), ("🦈", "#2f7bff"), ("🐸", "#21b35a"), ("🦉", "#a35cff")]):
+        x = 40 + k * 132
+        b.append(rect(x, 698, 122, 40, col, 8) + emoji(x + 24, 727, em, 24) + rect(x + 46, 712, 10, 10, "#ff7a63", 5) + rect(x + 62, 712, 10, 10, "#3a1412", 5) + rect(x + 78, 712, 10, 10, "#3a1412", 5))
+    b.append(footer("2–6 teams · CEFR level filter", "Atkinson Hyperlegible", "#c99a3b", 18, 1, 772, 700))
     return svg(d, "".join(b))
 
 

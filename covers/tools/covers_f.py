@@ -292,26 +292,61 @@ def word_quest():
 
 
 def word_search():
-    b = []
-    chalkboard(b)
-    b.append(rect(14, 14, 572, 772, "none", 10, 'stroke="#8a5a2b" stroke-width="14"'))
-    b.append(text(300, 104, "Word Search", "Caveat", 86, "#f0ede0", 700))
-    b.append(text(300, 152, "MAKER", "Caveat", 44, "#f5d07a", 700, ls=12))
-    grid = ["CATSPLMQ", "RXDOGBEA", "OWLNKTSR", "BFISHUAE", "EHORSEMB", "ARABBITZ", "RQFROGVW", "YDUCKLON"]
-    found = [((0, 0), (0, 2), "#4ecb71"), ((1, 2), (1, 4), "#5bb8d4"), ((2, 0), (2, 2), "#e8b84b"), ((3, 1), (3, 4), "#e8604b"),
-             ((4, 1), (4, 5), "#c8a2f5"), ((5, 1), (5, 6), "#4ecb71"), ((7, 1), (7, 4), "#5bb8d4")]
-    cs = 58
-    x0, y0 = (600 - 8 * cs) / 2, 190
+    """Letterpress print shop: wooden type locked in an iron chase, inked words."""
+    d = (lin("wsWall", [("0", "#2a2530"), ("1", "#141317")])
+         + rad("wsLamp", [("0", "rgba(255,206,140,.32)"), ("1", "rgba(255,206,140,0)")], cy="0%", r="80%")
+         + lin("wsIron", [("0", "#4a4a52"), (".55", "#26262b"), ("1", "#34343a")], x2=1, y2=1)
+         + lin("wsMaple", [("0", "#d6a166"), ("1", "#ad7943")])
+         + rad("wsFace", [("0", "#fbf3e0"), ("1", "#d8c6a4")], cx="30%", cy="25%", r="90%")
+         + lin("wsBrass", [("0", "#f2d98d"), (".5", "#c8a24a"), ("1", "#8c6c25")]))
+    b = [rect(0, 0, 600, 800, "url(#wsWall)")]
+    rnd = random.Random(19)
+    for _ in range(9):
+        x, y, sz = rnd.uniform(0, 600), rnd.uniform(120, 820), rnd.uniform(140, 260)
+        b.append(text(round(x), round(y), rnd.choice("AEQRWS&"), "Abril Fatface", round(sz), "rgba(233,220,196,.05)",
+                      extra=f'transform="rotate({rnd.uniform(-12, 12):.1f} {x:.0f} {y:.0f})"'))
+    b.append(rect(0, 0, 600, 800, "url(#wsLamp)"))
+    b.append(text(300, 106, "Word", "Abril Fatface", 100, "#f1e9da"))
+    b.append(text(300, 196, "Search", "Abril Fatface", 100, "#f1e9da"))
+    grid = ["CATSPLM", "RXDOGBE", "OWLNKTS", "BFISHUA", "EHORSEM", "ARABBIT", "YDUCKLO"]
+    n, cs, gap = 7, 56, 5
+    side = n * cs + (n - 1) * gap
+    x0, y0 = (600 - side) / 2, 262
+    b.append(rect(x0 - 40, y0 - 40, side + 80, side + 80, "url(#wsIron)", 12, 'filter="url(#k-drop)"'))
+    b.append(rect(x0 - 24, y0 - 24, side + 48, side + 48, "url(#wsMaple)", 5))
+    b.append(rect(x0 - 10, y0 - 10, side + 20, side + 20, "#1a1310", 3))
+    for qx, qy, rot in ((x0 + side * .62, y0 - 47, 0), (x0 - 47, y0 + side * .3, 90), (x0 + side + 35, y0 + side * .7, 90)):
+        b.append(f'<g transform="rotate({rot} {qx + 22} {qy + 9})">' + rect(qx, qy, 44, 18, "url(#wsBrass)", 4) + '</g>')
+    pitch = cs + gap
+    found = [((0, 0), (0, 2), "#2F5FD0"), ((1, 2), (1, 4), "#E0442E"), ((3, 1), (3, 4), "#2E9E5B"),
+             ((4, 1), (4, 5), "#C8338E"), ((6, 1), (6, 4), "#C9930F"), ((2, 0), (2, 2), "#12A0A8")]
+    tint = {}
     for (r1, c1), (r2, c2), col in found:
-        xa, ya = x0 + c1 * cs + cs/2, y0 + r1 * cs + cs/2
-        xb, yb = x0 + c2 * cs + cs/2, y0 + r2 * cs + cs/2
-        b.append(f'<line x1="{xa}" y1="{ya}" x2="{xb}" y2="{yb}" stroke="{col}" stroke-opacity=".45" stroke-width="44" stroke-linecap="round"/>')
+        steps = max(abs(r2 - r1), abs(c2 - c1))
+        for i in range(steps + 1):
+            tint[(r1 + (r2 - r1) * i // steps, c1 + (c2 - c1) * i // steps)] = col
     for r, row in enumerate(grid):
         for c, ch in enumerate(row):
-            b.append(text(x0 + c * cs + cs/2, y0 + r * cs + cs/2 + 13, ch, "DM Mono", 34, "#f0ede0", 500))
-    b.append(text(300, 712, "cat · dog · owl · fish · horse · rabbit · duck", "Caveat", 30, "#c8c4b0", 700))
-    b.append(text(300, 752, "⏱ Beat the clock", "Caveat", 30, "#f5d07a", 700))
-    return svg("", "".join(b))
+            x, y = x0 + c * pitch, y0 + r * pitch
+            b.append(rect(x, y + 3, cs, cs, "#8f6c45", 5))
+            b.append(rect(x, y, cs, cs, "url(#wsFace)", 5))
+            if (r, c) in tint:
+                b.append(rect(x, y, cs, cs, tint[(r, c)], 5, 'fill-opacity=".3"'))
+            b.append(text(x + cs / 2, y + cs / 2 + 14, ch, "Archivo", 40, "#2a2420", 800))
+    for (r1, c1), (r2, c2), col in found:
+        xa, ya = x0 + c1 * pitch + cs / 2, y0 + r1 * pitch + cs / 2
+        xb, yb = x0 + c2 * pitch + cs / 2, y0 + r2 * pitch + cs / 2
+        ang = math.degrees(math.atan2(yb - ya, xb - xa)); L = math.hypot(xb - xa, yb - ya); h = cs * .86
+        b.append(f'<rect x="{xa - h/2:.1f}" y="{ya - h/2:.1f}" width="{L + h:.1f}" height="{h:.1f}" rx="{h/2:.1f}" fill="none" '
+                 f'stroke="{col}" stroke-width="5" transform="rotate({ang:.1f} {xa:.1f} {ya:.1f})"/>')
+    sy = y0 + side + 58
+    for i, (w, col) in enumerate((("CAT", "#2F5FD0"), ("DOG", "#E0442E"), ("FISH", "#2E9E5B"), ("HORSE", "#C8338E"))):
+        sw = 22 + len(w) * 19
+        sx = [83, 182, 281, 399][i]
+        b.append(rect(sx, sy + 3, sw, 38, "rgba(0,0,0,.45)", 6))
+        b.append(rect(sx, sy, sw, 38, col, 6))
+        b.append(text(sx + sw / 2, sy + 27, w, "Archivo", 22, "#fff", 800, ls=1.5))
+    return svg(d, "".join(b))
 
 
 COVERS = {

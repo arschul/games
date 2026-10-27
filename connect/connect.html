@@ -408,6 +408,11 @@ body.playing .back-link{display:none}
 
 #stage.nogame #shaker{visibility:hidden}
 
+.dchip{display:inline-block;margin:6px 0 0 6px;font:800 15px/1 var(--ui);padding:5px 10px;border-radius:999px;color:#2a1a06;background:linear-gradient(180deg,var(--brassHi),var(--brass));box-shadow:0 0 14px rgba(243,220,147,.7)}
+.galley.compact .dchip{font-size:13px;margin-top:3px}
+.strip.dbl{box-shadow:0 2px 0 rgba(0,0,0,.25),0 4px 8px rgba(0,0,0,.4),inset 5px 0 0 var(--c),inset 0 0 0 3px var(--brass)}
+.strip.dbl .p{background:linear-gradient(180deg,var(--brassHi),var(--brass));color:#2a1a06}
+
 </style>
 </head>
 <body>
@@ -512,7 +517,7 @@ body.playing .back-link{display:none}
       <li>Backspace removes a letter you just placed. Double-click it to retype it. Arrow keys move to the next free square.</li>
       <li>When the turn ends, your letters are inked in your team's color. They stay on the board for everyone.</li>
       <li>Read squares aloud with the numbers: row on the left, then column on the top. "An S at 34" is row 30, column 4.</li>
-      <li>The starting team changes from game to game.</li></ul>
+      <li>The starting team changes from game to game. It gets a head start: <b>1 extra token</b> with powers on, or <b>30 extra seconds</b> on the first turn with powers off.</li></ul>
       <h3>Claiming a word (any team, any time)</h3>
       <ul><li>Choose your panel first: the one with the gold outline gets your clicks. Press 1, 2 or 3 to switch.</li>
       <li>Words must be a <b>straight line</b> of touching squares (across, down or diagonal), clicked in reading order. Backwards along the line is fine.</li>
@@ -523,10 +528,10 @@ body.playing .back-link{display:none}
       <ul><li>Each team starts with 1 token and gets another when it ends a turn <b>without scoring</b>. Maximum 3.</li>
       <li>One power per turn, on your own turn only.</li>
       <li><b>Extra letter (1):</b> place one more letter this turn.</li>
-      <li><b>Extra time (1):</b> add 30 seconds to your turn.</li>
-      <li><b>Shield (1):</b> lock any square. The other teams can't type there, use it in a word, or move, remove or swap it. It opens again when your next turn starts.</li>
+      <li><b>Double word (2):</b> the next word your team claims scores double. One at a time.</li>
+      <li><b>Shield (1):</b> lock any square. The other teams can't type there, use it in a word, or move, retype or swap it. It opens again when your next turn starts.</li>
       <li><b>Move (2):</b> move a locked letter to an empty square.</li>
-      <li><b>Remove (2):</b> delete a locked letter.</li>
+      <li><b>Retype (2):</b> pick a locked letter and type a different one. It becomes your team's letter.</li>
       <li><b>Swap (2):</b> swap two locked letters.</li>
       <li>Words already claimed keep their points. The clock stops while you choose a square. Esc cancels.</li></ul>
       <h3>The clock</h3>
@@ -576,14 +581,17 @@ body.playing .back-link{display:none}
 
   var POWERS = {
     letter: { name: 'Extra letter', cost: 1, instant: true,  blurb: 'Place one more letter this turn' },
-    time:   { name: 'Extra time',   cost: 1, instant: true,  blurb: 'Add 30 seconds to this turn' },
+    double: { name: 'Double word',  cost: 2, instant: true,  blurb: 'The next word your team claims scores double' },
     shield: { name: 'Shield',       cost: 1, instant: false, blurb: 'Lock a square until your next turn' },
     move:   { name: 'Move',         cost: 2, instant: false, blurb: 'Move a locked letter to an empty square' },
-    remove: { name: 'Remove',       cost: 2, instant: false, blurb: 'Delete a locked letter' },
+    retype: { name: 'Retype',       cost: 2, instant: false, blurb: 'Change a locked letter into a different letter' },
     swap:   { name: 'Swap',         cost: 2, instant: false, blurb: 'Swap two locked letters' }
   };
-  var POWER_ORDER = ['letter', 'time', 'shield', 'move', 'remove', 'swap'];
-  var TOKEN_CAP = 3, FAST_FINISH = 20, EXTRA_TIME = 30;
+  var POWER_ORDER = ['letter', 'double', 'shield', 'move', 'retype', 'swap'];
+  var TOKEN_CAP = 3, FAST_FINISH = 20;
+  // The first team only has the starting letters to work with, so it gets a head start that
+  // doesn't add letters the next team could use: +1 token with powers, +30 s on turn 1 without.
+  var STARTER_TOKENS = 2, STARTER_TIME = 30;
   var VOWELS = 'AEIOU', CONSONANTS = 'BCDFGHLMNPRSTW';
 
   function clone(s) { return JSON.parse(JSON.stringify(s)); }
@@ -623,12 +631,14 @@ body.playing .back-link{display:none}
       turn: (o.starter || 0) % T,
       board: new Array(N * N).fill(null),   // null | {l, o, f}; o = -1 seed or team index; f = placed this turn
       maxLetters: o.letters || 1, placed: 0,
-      timeLeft: o.timer || 120,
-      tokens: o.teams.map(function () { return 1; }),
+      timeLeft: (o.timer || 120) + (o.powers ? 0 : STARTER_TIME),
+      tokens: o.teams.map(function (t, k) { return o.powers && k === (o.starter || 0) % T ? STARTER_TOKENS : 1; }),
       shields: [],                          // [{i, owner}]: locked to other teams until owner's next turn
       powerUsed: false, claimedThisTurn: false,
       pts: o.teams.map(function () { return 0; }),
       words: o.teams.map(function () { return []; }),
+      wordPts: o.teams.map(function () { return []; }),   // points each word scored (doubled words score twice)
+      doubles: o.teams.map(function () { return false; }), // Double word waiting for the team's next claim
       claimed: [],
       final: false, finalLeft: 0, over: false, turnNo: 1
     };
@@ -701,19 +711,24 @@ body.playing .back-link{display:none}
   }
   function claim(s, team, sel) {
     var err = claimError(s, team, sel); if (err) return { err: err };
-    var word = wordOf(s, sel), pts = scoreWord(word.length, s.cfg.minWord), fast = false;
-    s.claimed.push(word); s.words[team].push(word); s.pts[team] += pts;
+    var word = wordOf(s, sel), pts = scoreWord(word.length, s.cfg.minWord), fast = false, doubled = !!s.doubles[team];
+    if (doubled) { pts *= 2; s.doubles[team] = false; }
+    s.claimed.push(word); s.words[team].push(word); s.wordPts[team].push(pts); s.pts[team] += pts;
     if (team === s.turn) s.claimedThisTurn = true;
     // Fast Finish: the turn team claims with a letter it just placed → 20 seconds left
     if (s.cfg.snap && !s.final && team === s.turn && s.timeLeft > FAST_FINISH &&
         sel.some(function (i) { return s.board[i].f; })) { s.timeLeft = FAST_FINISH; fast = true; }
-    return { ok: true, word: word, pts: pts, fast: fast };
+    return { ok: true, word: word, pts: pts, fast: fast, doubled: doubled };
   }
   // Teacher's ✕ on a word: points go, the word can be claimed again
   function removeWord(s, team, idx) {
     var w = s.words[team][idx]; if (w == null) return null;
-    s.words[team].splice(idx, 1);
-    s.pts[team] -= scoreWord(w.length, s.cfg.minWord);
+    var base = scoreWord(w.length, s.cfg.minWord), pts = s.wordPts[team][idx];
+    if (pts == null) pts = base;
+    s.words[team].splice(idx, 1); s.wordPts[team].splice(idx, 1);
+    s.pts[team] -= pts;
+    // a struck-out doubled word gives the Double word back
+    if (pts > base && pts === base * 2) s.doubles[team] = true;
     var k = s.claimed.indexOf(w); if (k !== -1) s.claimed.splice(k, 1);
     return w;
   }
@@ -754,6 +769,7 @@ body.playing .back-link{display:none}
     if (s.final && key === 'letter') return 'No new letters in the final round.';
     if (key === 'move' && !hasEmpty(s)) return 'No empty square to move to.';
     if (key === 'shield' && !s.board.some(function (c, i) { return !shieldAt(s, i); })) return 'Nothing left to shield.';
+    if (key === 'double' && s.doubles[s.turn]) return 'Double word is already waiting.';
     if (s.tokens[s.turn] < p.cost) return 'Not enough tokens.';
     return '';
   }
@@ -764,19 +780,24 @@ body.playing .back-link{display:none}
     if (sh) return false;
     if (key === 'move' && stage === 2) return !c;
     if (key === 'swap' && stage === 2 && i === first) return false;
-    return !!c && !c.f;     // move (stage 1), remove, swap: a locked letter
+    if (key === 'retype' && stage === 2) return false;   // stage 2 is typing the new letter
+    return !!c && !c.f;     // move (stage 1), retype, swap: a locked letter
   }
-  function usePower(s, key, targets) {
+  function usePower(s, key, targets, letter) {
     var err = powerError(s, key); if (err) return { err: err };
     var p = POWERS[key], team = s.turn, a = targets && targets[0], b = targets && targets[1], out = { ok: true, key: key, team: team };
     if (key === 'letter') s.maxLetters++;
-    else if (key === 'time') s.timeLeft += EXTRA_TIME;
+    else if (key === 'double') s.doubles[team] = true;
     else if (key === 'shield') {
       if (!isTarget(s, key, 1, null, a)) return { err: 'Pick a square that is not shielded.' };
       s.shields.push({ i: a, owner: team }); out.cell = a;
-    } else if (key === 'remove') {
+    } else if (key === 'retype') {
       if (!isTarget(s, key, 1, null, a)) return { err: 'Pick a locked letter.' };
-      out.letter = s.board[a].l; s.board[a] = null; out.cell = a;
+      var nl = String(letter || '').toUpperCase().replace(/[^A-Z]/g, '').slice(-1);
+      if (!nl) return { err: 'Type a letter.' };
+      if (nl === s.board[a].l) return { err: 'Type a different letter.' };
+      out.from = s.board[a].l; out.letter = nl; out.cell = a;
+      s.board[a] = { l: nl, o: team, f: false };   // the new letter is inked by the team that retyped it
     } else if (key === 'move') {
       if (!isTarget(s, key, 1, null, a) || !isTarget(s, key, 2, a, b)) return { err: 'Pick a locked letter, then an empty square.' };
       out.letter = s.board[a].l; s.board[b] = s.board[a]; s.board[a] = null; out.from = a; out.to = b;
@@ -796,7 +817,7 @@ body.playing .back-link{display:none}
   function finish(s) { s.over = true; }
 
   var API = {
-    POWERS: POWERS, POWER_ORDER: POWER_ORDER, TOKEN_CAP: TOKEN_CAP, FAST_FINISH: FAST_FINISH,
+    POWERS: POWERS, POWER_ORDER: POWER_ORDER, TOKEN_CAP: TOKEN_CAP, FAST_FINISH: FAST_FINISH, STARTER_TOKENS: STARTER_TOKENS, STARTER_TIME: STARTER_TIME,
     clone: clone, rc: rc, canExtend: canExtend, isLine: isLine, coord: coord, scoreWord: scoreWord, rng: rng,
     newGame: newGame, shieldAt: shieldAt, blockedFor: blockedFor, placeError: placeError, place: place, unplace: unplace,
     selectable: selectable, wordOf: wordOf, claimError: claimError, claim: claim, removeWord: removeWord,
@@ -1106,10 +1127,10 @@ var I = {
   zoom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M8 10.5h5M10.5 8v5"/></svg>',
   lock: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="10" width="16" height="12" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.8"/></svg>',
   letter: '<svg viewBox="0 0 24 24"><rect x="2" y="4" width="15" height="16" rx="2.5" fill="currentColor" opacity=".3"/><text x="9.5" y="17" text-anchor="middle" font-family="Ultra,serif" font-size="13" fill="currentColor">A</text><path d="M20 6v8M16 10h8" stroke="currentColor" stroke-width="2.6"/></svg>',
-  time: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8.5"/><path d="M12 8.5V13l3 2M9.5 2.5h5"/></svg>',
+  double: '<svg viewBox="0 0 24 24"><text x="12" y="18" text-anchor="middle" font-family="Ultra,serif" font-size="15" fill="currentColor">×2</text></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="10" width="16" height="12" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.8"/></svg>',
   move: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 20 4M12 4h8v8"/><rect x="2" y="15" width="7" height="7" rx="1.5" fill="currentColor"/></svg>',
-  remove: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 5l14 14M19 5 5 19"/></svg>',
+  retype: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5L9 20H4v-5z" fill="currentColor" fill-opacity=".25"/><path d="M13 6l5 5"/></svg>',
   swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15l-4-4M20 16H5l4 4"/></svg>'
 };
 
@@ -1503,7 +1524,7 @@ function renderTop() {
 function promptFor(p) {
   if (p.key === 'shield') return 'pick a square';
   if (p.key === 'move') return p.stage === 1 ? 'pick a letter' : 'pick an empty square';
-  if (p.key === 'remove') return 'pick a letter';
+  if (p.key === 'retype') return p.stage === 1 ? 'pick a letter' : 'type the new letter';
   if (p.key === 'swap') return p.stage === 1 ? 'pick the first letter' : 'pick the second letter';
   return '';
 }
@@ -1531,7 +1552,7 @@ function buildGalleys() {
     el.className = 'galley maple' + (r.h < 600 ? ' compact' : '');
     el.style.cssText = 'left:' + r.x + 'px;top:' + r.y + 'px;width:' + r.w + 'px;height:' + r.h + 'px;--c:' + t.color + ';--ink:' + inkOn(t.color);
     el.innerHTML = '<div class="tray"></div><button class="zbtn" title="Zoom (mouse wheel)">' + I.zoom + '</button>' +
-      '<div class="ghead" style="padding-right:30px">' + discHTML(t) + '<div class="gname"><div class="gn">' + esc(t.name) + '</div><span class="gtag">Selecting</span></div><div class="gs"><div class="gsc">0</div><div class="gw"></div></div></div>' +
+      '<div class="ghead" style="padding-right:30px">' + discHTML(t) + '<div class="gname"><div class="gn">' + esc(t.name) + '</div><span class="gtag">Selecting</span><span class="dchip" style="display:none" title="The next word this team claims scores double">×2 next word</span></div><div class="gs"><div class="gsc">0</div><div class="gw"></div></div></div>' +
       '<div class="words"></div><div class="stick"></div><div class="err"></div><div class="pw"></div>' +
       '<div class="acts"><button class="act claim"></button><button class="act brassy endt">End turn</button></div>';
     box.appendChild(el);
@@ -1553,8 +1574,10 @@ function buildGalleys() {
     shownPts[k] = S.pts[k];
   });
 }
-function stripHTML(t, w, idx, team) {
-  return '<span class="strip" style="--c:' + team.color + '"><span class="w">' + esc(w) + '</span><span class="p">' + E.scoreWord(w.length, S.cfg.minWord) + '</span>' +
+function ptsOf(k, i) { var p = S.wordPts && S.wordPts[k] ? S.wordPts[k][i] : null; return p == null ? E.scoreWord(S.words[k][i].length, S.cfg.minWord) : p; }
+function isDoubled(k, i) { return ptsOf(k, i) > E.scoreWord(S.words[k][i].length, S.cfg.minWord); }
+function stripHTML(k, w, idx, team, pts, dbl) {
+  return '<span class="strip' + (dbl ? ' dbl' : '') + '" style="--c:' + team.color + '"><span class="w">' + esc(w) + '</span><span class="p">' + (dbl ? '×2 ' : '') + pts + '</span>' +
     (idx != null ? '<button class="x" data-i="' + idx + '" title="Remove this word">✕</button>' : '') + '</span>';
 }
 function renderGalleys() {
@@ -1568,7 +1591,7 @@ function renderGalleys() {
     var nW = S.words[k].length;
     g.count.textContent = nW + ' word' + (nW === 1 ? '' : 's');
     var list = S.words[k], show = hideNewest[k] ? list.slice(0, list.length - hideNewest[k]) : list;
-    g.words.innerHTML = show.length ? show.map(function (w, i) { return stripHTML(t, w, i, t); }).join('') : '<div class="none">No words yet</div>';
+    g.words.innerHTML = show.length ? show.map(function (w, i) { return stripHTML(k, w, i, t, ptsOf(k, i), isDoubled(k, i)); }).join('') : '<div class="none">No words yet</div>';
     g.words.scrollTop = g.words.scrollHeight;
     // composing stick
     var sel = sels[k], mw = S.cfg.minWord;
@@ -1577,7 +1600,7 @@ function renderGalleys() {
       var word = E.wordOf(S, sel), pts = E.scoreWord(sel.length, mw);
       g.stick.innerHTML = '<div class="ms">' + word.split('').slice(0, 9).map(function (l) { return '<span>' + l + '</span>'; }).join('') + '</div>' +
         '<div class="info"><b>' + (sel.length > 1 ? E.coord(S.N, sel[0]) + '→' + E.coord(S.N, sel[sel.length - 1]) : E.coord(S.N, sel[0])) + '</b>' +
-        (sel.length < mw ? sel.length + ' of ' + mw + ' letters' : sel.length + ' letters · ' + pts + ' point' + (pts === 1 ? '' : 's')) + '</div><button class="clr" title="Clear">✕</button>';
+        (sel.length < mw ? sel.length + ' of ' + mw + ' letters' : sel.length + ' letters · ' + (S.doubles && S.doubles[k] ? pts * 2 + ' points (double)' : pts + ' point' + (pts === 1 ? '' : 's'))) + '</div><button class="clr" title="Clear">✕</button>';
     }
     g.err.textContent = errMsg[k];
     // powers
@@ -1597,7 +1620,9 @@ function renderGalleys() {
     var ok = !paused && !S.over && sel.length >= mw;
     g.claim.disabled = !ok;
     g.claim.classList.toggle('ready', ok && !reduced);
-    g.claim.textContent = sel.length >= mw ? 'Claim ' + E.wordOf(S, sel) : 'Claim word';
+    var dbl = S.doubles && S.doubles[k];
+    g.claim.textContent = (sel.length >= mw ? 'Claim ' + E.wordOf(S, sel) : 'Claim word') + (dbl ? ' ×2' : '');
+    var dchip = g.root.querySelector('.dchip'); if (dchip) dchip.style.display = dbl ? '' : 'none';
     g.end.disabled = paused || S.over || k !== S.turn;
   });
 }
@@ -1703,7 +1728,8 @@ function doClaim(k) {
       renderGalleys(); countUp(k, S.pts[k]);
       var w = G[k].words.lastElementChild; if (w && !reduced) w.animate([{ transform: 'scale(1.3)', filter: 'brightness(1.4)' }, { transform: 'none', filter: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,1.6,.5,1)' });
     });
-    toast(team.name + ': ' + res.word + ' +' + res.pts, k);
+    toast(team.name + ': ' + res.word + ' +' + res.pts + (res.doubled ? ' (double word!)' : ''), k);
+    if (res.doubled) { stamp('Double!', res.word + ' scores ' + res.pts + ' points'); emit(60, mx, my, { colors: ['#f3dc93', '#c9a24a', '#ffffff'], speed: 13, g: 0.25, size: 4, decay: 0.012 }); }
     if (res.fast) {
       setTimeout(function () { toast('Fast finish: 20 seconds left!', null, true); SND.ctick(true); if (!reduced) $('clock').animate([{ transform: 'scale(1.12)', filter: 'brightness(1.6)' }, { transform: 'none' }], { duration: 500 }); }, 450);
       renderTop();
@@ -1728,7 +1754,7 @@ function brayer(sel, color, dur) {
 }
 function flyStrip(k, word, x, y, done) {
   var g = G[k], tgt = stagePt(g.words), f = document.createElement('div');
-  f.className = 'flyer'; f.innerHTML = stripHTML(k, word, null, S.teams[k]);
+  var li = S.words[k].length - 1; f.className = 'flyer'; f.innerHTML = stripHTML(k, word, null, S.teams[k], ptsOf(k, li), isDoubled(k, li));
   stage.appendChild(f);
   var fw = f.offsetWidth, fh = f.offsetHeight;
   f.style.left = (x - fw / 2) + 'px'; f.style.top = (y - fh / 2) + 'px';
@@ -1765,7 +1791,7 @@ function armPower(key) {
     pushHistory(); E.usePower(S, key, []); SND.coin(); cue('power');
     var t = S.teams[S.turn];
     if (key === 'letter') { toast(t.name + ': one more letter this turn', S.turn); renderAll(); var ms = $('lettersLeft').querySelectorAll('.mini'); var last = ms[ms.length - 1]; if (last && !reduced) last.animate([{ transform: 'translateY(-30px) scale(1.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.3,1.6,.5,1)' }); }
-    else { toast(t.name + ': +30 seconds', S.turn); renderAll(); if (!reduced) $('clockNum').animate([{ transform: 'rotateX(360deg) scale(1.3)', color: '#f3dc93' }, { transform: 'none' }], { duration: 600 }); }
+    else { toast(t.name + ': your next word scores double!', S.turn); renderAll(); var dc = G[S.turn] && G[S.turn].root.querySelector('.dchip'); if (dc && !reduced) dc.animate([{ transform: 'scale(2.4) rotate(-12deg)', opacity: 0 }, { transform: 'scale(.9)', opacity: 1, offset: .7 }, { transform: 'none' }], { duration: 480, easing: 'ease-out' }); var gp = stagePt(G[S.turn].root); emit(30, gp.x, gp.y - 300, { colors: ['#f3dc93', '#c9a24a', '#ffffff'], speed: 8, g: 0.2, size: 4 }); }
     saveGame(); return;
   }
   pending = { key: key, stage: 1, first: null };
@@ -1775,7 +1801,7 @@ function cancelPower() { if (!pending) return; pending = null; renderAll(); }
 function handleTarget(i) {
   var p = pending;
   if (!E.isTarget(S, p.key, p.stage, p.first, i)) { rejectCell(i); return; }
-  if ((p.key === 'move' || p.key === 'swap') && p.stage === 1) {
+  if ((p.key === 'move' || p.key === 'swap' || p.key === 'retype') && p.stage === 1) {
     pending = { key: p.key, stage: 2, first: i }; SND.tick(4);
     renderAll();
     var el = sortEls[i]; if (el) { el.classList.add('sel'); el.style.setProperty('--sc', '#ff6a1a'); }
@@ -1796,12 +1822,7 @@ function handleTarget(i) {
     var q = quoinEls[i]; if (q && !reduced) q.animate([{ transform: 'scale(1.6)', opacity: 0 }, { transform: 'scale(.92)', opacity: 1, offset: .7 }, { transform: 'none' }], { duration: 380, easing: 'ease-out' });
     var pt = cellStage(i); emit(14, pt.x, pt.y, { colors: ['#f3dc93', '#c9a24a'], speed: 7, g: 0.2, size: 3 });
     toast(t.name + ' locked square ' + E.coord(S.N, i), S.turn);
-  } else if (p.key === 'remove') {
-    if (before.a) { before.a.remove(); delete sortEls[i]; }
-    var ghost = cloneGhost(before.a, i);
-    sels = sels.map(function (sel) { var q = sel.indexOf(i); return q === -1 ? sel : sel.slice(0, q); });
-    renderAll(); popSort(i, ghost); shake(10, 350);
-    toast(t.name + ' removed ' + res.letter + ' from ' + E.coord(S.N, i), S.turn);
+
   } else if (p.key === 'move') {
     var a = targets[0], b = targets[1], el = before.a;
     delete sortEls[a]; if (el) { sortEls[b] = el; placeSortEl(el, b); el.classList.remove('sel'); }
@@ -1815,6 +1836,22 @@ function handleTarget(i) {
     renderAll(); hop(ea, a2, b2, 0); hop(eb, b2, a2, 140);
     toast(t.name + ' swapped ' + E.coord(S.N, a2) + ' and ' + E.coord(S.N, b2), S.turn);
   }
+  saveGame();
+}
+function doRetype(letter) {
+  var p = pending; if (!p || p.key !== 'retype' || p.stage !== 2) return;
+  var i = p.first;
+  pushHistory();
+  var res = E.usePower(S, 'retype', [i], letter);
+  if (res.err) { HISTORY.pop(); toast(res.err, null, true); rejectCell(i); return; }
+  pending = null;
+  var t = S.teams[S.turn], el = sortEls[i];
+  cue('power'); SND.clack();
+  renderAll();
+  el = sortEls[i];
+  if (el && !reduced) el.animate([{ transform: 'translateY(-18%) rotateY(0)' }, { transform: 'translateY(-18%) rotateY(90deg)', offset: .45 }, { transform: 'translateY(-18%) rotateY(-90deg)', offset: .46 }, { transform: 'none' }], { duration: 520, easing: 'ease-in-out' }).onfinish = function () { landed(el, i); };
+  var pt = cellStage(i); emit(18, pt.x, pt.y, { colors: [t.color, '#f3dc93', '#ffffff'], speed: 7, g: 0.2, size: 3.5 });
+  toast(t.name + ' changed ' + res.from + ' to ' + res.letter + ' at ' + E.coord(S.N, i), S.turn);
   saveGame();
 }
 function cloneGhost(el, i) {
@@ -1952,7 +1989,7 @@ function openZoom(k, level) {
   $('zCount').textContent = S.words[k].length + ' word' + (S.words[k].length === 1 ? '' : 's');
   var zw = $('zoomWords');
   zw.style.setProperty('--zh', (level === 1 ? 62 : 88) + 'px');
-  zw.innerHTML = S.words[k].length ? S.words[k].map(function (w) { return stripHTML(k, w, null, t); }).join('') : '<div class="none" style="font:600 30px var(--ui);color:var(--muted)">No words yet</div>';
+  zw.innerHTML = S.words[k].length ? S.words[k].map(function (w, i) { return stripHTML(k, w, null, t, ptsOf(k, i), isDoubled(k, i)); }).join('') : '<div class="none" style="font:600 30px var(--ui);color:var(--muted)">No words yet</div>';
   if (first) { show('zoom', true); SND.slide(); } else SND.tick(level);
 }
 function closeZoom() { zoom.k = -1; zoom.level = 0; show('zoom', false); }
@@ -1973,7 +2010,7 @@ function gameOver() {
   $('endTheme').textContent = S.cfg.theme ? 'Theme: ' + S.cfg.theme : '';
   $('endCols').innerHTML = S.teams.map(function (t, k) {
     return '<div class="ecol' + (W.length === 1 && W[0] === k ? ' win' : '') + '" style="--c:' + t.color + '"><div class="eh">' + discHTML(t) + '<div class="n">' + esc(t.name) + '</div><div class="sc">' + S.pts[k] + '</div></div>' +
-      '<div class="ew">' + (S.words[k].length ? S.words[k].map(function (w) { return '<span>' + esc(w) + '<i>' + E.scoreWord(w.length, S.cfg.minWord) + '</i></span>'; }).join('') : '<span style="opacity:.6">No words</span>') + '</div></div>';
+      '<div class="ew">' + (S.words[k].length ? S.words[k].map(function (w, i) { return '<span>' + esc(w) + '<i>' + (isDoubled(k, i) ? '×2 ' : '') + ptsOf(k, i) + '</i></span>'; }).join('') : '<span style="opacity:.6">No words</span>') + '</div></div>';
   }).join('');
   show('endOv', true);
   SND.thunk(); cue('win'); setTimeout(SND.fanfare, 350);
@@ -1997,7 +2034,7 @@ function wordListText() {
   lines.push('');
   S.teams.forEach(function (t, k) {
     lines.push(t.name + ': ' + S.pts[k] + ' points');
-    lines.push(S.words[k].length ? S.words[k].map(function (w) { return '  ' + w + ' (' + E.scoreWord(w.length, S.cfg.minWord) + ')'; }).join('\n') : '  (no words)');
+    lines.push(S.words[k].length ? S.words[k].map(function (w, i) { return '  ' + w + ' (' + ptsOf(k, i) + (isDoubled(k, i) ? ', double word' : '') + ')'; }).join('\n') : '  (no words)');
     lines.push('');
   });
   var all = Array.from(new Set([].concat.apply([], S.words))).sort();
@@ -2029,7 +2066,7 @@ function renderSetup() {
   });
   if (document.activeElement !== $('themeIn')) $('themeIn').value = settings.theme;
   var st = nextStarter() % T.length, mw = settings.min;
-  $('setupNote').innerHTML = '<b>Turn order:</b> ' + T.map(function (t) { return esc(emblemOf(t) + ' ' + t.name); }).join(' → ') + '. <b>' + esc(T[st].name) + '</b> start, and the first team changes every game.<br>' +
+  $('setupNote').innerHTML = '<b>Turn order:</b> ' + T.map(function (t) { return esc(emblemOf(t) + ' ' + t.name); }).join(' → ') + '. <b>' + esc(T[st].name) + '</b> start' + (settings.powers ? ' with an extra token' : ' with 30 extra seconds on the first turn') + ', and the first team changes every game.<br>' +
     '<b>Each turn:</b> ' + settings.letters + ' letter' + (settings.letters > 1 ? 's' : '') + '. The board starts with a few letters on it. <b>Words:</b> a straight line of touching squares, at least ' + mw + ' letters. Points: ' + (mw === 2 ? '2 → 1, ' : '') + '3 → 3, 4 → 5, 5 → 8, 6 → 12.' +
     (settings.powers ? '<br><b>Powers:</b> each team starts with 1 token and gets another when it ends a turn without scoring.' : '');
   $('resumeBtn').style.display = loadSave() ? '' : 'none';
@@ -2109,10 +2146,14 @@ function startGame() {
   sels = [[], [], []]; side = S.turn; cursor = -1; pending = null; paused = false; HISTORY = [];
   enterGame(); saveGame();
   setTimeout(function () { cue('turn'); banner(S.turn); }, 450);
+  var st0 = S.teams[S.turn].name;
+  setTimeout(function () { toast(st0 + (plural(st0) ? ' go' : ' goes') + ' first: ' + (S.cfg.powers ? '+1 token' : '+30 seconds on this turn'), S.turn); }, 2000);
 }
 function resumeGame() {
   var d = loadSave(); if (!d) { renderSetup(); return; }
-  S = d.S; sels = d.sels || [[], [], []]; side = d.side || 0; cursor = -1; pending = null; HISTORY = [];
+  S = d.S; sels = d.sels || [[], [], []];
+  if (!S.wordPts) S.wordPts = S.words.map(function (ws) { return ws.map(function (w) { return E.scoreWord(w.length, S.cfg.minWord); }); });
+  if (!S.doubles) S.doubles = S.teams.map(function () { return false; }); side = d.side || 0; cursor = -1; pending = null; HISTORY = [];
   while (sels.length < 3) sels.push([]);
   enterGame();
   paused = true; show('pauseOv', true); renderAll(); syncMusic();
@@ -2140,6 +2181,7 @@ document.addEventListener('keydown', function (e) {
   if (k === '?') { if (!$('setupOv').classList.contains('show') || true) show('rulesOv', !$('rulesOv').classList.contains('show')); e.preventDefault(); return; }
   if (overlay || !S || S.over) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (pending && pending.key === 'retype' && pending.stage === 2 && !paused && /^[a-zA-Z]$/.test(k)) { doRetype(k); e.preventDefault(); return; }
   // typing into the board
   if (cursor >= 0 && !paused) {
     if (/^[a-zA-Z]$/.test(k)) { typeLetter(k); e.preventDefault(); return; }

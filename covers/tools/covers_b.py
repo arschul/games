@@ -408,27 +408,71 @@ def classroom_auction():
     return svg(d, "".join(b))
 
 def connect():
-    d = lin("tt", [(0, "#ff3355"), (.5, "#ffd700"), (1, "#0099ff")], x2=1, y2=0)
-    b = [rect(0, 0, 600, 800, "#0a0a0f")]
-    b.append('<circle cx="0" cy="500" r="260" fill="#ff3355" opacity=".14" filter="url(#k-glow)"/><circle cx="600" cy="500" r="260" fill="#0099ff" opacity=".14" filter="url(#k-glow)"/>')
-    b.append(glow_text(300, 142, "CONNECT", "Bebas Neue", 132, "url(#tt)", "#ffd700", ls=8))
-    b.append(text(300, 186, "WORD BATTLE ARENA", "Barlow Condensed", 22, "#e8e8f0", 700, ls=8))
-    grid = ["SCRANEW", "TOMBLID", "ARIVETH", "RAPENOS", "ECLOUDA", "MOSTRAP", "PLINKER"]
-    red = {(0, 0), (0, 1), (0, 2), (0, 3), (1, 1), (2, 2), (3, 3), (3, 2), (4, 1)}
-    blue = {(4, 2), (4, 3), (4, 4), (4, 5), (4, 6), (5, 6), (6, 6), (2, 5), (3, 5), (1, 6)}
-    cs, g = 66, 6
-    x0, y0 = (600 - 7 * cs - 6 * g) / 2, 230
-    for r, row in enumerate(grid):
-        for c, ch in enumerate(row):
-            x, y = x0 + c * (cs + g), y0 + r * (cs + g)
-            if (r, c) in red:
-                fill, ink, st = "#cc0022", "#fff", "#ff3355"
-            elif (r, c) in blue:
-                fill, ink, st = "#0055cc", "#fff", "#0099ff"
-            else:
-                fill, ink, st = "#13131a", "#c8c8d6", "#2a2a3a"
-            b.append(rect(x, y, cs, cs, fill, 8, f'stroke="{st}" stroke-width="2"') + text(x + cs/2, y + cs/2 + 14, ch, "Bebas Neue", 40, ink))
-    b.append(footer("7×7 · TEAMS · POWERS", "Barlow Condensed", "#ffd700", 20, 8, 778))
+    """Letterpress print shop: inked metal type on a steel stone in a maple chase, broadside title, Ultra."""
+    d = (rad("wbLamp", [(0, "#ffd9a0"), (1, "#15120f")], cx="50%", cy="0%", r="85%")
+         + lin("wbDrawer", [(0, "#5a3c22"), (.3, "#4a321d"), (1, "#2b1d12")])
+         + lin("wbMaple", [(0, "#c9965c"), (.55, "#ab7841"), (1, "#8f6234")])
+         + lin("wbStone", [(0, "#4a515a"), (1, "#30363c")])
+         + lin("wbMetal", [(0, "#eef1f4"), (.45, "#aab2ba"), (1, "#6b737b")], x2=.5, y2=1)
+         + lin("wbBrass", [(0, "#f3dc93"), (.55, "#c9a24a"), (1, "#8d6a22")])
+         + lin("wbPaper", [(0, "#f7f0e0"), (1, "#e4d7bb")]))
+    b = [rect(0, 0, 600, 800, "#15120f")]
+    # type-case drawers behind
+    for r_ in range(9):
+        for c in range(3):
+            x, y = 14 + c * 196, -10 + r_ * 92
+            b.append(rect(x, y, 182, 80, "url(#wbDrawer)", 5) + rect(x + 66, y + 16, 50, 18, "#a38135", 2)
+                     + rect(x + 70, y + 19, 42, 12, "#efe6d2", 1, 'opacity=".5"')
+                     + f'<path d="M{x+73} {y+52}a18 12 0 0 0 36 0z" fill="#a38135"/>')
+    b.append(rect(0, 0, 600, 800, "url(#wbLamp)", 0, 'opacity=".55"'))
+    # broadside title sheet
+    b.append(f'<g filter="url(#k-drop)"><path d="M40 34 L560 30 L566 92 L558 212 L44 218 L34 120 Z" fill="url(#wbPaper)"/></g>')
+    b.append('<path d="M58 48 L544 45 L548 200 L60 203 Z" fill="none" stroke="#b23a1e" stroke-width="3"/>')
+    b.append('<path d="M66 54 L538 52 L541 194 L68 196 Z" fill="none" stroke="#1f3f78" stroke-width="1.5"/>')
+    for txt, y, size in (("Word Battle", 120, 64), ("Arena", 188, 76)):
+        b.append(text(303, y + 3, txt, "Ultra", size, "#1f3f78", extra='opacity=".55"'))
+        b.append(text(300, y, txt, "Ultra", size, "#b23a1e"))
+    # chase + stone
+    b.append(f'<g filter="url(#k-drop)">{rect(44, 246, 512, 470, "url(#wbMaple)", 16)}</g>')
+    b.append(rect(62, 264, 476, 434, "url(#wbStone)", 8, 'stroke="#14171a" stroke-width="2"'))
+    letters = {(0, 0): ("W", "r"), (0, 1): ("O", "r"), (0, 2): ("R", "r"), (0, 3): ("D", "r"),
+               (1, 1): ("A", "s"), (2, 0): ("S", "b"), (2, 1): ("H", "b"), (2, 2): ("I", "b"), (2, 3): ("P", "b"),
+               (3, 1): ("N", "s"), (3, 3): ("E", "f"), (1, 3): ("T", "s"), (4, 3): ("N", "b")}
+    cols = {"r": "#e23b3b", "b": "#2f6fe0"}
+    cs, x0, y0 = 88, 80, 282
+    for r_ in range(5):
+        for c in range(5):
+            x, y = x0 + c * cs, y0 + r_ * 80
+            b.append(rect(x + 5, y + 5, cs - 10, 70, "#1b1e22", 9, 'stroke="#0d0f11" stroke-width="2"'))
+            if (r_, c) not in letters:
+                continue
+            ch, k = letters[(r_, c)]
+            sx, sy, sw, sh = x + 9, y + 6, cs - 18, 66
+            g = [rect(sx, sy + 6, sw, sh, "#3a4046", 8), rect(sx, sy, sw, sh, "url(#wbMetal)", 8)]
+            face = cols.get(k, "#b9c0c7")
+            ink = "#ffffff" if k in cols else "#15181b"
+            g.append(rect(sx + 7, sy + 5, sw - 14, sh - 16, face, 6))
+            g.append(rect(sx + 7, sy + 5, sw - 14, 16, "#ffffff", 6, 'opacity=".22"'))
+            g.append(text(sx + sw / 2, sy + 46, ch, "Ultra", 36, ink))
+            if k == "f":
+                g.insert(0, rect(sx - 4, sy - 4, sw + 8, sh + 8, "#e23b3b", 10, 'opacity=".55" filter="url(#k-glow-s)"'))
+            if k in cols:
+                em = "🦊" if k == "r" else "🐳"
+                g.append(f'<circle cx="{sx+sw-4}" cy="{sy+sh-2}" r="13" fill="{cols[k]}" stroke="#c9a24a" stroke-width="2.5"/>' + emoji(sx + sw - 4, sy + sh + 4, em, 15))
+            b.append(f'<g filter="url(#k-drop-s)">{"".join(g)}</g>')
+    # shield quoin on an empty square
+    qx, qy = x0 + 4 * cs, y0 + 2 * 80
+    b.append(rect(qx + 2, qy + 2, cs - 4, 76, "none", 11, 'stroke="url(#wbBrass)" stroke-width="7"'))
+    b.append(f'<g>{rect(qx + cs - 26, qy + 54, 28, 28, "url(#wbBrass)", 6)}<rect x="{qx+cs-19}" y="{qy+66}" width="14" height="10" rx="2" fill="#2a1a06"/>'
+             f'<path d="M{qx+cs-16} {qy+66}v-4a4 4 0 0 1 8 0v4" fill="none" stroke="#2a1a06" stroke-width="2.5"/></g>')
+    # ink brayer rolling across WORD
+    b.append('<g filter="url(#k-drop)" transform="rotate(-6 470 300)"><rect x="440" y="276" width="18" height="70" rx="4" fill="url(#wbBrass)"/>'
+             '<rect x="404" y="330" width="96" height="40" rx="20" fill="#e23b3b"/><rect x="404" y="330" width="96" height="12" rx="6" fill="#ffffff" opacity=".25"/>'
+             '<rect x="398" y="342" width="10" height="16" rx="3" fill="#2a1a06"/><rect x="496" y="342" width="10" height="16" rx="3" fill="#2a1a06"/></g>')
+    # proof strip
+    b.append('<g filter="url(#k-drop-s)" transform="rotate(-4 300 742)">' + rect(196, 722, 208, 46, "#f3ecdc", 3)
+             + rect(196, 722, 7, 46, "#e23b3b") + text(282, 756, "WORD", "Ultra", 28, "#1d1a16")
+             + rect(352, 732, 36, 26, "#1d1a16", 5) + text(370, 751, "5", "Schibsted Grotesk", 18, "#efe6d2", 800) + "</g>")
     return svg(d, "".join(b))
 
 

@@ -1,0 +1,44 @@
+# Keeps the hub's "Recently updated" shelf honest: after any push that changes a game,
+# rebuild the cards region of index.html with hubgen.py, which reads each game's latest
+# "Update ..." commit date from this repo's git log. Pushes made with GITHUB_TOKEN don't
+# re-trigger workflows, so this can't loop.
+name: Stamp updated dates
+
+on:
+  push:
+    branches: [main]
+    paths: ['**/*.html', '!index.html']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stamp-updated
+  cancel-in-progress: false
+
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: games
+          fetch-depth: 1          # hubgen deepens to the last 60 days itself
+      - uses: actions/checkout@v4
+        with:
+          repository: arschul/arschul.github.io
+          path: arschul.github.io
+          fetch-depth: 1
+      - name: Rebuild cards
+        run: python3 arschul.github.io/hubgen.py --catalog arschul.github.io/data/catalog.json build --regions cards
+      - name: Commit if the index changed
+        working-directory: games
+        run: |
+          git diff --quiet -- index.html && { echo "index already current"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Stamp Recently Updated dates in Game Hub index"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0; sleep 5; done
+          exit 1

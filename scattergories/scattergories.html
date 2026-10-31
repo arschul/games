@@ -72,7 +72,7 @@ button{font-family:var(--ui);cursor:pointer}
   box-shadow:0 0 0 7px var(--brass),0 0 0 9px var(--brass-edge),0 18px 30px rgba(0,0,0,.55),inset 0 2px 0 rgba(255,255,255,.1);transition:box-shadow .4s}
 .flapbox.live{animation:breathe 2.4s ease-in-out infinite}
 @keyframes breathe{50%{box-shadow:0 0 0 7px var(--brass-hi),0 0 0 9px var(--brass-edge),0 0 46px 10px rgba(243,214,138,.45),0 18px 30px rgba(0,0,0,.55)}}
-.flapcard{position:absolute;left:35px;top:26px;width:270px;height:320px;perspective:900px}
+.flapcard{position:absolute;left:35px;top:26px;width:270px;height:320px;perspective:700px}
 .half{position:absolute;left:0;width:100%;height:50%;overflow:hidden;backface-visibility:hidden}
 .half.top{top:0;border-radius:14px 14px 0 0;background:linear-gradient(#3d424d,#2e323b);transform-origin:50% 100%}
 .half.bot{top:50%;border-radius:0 0 14px 14px;background:linear-gradient(#2a2e36,#1e2229);transform-origin:50% 0}
@@ -430,7 +430,8 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
         secs: SECS.indexOf(+opts.secs) >= 0 ? +opts.secs : 120,
         cats: CATS.indexOf(+opts.cats) >= 0 ? +opts.cats : 5,
         rounds: isFinite(rounds) ? Math.max(1, Math.min(20, rounds)) : 5,
-        unique: !!opts.unique
+        typing: opts.typing !== false,
+        unique: !!opts.unique && opts.typing !== false
       },
       round: 1, phase: 'ready', stopReason: '', letter: '', cats: [], usedCats: [], usedLetters: [],
       timeLeft: 0, paused: false, grid: [], totals: teams.map(function () { return 0; }), history: []
@@ -498,6 +499,14 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
     if (a !== undefined) c.a = String(a == null ? '' : a).slice(0, 40);
     return true;
   }
+  /* click-to-score order when answers are not typed: empty → 3 → 2 → 1 → wrong → empty */
+  var CYCLE = { 'null': 3, '3': 2, '2': 1, '1': 0, '0': null };
+  function cycleCell(G, ci, ti) {
+    if (G.phase !== 'scoring' || !G.grid[ci] || !G.grid[ci][ti]) return false;
+    var c = G.grid[ci][ti];
+    c.p = CYCLE[String(c.p)];
+    return true;
+  }
   function fillEmpty(G) {
     if (G.phase !== 'scoring') return 0;
     var n = 0;
@@ -507,7 +516,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
   /* same correct answer as another team in the same category (only judged on typed answers) */
   function isDup(G, ci, ti, grid) {
     grid = grid || G.grid;
-    if (!G.settings.unique || !grid[ci]) return false;
+    if (!G.settings.unique || G.settings.typing === false || !grid[ci]) return false;
     var c = grid[ci][ti];
     if (!c || !(c.p > 0)) return false;
     var n = normalize(c.a);
@@ -567,7 +576,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
     LETTERS: LETTERS, CATEGORIES: CATEGORIES, TEAM_PRESETS: TEAM_PRESETS, SECS: SECS, CATS: CATS,
     normalize: normalize, tier: tier, newGame: newGame, redeal: redeal, rerollCat: rerollCat, pickLetter: pickLetter,
     startWriting: startWriting, tick: tick, stop: stop, setPaused: setPaused, beginScoring: beginScoring, setCell: setCell,
-    fillEmpty: fillEmpty, isDup: isDup, cellPoints: cellPoints, roundScores: roundScores, unmarked: unmarked,
+    fillEmpty: fillEmpty, cycleCell: cycleCell, isDup: isDup, cellPoints: cellPoints, roundScores: roundScores, unmarked: unmarked,
     lockRound: lockRound, isLastRound: isLastRound, nextRound: nextRound, finish: finish, extend: extend,
     standings: standings, winners: winners
   };
@@ -624,7 +633,7 @@ function tone(type, f1, f2, dur, gain, t0) {
   o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + dur + .02);
 }
 var S = {
-  clack: function () { noise(.035, 'highpass', 2400, .7, .35); tone('square', 900, 500, .025, .04); },
+  clack: function (d) { var a = ac(); if (!a) return; var t = a.currentTime + (d || 0); noise(.035, 'highpass', 2400, .7, .35, t); tone('square', 900, 500, .025, .04, t); },
   land: function () { noise(.18, 'lowpass', 500, .8, .6); tone('sine', 160, 90, .2, .4); },
   deal: function (i) { var a = ac(); if (!a) return; noise(.12, 'bandpass', 1800 + i * 120, 1.2, .18, a.currentTime + i * .07); },
   tick: function (hi) { tone('triangle', hi ? 1320 : 990, hi ? 1320 : 990, .06, .14); },
@@ -710,16 +719,28 @@ function setFlap(ch) {
 }
 function flipTo(ch, dur) {
   var prev = flap.cur;
-  if (reduced || !dur || prev === ch) { setFlap(ch); return; }
+  if (!dur || prev === ch) { setFlap(ch); return; }
   flap.anims.forEach(function (a) { a.cancel(); }); flap.anims = [];
   flap.cur = ch;
   var ft = $('flipTop'), fb = $('flipBot');
   $('fTop').textContent = ch; $('fBot').textContent = prev;
   ft.firstChild.textContent = prev; fb.firstChild.textContent = ch;
   ft.style.visibility = 'visible'; fb.style.visibility = 'visible';
-  var a1 = ft.animate([{ transform: 'rotateX(0deg)', filter: 'brightness(1)' }, { transform: 'rotateX(-90deg)', filter: 'brightness(.55)' }], { duration: dur / 2, easing: 'ease-in', fill: 'forwards' });
-  var a2 = fb.animate([{ transform: 'rotateX(90deg)', filter: 'brightness(1.4)' }, { transform: 'rotateX(90deg)', filter: 'brightness(1.4)', offset: .5 }, { transform: 'rotateX(0deg)', filter: 'brightness(1)' }], { duration: dur, easing: 'ease-out', fill: 'forwards' });
-  flap.anims = [a1, a2];
+  var half = dur * 0.45;
+  /* falling top flap: old letter tips forward and darkens as it turns away */
+  var a1 = ft.animate([{ transform: 'rotateX(0deg)', filter: 'brightness(1)' }, { transform: 'rotateX(-90deg)', filter: 'brightness(.35)' }], { duration: half, easing: 'cubic-bezier(.55,0,.9,.6)', fill: 'forwards' });
+  /* landing bottom flap: new letter swings down, overshoots a little and settles */
+  var a2 = fb.animate([
+    { transform: 'rotateX(90deg)', filter: 'brightness(1.6)' },
+    { transform: 'rotateX(90deg)', filter: 'brightness(1.6)', offset: .45 },
+    { transform: 'rotateX(-9deg)', filter: 'brightness(1.05)', offset: .78 },
+    { transform: 'rotateX(4deg)', filter: 'brightness(1)', offset: .9 },
+    { transform: 'rotateX(0deg)', filter: 'brightness(1)' }], { duration: dur, easing: 'ease-in', fill: 'forwards' });
+  /* shadows: the revealed top is in the flap's shade; the old bottom darkens as the flap covers it */
+  var a3 = $('fTop').parentNode.animate([{ filter: 'brightness(.45)' }, { filter: 'brightness(1)' }], { duration: half, easing: 'ease-in' });
+  var a4 = $('fBot').parentNode.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1)', offset: .4 }, { filter: 'brightness(.5)', offset: .78 }, { filter: 'brightness(1)' }], { duration: dur });
+  flap.anims = [a1, a2, a3, a4];
+  S.clack(dur * 0.78 / 1000);
   a2.onfinish = function () { if (flap.cur === ch) setFlap(ch); };
 }
 
@@ -815,7 +836,7 @@ function renderActions() {
   }
 }
 function renderKey() {
-  var has = !!(G && G.letter), L = has ? G.letter : 'the letter', uniq = G && G.settings.unique;
+  var has = !!(G && G.letter), L = has ? G.letter : 'the letter', uniq = G && G.settings.unique && G.settings.typing !== false;
   $('keycard').innerHTML = '<div class="clip"></div><h3>Scoring<span>if the answer is correct</span></h3>' +
     '<div class="keyrows">' +
     '<div class="krow"><span class="coin c3">3</span>Starts with ' + esc(L) + '</div>' +
@@ -832,7 +853,7 @@ function renderPad(deal) {
     body.innerHTML = '<div class="empty">Set up your teams to start.<br>Each round: spin a letter, then<br>answer every category out loud.</div>';
     return;
   }
-  var note = G.settings.unique ? 'Same answers score 0' : '';
+  var note = G.settings.typing === false ? (G.phase === 'scoring' ? 'Click: 3, 2, 1, wrong' : '') : (G.settings.unique ? 'Same answers score 0' : '');
   head.innerHTML = '<span class="lt">Letter<b>' + (G.letter || '?') + '</b></span><span class="note">' + esc(note) + '</span>';
   if (G.phase === 'scoring' || G.phase === 'scored' || (G.phase === 'over' && G.grid.length)) { buildGrid(); return; }
   var rh = rowHeight(G.cats.length, 680), canReroll = G.phase === 'ready';
@@ -873,7 +894,9 @@ function buildGrid() {
   body.querySelectorAll('.cell').forEach(function (el) {
     el.onclick = function () {
       if (G.phase !== 'scoring') return;
-      sel = { c: +el.dataset.c, t: +el.dataset.t }; paintSel(); openAnswer();
+      sel = { c: +el.dataset.c, t: +el.dataset.t }; paintSel();
+      if (G.settings.typing !== false) openAnswer();
+      else if (E.cycleCell(G, sel.c, sel.t)) afterMark(sel.c, sel.t, G.grid[sel.c][sel.t].p, true);
     };
   });
   refreshGrid();
@@ -905,8 +928,12 @@ function paintSel() {
 }
 function markCell(ci, ti, p, a) {
   if (!E.setCell(G, ci, ti, p, a)) return;
+  afterMark(ci, ti, p, false);
+}
+function afterMark(ci, ti, p, cycling) {
   save(); refreshGrid({ c: ci, t: ti }); renderActions();
-  if (p === 0) { S.stamp(); shake(6, 260); }
+  if (p === null) { if (cycling) S.tick(false); return; }
+  if (p === 0) { S.stamp(); if (!cycling) shake(6, 260); }
   else if (p > 0) { S.pencil(); var el = $('cell-' + ci + '-' + ti); if (el && !E.isDup(G, ci, ti)) { var pt = stagePt(el); emit(6 + p * 3, pt.x, pt.y - 10, { colors: WARM, speed: 4, size: 4, decay: .045, g: .12 }); } }
 }
 function advanceSel() {
@@ -969,21 +996,22 @@ function doSpin() {
     var p = stagePt($('flapbox')); emit(26, p.x, p.y, { colors: WARM, speed: 9, size: 5, decay: .03, g: .15 });
     E.startWriting(G, L); save(); busy = false; render(); startClock();
   };
-  if (reduced) { finishSpin(); return; }
-  var steps = 18, t = 0, prev = flap.cur;
+  if (reduced) { flipTo(L, 520); setTimeout(finishSpin, 560); return; }
+  /* each flip is slow enough to see; the board decelerates into the final letter */
+  var steps = 12, t = 0, prev = flap.cur;
   for (var i = 0; i < steps; i++) {
-    var gap = 55 + Math.pow(i / steps, 2.2) * 230;
-    (function (k, at, dur) {
+    var gap = 190 + Math.pow(i / steps, 2) * 330;
+    (function (at, dur) {
       setTimeout(function () {
         var ch;
         do { ch = E.LETTERS[Math.floor(Math.random() * E.LETTERS.length)]; } while (ch === prev || ch === L);
-        prev = ch; flipTo(ch, dur); S.clack();
+        prev = ch; flipTo(ch, dur);
       }, at);
-    })(i, t, Math.min(200, gap * 0.95));
+    })(t, Math.min(420, gap * 0.92));
     t += gap;
   }
-  setTimeout(function () { flipTo(L, 260); S.clack(); }, t);
-  setTimeout(finishSpin, t + 280);
+  setTimeout(function () { flipTo(L, 620); }, t);
+  setTimeout(finishSpin, t + 660);
 }
 function startClock() {
   clearInterval(clock);
@@ -1064,7 +1092,7 @@ window.openSetup = function (fromGame) {
     teams: E.TEAM_PRESETS.map(function (p, i) { return { name: base[i] ? base[i].name : p.name, emoji: p.emoji, color: p.color }; }),
     n: G ? G.teams.length : 4,
     secs: G ? G.settings.secs : 120, cats: G ? G.settings.cats : 5, rounds: G ? G.settings.rounds : 5,
-    unique: G ? G.settings.unique : false, fromGame: !!(fromGame && G)
+    unique: G ? G.settings.unique : false, typing: G ? G.settings.typing !== false : true, fromGame: !!(fromGame && G)
   };
   drawSetup();
 };
@@ -1089,8 +1117,10 @@ function drawSetup() {
       '<div><div class="lab">Categories</div>' + segHTML('cats', E.CATS, d.cats, String) + '</div>' +
       '<div><div class="lab">Rounds</div>' + segHTML('rounds', [3, 5, 8], d.rounds, String) + '</div>' +
     '</div>' +
-    '<div class="lab">Extra rule</div>' +
-    '<div class="toggle' + (d.unique ? ' on' : '') + '" id="uniqT" role="switch" aria-checked="' + d.unique + '" tabindex="0"><span class="sw"></span>Same answer as another team scores 0 (when you type the answers)</div>' +
+    '<div class="lab">Scoring</div>' +
+    '<div class="toggle' + (d.typing ? ' on' : '') + '" id="typeT" role="switch" aria-checked="' + d.typing + '" tabindex="0"><span class="sw"></span>Type the answers when scoring</div>' +
+    '<div style="margin:6px 0 0 92px;font:600 21px var(--ui);color:var(--ink-2)">' + (d.typing ? 'On: type each answer and the game suggests 3, 2 or 1.' : 'Off: click a box once for 3, again for 2, then 1, then wrong.') + '</div>' +
+    (d.typing ? '<div class="toggle' + (d.unique ? ' on' : '') + '" id="uniqT" role="switch" aria-checked="' + d.unique + '" tabindex="0" style="margin-top:12px"><span class="sw"></span>Same answer as another team scores 0</div>' : '') +
     '</div>' +
     '<div class="ovact"><button class="act brass" id="startBtn">Start game</button>' + (G ? '<button class="sbtn leatherbtn" id="cancelBtn">Cancel</button>' : '') + '</div>');
   var card = $('ovCard');
@@ -1099,8 +1129,11 @@ function drawSetup() {
       b.onclick = function () { syncNames(); d[sg.dataset.seg] = +b.dataset.v; drawSetup(); };
     });
   });
-  $('uniqT').onclick = function () { syncNames(); d.unique = !d.unique; drawSetup(); };
-  $('uniqT').onkeydown = function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.click(); } };
+  ['typeT', 'uniqT'].forEach(function (id) {
+    var el = $(id); if (!el) return;
+    el.onclick = function () { syncNames(); if (id === 'typeT') d.typing = !d.typing; else d.unique = !d.unique; drawSetup(); };
+    el.onkeydown = function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.click(); } };
+  });
   $('startBtn').onclick = startGame;
   if ($('cancelBtn')) $('cancelBtn').onclick = closeOv;
 }
@@ -1111,7 +1144,7 @@ function startGame() {
   syncNames();
   var d = setupDraft;
   clearInterval(clock); hideStamp();
-  G = E.newGame({ teams: d.teams.slice(0, d.n), secs: d.secs, cats: d.cats, rounds: d.rounds, unique: d.unique });
+  G = E.newGame({ teams: d.teams.slice(0, d.n), secs: d.secs, cats: d.cats, rounds: d.rounds, typing: d.typing, unique: d.typing && d.unique });
   save(); closeOv(); setFlap('?'); render(); renderPad(true);
   banner('Round 1', 'Spin the letter');
 }
@@ -1126,8 +1159,8 @@ window.openRules = function () {
     '<li>Correct and has the letter inside: <b>2 points</b>.</li>' +
     '<li>Correct but no letter: <b>1 point</b>. Wrong: <b>0</b>.</li>' +
     '<li>a, an and the don’t count: “the bus” starts with B.</li>' +
-    (G && G.settings.unique ? '<li>Same answer as another team: <b>0 points</b>.</li>' : '') +
-    '</ul><p style="margin-top:12px;color:var(--ink-2)">Teacher tips: click an answer box to type the answer or choose points. Keys: arrows move, 3 2 1 give points, X marks wrong, Enter types.</p></div>' +
+    (G && G.settings.unique && G.settings.typing !== false ? '<li>Same answer as another team: <b>0 points</b>.</li>' : '') +
+    '</ul><p style="margin-top:12px;color:var(--ink-2)">' + (G && G.settings.typing === false ? 'Teacher tips: click an answer box once for 3, again for 2, then 1, then wrong. Keys: arrows move, 3 2 1 give points, X marks wrong.' : 'Teacher tips: click an answer box to type the answer. Keys: arrows move, 3 2 1 give points, X marks wrong, Enter types.') + '</p></div>' +
     '<div class="ovact"><button class="act brass" id="okBtn">Got it</button></div>');
   $('okBtn').onclick = closeOv;
 };
@@ -1225,7 +1258,7 @@ addEventListener('keydown', function (e) {
   else if (e.key === '3' || e.key === '2' || e.key === '1') { markCell(sel.c, sel.t, +e.key); advanceSel(); }
   else if (e.key === '0' || e.key === 'x' || e.key === 'X') { markCell(sel.c, sel.t, 0); advanceSel(); }
   else if (e.key === 'Backspace' || e.key === 'Delete') { markCell(sel.c, sel.t, null, ''); }
-  else if (e.key === 'Enter') { e.preventDefault(); openAnswer(); }
+  else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (G.settings.typing !== false) openAnswer(); else if (E.cycleCell(G, sel.c, sel.t)) afterMark(sel.c, sel.t, G.grid[sel.c][sel.t].p, true); }
 });
 
 /* ---------- debug (Shift+D) ---------- */

@@ -68,26 +68,56 @@ def save_the_cheese():
 
 
 def scattergories():
-    d = rad("bg", [(0, "#1e1e38"), (1, "#0d0d1a")], cy="35%")
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(f'<circle cx="84" cy="104" r="30" fill="#7c3aed"/>' + text(126, 124, "Scattergories", "Inter", 62, "#f1f5f9", 900, "start", -1))
-    b.append(text(300, 170, "SPIN THE LETTER · RACE THE CLOCK", "Inter", 15, "#94a3b8", 800, ls=4))
-    cx, cy = 190, 330
-    for k in range(26):
-        a = math.radians(k * 360 / 26 - 90)
-        b.append(text(f"{cx+112*math.cos(a):.1f}", f"{cy+112*math.sin(a)+6:.1f}", chr(65 + k), "Inter", 17, "#a855f7" if chr(65+k) != "B" else "#f59e0b", 800))
-    b.append(f'<circle cx="{cx}" cy="{cy}" r="92" fill="#16162a" stroke="#7c3aed" stroke-width="6"/>'
-             f'<circle cx="{cx}" cy="{cy}" r="92" fill="none" stroke="#a855f7" stroke-width="6" filter="url(#k-glow-s)"/>')
-    b.append(text(cx, cy + 34, "B", "Inter", 100, "#f59e0b", 900))
-    b.append('<circle cx="450" cy="330" r="80" fill="none" stroke="#1e1e38" stroke-width="12"/>'
-             '<circle cx="450" cy="330" r="80" fill="none" stroke="#06b6d4" stroke-width="12" stroke-dasharray="380 503" transform="rotate(-90 450 330)" stroke-linecap="round"/>'
-             + text(450, 344, "2:00", "Inter", 40, "#f1f5f9", 900))
-    cats = [("Things in a bathroom", "bathtub"), ("Ice cream flavors", "banana"), ("Animals", "bear"), ("Jobs", "baker"), ("Countries", "")]
-    for k, (c, a) in enumerate(cats):
-        y = 480 + k * 60
-        b.append(rect(50, y, 500, 48, "#16162a", 12, 'stroke="#1e1e38" stroke-width="2"')
-                 + f'<circle cx="80" cy="{y+24}" r="15" fill="#7c3aed"/>' + text(80, y + 30, k + 1, "Inter", 16, "#fff", 800)
-                 + text(108, y + 31, c, "Inter", 19, "#cbd5e1", 600, "start") + text(530, y + 31, a, "Caveat", 28, "#10b981", 700, "end"))
+    d = (rad("lamp", [(0, "#4a4a52"), (.55, "#1d2740"), (1, "#0d1322")], cx="60%", cy="38%", r="80%")
+         + lin("paper", [(0, "#f4df7a"), (1, "#ebcf5f")])
+         + lin("brass", [(0, "#f3d68a"), (.55, "#c99a3b"), (1, "#76561a")])
+         + lin("flapT", [(0, "#3d424d"), (1, "#2e323b")]) + lin("flapB", [(0, "#2a2e36"), (1, "#1e2229")])
+         + lin("sand", [(0, "#f2cf86"), (1, "#c9924a")]))
+    b = [rect(0, 0, 600, 800, "url(#lamp)"), '<rect x="12" y="12" width="576" height="776" rx="22" fill="none" stroke="#c99a3b" stroke-opacity=".38" stroke-width="2" stroke-dasharray="8 6"/>']
+    b.append(text(300, 112, "Scattergories", "Anton", 84, "#f4df7a", ls=1))
+    # legal pad
+    b.append('<g transform="rotate(3 400 520)">' + rect(232, 300, 330, 430, "#d9be55", 6, 'filter="url(#k-drop)"') + "</g>")
+    b.append('<g transform="rotate(1.5 400 520)" filter="url(#k-drop-s)">' + rect(222, 290, 330, 430, "url(#paper)", 6))
+    for k in range(8):
+        y = 372 + k * 44
+        b.append(f'<line x1="222" y1="{y}" x2="552" y2="{y}" stroke="#7aa6d6" stroke-width="2"/>')
+    b.append('<line x1="268" y1="290" x2="268" y2="720" stroke="#d2352b" stroke-width="2"/><line x1="273" y1="290" x2="273" y2="720" stroke="#d2352b" stroke-width="2"/>')
+    b.append(rect(214, 278, 346, 40, "#6a2421", 8))
+    rows = [("Animals", "the bear", 3), ("Sports", "baseball", 3), ("Fruit", "kiwi", 1), ("Jobs", "plumber", 2), ("Colors", "blue", 3)]
+    for k, (c, a, pts) in enumerate(rows):
+        y = 362 + k * 44 + 44
+        b.append(text(250, y - 10, k + 1, "Caveat", 26, "#d2352b", 700))
+        b.append(text(288, y - 12, c, "Figtree", 20, "#1d2742", 800, "start"))
+        b.append(text(392, y - 10, a, "Caveat", 26, "#1d2742", 700, "start"))
+        cx = 522
+        b.append(f'<circle cx="{cx}" cy="{y-18}" r="15" fill="#e2b047" stroke="#76561a" stroke-width="2"/>' + text(cx, y - 10, pts, "Anton", 19, "#2a1d05"))
+    b.append("</g>")
+    # split-flap letter
+    b.append(f'<g filter="url(#k-drop)">{rect(40, 170, 200, 250, "#1b1e25", 18, "stroke=\"#c99a3b\" stroke-width=\"6\"")}</g>')
+    b.append(rect(62, 190, 156, 100, "url(#flapT)", 10) + rect(62, 290, 156, 100, "url(#flapB)", 10))
+    b.append('<clipPath id="ft"><rect x="62" y="190" width="156" height="100"/></clipPath><clipPath id="fb"><rect x="62" y="291" width="156" height="99"/></clipPath>')
+    b.append(text(140, 372, "B", "Anton", 196, "#f3e9cf", extra='clip-path="url(#ft)"') + text(140, 372, "B", "Anton", 196, "#f3e9cf", extra='clip-path="url(#fb)"'))
+    b.append('<rect x="56" y="289" width="168" height="3" fill="#0c0e12"/><rect x="52" y="284" width="9" height="12" rx="3" fill="url(#brass)"/><rect x="219" y="284" width="9" height="12" rx="3" fill="url(#brass)"/>')
+    b.append(rect(90, 398, 100, 14, "url(#brass)", 4))
+    # hourglass
+    hx, hy = 70, 470
+    g = (f'<g transform="translate({hx} {hy}) scale(.7)">'
+         '<path d="M52 36 C52 112 102 138 107 160 C102 182 52 208 52 284 L168 284 C168 208 118 182 113 160 C118 138 168 112 168 36 Z" fill="rgba(200,225,255,.14)" stroke="rgba(255,255,255,.55)" stroke-width="3"/>'
+         '<clipPath id="ht"><path d="M52 36 C52 112 102 138 107 160 L113 160 C118 138 168 112 168 36 Z"/></clipPath>'
+         '<clipPath id="hb"><path d="M107 160 C102 182 52 208 52 284 L168 284 C168 208 118 182 113 160 Z"/></clipPath>'
+         '<rect x="40" y="105" width="140" height="60" fill="url(#sand)" clip-path="url(#ht)"/>'
+         '<path d="M40 284 L40 250 Q110 222 180 250 L180 284Z" fill="url(#sand)" clip-path="url(#hb)"/>'
+         '<line x1="110" y1="160" x2="110" y2="236" stroke="#e7b96a" stroke-width="4" stroke-dasharray="6 4"/>'
+         '<rect x="26" y="24" width="10" height="272" rx="4" fill="url(#brass)"/><rect x="184" y="24" width="10" height="272" rx="4" fill="url(#brass)"/>'
+         '<rect x="14" y="12" width="192" height="26" rx="9" fill="url(#brass)"/><rect x="14" y="282" width="192" height="26" rx="9" fill="url(#brass)"/></g>')
+    b.append(g)
+    # TIME! stamp
+    b.append('<g transform="rotate(-9 330 230)" opacity=".92"><rect x="252" y="182" width="170" height="86" rx="10" fill="none" stroke="#d2352b" stroke-width="5"/>'
+             '<rect x="260" y="190" width="154" height="70" rx="6" fill="none" stroke="#d2352b" stroke-width="2"/>' + text(337, 248, "TIME!", "Anton", 58, "#d2352b", ls=2) + "</g>")
+    # team tents
+    for k, (em, col) in enumerate([("🦁", "#e5483d"), ("🦅", "#2f7fe0"), ("🐝", "#f2b51d"), ("🐸", "#2fb36a")]):
+        x = 40 + k * 134
+        b.append(f'<g filter="url(#k-drop-s)">{rect(x, 742, 120, 40, col, 10)}</g>' + emoji(x + 24, 772, em, 24) + text(x + 92, 774, [12, 9, 15, 7][k], "Anton", 28, "#1d2742" if col == "#f2b51d" else "#fff"))
     return svg(d, "".join(b))
 
 

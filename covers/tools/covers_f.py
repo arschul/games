@@ -185,44 +185,66 @@ def wave():
 
 
 def wheel_quest():
-    d = rad("bg", [(0, "#2a2150"), (1, "#141022")], cy="30%")
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 70, "PHIL YOUNG'S ENGLISH SCHOOL", "JetBrains Mono", 13, "#ff6f61", 700, ls=4))
-    b.append(text(300, 148, "Wheel Quest", "Fraunces", 82, "#ff6f61", 800))
-    b.append(text(300, 188, "Spin · guess · solve the sentence", "Space Grotesk", 21, "#c9c2e8", 500))
-    # puzzle board
-    puzzle = ["I _ _ V E", "A _ O G"]
-    words = ["I LOVE", "MY DOG"]
-    shown = set("IVEOG")
+    d = (lin("wqsky", [(0, "#060b18"), (.6, "#101d38"), (1, "#2a3a5e")]) + lin("wqsea", [(0, "#16294a"), (1, "#050b17")])
+         + lin("wqdeck", [(0, "#7a4c24"), (1, "#3f2410")]) + lin("wqboard", [(0, "#7a4c24"), (.5, "#5c3818"), (1, "#3f2410")])
+         + rad("wqbrass", [(0, "#fff0b0"), (.35, "#e3b85a"), (.8, "#9a6c1e"), (1, "#5a3c0a")], cx="40%", cy="35%")
+         + lin("wqtile", [(0, "#1f3a5a"), (1, "#0c1a2e")]) + rad("wqcloth", [(0, "#fffaf0"), (.6, "#efe4cc"), (1, "#d6c7a3")], cx="35%", cy="25%")
+         + rad("wqmoon", [(.55, "#f4ecd0"), (1, "rgba(244,236,208,0)")], cy="50%"))
+    b = [rect(0, 0, 600, 800, "url(#wqsky)"), stars(53, 70, y1=300)]
+    b.append('<circle cx="470" cy="352" r="46" fill="url(#wqmoon)" opacity=".35"/><circle cx="470" cy="352" r="22" fill="#f4ecd0"/>')
+    b.append(rect(0, 362, 600, 70, "url(#wqsea)"))
+    for k in range(8):
+        w = 16 + k * 8
+        b.append(rect(470 - w / 2, 368 + k * 7.5, w, 2.5, "#f4ecd0", 1, f'opacity="{.5 - k * .05:.2f}"'))
+    b.append(rect(0, 430, 600, 370, "url(#wqdeck)"))
+    for k in range(9):
+        b.append(rect(0, 470 + k * 42, 600, 2, "#2a170a", 0, 'opacity=".7"'))
+    b.append(rect(0, 424, 600, 14, "#6b2e1f", 3))
+    b.append(text(300, 92, "Wheel Quest", "Alfa Slab One", 76, "#3a1c08"))
+    b.append(text(300, 86, "Wheel Quest", "Alfa Slab One", 76, "#f3d27a"))
+    b.append(text(300, 124, "Spin, guess and solve the sentence", "Hanken Grotesk", 22, "#e6d6b0", 700))
+    # nameboard
+    b.append(f'<g filter="url(#k-drop)">{rect(48, 150, 504, 176, "#6b2e1f", 16)}{rect(60, 162, 480, 152, "url(#wqboard)", 10)}</g>')
+    words, shown = ["SPIN THE", "WHEEL"], set("SNTHE")
     for r, w in enumerate(words):
-        x0 = (600 - len(w) * 50) / 2
+        x0 = (600 - len(w) * 54) / 2
         for k, ch in enumerate(w):
-            x, y = x0 + k * 50, 218 + r * 62
+            x, y = x0 + k * 54 + 3, 176 + r * 68
             if ch == " ":
                 continue
-            b.append(rect(x, y, 44, 54, "#f4f1ff" if ch in shown else "#4fd8b0", 6, 'stroke="#141022" stroke-width="2"')
-                     + (text(x + 22, y + 40, ch, "Fraunces", 32, "#141022", 800) if ch in shown else ""))
-    # wheel
-    cx, cy, R = 300, 590, 180
-    cols = ["#4fd8b0", "#5fb8ff", "#b98cff", "#ff6f61", "#ffd479", "#ff5470"]
-    vals = ["300", "500", "BANK", "200", "800", "×2", "400", "600", "LOSE", "250", "700", "150"]
+            if ch in shown:
+                b.append(rect(x, y, 48, 60, "url(#wqcloth)", 6, 'stroke="#c99a3b" stroke-width="3"') + text(x + 24, y + 46, ch, "Alfa Slab One", 38, "#1b2c4a"))
+            else:
+                b.append(rect(x, y, 48, 60, "url(#wqtile)", 6, 'stroke="#c99a3b" stroke-width="3"') + f'<circle cx="{x+24}" cy="{y+30}" r="8" fill="#c99a3b" opacity=".4"/>')
+    # helm
+    cx, cy, R = 300, 600, 160
+    for k in range(8):
+        a = math.radians(k * 45)
+        x1, y1 = cx + 150 * math.sin(a), cy - 150 * math.cos(a)
+        x2, y2 = cx + 205 * math.sin(a), cy - 205 * math.cos(a)
+        b.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="#4a1d10" stroke-width="18" stroke-linecap="round"/><line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="#a0553a" stroke-width="7" stroke-linecap="round"/>')
+        b.append(f'<circle cx="{x2:.1f}" cy="{y2:.1f}" r="11" fill="#7a3522" stroke="#2a0f07" stroke-width="2"/>')
+    b.append(f'<circle cx="{cx}" cy="{cy}" r="{R+18}" fill="#6b2e1f" stroke="#2a0f07" stroke-width="4" filter="url(#k-drop)"/><circle cx="{cx}" cy="{cy}" r="{R+9}" fill="none" stroke="#c99a3b" stroke-width="3"/>')
+    paint = [("#1f3a5a", "#f3e6c6"), ("#efe4cc", "#6b2e1f"), ("#1d6f66", "#f3e6c6"), ("#c98a2b", "#24180f")]
+    vals = ["800", "300", "BANK", "700", "1000", "500", "LOSE", "900", "400", "600", "200", "800", "300", "BANK", "700", "500"]
     n = len(vals)
     for k, v in enumerate(vals):
-        a0, a1 = math.radians(k * 360 / n - 90), math.radians((k + 1) * 360 / n - 90)
-        p0 = (cx + R * math.cos(a0), cy + R * math.sin(a0))
-        p1 = (cx + R * math.cos(a1), cy + R * math.sin(a1))
-        col = "#1c1733" if v == "LOSE" else cols[k % 6]
-        b.append(f'<path d="M{cx} {cy} L{p0[0]:.1f} {p0[1]:.1f} A {R} {R} 0 0 1 {p1[0]:.1f} {p1[1]:.1f} Z" fill="{col}" stroke="#141022" stroke-width="3"/>')
-        am = (a0 + a1) / 2
-        tx, ty = cx + R * .68 * math.cos(am), cy + R * .68 * math.sin(am)
-        b.append(f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="middle" dominant-baseline="middle" font-family="\'Space Grotesk\'" font-weight="700" font-size="22" '
-                 f'fill="{"#fff" if v == "LOSE" else "#141022"}" transform="rotate({math.degrees(am)+90:.1f} {tx:.1f} {ty:.1f})">{v}</text>')
-    b.append(f'<circle cx="{cx}" cy="{cy}" r="{R}" fill="none" stroke="#e8b04b" stroke-width="10"/>')
-    for k in range(24):
-        a = math.radians(k * 15)
-        b.append(f'<circle cx="{cx + (R+1)*math.cos(a):.1f}" cy="{cy + (R+1)*math.sin(a):.1f}" r="4" fill="#ffd479"/>')
-    b.append(f'<circle cx="{cx}" cy="{cy}" r="34" fill="#e8b04b" stroke="#141022" stroke-width="4"/>' + emoji(cx, cy + 12, "⭐", 32))
-    b.append(f'<polygon points="{cx-18},{cy-R-26} {cx+18},{cy-R-26} {cx},{cy-R+12}" fill="#ff5470" stroke="#fff" stroke-width="3"/>')
+        a0, a1 = math.radians(k * 360 / n - 90 - 11.25), math.radians((k + 1) * 360 / n - 90 - 11.25)
+        p0, p1 = (cx + R * math.cos(a0), cy + R * math.sin(a0)), (cx + R * math.cos(a1), cy + R * math.sin(a1))
+        col, ink = ("#c22a22", "#fff4e0") if v == "BANK" else ("#2b3447", "#a9c4ff") if v == "LOSE" else paint[k % 4]
+        b.append(f'<path d="M{cx} {cy} L{p0[0]:.1f} {p0[1]:.1f} A {R} {R} 0 0 1 {p1[0]:.1f} {p1[1]:.1f} Z" fill="{col}" stroke="#c99a3b" stroke-width="2"/>')
+        am = math.degrees((a0 + a1) / 2) + 90
+        if v in ("BANK", "LOSE"):
+            b.append(f'<g transform="rotate({am:.1f} {cx} {cy})">' + (f'<path transform="translate({cx} {cy-R+30})" d="M3 -15 L-7 3 H0 L-3 17 L9 -3 H2 Z" fill="#ffe27a"/>' if v == "BANK" else f'<g transform="translate({cx} {cy-R+30})" fill="none" stroke="#a9c4ff" stroke-width="3.5" stroke-linecap="round"><circle cy="-11" r="4"/><path d="M0 -7 V15 M-8 -1 H8 M-11 7 Q-10 17 0 17 Q10 17 11 7"/></g>') + '</g>')
+        else:
+            st = 22 if len(v) > 3 else 25
+            b.append(f'<g transform="rotate({am:.1f} {cx} {cy})">' + "".join(text(cx, cy - R + 26 + j * st, ch, "Alfa Slab One", 24 if len(v) > 3 else 27, ink) for j, ch in enumerate(v)) + '</g>')
+    b.append(f'<circle cx="{cx}" cy="{cy}" r="44" fill="url(#wqbrass)" stroke="#5a3c0a" stroke-width="3"/>')
+    b.append(f'<path transform="translate({cx} {cy})" d="M0 -34 L6 -6 L34 0 L6 6 L0 34 L-6 6 L-34 0 L-6 -6Z" fill="#6b2e1f"/><circle cx="{cx}" cy="{cy}" r="6" fill="#f3d27a"/>')
+    b.append(f'<path d="M{cx} {cy-R+8} L{cx-13} {cy-R-48} Q{cx} {cy-R-66} {cx+13} {cy-R-48} Z" fill="url(#wqbrass)" stroke="#4a3208" stroke-width="3" filter="url(#k-drop-s)"/><circle cx="{cx}" cy="{cy-R-48}" r="6" fill="#2a1a0c"/>')
+    # coins
+    for x, y in [(96, 700), (122, 722), (500, 690), (476, 724)]:
+        b.append(f'<circle cx="{x}" cy="{y}" r="17" fill="url(#wqbrass)" stroke="#4a3208" stroke-width="2"/>')
     return svg(d, "".join(b))
 
 

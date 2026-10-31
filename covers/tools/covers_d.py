@@ -445,31 +445,56 @@ def record_breaker():
 
 
 def resistance():
-    d = rad("bg", [(0, "#1a2130"), (1, "#0a0d13")], cy="30%")
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(60, 90, "OPERATION TRACKER · SOCIAL DEDUCTION", "IBM Plex Mono", 13, "#8a94ac", 500, "start", 3))
-    b.append(text(60, 172, "The", "Playfair Display", 52, "#edf0f6", 700, "start", italic=True))
-    b.append(text(60, 252, "Resistance", "Playfair Display", 92, "#f0b441", 900, "start"))
-    b.append('<line x1="60" y1="276" x2="540" y2="276" stroke="#27314a" stroke-width="2"/>')
-    # masks / agents
-    for k in range(5):
-        x = 92 + k * 104
-        spy = k in (1, 3)
-        b.append(f'<g transform="translate({x} 400)" filter="url(#k-drop-s)">'
-                 f'<circle cx="0" cy="-34" r="30" fill="#1a2130" stroke="{"#e5484d" if spy else "#3ecf8e"}" stroke-width="3"/>'
-                 f'<path d="M-44 54 Q -40 0 0 -2 Q 40 0 44 54 Z" fill="#1a2130" stroke="{"#e5484d" if spy else "#3ecf8e"}" stroke-width="3"/>'
-                 + (f'<rect x="-22" y="-44" width="44" height="14" rx="7" fill="#e5484d"/>' if spy else '<circle cx="-10" cy="-36" r="4" fill="#edf0f6"/><circle cx="10" cy="-36" r="4" fill="#edf0f6"/>')
-                 + "</g>")
-    b.append(text(300, 520, "Who is the spy?", "Playfair Display", 34, "#edf0f6", 700, italic=True))
-    # mission track
-    res = ["ok", "fail", "ok", None, None]
-    for k, rr in enumerate(res):
-        x = 110 + k * 95
-        col = {"ok": "#3ecf8e", "fail": "#e5484d"}.get(rr, "#27314a")
-        b.append(f'<circle cx="{x}" cy="630" r="38" fill="{col if rr else "#121825"}" stroke="{col}" stroke-width="4"/>'
-                 + text(x, 640, {"ok": "✓", "fail": "✕"}.get(rr, f"0{k+1}"), "IBM Plex Mono", 28 if rr else 20, "#0a0d13" if rr else "#5a6478", 700))
-    b.append(text(300, 712, "OP-01 → OP-05", "IBM Plex Mono", 15, "#8a94ac", 500, ls=4))
-    b.append(footer("5–10 PLAYERS · FIND THE LIARS", "IBM Plex Mono", "#f0b441", 14, 3, 770, 600))
+    D = "Saira Extra Condensed"
+    d = (lin("rsoak", [(0, "#4a2f1a"), (1, "#22150b")])
+         + rad("rslamp", [(0, "#ffd08a"), (1, "#ffd08a")], cx="45%", cy="45%")
+         + '<radialGradient id="rspool" cx="48%" cy="48%" r="60%"><stop offset="0" stop-color="#ffce82" stop-opacity=".38"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>'
+         + rad("rspin", [(0, "#ff8a80"), (.35, "#e0473f"), (1, "#7c1410")], cx="34%", cy="28%")
+         + rad("rsbrass", [(0, "#fff3c4"), (.4, "#d8ae52"), (1, "#6e5017")], cx="34%", cy="28%"))
+    b = [rect(0, 0, 600, 800, "url(#rsoak)")]
+    for x in range(0, 600, 7):
+        b.append(f'<line x1="{x}" y1="0" x2="{x + 3}" y2="800" stroke="#000" stroke-opacity="{.05 + (x * 37 % 11) / 120:.3f}" stroke-width="1.5"/>')
+    for x in (150, 300, 450):
+        b.append(f'<line x1="{x}" y1="0" x2="{x}" y2="800" stroke="#000" stroke-opacity=".45" stroke-width="2"/>')
+    b.append(rect(0, 0, 600, 800, "url(#rspool)"))
+    # map
+    r = random.Random(5)
+    m = [f'<g transform="translate(46 300) rotate(-3)" filter="url(#k-drop)">', rect(0, 0, 510, 400, "#e8dcc0", 4)]
+    y = 18
+    while y < 400:
+        m.append(f'<line x1="0" y1="{y}" x2="510" y2="{y + r.uniform(-6, 6):.0f}" stroke="#d3c29e" stroke-width="4"/>'); y += r.randint(34, 52)
+    x = 22
+    while x < 510:
+        m.append(f'<line x1="{x}" y1="0" x2="{x + r.uniform(-8, 8):.0f}" y2="400" stroke="#d3c29e" stroke-width="4"/>'); x += r.randint(44, 66)
+    m.append('<path d="M6 386 L504 34" stroke="#c9b48a" stroke-width="12"/><path d="M17 300 C 120 260, 200 360, 330 320 S 470 250, 493 290" stroke="#9fbcb7" stroke-width="34" fill="none"/>')
+    m.append('<path d="M17 300 C 120 260, 200 360, 330 320 S 470 250, 493 290" stroke="#b9d0cb" stroke-width="20" fill="none"/>')
+    sites = [(70, 250), (170, 110), (265, 240), (360, 105), (440, 230)]
+    dd = f"M{sites[0][0]} {sites[0][1]}" + "".join(f" Q{(a[0]+c[0])/2} {max(a[1], c[1]) + 30} {c[0]} {c[1]}" for a, c in zip(sites, sites[1:]))
+    m.append(f'<path d="{dd}" transform="translate(2 5)" stroke="#000" stroke-opacity=".25" stroke-width="5" fill="none"/><path d="{dd}" stroke="#a8221d" stroke-width="4" fill="none"/>')
+    # scorch at site 2 (fail), flags at 1 and 3
+    m.append('<circle cx="170" cy="110" r="62" fill="#3a1a0a" opacity=".35" filter="url(#k-glow)"/>')
+    for k, (sx, sy) in enumerate(sites):
+        done = k < 3
+        m.append(f'<circle cx="{sx}" cy="{sy}" r="15" fill="url(#{"rsbrass" if done else "rspin"})" filter="url(#k-drop-s)"/>')
+    for sx, sy in (sites[0], sites[2]):
+        m.append(f'<g filter="url(#k-drop-s)"><rect x="{sx - 2}" y="{sy - 86}" width="4" height="86" fill="#e9d29a" stroke="#6e5017"/><path d="M{sx + 2} {sy - 84} C {sx + 26} {sy - 92}, {sx + 40} {sy - 76}, {sx + 74} {sy - 84} L {sx + 66} {sy - 64} L {sx + 74} {sy - 44} C {sx + 40} {sy - 36}, {sx + 26} {sy - 52}, {sx + 2} {sy - 44} Z" fill="#2f7fe0" stroke="#173d7a" stroke-width="2"/></g>')
+    m.append('<g transform="translate(176 64) rotate(-9)"><rect x="-74" y="-26" width="148" height="52" rx="7" fill="#fff4e8" opacity=".55" stroke="#c62f2a" stroke-width="5"/>' + text(0, 16, "FAILED", D, 40, "#c62f2a", 900, ls=2) + '</g>')
+    # current mission ring + team pawns
+    m.append('<circle cx="360" cy="105" r="30" fill="none" stroke="#e8c264" stroke-width="5"/>')
+    for k, (col, ini) in enumerate([("#f2a81d", "An"), ("#1fb3a3", "Bru"[:2]), ("#8e5bd8", "Ca")]):
+        px = 318 + k * 42
+        m.append(f'<g filter="url(#k-drop-s)"><circle cx="{px}" cy="52" r="19" fill="{col}"/><circle cx="{px - 6}" cy="45" r="6" fill="#fff" opacity=".5"/></g>' + text(px, 60, ini, D, 20, "#fff" if k else "#2a2118", 900))
+    for tx, ty in ((14, 14), (496, 14), (14, 386), (496, 386)):
+        m.append(f'<circle cx="{tx}" cy="{ty}" r="9" fill="url(#rsbrass)"/>')
+    m.append('</g>')
+    b.append("".join(m))
+    # title
+    b.append(text(300, 116, "The", D, 64, "#f3e7c9", 700))
+    b.append(text(303, 252, "Resistance", D, 168, "#000", 900, extra='opacity=".35"'))
+    b.append(text(300, 246, "Resistance", D, 168, "#f3e7c9", 900))
+    b.append('<rect x="210" y="262" width="180" height="6" rx="3" fill="#c62f2a"/>')
+    # lamp glow corner + footer
+    b.append(text(300, 772, "Who can you trust?", "Libre Franklin", 26, "#f3e7c9", 800))
     return svg(d, "".join(b))
 
 

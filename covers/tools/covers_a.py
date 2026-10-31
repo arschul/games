@@ -272,55 +272,92 @@ def hexagon(cx, cy, r, attrs):
 
 
 def bee():
+    # apiary at dusk: pine hive frame, wax honeycomb cells, Fraunces + Lexend (matches the Oct 2026 restyle)
     defs = '''
-    <radialGradient id="bg" cx="50%" cy="40%" r="75%">
-      <stop offset="0" stop-color="#fffdf5"/><stop offset="1" stop-color="#fdeec4"/>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#160d2a"/><stop offset=".55" stop-color="#3d2347"/><stop offset="1" stop-color="#d97b3f"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="78%" cy="66%" r="45%">
+      <stop offset="0" stop-color="#ffb347" stop-opacity=".9"/><stop offset=".4" stop-color="#ffb347" stop-opacity=".35"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ddb07a"/><stop offset=".45" stop-color="#b9844b"/><stop offset="1" stop-color="#93622f"/>
+    </linearGradient>
+    <radialGradient id="comb" cx="50%" cy="35%" r="75%">
+      <stop offset="0" stop-color="#fbe2a0"/><stop offset=".75" stop-color="#e8bf62"/><stop offset="1" stop-color="#d6a64a"/>
     </radialGradient>
     <linearGradient id="honey" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFD24D"/><stop offset="1" stop-color="#E69F00"/>
+      <stop offset="0" stop-color="#ffd76b"/><stop offset=".5" stop-color="#f2a516"/><stop offset="1" stop-color="#c97a08"/>
     </linearGradient>
-    <filter id="sh"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#b07800" flood-opacity=".28"/></filter>
-    <filter id="tsh"><feDropShadow dx="0" dy="4" stdDeviation="0" flood-color="#b36b00" flood-opacity="1"/></filter>
+    <radialGradient id="wax" cx="40%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#fffaf0"/><stop offset=".6" stop-color="#f6e3b0"/><stop offset="1" stop-color="#e2c27a"/>
+    </radialGradient>
+    <radialGradient id="bad" cx="40%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#ffd6cc"/><stop offset=".6" stop-color="#f08a74"/><stop offset="1" stop-color="#c4442c"/>
+    </radialGradient>
+    <filter id="sh"><feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#3a1f00" flood-opacity=".45"/></filter>
+    <filter id="tsh"><feDropShadow dx="0" dy="4" stdDeviation="0" flood-color="#5a3412" flood-opacity="1"/></filter>
+    <clipPath id="win"><rect x="44" y="290" width="512" height="420" rx="10"/></clipPath>
     '''
-    b = ['<rect width="600" height="800" fill="url(#bg)"/>']
-    # faint honeycomb
-    r = 34
-    for row in range(-1, 15):
-        for col in range(-1, 11):
-            cx = col * r * 1.5
-            cy = row * r * math.sqrt(3) + (r * math.sqrt(3) / 2 if col % 2 else 0)
-            b.append(hexagon(cx, cy, r - 2, 'fill="none" stroke="#FFB800" stroke-opacity=".16" stroke-width="2"'))
-    # title
-    b.append('<text x="300" y="118" text-anchor="middle" font-family="\'Fredoka One\'" font-size="80" fill="url(#honey)" stroke="#fff" stroke-width="8" paint-order="stroke" filter="url(#tsh)">Spelling Bee</text>')
-    b.append('<text x="300" y="202" text-anchor="middle" font-family="\'Fredoka One\'" font-size="70" fill="url(#honey)" stroke="#fff" stroke-width="8" paint-order="stroke" filter="url(#tsh)">Showdown</text>')
-    b.append('<text x="300" y="246" text-anchor="middle" font-family="Nunito" font-weight="900" font-size="16" letter-spacing="4" fill="#2D2D2D">THE ULTIMATE WORD TOURNAMENT</text>')
-    # letter hive: S P E L L I N G (center E)
-    R = 70
-    cx0, cy0 = 300, 480
-    ring = ["S", "P", "L", "I", "N", "G"]
-    cols = ["#FF6B6B", "#38BDF8", "#84CC16", "#A855F7", "#4ECDC4", "#FF6B6B"]
-    for k, ch in enumerate(ring):
-        a = math.pi / 180 * (60 * k - 90)
-        x, y = cx0 + R * math.sqrt(3) * math.cos(a), cy0 + R * math.sqrt(3) * math.sin(a)
-        b.append('<g filter="url(#sh)">' + hexagon(x, y, R - 6, f'fill="#fff" stroke="{cols[k]}" stroke-width="6" stroke-linejoin="round"') + '</g>')
-        b.append(f'<text x="{x:.1f}" y="{y+24:.1f}" text-anchor="middle" font-family="\'Fredoka One\'" font-size="66" fill="#2D2D2D">{ch}</text>')
-    b.append('<g filter="url(#sh)">' + hexagon(cx0, cy0, R - 6, 'fill="url(#honey)" stroke="#E69F00" stroke-width="6" stroke-linejoin="round"') + '</g>')
-    b.append(f'<text x="{cx0}" y="{cy0+24}" text-anchor="middle" font-family="\'Fredoka One\'" font-size="66" fill="#fff">E</text>')
-    # flight path + bee
-    b.append('<path d="M70 690 C 150 600, 60 560, 120 470 S 90 330, 170 300" fill="none" stroke="#2D2D2D" stroke-opacity=".35" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>')
-    bx, by = 470, 680
-    b.append(f'<g transform="translate({bx} {by}) rotate(-14)">'
-             '<ellipse cx="-8" cy="-40" rx="30" ry="22" fill="#e9f7ff" stroke="#38BDF8" stroke-width="3" opacity=".9" transform="rotate(-25 -8 -40)"/>'
-             '<ellipse cx="22" cy="-42" rx="26" ry="19" fill="#e9f7ff" stroke="#38BDF8" stroke-width="3" opacity=".9" transform="rotate(20 22 -42)"/>'
-             '<ellipse cx="0" cy="0" rx="58" ry="40" fill="#FFB800" stroke="#2D2D2D" stroke-width="5"/>'
-             '<path d="M-22 -37 Q -30 0 -22 37 L -8 39 Q -16 0 -8 -39 Z" fill="#2D2D2D"/>'
-             '<path d="M8 -39 Q 0 0 8 39 L 22 37 Q 14 0 22 -37 Z" fill="#2D2D2D"/>'
-             '<polygon points="-58,0 -76,-6 -76,6" fill="#2D2D2D"/>'
-             '<circle cx="38" cy="-8" r="9" fill="#2D2D2D"/><circle cx="41" cy="-11" r="3" fill="#fff"/>'
-             '<path d="M30 10 Q 40 18 50 8" fill="none" stroke="#2D2D2D" stroke-width="4" stroke-linecap="round"/>'
-             '<path d="M40 -36 Q 46 -60 60 -62" fill="none" stroke="#2D2D2D" stroke-width="4" stroke-linecap="round"/><circle cx="62" cy="-62" r="5" fill="#2D2D2D"/>'
-             '</g>')
-    b.append('<text x="300" y="776" text-anchor="middle" font-family="Nunito" font-weight="800" font-size="15" letter-spacing="3" fill="#8a6a1a">2–16 PLAYERS · A1 TO B2</text>')
+    b = ['<rect width="600" height="800" fill="url(#sky)"/><rect width="600" height="800" fill="url(#sun)"/>']
+    import random
+    rnd = random.Random(7)
+    for _ in range(40):
+        b.append(f'<circle cx="{rnd.random()*600:.0f}" cy="{rnd.random()*240:.0f}" r="{0.7+rnd.random()*1.3:.1f}" fill="#fff" opacity=".7"/>')
+    # hills with hive boxes
+    b.append('<path d="M0 760 Q 150 700 300 735 T 600 715 L600 800 L0 800Z" fill="#2a1d2c"/>')
+    for x in (40, 470):
+        b.append(f'<g fill="#1b1219"><rect x="{x}" y="700" width="70" height="56" rx="3"/><rect x="{x-6}" y="690" width="82" height="13" rx="3"/></g>')
+    # title on a pine plank
+    b.append('<rect x="24" y="40" width="552" height="210" rx="22" fill="url(#pine)" filter="url(#sh)"/>')
+    for k in range(9):
+        y = 58 + k * 22
+        b.append(f'<path d="M36 {y} Q 300 {y + (6 if k % 2 else -5)} 564 {y}" stroke="#5a3412" stroke-opacity=".14" stroke-width="2" fill="none"/>')
+    for (x, y) in ((44, 60), (556, 60), (44, 230), (556, 230)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="8" fill="#d9a63a" stroke="#7a5212" stroke-width="2"/>')
+    b.append('<text x="300" y="132" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="84" fill="#fff3d6" filter="url(#tsh)">Spelling Bee</text>')
+    b.append('<text x="300" y="218" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="78" fill="#ffd36a" filter="url(#tsh)">Showdown</text>')
+    # honeycomb frame window
+    b.append('<rect x="28" y="274" width="544" height="452" rx="22" fill="url(#pine)" filter="url(#sh)"/>')
+    b.append('<rect x="44" y="290" width="512" height="420" rx="10" fill="url(#comb)"/>')
+    r = 30
+    g = ['<g clip-path="url(#win)">']
+    for row in range(0, 10):
+        for col in range(0, 13):
+            cx = 40 + col * r * 1.5
+            cy = 290 + row * r * math.sqrt(3) + (r * math.sqrt(3) / 2 if col % 2 else 0)
+            g.append(hexagon(cx, cy, r - 2, 'fill="none" stroke="#c99a3c" stroke-opacity=".5" stroke-width="2.5"'))
+    g.append('</g>')
+    b.append("".join(g))
+    # letter cells (pointy-top hexes): B E E filled with honey, one cracked cell
+    def cell(x, y, s, ch, fill, ink, crack=False):
+        pts = " ".join(f"{x + s*math.cos(math.pi/180*(60*k-90)):.1f},{y + s*math.sin(math.pi/180*(60*k-90)):.1f}" for k in range(6))
+        out = f'<g filter="url(#sh)"><polygon points="{pts}" fill="{fill}"/></g>'
+        if crack:
+            out += f'<path d="M{x-20} {y-s*.8} L{x+4} {y-6} L{x-8} {y+10} L{x+18} {y+s*.85}" stroke="#7a1a0c" stroke-width="4" fill="none" stroke-linecap="round"/>'
+        out += f'<text x="{x}" y="{y+s*.38:.1f}" text-anchor="middle" font-family="Lexend" font-weight="700" font-size="{s*1.05:.0f}" fill="{ink}">{ch}</text>'
+        return out
+    word = [("S", "url(#honey)", "#3a1f00"), ("P", "url(#honey)", "#3a1f00"), ("E", "url(#honey)", "#3a1f00"), ("L", "url(#bad)", "#5c0d06"), ("L", "url(#honey)", "#3a1f00")]
+    s0 = 56
+    x0 = 300 - (len(word) - 1) * s0 * 0.93
+    for i, (ch, f, ink) in enumerate(word):
+        b.append(cell(x0 + i * s0 * 1.86, 420, s0, ch, f, ink, crack=(ch == "L" and f == "url(#bad)")))
+    b.append(cell(300 - s0 * 0.93, 560, s0, "?", "url(#wax)", "#a8650a"))
+    b.append(cell(300 + s0 * 0.93, 560, s0, "!", "url(#wax)", "#a8650a"))
+    # stamp
+    b.append('<g transform="translate(410 640) rotate(-9)"><rect x="-108" y="-38" width="216" height="76" rx="10" fill="#fff8e8" fill-opacity=".92" stroke="#b81d10" stroke-width="5"/>'
+             '<rect x="-100" y="-30" width="200" height="60" rx="6" fill="none" stroke="#b81d10" stroke-width="2"/>'
+             '<text x="0" y="17" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="48" fill="#b81d10">Stung!</text></g>')
+    # bee
+    bx, by = 128, 640
+    b.append(f'<g transform="translate({bx} {by}) rotate(-12) scale(.9)">'
+             '<ellipse cx="-10" cy="-38" rx="28" ry="19" fill="#eaf6ff" fill-opacity=".9" stroke="#5a3a12" stroke-width="3" transform="rotate(-25 -10 -38)"/>'
+             '<ellipse cx="22" cy="-40" rx="24" ry="17" fill="#eaf6ff" fill-opacity=".9" stroke="#5a3a12" stroke-width="3" transform="rotate(20 22 -40)"/>'
+             '<ellipse cx="0" cy="0" rx="52" ry="36" fill="#f2a516" stroke="#3a2206" stroke-width="5"/>'
+             '<path d="M-20 -33 Q -27 0 -20 33 M2 -36 Q -5 0 2 36 M24 -31 Q 17 0 24 31" stroke="#3a2206" stroke-width="11" fill="none" stroke-linecap="round"/>'
+             '<polygon points="-52,0 -70,-6 -70,6" fill="#3a2206"/>'
+             '<circle cx="38" cy="-8" r="6" fill="#3a2206"/></g>')
+    b.append('<text x="300" y="776" text-anchor="middle" font-family="Lexend" font-weight="600" font-size="20" fill="#fbe9c8">2–16 players · A1 to B2</text>')
     return wrap(defs, "".join(b))
 
 

@@ -221,20 +221,56 @@ def orbit():
 
 
 def order_up():
-    d = rad("bg", [(0, "#0f3460"), (1, "#1a1a2e")], cy="30%")
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 136, 'Order <tspan fill="#e94560">Up!</tspan>', "Montserrat", 104, "#ffffff", 900, extra='filter="url(#k-drop)"'))
-    b.append(text(300, 180, "SMALLEST → BIGGEST · FASTEST TEAM WINS", "Montserrat", 15, "#c9c9d9", 700, ls=2))
-    items = [("🐜", "ant"), ("🐭", "mouse"), ("🐈", "cat"), ("🐴", "horse"), ("🐘", "elephant")]
-    for k, (e, w) in enumerate(items):
-        y = 224 + k * 104
-        x = 70 + (14 if k == 2 else 0)
-        rot = -3 if k == 2 else 0
-        b.append(f'<g transform="rotate({rot} 300 {y+44})" filter="url(#k-drop-s)">{rect(x, y, 460, 88, "#1e2a45", 16, "stroke=\"#f5a623\" stroke-width=\"2.5\"" if k != 2 else "stroke=\"#e94560\" stroke-width=\"4\"")}'
-                 + f'<circle cx="{x+46}" cy="{y+44}" r="28" fill="#e94560"/>' + text(x + 46, y + 55, k + 1, "Montserrat", 30, "#fff", 900)
-                 + emoji(x + 128, y + 62, e, 46) + text(x + 180, y + 58, w, "Montserrat", 32, "#eaeaea", 800, "start")
-                 + "".join(f'<rect x="{x+410}" y="{y+30+i*12}" width="26" height="4" rx="2" fill="#888"/>' for i in range(3)) + "</g>")
-    b.append(footer("DRAG · DROP · RACE", "Montserrat", "#f5a623", 15, 6, 778, 800))
+    """Diner kitchen: neon sign, brushed-steel ticket rack, paper tickets, order bell."""
+    d = (lin("wall", [(0, "#14282e"), (1, "#0b161a")])
+         + rad("lamp", [(0, "#ff9a3c"), (1, "#ff9a3c00")], cy="0%", r="60%")
+         + lin("steel", [(0, "#d5dde1"), (.6, "#9aa6ad"), (1, "#7d8a92")])
+         + lin("groove", [(0, "#20272b"), (1, "#3a454b")])
+         + lin("paper", [(0, "#fffaf0"), (1, "#f0e6cf")])
+         + rad("dome", [(0, "#ffffff"), (.45, "#c9d2d7"), (1, "#5d686e")], cx="35%", cy="30%"))
+    b = [rect(0, 0, 600, 800, "url(#wall)")]
+    for y in range(0, 800, 32):
+        b.append(f'<rect x="0" y="{y}" width="600" height="2" fill="#000" opacity=".3"/>')
+        off = 0 if (y // 32) % 2 == 0 else 32
+        b.append("".join(f'<rect x="{x + off}" y="{y}" width="2" height="32" fill="#000" opacity=".3"/>' for x in range(0, 600, 64)))
+    b.append(rect(0, 0, 600, 360, "url(#lamp)", 0, 'opacity=".35"'))
+    # neon sign
+    b.append(text(300, 118, 'Order <tspan fill="#fff3c9" stroke="#ff9a3c">Up!</tspan>', "Titan One", 96, "#ff4b3e", 400, extra='filter="url(#k-glow)" opacity=".9"'))
+    b.append(text(300, 118, 'Order <tspan fill="#fff3c9" stroke="#ff9a3c">Up!</tspan>', "Titan One", 96, "#fff6ef", 400, extra='stroke="#ff4b3e" stroke-width="3" paint-order="stroke"'))
+    # rack
+    rx, ry, rw, rh = 70, 176, 460, 520
+    b.append(f'<g filter="url(#k-drop)">{rect(rx, ry, rw, rh, "url(#steel)", 18, "stroke=\"#5f6a70\" stroke-width=\"4\"")}</g>')
+    for cx, cy in [(rx + 16, ry + 16), (rx + rw - 16, ry + 16), (rx + 16, ry + rh - 16), (rx + rw - 16, ry + rh - 16)]:
+        b.append(f'<circle cx="{cx}" cy="{cy}" r="6" fill="#e3e9ec" stroke="#4c575d" stroke-width="2"/>')
+    def plate(y, label, up):
+        tri = (f'<path d="M{208} {y+29} l11 -16 l11 16z" fill="#e23b2e"/>' if up else f'<path d="M{208} {y+13} l11 16 l11 -16z" fill="#e23b2e"/>')
+        return rect(196, y, 208, 42, "#fbf3e2", 9, 'stroke="#e23b2e" stroke-width="3"') + tri + text(316, y + 30, label, "Titan One", 22, "#9e1f16")
+    b.append(plate(ry - 14, "HEAVIEST", True))
+    b.append(plate(ry + rh - 28, "LIGHTEST", False))
+    items = ["Watermelon", "Pineapple", "Apple", "Strawberry", "Grape"]
+    tape = ["#f2b322", "#f2b322", "#f2b322", "#f2b322", "#f2b322"]
+    gy0, gh, gap = ry + 46, 78, 12
+    for k, it in enumerate(items):
+        y = gy0 + k * (gh + gap)
+        b.append(rect(rx + 12, y, rw - 24, gh, "url(#groove)", 12))
+        b.append(f'<circle cx="{rx + 42}" cy="{y + gh/2}" r="20" fill="{"#e8b13a" if k == 0 else "#f4ecd8"}" stroke="#8f8266" stroke-width="2"/>')
+        b.append(text(rx + 42, y + gh/2 + 9, k + 1, "Titan One", 24, "#2a2420"))
+        if k == 2:
+            continue  # this ticket is mid-hop
+        tx, ty = rx + 72, y + 7
+        b.append(f'<g filter="url(#k-drop-s)">{rect(tx, ty, 362, gh - 14, "url(#paper)", 5)}{rect(tx, ty, 14, gh - 14, tape[k], 4)}</g>')
+        b.append(text(tx + 30, ty + 42, it, "Red Hat Text", 30, "#2a2420", 700, "start"))
+        if k in (0, 4):
+            b.append(f'<g transform="rotate(-9 {tx+300} {ty+32})">{rect(tx+250, ty+15, 98, 36, "none", 7, "stroke=\"#227a47\" stroke-width=\"4\"")}'
+                     + text(tx + 299, ty + 42, "RIGHT", "Titan One", 22, "#227a47") + "</g>")
+    # the hopping ticket + its arc
+    y2 = gy0 + 2 * (gh + gap)
+    b.append(f'<path d="M150 {y2 + 40} Q 260 {y2 - 70} 360 {y2 - 20}" fill="none" stroke="#e8b13a" stroke-width="4" stroke-dasharray="2 12" stroke-linecap="round" opacity=".9"/>')
+    b.append(f'<g transform="rotate(-6 330 {y2 - 6})" filter="url(#k-drop)">{rect(170, y2 - 40, 362, 64, "url(#paper)", 5, "stroke=\"#e8b13a\" stroke-width=\"5\"")}{rect(170, y2 - 40, 14, 64, "#f2b322", 4)}'
+             + text(200, y2 + 2, "Apple", "Red Hat Text", 30, "#2a2420", 700, "start") + "</g>")
+    # order bell
+    b.append(f'<g filter="url(#k-drop)"><ellipse cx="520" cy="742" rx="56" ry="10" fill="#3b4246"/><path d="M472 738 a48 46 0 0 1 96 0z" fill="url(#dome)"/><rect x="514" y="682" width="12" height="14" rx="3" fill="#c9d2d7"/></g>')
+    b.append(text(240, 750, "Rank it. Bet on it. Ring the bell.", "Red Hat Text", 21, "#eef3f4", 700))
     return svg(d, "".join(b))
 
 

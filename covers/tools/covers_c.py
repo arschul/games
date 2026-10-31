@@ -364,21 +364,43 @@ def _wrap2(s):
 
 
 def inventions():
-    d = lin("par", [(0, "#fdf6e3"), (1, "#f4e8c1")])
-    b = [rect(0, 0, 600, 800, "#3a1f12"), f'<g filter="url(#k-drop)">{rect(30, 30, 540, 740, "url(#par)", 18, "stroke=\"#c8972a\" stroke-width=\"4\"")}</g>']
-    b.append("".join(f'<line x1="30" y1="{y}" x2="570" y2="{y-30}" stroke="#c8972a" stroke-opacity=".08" stroke-width="10"/>' for y in range(60, 820, 40)))
-    b.append(emoji(300, 120, "🕰️", 64))
-    b.append(text(300, 204, "Inventions", "Playfair Display", 80, "#2c1810", 900))
-    b.append(text(300, 242, "PLACE THEM IN ORDER", "DM Sans", 16, "#8a5a2e", 700, ls=6))
-    items = [("🛞", "3500 BC"), ("🧭", "1100"), ("💡", "1879"), ("✈️", "1903"), ("📺", "1927"), ("📱", "2007")]
-    b.append('<line x1="300" y1="280" x2="300" y2="740" stroke="#c8972a" stroke-width="6"/>')
-    for k, (e, yr) in enumerate(items):
-        y = 300 + k * 76
-        left = k % 2 == 0
-        b.append(f'<circle cx="300" cy="{y+20}" r="10" fill="#c0392b" stroke="#fdf6e3" stroke-width="3"/>')
-        cx = 180 if left else 420
-        b.append(f'<g filter="url(#k-drop-s)">{rect(cx - 90, y - 10, 180, 62, "#fffaf0", 12, "stroke=\"#c8972a\" stroke-width=\"2\"")}</g>'
-                 + emoji(cx - 52, y + 36, e, 36) + text(cx + 26, y + 32, yr if k not in (3,) else "?", "Playfair Display", 24, "#2c1810", 700))
+    d = (lin("brass", [(0, "#fff2c0"), (.2, "#e7c06a"), (.55, "#b98a2e"), (1, "#5e4113")])
+         + lin("plate", [(0, "#e3bd66"), (.6, "#b9862c"), (1, "#8d6420")])
+         + lin("paper", [(0, "#fdf6e6"), (.6, "#f1e6cc"), (1, "#dccaa0")])
+         + lin("plq", [(0, "#f4d98a"), (.55, "#c99a3b"), (1, "#94681f")])
+         + lin("green", [(0, "#a8ecc4"), (.55, "#3fae7a"), (1, "#1f6b48")])
+         + rad("lamp", [(0, "#4f7a63"), (.55, "#23493f"), (1, "#0e211b")], cy="34%", r="80%")
+         + rad("wax", [(0, "#ffd98a"), (.45, "#d9a43c"), (1, "#8d6420")], cx="36%", cy="30%", r="70%"))
+    b = [rect(0, 0, 600, 800, "#0b1416"), rect(0, 0, 600, 800, "url(#lamp)")]
+    b.append("".join(f'<line x1="0" y1="{y}" x2="600" y2="{y+6}" stroke="#000" stroke-opacity=".06" stroke-width="2"/>' for y in range(0, 800, 9)))
+    b.append(rect(14, 14, 572, 772, "none", 10, 'stroke="#c99a3b" stroke-opacity=".35" stroke-width="2"'))
+    for x, y, sx, sy in [(14, 14, 1, 1), (586, 14, -1, 1), (14, 786, 1, -1), (586, 786, -1, -1)]:
+        b.append(f'<polygon points="{x},{y} {x+70*sx},{y} {x},{y+70*sy}" fill="url(#plate)"/>')
+    # title plate
+    b.append(f'<g filter="url(#k-drop)">{rect(70, 70, 460, 128, "url(#plate)", 14)}</g>')
+    b.append('<circle cx="98" cy="134" r="8" fill="#6e4c14"/><circle cx="502" cy="134" r="8" fill="#6e4c14"/>')
+    b.append(text(300, 165, "Timeline", "Alfa Slab One", 84, "#3a2708"))
+    b.append(text(300, 246, "Put inventions in order", "Public Sans", 30, "#f6ecd6", 700))
+    # rail with hanging patent cards
+    def card(cx, y, e, yr, kind="plain", w=118):
+        h = 156; x = cx - w / 2
+        stroke = {"good": 'stroke="#3fae7a" stroke-width="5"', "new": 'stroke="#ff6b3d" stroke-width="5"'}.get(kind, 'stroke="#a07a40" stroke-opacity=".4" stroke-width="1.5"')
+        out = f'<g filter="url(#k-drop)">{rect(x, y, w, h, "url(#paper)", 8, stroke)}</g>'
+        out += rect(cx - 16, y - 22, 32, 34, "url(#brass)", 6) + f'<circle cx="{cx}" cy="{y-10}" r="5" fill="#4a3610"/>'
+        out += emoji(cx, y + 74, e, 52)
+        fill = "url(#green)" if kind == "good" else "url(#plq)"
+        out += rect(x + 8, y + h - 46, w - 16, 36, fill, 6) + text(cx, y + h - 19, yr, "Alfa Slab One", 22 if len(yr) < 6 else 15, "#fff" if kind == "good" else "#3a2708")
+        return out
+    ry = 356
+    b.append(f'<g filter="url(#k-drop-s)">{rect(40, ry - 12, 520, 22, "url(#brass)", 11)}</g>')
+    b.append(f'<circle cx="40" cy="{ry-1}" r="19" fill="url(#brass)"/><circle cx="560" cy="{ry-1}" r="19" fill="url(#brass)"/>')
+    for cx, e, yr, kind in [(102, "🛞", "3,500 BCE", "plain"), (222, "💡", "1879", "plain"), (378, "📱", "1973", "plain"), (498, "💬", "2022", "plain")]:
+        b.append(card(cx, ry + 22, e, yr, kind, 104))
+    b.append(f'<rect x="286" y="{ry+24}" width="28" height="154" rx="9" fill="#ff6b3d" fill-opacity=".28" stroke="#ff6b3d" stroke-width="3" stroke-dasharray="8 6"/>')
+    b.append(text(300, ry + 110, "+", "Alfa Slab One", 34, "#fff"))
+    b.append('<path d="M190 640 C 150 600, 210 560, 286 548" fill="none" stroke="#f6ecd6" stroke-opacity=".55" stroke-width="4" stroke-dasharray="2 12" stroke-linecap="round"/>')
+    b.append('<path d="M276 538 l14 10 -16 6z" fill="#f6ecd6" fill-opacity=".7"/>')
+    b.append(f'<g transform="rotate(-7 300 660)">{card(300, 588, "📺", "?", "new", 132)}</g>')
     return svg(d, "".join(b))
 
 

@@ -33,10 +33,12 @@ document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
   /* scene: night at sea */
   --sky-a:#060b18; --sky-b:#101d38; --sky-c:#2a3a5e; --sea-a:#16294a; --sea-b:#0a1426; --sea-c:#050b17;
   --moon:#f4ecd0; --glint:#f4ecd0; --star:1; --lamp:1; --top-ink:#f3d27a; --top-sub:#cdbf9a;
+  --cloud:#2e384c; --cloud-hi:#46536c; --storm-dark:#03060d;
 }
 :root[data-theme="light"]{
   --sky-a:#3f95d2; --sky-b:#7fc0e8; --sky-c:#d8eef4; --sea-a:#2f86b5; --sea-b:#1f6894; --sea-c:#164e73;
   --moon:#fff6cf; --glint:#ffffff; --star:0; --lamp:.25; --top-ink:#5a2a10; --top-sub:#2a3b55;
+  --cloud:#6f7b8b; --cloud-hi:#aab3be; --storm-dark:#18212d;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#000}
@@ -46,6 +48,9 @@ button:disabled{cursor:not-allowed}
 #stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform:translate(-50%,-50%) scale(var(--s));overflow:hidden;background:var(--sky-a)}
 #scene{position:absolute;inset:0;width:1920px;height:1080px}
 #shaker{position:absolute;inset:0}
+#ship{position:absolute;inset:0;transform-origin:960px 760px;will-change:transform}
+#deck{position:absolute;left:-80px;top:560px;width:2080px;height:600px}
+#weather{position:absolute;inset:0;width:1920px;height:1080px;pointer-events:none}
 #fx{position:absolute;inset:0;width:1920px;height:1080px;pointer-events:none;z-index:60}
 #coins{position:absolute;inset:0;pointer-events:none;z-index:58}
 #flash{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:55;background:radial-gradient(ellipse at center,rgba(255,40,20,0) 35%,rgba(200,20,10,.78) 100%)}
@@ -360,11 +365,18 @@ body.teacher .plq .tadj{display:flex}
 .mrow{display:flex;align-items:center;gap:16px}
 .mrow .vol{max-width:220px}
 
+/* ---------- weather ---------- */
+.fxrow{display:flex;gap:34px}
+#clouds,#skyDark,#caps,#deckDark{transition:none}
+.cloudp{fill:url(#cloudG)}
+
 </style>
 </head>
 <body>
 <div id="stage">
   <svg id="scene" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <div id="ship"><svg id="deck" viewBox="-80 560 2080 600" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <canvas id="weather" width="1920" height="1080"></canvas>
   <div id="shaker">
     <a class="back-link mahog" href="../">← Game Hub</a>
 
@@ -377,6 +389,8 @@ body.teacher .plq .tadj{display:flex}
       <button class="tb" id="rulesBtn" title="How to play (Shift+H)"><svg viewBox="0 0 24 24"><path d="M9.2 9a3 3 0 1 1 4.1 2.8c-.8.4-1.3 1-1.3 1.9V15"/><circle cx="12" cy="18.5" r=".6"/></svg></button>
       <button class="tb" id="teachBtn" title="Teacher mode: adjust scores (9)"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6"/></svg></button>
       <button class="tb" id="musicBtn" title="Music (Shift+N)"><svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></button>
+      <button class="tb" id="fxBtn" title="Storm effects (Shift+W)"><svg viewBox="0 0 24 24"><path d="M7 15.5a4.5 4.5 0 1 1 1.2-8.8A5.5 5.5 0 0 1 18.6 9 3.3 3.3 0 0 1 18 15.5z"/><path d="M8.5 18.5l-1 2.5M12.5 18.5l-1 2.5M16.5 18.5l-1 2.5"/></svg></button>
+      <button class="tb" id="swayBtn" title="Ship motion (Shift+S)"><svg viewBox="0 0 24 24"><path d="M12 3v11M12 4l6 8h-6M12 6l-4.5 6H12"/><path d="M4 14.5h16l-2.5 3.5h-11z"/><path d="M2.5 21c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1 2-1 3-1"/></svg></button>
       <div id="musicPop"><div class="mp-h">Music</div><button class="mp-sw" id="mpSwitch"><span class="knob"></span></button><input type="range" class="vol" id="volPop" min="0" max="100" step="5" aria-label="Music volume"><span class="volN" id="volPopN"></span></div>
       <button class="tb" id="muteBtn" title="Sound (Shift+M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path class="x" d="M16 9l5 6M21 9l-5 6"/></svg></button>
       <button class="tb" id="themeBtn" title="Day / night (Shift+T)"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
@@ -418,6 +432,7 @@ body.teacher .plq .tadj{display:flex}
     <section id="teams"></section>
     <div id="banner"><div class="band"><div class="emb" id="banEmb"></div><div class="tx" id="banTx"></div></div></div>
   </div>
+  </div>
   <div id="flash"></div>
   <div id="coins"></div>
   <canvas id="fx" width="1920" height="1080"></canvas>
@@ -429,6 +444,7 @@ body.teacher .plq .tadj{display:flex}
       <div class="col">
         <div class="opt"><div class="lb">Level</div><div class="chips" id="lvlChips"></div></div>
         <div class="opt"><div class="lb">Topic</div><div class="chips wrap" id="catChips"></div></div>
+        <div class="opt fxrow"><div><div class="lb">Storm effects</div><div class="chips" data-k="fx"><button class="chip" data-v="1">On</button><button class="chip" data-v="0">Off</button></div></div><div><div class="lb">Ship motion</div><div class="chips" data-k="sway"><button class="chip" data-v="1">On</button><button class="chip" data-v="0">Off</button></div></div></div>
         <div class="opt own">
           <label class="lb chk"><input type="checkbox" id="ownChk"> Use my own sentence</label>
           <div id="ownBox"><input id="ownIn" maxlength="70" placeholder="Type a sentence" autocomplete="off" spellcheck="false"><input id="ownHint" maxlength="70" placeholder="Hint (optional)" autocomplete="off"><div id="ownErr"></div></div>
@@ -461,7 +477,7 @@ body.teacher .plq .tadj{display:flex}
       <li>Solve the sentence to keep your round points. The other teams lose theirs. <b>Bold guess bonus:</b> you also win points for every letter that is still hidden. The more of the board is empty, the bigger the bonus!</li>
       <li>No consonants left? Each team gets <b>one free vowel</b>, then solves or passes.</li>
     </ol>
-    <div class="keys-help">Keys: letters guess, Space spin, 1 buy a vowel, 2 pass, 3 hint, Enter solve or next, 4 setup, 9 teacher, Shift+M sound, Shift+N music, Shift+T day/night, Shift+D debug</div>
+    <div class="keys-help">Keys: letters guess, Space spin, 1 buy a vowel, 2 pass, 3 hint, Enter solve or next, 4 setup, 9 teacher, Shift+M sound, Shift+N music, Shift+T day/night, Shift+W storm effects, Shift+S ship motion, Shift+D debug</div>
     <div class="sbtns"><button class="act brass" id="rulesClose">Got it</button></div>
   </div></div>
 
@@ -1240,7 +1256,7 @@ var SAVE = 'wheelQuest.save', SET = 'wheelQuest.settings', MUTEK = 'wheelQuest.m
 var ANIMALS = ['🐬', '🐢', '🐙', '🦀', '🐧', '🦭', '🦈', '🐠', '🦑', '🦞', '🦜', '🐡'];
 var NAMES = { '🐬': 'Dolphins', '🐢': 'Turtles', '🐙': 'Octopuses', '🦀': 'Crabs', '🐧': 'Penguins', '🦭': 'Seals', '🦈': 'Sharks', '🐠': 'Fish', '🦑': 'Squids', '🦞': 'Lobsters', '🦜': 'Parrots', '🐡': 'Pufferfish' };
 var COLORS = ['#ff7a2e', '#2f8fff', '#f2c41f', '#b45cff', '#22c19a', '#ff4f8b'];
-var DEF = { level: 'A1', cat: 'Everyday Life', n: 2, target: 0, pressure: 'normal', timer: 45, music: 1, vol: 70, own: false,
+var DEF = { level: 'A1', cat: 'Everyday Life', n: 2, target: 0, pressure: 'normal', timer: 45, music: 1, vol: 70, fx: 1, sway: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1, own: false,
   teams: ANIMALS.slice(0, 6).map(function (a) { return { animal: a, name: '' }; }) };
 var S = Object.assign({}, DEF, load(SET) || {});
 if (!(S.vol >= 0 && S.vol <= 100)) S.vol = 70;
@@ -1285,28 +1301,45 @@ function buildScene() {
     '<linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--sea-a)"/><stop offset=".5" stop-color="var(--sea-b)"/><stop offset="1" stop-color="var(--sea-c)"/></linearGradient>' +
     '<radialGradient id="moonG"><stop offset=".55" stop-color="var(--moon)"/><stop offset="1" stop-color="var(--moon)" stop-opacity="0"/></radialGradient>' +
     '<radialGradient id="lamp"><stop offset="0" stop-color="#ffc56b" stop-opacity=".55"/><stop offset="1" stop-color="#ffc56b" stop-opacity="0"/></radialGradient>' +
-    '<linearGradient id="deckShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".25" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient></defs>';
+    '<radialGradient id="cloudG"><stop offset="0" stop-color="var(--cloud-hi)" stop-opacity=".95"/><stop offset=".55" stop-color="var(--cloud)" stop-opacity=".9"/><stop offset="1" stop-color="var(--cloud)" stop-opacity="0"/></radialGradient>' +
+    '<linearGradient id="darkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--storm-dark)" stop-opacity=".95"/><stop offset="1" stop-color="var(--storm-dark)" stop-opacity=".7"/></linearGradient></defs>';
   s += '<rect width="1920" height="460" fill="url(#sky)"/>';
   for (var i = 0; i < 120; i++) s += '<circle class="star' + (i % 6 === 0 ? ' twk' : '') + '" cx="' + (rnd() * 1920).toFixed(0) + '" cy="' + (rnd() * 400).toFixed(0) + '" r="' + (0.6 + rnd() * 1.5).toFixed(1) + '" style="animation-delay:' + (rnd() * 3).toFixed(2) + 's"/>';
   s += '<circle cx="1330" cy="70" r="60" fill="url(#moonG)" opacity=".35"/><circle cx="1330" cy="70" r="30" fill="var(--moon)"/>';
-  s += '<rect y="440" width="1920" height="200" fill="url(#sea)"/>';
-  // moon trail and wave lines
+  s += '<g id="seaG"><rect y="440" width="1920" height="230" fill="url(#sea)"/>';
   for (i = 0; i < 26; i++) { var y = 450 + i * 6.5, w = 30 + i * 9 + rnd() * 30; s += '<rect x="' + (1330 - w / 2 + (rnd() - 0.5) * 30).toFixed(0) + '" y="' + y.toFixed(0) + '" width="' + w.toFixed(0) + '" height="2.5" rx="1" fill="var(--glint)" opacity="' + (0.5 - i * 0.015).toFixed(2) + '"/>'; }
   for (i = 0; i < 70; i++) { var wx = rnd() * 1920, wy = 452 + rnd() * 170; s += '<path d="M' + wx.toFixed(0) + ' ' + wy.toFixed(0) + ' q12 -5 24 0 t24 0" fill="none" stroke="var(--glint)" stroke-opacity="' + (0.08 + rnd() * 0.12).toFixed(2) + '" stroke-width="2"/>'; }
-  // distant lighthouse on a rock, far right of the horizon
-  s += '<path d="M1600 446 q60 -26 130 -4 q40 4 70 4 z" fill="var(--sea-c)" opacity=".9"/><path d="M1688 430 l6 -64 h12 l6 64 z" fill="var(--sea-c)"/><rect x="1690" y="356" width="20" height="12" fill="#ffd77a" class="lampglow"/><circle cx="1700" cy="362" r="40" fill="url(#lamp)" class="lampglow"/>';
-  // deck planks
-  s += '<rect y="624" width="1920" height="456" fill="#6e4520"/>';
-  for (var row = 0; row < 11; row++) {
-    var py = 624 + row * 42, off = (row * 317) % 480;
-    s += '<rect y="' + py + '" width="1920" height="42" fill="' + (row % 2 ? '#7a4c24' : '#704621') + '"/>';
-    s += '<rect y="' + (py + 40) + '" width="1920" height="2" fill="#2a170a" opacity=".8"/>';
-    for (var x = -off; x < 1920; x += 480) { s += '<rect x="' + x + '" y="' + py + '" width="2" height="42" fill="#2a170a" opacity=".7"/><circle cx="' + (x + 12) + '" cy="' + (py + 10) + '" r="2" fill="#2a170a"/><circle cx="' + (x + 12) + '" cy="' + (py + 31) + '" r="2" fill="#2a170a"/>'; }
-    for (var k = 0; k < 5; k++) { var gx = rnd() * 1920; s += '<path d="M' + gx.toFixed(0) + ' ' + (py + 8 + rnd() * 26).toFixed(0) + ' h' + (60 + rnd() * 160).toFixed(0) + '" stroke="#3a210d" stroke-opacity=".35" stroke-width="1.5"/>'; }
-  }
-  s += '<rect y="624" width="1920" height="456" fill="url(#deckShade)"/>';
-  s += '<ellipse cx="1570" cy="770" rx="420" ry="230" fill="url(#lamp)" class="lampglow"/><ellipse cx="640" cy="860" rx="700" ry="240" fill="url(#lamp)" class="lampglow" opacity=".7"/>';
+  s += '<path d="M1600 446 q60 -26 130 -4 q40 4 70 4 z" fill="var(--sea-c)" opacity=".9"/><path d="M1688 430 l6 -64 h12 l6 64 z" fill="var(--sea-c)"/><rect x="1690" y="356" width="20" height="12" fill="#ffd77a" class="lampglow"/><circle cx="1700" cy="362" r="40" fill="url(#lamp)" class="lampglow"/></g>';
+  // storm layers (opacity driven by the weather loop)
+  s += '<rect id="skyDark" width="1920" height="680" fill="url(#darkG)" opacity="0"/>';
+  s += '<g id="caps" opacity="0">';
+  for (i = 0; i < 60; i++) { var cx = rnd() * 1920, cy = 456 + rnd() * 190, cw = 14 + rnd() * 34; s += '<path d="M' + cx.toFixed(0) + ' ' + cy.toFixed(0) + ' q' + (cw / 2).toFixed(0) + ' -7 ' + cw.toFixed(0) + ' 0" fill="none" stroke="#e8f0fa" stroke-opacity="' + (0.35 + rnd() * 0.4).toFixed(2) + '" stroke-width="3" stroke-linecap="round"/>'; }
+  s += '</g><g id="clouds" opacity="0">';
+  [[0, 40, 130, 1], [1, 150, 300, .85]].forEach(function (L) {
+    s += '<g id="cl' + L[0] + '" opacity="' + L[3] + '">';
+    for (var rep = 0; rep < 2; rep++) for (var c = 0; c < 6; c++) {
+      var bx = rep * 1200 + c * 200 + rnd() * 80, by = L[1] + rnd() * (L[2] - L[1]);
+      for (var k = 0; k < 6; k++) s += '<ellipse class="cloudp" cx="' + (bx + (k - 2.5) * 46 + rnd() * 20).toFixed(0) + '" cy="' + (by + (rnd() - 0.6) * 40).toFixed(0) + '" rx="' + (90 + rnd() * 70).toFixed(0) + '" ry="' + (44 + rnd() * 34).toFixed(0) + '"/>';
+    }
+    s += '</g>';
+  });
+  s += '</g><rect id="bolt" width="1920" height="680" fill="#dfe8ff" opacity="0"/>';
   $('scene').innerHTML = s;
+  // deck: lives on the ship layer, oversized so a roll never shows a gap
+  var d = '<defs><linearGradient id="deckShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".2" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient>' +
+    '<radialGradient id="lampD"><stop offset="0" stop-color="#ffc56b" stop-opacity=".55"/><stop offset="1" stop-color="#ffc56b" stop-opacity="0"/></radialGradient></defs>';
+  d += '<rect x="-80" y="624" width="2080" height="540" fill="#6e4520"/>';
+  for (var row = 0; row < 13; row++) {
+    var py = 624 + row * 42, off = (row * 317) % 480;
+    d += '<rect x="-80" y="' + py + '" width="2080" height="42" fill="' + (row % 2 ? '#7a4c24' : '#704621') + '"/>';
+    d += '<rect x="-80" y="' + (py + 40) + '" width="2080" height="2" fill="#2a170a" opacity=".8"/>';
+    for (var x = -80 - off; x < 2000; x += 480) { d += '<rect x="' + x + '" y="' + py + '" width="2" height="42" fill="#2a170a" opacity=".7"/><circle cx="' + (x + 12) + '" cy="' + (py + 10) + '" r="2" fill="#2a170a"/><circle cx="' + (x + 12) + '" cy="' + (py + 31) + '" r="2" fill="#2a170a"/>'; }
+    for (var k2 = 0; k2 < 5; k2++) { var gx = rnd() * 2000; d += '<path d="M' + gx.toFixed(0) + ' ' + (py + 8 + rnd() * 26).toFixed(0) + ' h' + (60 + rnd() * 160).toFixed(0) + '" stroke="#3a210d" stroke-opacity=".35" stroke-width="1.5"/>'; }
+  }
+  d += '<rect x="-80" y="624" width="2080" height="540" fill="url(#deckShade)"/>';
+  d += '<ellipse cx="1570" cy="770" rx="420" ry="230" fill="url(#lampD)" class="lampglow"/><ellipse cx="640" cy="860" rx="700" ry="240" fill="url(#lampD)" class="lampglow" opacity=".7"/>';
+  d += '<rect id="deckDark" x="-80" y="560" width="2080" height="600" fill="var(--storm-dark)" opacity="0"/>';
+  $('deck').innerHTML = d;
 }
 buildScene();
 
@@ -1346,7 +1379,8 @@ var sfx = {
   fanfare: function () { [392, 523, 659, 784, 1047].forEach(function (f, k) { tone(f, 0.35, 'triangle', 0.14, k * 0.11); }); },
   stamp: function () { tone(70, 0.25, 'sine', 0.5, 0, 40); nz(0.12, 'lowpass', 900, 0.5); },
   warn: function () { tone(1250, 0.06, 'square', 0.06); },
-  pop: function () { tone(900, 0.08, 'sine', 0.15, 0, 300); }
+  pop: function () { tone(900, 0.08, 'sine', 0.15, 0, 300); },
+  rumble: function () { nz(2.4, 'lowpass', 170, 0.4); nz(0.6, 'lowpass', 500, 0.15, 0.1); tone(55, 1.6, 'sine', 0.18, 0, 38); }
 };
 function paintMute() { $('muteBtn').classList.toggle('off', muted); $('muteBtn').title = 'Sound: ' + (muted ? 'off' : 'on') + ' (Shift+M)'; }
 function paintMusic() {
@@ -1428,6 +1462,114 @@ function shake(px, ms) {
   })(t0);
 }
 function flash() { if (reduced) return; $('flash').animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: 900, easing: 'ease-out' }); }
+/* ---------- weather + ship motion ----------
+   Storm level follows the real danger on the wheel (hazard wedges / 9):
+   clouds -> darker -> whitecaps -> rain -> wind + distant lightning.
+   Visuals sit behind the board; the ship layer (deck + game) rolls gently
+   against a level sea, so the board always moves as one rigid, readable piece. */
+var W = { raw: 0, rawT: 0, vis: 0, amp: 0, phase: 0, last: 0, running: false, drops: [], streaks: [], splash: [], c0: 0, c1: 0, nextBolt: 0, ctx: $('weather').getContext('2d'), snd: null };
+function stormTarget() {
+  if (!G || !G.puzzle || G.pressure === 'off' || ['turn', 'guess', 'vowel', 'ended', 'timeup', 'ruling'].indexOf(G.phase) < 0) return 0;
+  return Math.min(1, WQ.odds(G).hazards / 9);
+}
+function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+function updateStorm() {
+  W.rawT = stormTarget();
+  if (reduced) { W.raw = W.rawT; W.vis = S.fx ? W.raw : 0; applyWeather(0); }
+  paintFxBtns();
+  if (!W.running) { W.running = true; W.last = performance.now(); requestAnimationFrame(weatherLoop); }
+}
+function applyWeather(dt) {
+  var v = W.vis, dark = clamp01((v - 0.18) / 0.82) * (themeMode() === 'day' ? 0.78 : 0.7);
+  $('clouds').setAttribute('opacity', clamp01((v - 0.02) / 0.3).toFixed(3));
+  $('skyDark').setAttribute('opacity', dark.toFixed(3));
+  $('deckDark').setAttribute('opacity', (dark * 0.6).toFixed(3));
+  $('caps').setAttribute('opacity', (clamp01((v - 0.3) / 0.45) * 0.9).toFixed(3));
+  var wind = clamp01((v - 0.66) / 0.34);
+  if (!reduced && dt) {
+    W.c0 = (W.c0 - dt * (10 + 90 * wind)) % 1200; W.c1 = (W.c1 - dt * (6 + 55 * wind)) % 1200;
+    $('cl0').setAttribute('transform', 'translate(' + W.c0.toFixed(1) + ' 0)');
+    $('cl1').setAttribute('transform', 'translate(' + W.c1.toFixed(1) + ' 0)');
+  }
+}
+function weatherLoop(now) {
+  var real = Math.min(0.5, (now - W.last) / 1000), dt = Math.min(0.1, real); W.last = now;
+  // fades use real elapsed time (same speed on slow laptops); motion uses capped dt
+  var k = 1 - Math.exp(-real / 1.4);
+  W.raw += (W.rawT - W.raw) * k;
+  var visT = S.fx ? W.raw : 0; W.vis += (visT - W.vis) * (1 - Math.exp(-real / 0.9));
+  if (Math.abs(W.raw - W.rawT) < 0.002) W.raw = W.rawT;
+  if (Math.abs(W.vis - visT) < 0.002) W.vis = visT;
+  applyWeather(dt);
+  // rain + wind on the canvas
+  var c = W.ctx, rain = reduced ? 0 : clamp01((W.vis - 0.45) / 0.35), wind = clamp01((W.vis - 0.66) / 0.34);
+  var want = Math.round(rain * 400), slant = 0.12 + wind * 0.5;
+  while (W.drops.length < want) W.drops.push({ x: Math.random() * 2300 - 200, y: -Math.random() * 1080, v: 1500 + Math.random() * 700, len: 18 + Math.random() * 18, end: 470 + Math.random() * 610 });
+  if (W.drops.length > want) W.drops.length = want;
+  W.streaks.length = Math.min(W.streaks.length, Math.round(wind * 12));
+  while (W.streaks.length < Math.round(wind * 12) && !reduced) W.streaks.push({ x: -400 - Math.random() * 800, y: 20 + Math.random() * 420, v: 1400 + Math.random() * 900, len: 160 + Math.random() * 220 });
+  c.clearRect(0, 0, 1920, 1080);
+  if (W.drops.length || W.splash.length || W.streaks.length) {
+    c.lineCap = 'round';
+    var day = themeMode() === 'day';
+    c.strokeStyle = day ? 'rgba(225,235,248,.55)' : 'rgba(205,220,240,.4)'; c.lineWidth = 2.2; c.beginPath();
+    W.drops.forEach(function (d) {
+      d.y += d.v * dt; d.x += d.v * slant * dt;
+      if (d.y > d.end) { if (d.end > 640 && W.splash.length < 120) W.splash.push({ x: d.x, y: d.end, t: 0 }); d.y = -40 - Math.random() * 200; d.x = Math.random() * 2300 - 200 - d.end * slant; d.end = 470 + Math.random() * 610; }
+      c.moveTo(d.x, d.y); c.lineTo(d.x - d.len * slant, d.y - d.len);
+    });
+    c.stroke();
+    c.strokeStyle = 'rgba(205,220,240,.45)'; c.lineWidth = 1.5;
+    W.splash = W.splash.filter(function (p) { p.t += dt; return p.t < 0.28; });
+    W.splash.forEach(function (p) { var r = 2 + p.t * 30; c.globalAlpha = 1 - p.t / 0.28; c.beginPath(); c.ellipse(p.x, p.y, r, r * 0.35, 0, 0, Math.PI * 2); c.stroke(); });
+    c.globalAlpha = 1; c.strokeStyle = 'rgba(225,235,250,.16)'; c.lineWidth = 2; c.beginPath();
+    W.streaks.forEach(function (st) { st.x += st.v * dt; st.y += st.v * 0.05 * dt; if (st.x > 2200) { st.x = -300 - Math.random() * 600; st.y = 20 + Math.random() * 420; } c.moveTo(st.x, st.y); c.lineTo(st.x - st.len, st.y - st.len * 0.05); });
+    c.stroke();
+  }
+  // distant lightning: soft, sky only, never more than once every 8 s
+  if (!reduced && W.vis > 0.85 && now > W.nextBolt) {
+    if (W.nextBolt) bolt();
+    W.nextBolt = now + 8000 + Math.random() * 7000;
+  }
+  if (W.vis < 0.85) W.nextBolt = 0;
+  weatherSound();
+  // ship motion: slow roll + heave, bigger and quicker as the storm grows
+  var swayOn = !!S.sway, ampT = swayOn ? 1 : 0;
+  W.amp += (ampT - W.amp) * (1 - Math.exp(-real / 1.2)); if (Math.abs(W.amp - ampT) < 0.02) W.amp = ampT;
+  var period = 8.5 - 3 * W.raw; W.phase += real * 2 * Math.PI / period;
+  var roll = W.amp * (0.32 + 0.78 * W.raw) * Math.sin(W.phase), heave = W.amp * (2.5 + 5.5 * W.raw) * Math.sin(W.phase * 0.5 + 1.1);
+  $('ship').style.transform = W.amp ? 'translateY(' + heave.toFixed(2) + 'px) rotate(' + roll.toFixed(3) + 'deg)' : '';
+  $('seaG').setAttribute('transform', W.amp ? 'translate(0 ' + (-heave * 0.6).toFixed(2) + ')' : '');
+  var busy = W.amp || W.vis !== visT || W.raw !== W.rawT || W.vis > 0 || W.drops.length || W.splash.length;
+  if (busy) requestAnimationFrame(weatherLoop); else { W.running = false; c.clearRect(0, 0, 1920, 1080); weatherSound(); }
+}
+function bolt() {
+  var b = $('bolt');
+  b.animate([{ opacity: 0 }, { opacity: 0.32, offset: 0.12 }, { opacity: 0.05, offset: 0.3 }, { opacity: 0.2, offset: 0.42 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' });
+  setTimeout(function () { sfx.rumble(); }, 500 + Math.random() * 900);
+}
+function weatherSound() {
+  var c = AC; if (!c) return;
+  var rain = reduced ? 0 : clamp01((W.vis - 0.45) / 0.35), wind = clamp01((W.vis - 0.66) / 0.34);
+  if (!W.snd) {
+    if (!rain && !wind) return;
+    var len = c.sampleRate * 3, buf = c.createBuffer(1, len, c.sampleRate), x = buf.getChannelData(0); for (var i = 0; i < len; i++) x[i] = Math.random() * 2 - 1;
+    function chain(type, f, q) { var s = c.createBufferSource(); s.buffer = buf; s.loop = true; var fl = c.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; var g = c.createGain(); g.gain.value = 0; s.connect(fl).connect(g).connect(out()); s.start(); return { g: g, f: fl }; }
+    var r = chain('highpass', 1400, 0.5), w = chain('bandpass', 380, 0.7);
+    var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.13; lg.gain.value = 160; lfo.connect(lg).connect(w.f.frequency); lfo.start();
+    W.snd = { rain: r.g, wind: w.g, rv: -1, wv: -1 };
+  }
+  var rv = muted ? 0 : rain * 0.05, wv = muted ? 0 : wind * 0.09;
+  if (Math.abs(rv - W.snd.rv) > 0.002) { W.snd.rain.gain.setTargetAtTime(rv, c.currentTime, 0.4); W.snd.rv = rv; }
+  if (Math.abs(wv - W.snd.wv) > 0.002) { W.snd.wind.gain.setTargetAtTime(wv, c.currentTime, 0.6); W.snd.wv = wv; }
+}
+function paintFxBtns() {
+  $('fxBtn').classList.toggle('off', !S.fx); $('fxBtn').title = 'Storm effects: ' + (S.fx ? 'on' : 'off') + ' (Shift+W)';
+  $('swayBtn').classList.toggle('off', !S.sway); $('swayBtn').title = 'Ship motion: ' + (S.sway ? 'on' : 'off') + ' (Shift+S)';
+}
+function toggleFx() { S.fx = S.fx ? 0 : 1; saveSet(); paintChips(); updateStorm(); toast('Storm effects ' + (S.fx ? 'on' : 'off') + '.'); }
+function toggleSway() { S.sway = S.sway ? 0 : 1; saveSet(); paintChips(); updateStorm(); toast('Ship motion ' + (S.sway ? 'on' : 'off') + '.'); }
+
 var toastT = 0;
 function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, ms || 2200); }
 
@@ -1512,6 +1654,7 @@ function paintSegs(flipped) {
   paintStorm();
 }
 function paintStorm() {
+  if (typeof updateStorm === 'function' && W) updateStorm();
   var on = G ? G.heat : 0, mode = G ? G.pressure : S.pressure, h = '';
   for (var i = 0; i < 8; i++) h += '<div class="pip' + (i < on && mode !== 'off' ? ' on' : '') + '"></div>';
   $('pips').innerHTML = h;
@@ -1960,6 +2103,7 @@ document.querySelectorAll('.chips[data-k]').forEach(function (box) {
     var c = e.target.closest('.chip'); if (!c) return; var k = box.dataset.k, v = c.dataset.v;
     S[k] = (k === 'pressure') ? v : +v; sfx.click(); saveSet(); paintChips();
     if (k === 'music') { musicOn = !!S.music; paintMusic(); applyMusic(); }
+    if (k === 'fx' || k === 'sway') updateStorm();
     paintMusic();
     if (k === 'pressure' && G) { WQ.setPressure(G, v); paintSegs(true); save(); }
     if (k === 'target' && G) { G.target = S.target; save(); }
@@ -2033,6 +2177,7 @@ $('teams').addEventListener('click', function (e) {
 
 /* ---------- tool buttons ---------- */
 $('muteBtn').onclick = toggleMute; $('themeBtn').onclick = doTheme;
+$('fxBtn').onclick = toggleFx; $('swayBtn').onclick = toggleSway;
 $('musicBtn').onclick = function (e) { e.stopPropagation(); $('musicPop').classList.toggle('on'); paintMusic(); };
 $('mpSwitch').onclick = function () { toggleMusic(); };
 $('musicPop').addEventListener('click', function (e) { e.stopPropagation(); });
@@ -2082,6 +2227,8 @@ document.addEventListener('keydown', function (e) {
     if (u === 'M') { e.preventDefault(); toggleMute(); return; }
     if (u === 'N') { e.preventDefault(); toggleMusic(); return; }
     if (u === 'T') { e.preventDefault(); doTheme(); return; }
+    if (u === 'W') { e.preventDefault(); toggleFx(); return; }
+    if (u === 'S') { e.preventDefault(); toggleSway(); return; }
     if (u === 'H') { e.preventDefault(); $('rulesOv').classList.toggle('on'); return; }
     if (u === 'D') { e.preventDefault(); $('debug').classList.toggle('on'); paintDebug(); return; }
     return;
@@ -2100,7 +2247,7 @@ document.addEventListener('keydown', function (e) {
 
 /* ---------- boot ---------- */
 buildWheel(); buildKeys();
-window.WQUI = { get G() { return G; }, ui: ui, spin: spin, pickLetter: pickLetter, nextTeam: nextTeam, openSetup: openSetup, openFinal: openFinal, sfx: sfx, Music: Music };
+window.WQUI = { get G() { return G; }, ui: ui, W: W, spin: spin, pickLetter: pickLetter, nextTeam: nextTeam, openSetup: openSetup, openFinal: openFinal, sfx: sfx, Music: Music };
 (function boot() {
   var sv = load(SAVE);
   if (sv && sv.G && sv.G.v === 1 && sv.G.puzzle && sv.G.teams && sv.G.teams.length) {

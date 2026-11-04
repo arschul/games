@@ -28,33 +28,76 @@ def letter_swap():
 
 
 def lexicon_duel():
-    d = lin("tt", [(0, "#f5d68a"), (.5, "#e8b84b"), (1, "#5ba3e8")], x2=1, y2=0)
-    b = [rect(0, 0, 600, 800, "#0d0d12"),
-         '<circle cx="0" cy="560" r="260" fill="#e8b84b" opacity=".12" filter="url(#k-glow)"/>',
-         '<circle cx="600" cy="560" r="260" fill="#5ba3e8" opacity=".12" filter="url(#k-glow)"/>']
-    b.append(text(300, 72, "A GAME OF WORDS &amp; WAR", "DM Mono", 15, "#6b6880", 500, ls=5))
-    b.append(text(300, 160, "Lexicon Duel", "DM Sans", 84, "url(#tt)", 800))
-    b.append(text(300, 200, "FORGE WORDS. DEAL DAMAGE.", "DM Mono", 16, "#9a97b0", 500, ls=4))
-    def board(x0, col, letters, used):
-        out = [rect(x0 - 10, 280, 244, 244, "#14141d", 14, f'stroke="{col}" stroke-width="3"')]
-        for k, ch in enumerate(letters):
-            r, c = divmod(k, 4)
-            x, y = x0 + c * 57, 290 + r * 57
-            on = k in used
-            out.append(rect(x, y, 50, 50, col if on else "#1e1e2c", 8, f'stroke="{col}" stroke-opacity=".5" stroke-width="1.5"')
-                       + text(x + 25, y + 34, ch, "DM Sans", 26, "#0d0d12" if on else "#e8e8f0", 800))
+    """Forge restyle (Nov 2026): bronze tiles on an iron anvil plate, heraldic banners, Pirata One + Sofia Sans."""
+    d = (lin("ld-wall", [(0, "#2b2320"), (1, "#120e0d")])
+         + rad("ld-hearth", [(0, "#ff7628"), (1, "#ff762800")], cy="78%", r="60%")
+         + lin("ld-bronze", [(0, "#e3b06d"), (.5, "#b9804a"), (1, "#875a2f")], x2=.4, y2=1)
+         + lin("ld-silver", [(0, "#eef2f5"), (.5, "#a9b4bd"), (1, "#6c7781")], x2=.4, y2=1)
+         + lin("ld-hot", [(0, "#ffcf7a"), (.55, "#f08a2c"), (1, "#b8410e")], x2=.4, y2=1)
+         + lin("ld-iron", [(0, "#3c4047"), (.6, "#23262b"), (1, "#18191d")], x2=.3, y2=1)
+         + lin("ld-gold", [(0, "#f6c84a"), (1, "#a8780f")]) + lin("ld-blue", [(0, "#5a9cff"), (1, "#1f4fa8")]))
+    b = [rect(0, 0, 600, 800, "url(#ld-wall)")]
+    r = random.Random(11)
+    for row in range(13):
+        y, x = row * 62, (-50 if row % 2 else 0)
+        while x < 600:
+            w = r.uniform(90, 150)
+            b.append(rect(round(x + 3), y + 3, round(w - 6), 56, f"rgba(0,0,0,{r.uniform(.05, .12):.2f})", 6, 'stroke="rgba(255,255,255,.05)"'))
+            x += w
+    b.append(rect(0, 0, 600, 800, "url(#ld-hearth)", 0, 'opacity=".55"'))
+    # banners
+    def banner(x, grad, crest_fill, sun):
+        pts = f"{x},96 {x+120},96 {x+120},292 {x+60},266 {x},292"
+        out = [f'<polygon points="{pts}" fill="url(#{grad})" filter="url(#k-drop)"/>',
+               f'<polygon points="{x+8},104 {x+112},104 {x+112},278 {x+60},256 {x+8},278" fill="none" stroke="#f3dca8" stroke-opacity=".6" stroke-width="2"/>',
+               rect(x - 14, 84, 148, 16, "#2b2e33", 8), f'<circle cx="{x-14}" cy="92" r="12" fill="#c08a4a"/><circle cx="{x+134}" cy="92" r="12" fill="#c08a4a"/>']
+        cx, cy = x + 60, 176
+        out.append(f'<circle cx="{cx}" cy="{cy}" r="34" fill="{crest_fill}" stroke="rgba(0,0,0,.35)" stroke-width="4"/>')
+        if sun:
+            out.append(f'<circle cx="{cx}" cy="{cy}" r="11" fill="#2a1a06"/>' + "".join(
+                f'<line x1="{cx+16*math.cos(a):.1f}" y1="{cy+16*math.sin(a):.1f}" x2="{cx+24*math.cos(a):.1f}" y2="{cy+24*math.sin(a):.1f}" stroke="#2a1a06" stroke-width="3.5" stroke-linecap="round"/>'
+                for a in [k * math.pi / 4 for k in range(8)]))
+        else:
+            out.append(f'<circle cx="{cx-3}" cy="{cy}" r="18" fill="#fff"/><circle cx="{cx+6}" cy="{cy-5}" r="16" fill="{crest_fill}"/>')
         return "".join(out)
-    b.append(board(42, "#e8b84b", "STARBLOEMIKNDWPU", {0, 1, 2, 5, 6}))
-    b.append(board(334, "#5ba3e8", "QUESTFLAMIRODNEY", {0, 1, 2, 3, 4}))
-    # clash
-    b.append('<g transform="translate(300 400)"><polygon points="0,-60 14,-14 60,0 14,14 0,60 -14,14 -60,0 -14,-14" fill="#fff" opacity=".9" filter="url(#k-glow-s)"/></g>')
-    b.append(text(155, 560, "STAB", "DM Mono", 26, "#e8b84b", 500, ls=6) + text(447, 560, "QUEST", "DM Mono", 26, "#5ba3e8", 500, ls=6))
-    def hp(x, col, frac, lab):
-        return (text(x, 616, lab, "DM Mono", 14, col, 500, "start", 3) + rect(x, 626, 220, 16, "#1e1e2c", 8)
-                + rect(x, 626, 220 * frac, 16, col, 8))
-    b.append(hp(42, "#e8b84b", .62, "CHAMPION  62") + hp(334, "#5ba3e8", .38, "CHALLENGER  38"))
-    b.append(text(300, 712, "−24", "DM Sans", 72, "#f06060", 800, extra='filter="url(#k-drop)"'))
-    b.append(footer("PVP · SOLO WAVES · DICTIONARY CHECKED", "DM Mono", "#6b6880", 13, 3, 776, 500))
+    b.append(banner(24, "ld-gold", "#f0b429", True) + banner(456, "ld-blue", "#3f8cff", False))
+    # title
+    b.append(text(300, 168, "Lexicon", "Pirata One", 92, "#1a0d06", extra='opacity=".6" transform="translate(0 5)"')
+             + text(300, 168, "Lexicon", "Pirata One", 92, "#e7b878"))
+    b.append(text(300, 252, "Duel", "Pirata One", 104, "#1a0d06", extra='opacity=".6" transform="translate(0 5)"')
+             + text(300, 252, "Duel", "Pirata One", 104, "#e7b878"))
+    # plate
+    b.append(rect(118, 300, 364, 300, "url(#ld-iron)", 18, 'stroke="#7a4f26" stroke-width="5" filter="url(#k-drop)"'))
+    for cx, cy in [(132, 314), (468, 314), (132, 586), (468, 586)]:
+        b.append(f'<circle cx="{cx}" cy="{cy}" r="6" fill="#8a9099"/>')
+    letters = ["S", "W", "O", "R", "D", "K", "A", "L", "E", "T", "Q", "I"]
+    picked = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5}
+    order = [7, 0, 9, 2, 5, 1, 6, 3, 8, 4, 10, 11]
+    s = 76
+    for k in range(12):
+        rr, c = divmod(k, 4)
+        x, y = 146 + c * 80, 324 + rr * 90
+        ch = letters[order[k]]
+        rare = ch in "WKQ"
+        hot = order[k] in picked
+        fill = "url(#ld-silver)" if rare else "url(#ld-bronze)"
+        op = ' opacity=".45"' if hot else ""
+        b.append(f'<g{op}>' + rect(x, y + 5, s, s, "#3e2610" if not rare else "#3e464e", 12) + rect(x, y, s, s, fill, 12) + rect(x + 6, y + 4, s - 12, 12, "#fff", 6, 'opacity=".28"')
+                 + text(x + s / 2, y + s / 2 + 20, ch, "Sofia Sans", 54, "#1d2832" if rare else "#3a2212", 900) + '</g>')
+        if hot:
+            b.append(f'<circle cx="{x+s-6}" cy="{y+8}" r="14" fill="#f0b429" stroke="#14110f" stroke-width="3"/>'
+                     + text(x + s - 6, y + 14, str(picked[order[k]]), "Sofia Sans", 18, "#2a1a06", 900))
+    # rail with hot word
+    b.append(rect(70, 626, 460, 92, "#1d1f23", 16, 'stroke="#7a4f26" stroke-width="4" filter="url(#k-drop)"'))
+    for k, ch in enumerate("SWORD"):
+        x = 110 + k * 78
+        b.append(f'<rect x="{x}" y="638" width="68" height="68" rx="10" fill="url(#ld-hot)" stroke="#f0b429" stroke-width="3" filter="url(#k-drop-s)"/>'
+                 + text(x + 34, 686, ch, "Sofia Sans", 46, "#3a1405", 900))
+    b.append('<g transform="translate(492 330) rotate(-10)">' + text(0, 0, "−24", "Pirata One", 92, "#1a0505", extra='opacity=".7" transform="translate(0 5)"')
+             + text(0, 0, "−24", "Pirata One", 92, "#ff6b5e") + '</g>')
+    for k in range(26):
+        b.append(f'<circle cx="{r.uniform(80,520):.0f}" cy="{r.uniform(560,780):.0f}" r="{r.uniform(1.2,2.8):.1f}" fill="#ffb057" opacity="{r.uniform(.35,.9):.2f}"/>')
+    b.append(text(300, 762, "Forge words. Deal damage.", "Sofia Sans", 26, "#e6cfae", 800))
     return svg(d, "".join(b))
 
 

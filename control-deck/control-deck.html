@@ -147,6 +147,7 @@ input.vol::-moz-range-thumb{width:30px;height:30px;border-radius:7px;background:
 .act:active{transform:translateY(6px);box-shadow:0 2px 0 var(--edge),0 8px 14px rgba(0,0,0,.4)}
 .act.lock{background:linear-gradient(180deg,#ff8a4a,#e2531d);--edge:#7e2a0b}
 .act.next{background:linear-gradient(180deg,#f0d38a,#b98a2e);--edge:#6a4d14;color:#1b1408}
+.act:disabled{filter:grayscale(.85) brightness(.65);cursor:not-allowed;transform:none;box-shadow:0 8px 0 var(--edge),0 18px 28px rgba(0,0,0,.45)}
 .act.pop{animation:actpop .35s cubic-bezier(.3,1.6,.5,1)}
 @keyframes actpop{from{transform:translateY(30px) scale(.92);opacity:0}}
 .act.breathe{animation:breathe 2.4s ease-in-out infinite}
@@ -421,11 +422,12 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
    <div class="col">
      <div class="field"><div class="flabel">Rounds</div><div class="seg-ctl" id="roundOpts"></div></div>
      <div class="field"><div class="flabel">Starting level</div><div class="seg-ctl" id="levelOpts"></div></div>
-     <h2>Modules (unlock order)</h2>
+     <h2 id="modHead">Modules</h2>
      <div class="mods" id="modChips"></div>
      <div class="togs">
        <label class="tog"><input type="checkbox" id="optChaos"><span class="tv"></span><span><strong>Chaos mode.</strong> With 4+ modules, sometimes two commands come at once.</span></label>
        <label class="tog"><input type="checkbox" id="optShuffle"><span class="tv"></span><span><strong>Shuffle panel.</strong> Two modules swap places every turn.</span></label>
+       <label class="tog"><input type="checkbox" id="optRandom" checked><span class="tv"></span><span><strong>Random module order.</strong> Modules unlock in a different order every game.</span></label>
        <label class="tog"><input type="checkbox" id="optAuto" checked><span class="tv"></span><span><strong>Auto next.</strong> After locking in, the next command starts by itself in 5 seconds.</span></label>
      </div>
    </div>
@@ -455,198 +457,258 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
 /* ============================================================
    ENGINE — pure data + rules (no DOM). Testable in Node.
    Banks are indexed by level: 0 Basic · 1 Pre-intermediate · 2 Intermediate · 3 Upper-intermediate · 4 Advanced
+   Content is drawn from shuffled "bags": no item repeats until its whole bag is used (bags persist across games).
    ============================================================ */
 const CD = (function(){
   const pick=(a,r)=>a[Math.floor(r()*a.length)];
   const shuffle=(a,r)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;};
   const Q=w=>'“'+w+'”';
-  const LV=(bank,lv)=>bank[Math.max(0,Math.min(lv,bank.length-1))];
   const LEVELS=['Basic','Pre-intermediate','Intermediate','Upper-intermediate','Advanced'];
   const LEVEL_SHORT=['Basic','Pre-int','Inter','Upper','Adv'];
   const PER_LEVEL=4; // correct answers needed to climb one level
+  const REVIEW=.25;  // chance to draw from the level below (review + variety)
+
+  /* ---------- bags (no repeats until exhausted) ---------- */
+  let BAGS={},CONSUME=true;
+  function draw(key,arr,r){
+    if(!CONSUME) return pick(arr,r); // decor content for modules that are not being asked: does not use up the bag
+    let b=BAGS[key];
+    if(!b||!b.length||b.some(i=>i>=arr.length)){
+      b=shuffle(arr.map((_,i)=>i),r);const last=BAGS[key+'~'];
+      if(b.length>1&&b[b.length-1]===last){const t=b[0];b[0]=b[b.length-1];b[b.length-1]=t;}
+      BAGS[key]=b;
+    }
+    const i=b.pop();BAGS[key+'~']=i;return arr[i];
+  }
+  function lvUse(bank,lv,r){const L=Math.max(0,Math.min(lv,bank.length-1));return (L>0&&r()<REVIEW)?L-1:L;}
 
   /* ---------- word banks (by level) ---------- */
   // Word Class Keys: every word must belong to ONE class only (no 'book' = noun/verb, 'well' = adv/adj)
   const WC=[
-    {noun:['apple','car','teacher','girl','boy','banana','sister','city'],verb:['eat','write','come','sit','see','give','bring','speak'],
-     adjective:['big','happy','small','hot','old','new','tall','beautiful'],adverb:['slowly','quickly','loudly','badly','always','never','often','sadly']},
-    {noun:['kitchen','river','library','umbrella','elephant','uncle','hospital','museum'],verb:['forget','explain','choose','borrow','arrive','bring','teach','become'],
-     adjective:['careful','famous','heavy','angry','hungry','expensive','lazy','noisy'],adverb:['carefully','quietly','happily','easily','suddenly','sometimes','usually','angrily']},
-    {noun:['idea','mountain','island','decision','opinion','government','planet','knowledge'],verb:['describe','decide','believe','forgive','complain','improve','discover','suggest'],
-     adjective:['dangerous','polite','strange','delicious','honest','generous','comfortable','nervous'],adverb:['politely','rarely','gently','nervously','recently','finally','eventually','seriously']},
-    {noun:['freedom','opportunity','environment','behavior','achievement','advice','pollution','honesty'],verb:['persuade','achieve','ignore','encourage','avoid','require','recognize','maintain'],
-     adjective:['reliable','enormous','ambitious','curious','efficient','obvious','anxious','reluctant'],adverb:['gradually','frequently','apparently','deliberately','absolutely','rapidly','completely','unfortunately']},
-    {noun:['hypothesis','consensus','ambiguity','phenomenon','integrity','resilience','scrutiny','dilemma'],verb:['undermine','scrutinize','alleviate','comprehend','emphasize','facilitate','justify','deteriorate'],
-     adjective:['ubiquitous','meticulous','tedious','ambiguous','pragmatic','resilient','coherent','arbitrary'],adverb:['inevitably','meticulously','arguably','predominantly','simultaneously','reluctantly','thoroughly','nonetheless']}
+    {noun:['apple','car','teacher','girl','boy','banana','sister','city','brother','grandmother','bedroom','tomato','potato','animal','family','student','child','country','money','birthday'],
+     verb:['eat','write','come','sit','see','give','bring','speak','sing','know','understand','learn','teach','tell','become','choose'],
+     adjective:['big','happy','small','hot','old','new','tall','beautiful','sad','young','hungry','thirsty','ugly','funny','lucky','friendly'],
+     adverb:['slowly','quickly','loudly','badly','always','never','often','sadly','usually','soon','really','carefully','again','nearly','happily','already']},
+    {noun:['kitchen','river','library','umbrella','elephant','uncle','hospital','museum','airport','dentist','breakfast','newspaper','village','restaurant','vegetable','grandfather'],
+     verb:['forget','explain','borrow','arrive','prefer','agree','invent','enjoy','remember','imagine','destroy','allow','belong','lend','happen','depend'],
+     adjective:['careful','famous','angry','expensive','lazy','noisy','boring','crowded','modern','terrible','wonderful','healthy','sleepy','cheerful','difficult','heavy'],
+     adverb:['carefully','quietly','easily','suddenly','angrily','probably','perfectly','immediately','certainly','correctly','clearly','honestly','normally','especially','regularly','carelessly']},
+    {noun:['idea','mountain','island','decision','opinion','government','planet','knowledge','journalist','population','ambulance','information','scientist','education','invention','competition','argument','celebration'],
+     verb:['describe','decide','believe','forgive','complain','improve','discover','suggest','recommend','prevent','pretend','receive','admire','apologize','deliver','disappear','behave','survive'],
+     adjective:['dangerous','polite','strange','delicious','honest','generous','comfortable','nervous','impossible','embarrassed','disappointed','confident','jealous','mysterious','peaceful','selfish','careless','enthusiastic'],
+     adverb:['politely','rarely','gently','nervously','recently','finally','eventually','seriously','patiently','proudly','generously','comfortably','mysteriously','confidently','successfully','previously','accidentally','actually']},
+    {noun:['freedom','opportunity','environment','behavior','achievement','advice','pollution','honesty','independence','curiosity','responsibility','consequence','generosity','permission','explanation','disappointment','possibility','frustration'],
+     verb:['persuade','achieve','ignore','encourage','avoid','require','recognize','maintain','hesitate','criticize','investigate','negotiate','contribute','appreciate','convince','exaggerate','interrupt','postpone'],
+     adjective:['reliable','enormous','ambitious','curious','efficient','obvious','anxious','reluctant','sensitive','temporary','spontaneous','suspicious','remarkable','fascinating','sufficient','unbearable','aggressive','furious'],
+     adverb:['gradually','frequently','apparently','deliberately','absolutely','rapidly','completely','unfortunately','approximately','obviously','constantly','merely','entirely','initially','particularly','increasingly','extremely','relatively']},
+    {noun:['hypothesis','consensus','ambiguity','phenomenon','integrity','resilience','scrutiny','dilemma','discrepancy','paradox','autonomy','ideology','inequality','legislation','perception','controversy','hindsight','anomaly'],
+     verb:['undermine','scrutinize','alleviate','comprehend','emphasize','facilitate','justify','deteriorate','exacerbate','mitigate','endorse','reiterate','disseminate','circumvent','substantiate','acknowledge','consolidate','perceive'],
+     adjective:['ubiquitous','meticulous','tedious','ambiguous','pragmatic','resilient','coherent','arbitrary','inherent','plausible','superfluous','conspicuous','profound','obsolete','rigorous','ambivalent','comprehensive','feasible'],
+     adverb:['inevitably','meticulously','arguably','predominantly','simultaneously','reluctantly','thoroughly','nonetheless','consequently','inherently','subsequently','explicitly','implicitly','notably','presumably','ostensibly','scarcely','hence']}
   ];
   const VERBS3=[
-    [['go','went','gone'],['see','saw','seen'],['eat','ate','eaten'],['do','did','done'],['take','took','taken'],['give','gave','given'],['write','wrote','written']],
-    [['drink','drank','drunk'],['swim','swam','swum'],['ride','rode','ridden'],['fly','flew','flown'],['break','broke','broken'],['speak','spoke','spoken'],['drive','drove','driven'],['sing','sang','sung'],['begin','began','begun'],['fall','fell','fallen']],
-    [['choose','chose','chosen'],['freeze','froze','frozen'],['hide','hid','hidden'],['steal','stole','stolen'],['forget','forgot','forgotten'],['grow','grew','grown'],['throw','threw','thrown'],['wear','wore','worn'],['know','knew','known'],['draw','drew','drawn']],
-    [['bite','bit','bitten'],['shake','shook','shaken'],['ring','rang','rung'],['forgive','forgave','forgiven'],['forbid','forbade','forbidden'],['mistake','mistook','mistaken'],['shrink','shrank','shrunk'],['tear','tore','torn'],['sink','sank','sunk'],['arise','arose','arisen']],
-    [['weave','wove','woven'],['tread','trod','trodden'],['strive','strove','striven'],['swear','swore','sworn'],['bear','bore','borne'],['stride','strode','stridden'],['spring','sprang','sprung'],['undertake','undertook','undertaken'],['withdraw','withdrew','withdrawn'],['foresee','foresaw','foreseen']]
+    [['go','went','gone'],['see','saw','seen'],['eat','ate','eaten'],['do','did','done'],['take','took','taken'],['give','gave','given'],['write','wrote','written'],['know','knew','known'],['drink','drank','drunk'],['sing','sang','sung']],
+    [['swim','swam','swum'],['ride','rode','ridden'],['fly','flew','flown'],['break','broke','broken'],['speak','spoke','spoken'],['drive','drove','driven'],['begin','began','begun'],['fall','fell','fallen'],['ring','rang','rung'],['wear','wore','worn'],['draw','drew','drawn'],['grow','grew','grown']],
+    [['choose','chose','chosen'],['freeze','froze','frozen'],['hide','hid','hidden'],['steal','stole','stolen'],['forget','forgot','forgotten'],['throw','threw','thrown'],['wake','woke','woken'],['shake','shook','shaken'],['bite','bit','bitten'],['sink','sank','sunk'],['tear','tore','torn'],['blow','blew','blown']],
+    [['forgive','forgave','forgiven'],['forbid','forbade','forbidden'],['mistake','mistook','mistaken'],['shrink','shrank','shrunk'],['arise','arose','arisen'],['swear','swore','sworn'],['spring','sprang','sprung'],['withdraw','withdrew','withdrawn'],['undertake','undertook','undertaken'],['foresee','foresaw','foreseen'],['overtake','overtook','overtaken'],['stride','strode','stridden']],
+    [['weave','wove','woven'],['tread','trod','trodden'],['strive','strove','striven'],['bear','bore','borne'],['slay','slew','slain'],['forsake','forsook','forsaken'],['forgo','forwent','forgone'],['partake','partook','partaken'],['swell','swelled','swollen'],['smite','smote','smitten'],['beget','begot','begotten'],['outdo','outdid','outdone']]
   ];
   const ART=[
-    {a:['dog','banana','car','book','cat','house'],an:['apple','egg','orange','elephant','ice cream','old man']},
-    {a:['horse','bike','teacher','big egg','red apple','new umbrella'],an:['umbrella','uncle','island','idea','artist','animal']},
-    {a:['university','uniform','unicorn','user','year','useful tool'],an:['hour','honest girl','interesting book','ugly fish','empty box','easy test']},
-    {a:['European city','one-way ticket','union','university student','usual problem','hotel'],an:['honor','heir','MP3 player','X-ray','hourly bus','SMS']},
-    {a:['one-off event','eulogy','unanimous vote','utopia','UFO','URL'],an:['FBI agent','NGO','honorary degree','MBA','LED light','RSVP']}
+    {a:['dog','banana','car','book','cat','house','girl','pen','sandwich','bird'],an:['apple','egg','orange','elephant','ice cream','old man','animal','eye','ant','octopus']},
+    {a:['horse','bike','teacher','big egg','red apple','new umbrella','young elephant','small island','good idea','long hour'],an:['umbrella','uncle','island','idea','artist','animal','engineer','actor','easy question','open door']},
+    {a:['university','uniform','unicorn','user','year','useful tool','unit','unique gift','yellow umbrella','wonderful hour'],an:['hour','honest girl','interesting book','ugly fish','empty box','easy test','honest answer','hour-long show','unusual name','unhappy child']},
+    {a:['European city','one-way ticket','union','university student','usual problem','hotel','eucalyptus tree','one-eyed cat','euro coin','U-turn'],an:['honor','heir','MP3 player','X-ray','hourly bus','SMS','LCD screen','honorable man','heirloom','F grade']},
+    {a:['one-off event','eulogy','unanimous vote','utopia','UFO','URL','euphemism','ubiquitous app','uranium mine','once-in-a-lifetime trip'],an:['FBI agent','NGO','honorary degree','MBA','LED light','RSVP','SUV','HTML file','NBA player','HR manager']}
   ];
   const PASTPAIRS=[
-    [['walked','walks'],['played','plays'],['went','goes'],['saw','see'],['ate','eats'],['liked','likes'],['watched','watching'],['had','has']],
-    [['wanted','wants'],['studied','studies'],['bought','buy'],['came','comes'],['stopped','stop'],['cried','cries'],['made','making'],['wrote','writes'],['danced','dances'],['met','meet']],
-    [['thought','thinks'],['found','finds'],['taught','teaches'],['slept','sleeps'],['caught','catches'],['brought','brings'],['flew','flies'],['sat','sits'],['listened','listening'],['visited','visit']],
-    [['fought','fights'],['chose','choose'],['forgot','forget'],['began','begin'],['drank','drink'],['swam','swim'],['grew','grows'],['threw','throws'],['sought','seeks'],['lent','lends']],
-    [['forbade','forbid'],['wove','weave'],['strove','strive'],['swore','swear'],['trod','tread'],['shrank','shrink'],['withdrew','withdraw'],['arose','arise'],['bore','bears'],['sank','sinks']]
+    [['walked','walks'],['played','plays'],['went','goes'],['saw','see'],['ate','eats'],['liked','likes'],['watched','watching'],['had','has'],['cooked','cooks'],['opened','opens'],['jumped','jumps'],['drank','drinks'],['came','come'],['got','gets']],
+    [['wanted','wants'],['studied','studies'],['bought','buy'],['stopped','stop'],['cried','cries'],['made','making'],['wrote','writes'],['danced','dances'],['met','meet'],['carried','carries'],['gave','gives'],['told','tells'],['lost','loses'],['wore','wears']],
+    [['thought','thinks'],['found','finds'],['taught','teaches'],['slept','sleeps'],['caught','catches'],['brought','brings'],['flew','flies'],['sat','sits'],['listened','listening'],['visited','visit'],['understood','understands'],['felt','feels'],['kept','keeps'],['spent','spends']],
+    [['fought','fights'],['chose','choose'],['forgot','forget'],['began','begin'],['swam','swim'],['grew','grows'],['threw','throws'],['sought','seeks'],['lent','lends'],['froze','freezes'],['hid','hides'],['shook','shakes'],['stole','steals'],['bit','bites']],
+    [['forbade','forbid'],['wove','weave'],['strove','strive'],['swore','swear'],['trod','tread'],['shrank','shrink'],['withdrew','withdraw'],['arose','arise'],['bore','bears'],['sank','sinks'],['forsook','forsake'],['slew','slays'],['clung','clings'],['wrung','wrings']]
   ];
-  const IRREG=[
-    ['go','eat','take','write','buy','come','find','think','make','meet','sit','drink','sleep','run','give'],
-    ['go','eat','take','write','buy','come','find','think','make','meet','sit','drink','sleep','run','give'],
-    ['teach','speak','break','catch','choose','steal','hide','freeze','lend','fight'],
-    ['teach','speak','break','catch','choose','steal','hide','freeze','lend','fight','seek','shrink'],
-    ['forbid','weave','strive','tread','bear','seek','bind','cling','wring','swear']
-  ];
-  const REG=[
-    ['walk','play','want','study','stop','cry','listen','dance','open','clean','watch','cook','help','jump','work'],
-    ['walk','play','want','study','stop','cry','listen','dance','open','clean','watch','cook','help','jump','work'],
-    ['arrive','travel','decide','invite','describe','improve','discover','suggest','borrow','explain'],
-    ['persuade','achieve','ignore','encourage','require','maintain','recognize','avoid','arrive','decide'],
-    ['persuade','achieve','ignore','encourage','require','maintain','deteriorate','alleviate','justify','emphasize']
-  ];
+  const IRREG01=['go','eat','take','write','buy','come','find','think','make','meet','sit','drink','sleep','run','give','swim','sing','fly','see','know'];
+  const REG01=['walk','play','want','study','stop','cry','listen','dance','open','clean','watch','cook','help','jump','work','live','like','wash','call','talk'];
+  const IRREG23=['teach','speak','break','catch','choose','steal','hide','freeze','lend','fight','seek','shrink','bite','forgive','throw','wake','shake','tear'];
+  const REG23=['arrive','travel','decide','invite','describe','improve','discover','suggest','borrow','explain','persuade','achieve','ignore','encourage','require','recognize','complain','prevent'];
+  const IRREG=[IRREG01,IRREG01,IRREG23,IRREG23,['forbid','weave','strive','tread','bear','seek','bind','cling','wring','swear','forsake','slay','stride','spring','undertake','withdraw']];
+  const REG=[REG01,REG01,REG23,REG23,['persuade','achieve','ignore','encourage','require','maintain','deteriorate','alleviate','justify','emphasize','scrutinize','facilitate','undermine','mitigate','endorse','acknowledge']];
   const PREP=[
-    {at:['7 o\'clock','night','3 p.m.'],on:['Monday','Friday','Sunday'],in:['July','May','summer']},
-    {at:['noon','lunchtime','half past six'],on:['my birthday','Saturday morning','May 5th'],in:['the morning','winter','the evening']},
-    {at:['midnight','sunset','the moment'],on:['Christmas Day','July 4th','New Year\'s Day'],in:['2010','March','the afternoon']},
-    {at:['the same time','dawn','bedtime'],on:['the first day of school','Valentine\'s Day','weekdays'],in:['the 1990s','the 21st century','the past']},
-    {at:['the turn of the century','the crack of dawn','the end of the day'],on:['the eve of the election','that particular morning','the morning of the wedding'],in:['the Middle Ages','the early hours','the nick of time']}
+    {at:['7 o\'clock','night','3 p.m.','9:30','6 a.m.','8 o\'clock'],on:['Monday','Friday','Sunday','Tuesday','Wednesday','Saturday'],in:['July','May','summer','January','October','winter']},
+    {at:['noon','lunchtime','half past six','dinnertime','a quarter to five','breakfast time'],on:['my birthday','Saturday morning','May 5th','Monday afternoon','her birthday','Friday evening'],in:['the morning','the evening','the afternoon','spring','December','August']},
+    {at:['midnight','sunset','the moment','sunrise','the end of the movie','the start of class'],on:['Christmas Day','July 4th','New Year\'s Day','Independence Day','my first day','Halloween night'],in:['2010','1999','the fall','the summer of 2020','a few minutes','March']},
+    {at:['the same time','dawn','bedtime','dusk','the age of ten','this point'],on:['the first day of school','Valentine\'s Day','weekdays','the following day','Thanksgiving Day','the day of the exam'],in:['the 1990s','the 21st century','the past','the future','the meantime','the Stone Age']},
+    {at:['the turn of the century','the crack of dawn','the end of the day','the outset','the height of summer','the eleventh hour'],on:['the eve of the election','that particular morning','the morning of the wedding','the night in question','the anniversary of the war','the occasion of her retirement'],in:['the Middle Ages','the early hours','the nick of time','the long run','the aftermath','due course']}
   ];
   const QTY=[
-    {much:['water','money','milk','juice'],many:['apples','books','cars','dogs','friends']},
-    {much:['bread','sugar','time','rice','coffee'],many:['people','children','eggs','students','photos']},
-    {much:['homework','information','advice','music','traffic'],many:['mice','questions','countries','tomatoes','teeth']},
-    {much:['luggage','furniture','equipment','research','feedback','news'],many:['criteria','women','feet','sheep','geese']},
-    {much:['knowledge','evidence','progress','machinery','legislation'],many:['phenomena','crises','alumni','cattle','bacteria']}
+    {much:['water','money','milk','juice','tea','soup','cheese','food'],many:['apples','books','cars','dogs','friends','cats','pens','toys']},
+    {much:['bread','sugar','time','rice','coffee','salt','butter','pasta'],many:['people','children','eggs','students','photos','countries','bananas','hours']},
+    {much:['homework','information','advice','music','traffic','weather','electricity','patience'],many:['mice','questions','tomatoes','teeth','potatoes','women','babies','cities']},
+    {much:['luggage','furniture','equipment','research','feedback','news','garbage','jewelry'],many:['criteria','feet','sheep','geese','knives','leaves','lives','wolves']},
+    {much:['knowledge','evidence','progress','machinery','legislation','leisure','wealth','merchandise'],many:['phenomena','crises','alumni','cattle','bacteria','analyses','theses','oxen']}
   ];
   const PLURAL=[
-    [['box','boxes','boxs','boxies'],['bus','buses','buss','busies'],['day','days','daies','dayes'],['baby','babies','babys','babyes'],['cat','cats','cates','catz'],['dog','dogs','doges','doggs']],
-    [['child','children','childs','childrens'],['man','men','mans','mens'],['woman','women','womans','womens'],['city','cities','citys','cityes'],['key','keys','kies','keyes'],['watch','watches','watchs','watchies']],
-    [['mouse','mice','mouses','mices'],['foot','feet','foots','feets'],['tooth','teeth','tooths','teeths'],['knife','knives','knifes','knive'],['potato','potatoes','potatos','potatoies'],['sheep','sheep','sheeps','sheepes']],
-    [['goose','geese','gooses','geeses'],['wife','wives','wifes','wifies'],['leaf','leaves','leafs','leafes'],['half','halves','halfs','halfes'],['tomato','tomatoes','tomatos','tomatoies'],['ox','oxen','oxes','oxs']],
-    [['crisis','crises','crisises','crisi'],['phenomenon','phenomena','phenomenas','phenomenoms'],['criterion','criteria','criterias','criterium'],['analysis','analyses','analysises','analysi'],['thesis','theses','thesises','thesi'],['bacterium','bacteria','bacterias','bacteriums']]
+    [['box','boxes','boxs','boxies'],['bus','buses','buss','busies'],['day','days','daies','dayes'],['baby','babies','babys','babyes'],['cat','cats','cates','catz'],['dog','dogs','doges','doggs'],
+     ['glass','glasses','glasss','glassies'],['dish','dishes','dishs','dishies'],['toy','toys','toies','toyes'],['fox','foxes','foxs','foxies'],['lady','ladies','ladys','ladyes'],['class','classes','classs','classies']],
+    [['child','children','childs','childrens'],['man','men','mans','mens'],['woman','women','womans','womens'],['city','cities','citys','cityes'],['key','keys','kies','keyes'],['watch','watches','watchs','watchies'],
+     ['family','families','familys','familyes'],['boy','boys','boies','boyes'],['church','churches','churchs','churchies'],['story','stories','storys','storyes']],
+    [['mouse','mice','mouses','mices'],['foot','feet','foots','feets'],['tooth','teeth','tooths','teeths'],['knife','knives','knifes','knive'],['potato','potatoes','potatos','potatoies'],['sheep','sheep','sheeps','sheepes'],
+     ['wolf','wolves','wolfs','wolfes'],['life','lives','lifes','lifies'],['deer','deer','deers','deeres'],['shelf','shelves','shelfs','shelfes']],
+    [['goose','geese','gooses','geeses'],['wife','wives','wifes','wifies'],['leaf','leaves','leafs','leafes'],['half','halves','halfs','halfes'],['tomato','tomatoes','tomatos','tomatoies'],['ox','oxen','oxes','oxs'],
+     ['thief','thieves','thiefs','thiefes'],['loaf','loaves','loafs','loafes'],['echo','echoes','echos','echoies'],['calf','calves','calfs','calfes']],
+    [['crisis','crises','crisises','crisi'],['phenomenon','phenomena','phenomenas','phenomenoms'],['criterion','criteria','criterias','criterium'],['analysis','analyses','analysises','analysi'],['thesis','theses','thesises','thesi'],['bacterium','bacteria','bacterias','bacteriums'],
+     ['hypothesis','hypotheses','hypothesises','hypothesi'],['oasis','oases','oasises','oasi'],['diagnosis','diagnoses','diagnosises','diagnosi'],['alumnus','alumni','alumnis','alumnuses']]
   ];
   // [word, synonym, opposite, distractor]
   const MEAN=[
-    [['big','large','small','early'],['happy','glad','sad','heavy'],['fast','quick','slow','tall'],['begin','start','finish','eat'],['small','little','big','wet'],['shut','close','open','sing']],
-    [['difficult','hard','easy','loud'],['angry','mad','calm','round'],['quiet','silent','noisy','sweet'],['correct','right','wrong','cold'],['scared','afraid','brave','thin'],['near','close','far','soft']],
-    [['rich','wealthy','poor','tall'],['dirty','filthy','clean','young'],['old','ancient','modern','hungry'],['clever','smart','stupid','wet'],['huge','enormous','tiny','late'],['shout','yell','whisper','borrow']],
-    [['reluctant','unwilling','eager','frequent'],['brave','courageous','cowardly','delicious'],['temporary','brief','permanent','hungry'],['expand','grow','shrink','borrow'],['rude','impolite','polite','heavy'],['victory','win','defeat','kitchen']],
-    [['abundant','plentiful','scarce','fragile'],['candid','frank','evasive','ancient'],['benevolent','kind','malicious','fragile'],['concur','agree','dissent','elaborate'],['meticulous','thorough','careless','humid'],['transient','fleeting','permanent','humid']]
+    [['big','large','small','early'],['happy','glad','sad','heavy'],['fast','quick','slow','tall'],['begin','start','finish','eat'],['small','little','big','wet'],['shut','close','open','sing'],
+     ['nice','kind','rude','yellow'],['ill','sick','healthy','blue'],['loud','noisy','quiet','round'],['under','below','above','green']],
+    [['difficult','hard','easy','loud'],['angry','mad','calm','round'],['quiet','silent','noisy','sweet'],['correct','right','wrong','cold'],['scared','afraid','brave','thin'],['near','close','far','soft'],
+     ['pretty','beautiful','ugly','fast'],['simple','easy','complicated','wet'],['build','make','destroy','sleep'],['buy','purchase','sell','drink'],['cheap','inexpensive','expensive','tired'],['arrive','come','leave','eat']],
+    [['rich','wealthy','poor','tall'],['dirty','filthy','clean','young'],['old','ancient','modern','hungry'],['clever','smart','stupid','wet'],['huge','enormous','tiny','late'],['shout','yell','whisper','borrow'],
+     ['allow','permit','forbid','cook'],['accept','take','refuse','paint'],['famous','well-known','unknown','sleepy'],['remember','recall','forget','carry'],['unhappy','miserable','cheerful','wooden']],
+    [['reluctant','unwilling','eager','frequent'],['brave','courageous','cowardly','delicious'],['temporary','brief','permanent','hungry'],['expand','grow','shrink','borrow'],['rude','impolite','polite','heavy'],['victory','win','defeat','kitchen'],
+     ['frequent','common','rare','edible'],['reveal','show','hide','borrow'],['optimistic','hopeful','pessimistic','wooden'],['increase','rise','decrease','describe'],['hostile','unfriendly','friendly','purple'],['fragile','delicate','sturdy','hungry'],['artificial','fake','natural','sleepy']],
+    [['abundant','plentiful','scarce','fragile'],['candid','frank','evasive','ancient'],['benevolent','kind','malicious','fragile'],['concur','agree','dissent','elaborate'],['meticulous','thorough','careless','humid'],['transient','fleeting','permanent','humid'],
+     ['obscure','unclear','obvious','edible'],['verbose','wordy','concise','fragile'],['lethargic','sluggish','energetic','porous'],['augment','increase','diminish','narrate'],['tranquil','serene','turbulent','edible'],['frugal','thrifty','extravagant','fluent']]
   ];
   const QW=[
-    [['My mom.','who'],['A cat.','what'],['At home.','where'],['Today.','when'],['Because I\'m hungry.','why'],['Fine, thanks.','how'],['In the park.','where'],['Pizza.','what'],['My teacher.','who'],['At 8 o\'clock.','when']],
-    [['In Paris.','where'],['By bus.','how'],['Last summer.','when'],['Because I was tired.','why'],['A sandwich.','what'],['Our neighbors.','who'],['Under the bed.','where'],['On foot.','how'],['To buy some milk.','why'],['In the morning.','when']],
-    [['It\'s Anna\'s.','whose'],['The blue one.','which'],['Very well, thanks.','how'],['Because it\'s my birthday.','why'],['At the library.','where'],['A new phone.','what'],['Mr. Lee, the coach.','who'],['Mine.','whose'],['The bigger one.','which'],['Next Tuesday.','when']],
-    [['Twice a week.','how'],['For three years.','how'],['About twenty dollars.','how'],['To get a better job.','why'],['In the late nineties.','when'],['My cousin\'s.','whose'],['The second one on the left.','which'],['A documentary about whales.','what'],['The woman next door.','who'],['Somewhere near the beach.','where']],
-    [['Due to the heavy traffic.','why'],['Not long after we\'d left.','when'],['By working extremely hard.','how'],['The one with the cracked screen.','which'],['Hers, I\'m afraid.','whose'],['Wherever there\'s free Wi-Fi.','where'],['Whatever you recommend.','what'],['Shortly before midnight.','when'],['On the grounds that it was unsafe.','why'],['The person in charge of security.','who']]
+    [['My mom.','who'],['A cat.','what'],['At home.','where'],['Today.','when'],['Because I\'m hungry.','why'],['Fine, thanks.','how'],['In the park.','where'],['Pizza.','what'],['My teacher.','who'],['At 8 o\'clock.','when'],
+     ['At school.','where'],['My dad.','who'],['On Monday.','when'],['A banana.','what'],['Because it\'s cold.','why'],['Very good!','how'],['In the kitchen.','where'],['Tomorrow.','when']],
+    [['In Paris.','where'],['By bus.','how'],['Last summer.','when'],['Because I was tired.','why'],['A sandwich.','what'],['Our neighbors.','who'],['Under the bed.','where'],['On foot.','how'],['To buy some milk.','why'],['In the morning.','when'],
+     ['With my sister.','who'],['Next week.','when'],['At the station.','where'],['By train.','how'],['A new bike.','what'],['Because I missed the bus.','why'],['Soccer.','what']],
+    [['It\'s Anna\'s.','whose'],['The blue one.','which'],['Very well, thanks.','how'],['Because it\'s my birthday.','why'],['At the library.','where'],['A new phone.','what'],['Mr. Lee, the coach.','who'],['Mine.','whose'],['The bigger one.','which'],['Next Tuesday.','when'],
+     ['Tom\'s.','whose'],['The red one.','which'],['In two hours.','when'],['To say thank you.','why'],['My best friend.','who'],['In the garage.','where'],['By taxi.','how'],['Chicken soup.','what']],
+    [['Twice a week.','how'],['For three years.','how'],['About twenty dollars.','how'],['To get a better job.','why'],['In the late nineties.','when'],['My cousin\'s.','whose'],['The second one on the left.','which'],['A documentary about whales.','what'],['The woman next door.','who'],['Somewhere near the beach.','where'],
+     ['Not very often.','how'],['Ours.','whose'],['The cheaper one.','which'],['Because the store was closed.','why'],['She\'s a scientist.','what'],['About an hour away.','how'],['Last Friday night.','when']],
+    [['Due to the heavy traffic.','why'],['Not long after we\'d left.','when'],['By working extremely hard.','how'],['The one with the cracked screen.','which'],['Hers, I\'m afraid.','whose'],['Wherever there\'s free Wi-Fi.','where'],['Whatever you recommend.','what'],['Shortly before midnight.','when'],['On the grounds that it was unsafe.','why'],['The person in charge of security.','who'],
+     ['Neither of them, actually.','which'],['The neighbors\', I think.','whose'],['In order to save money.','why'],['Through a friend of a friend.','how'],['Someone from the city council.','who'],['A rather unusual request.','what'],['Wherever the job takes me.','where'],['Not until the end of the month.','when']]
   ];
   const QW_LABELS=[['off','who','what','where','when','why','how'],['off','who','what','where','when','why','how'],
     ['off','who','what','where','when','why','how','whose','which']];
   // tense keys + [sentence, key index]
   const TENSE=[
-    {keys:['present simple','present continuous','past simple','future (will)'],s:[['She plays tennis.',0],['I like pizza.',0],['My dad works in a bank.',0],['They are watching TV.',1],['The baby is sleeping.',1],['I am reading a book.',1],
-      ['We visited Rome.',2],['I played soccer yesterday.',2],['She went home.',2],['It will rain tomorrow.',3],['I will call you later.',3],['They will win.',3]]},
-    {keys:['present simple','present continuous','past simple','future (will)'],s:[['She doesn\'t like fish.',0],['Do you speak English?',0],['The bus leaves at nine.',0],['Is it raining?',1],['Tom is cooking dinner.',1],['We aren\'t working today.',1],
-      ['Did you call me?',2],['They didn\'t come.',2],['I bought a new bike.',2],['Will you help me?',3],['I won\'t tell anyone.',3],['She\'ll be late.',3]]},
-    {keys:['present simple','past simple','present perfect','past continuous'],s:[['He usually walks to school.',0],['Water boils at 100 degrees.',0],['I lost my keys yesterday.',1],['Did she pass the test?',1],
-      ['I have finished my homework.',2],['Have you ever seen snow?',2],['She has just left.',2],['I was sleeping when you called.',3],['They were playing outside.',3],['What were you doing at 8?',3]]},
-    {keys:['present perfect','present perfect continuous','past perfect','past continuous'],s:[['We have lived here for years.',0],['He has broken his arm.',0],['I have been waiting for an hour.',1],['She has been studying all day.',1],
-      ['The film had started when we arrived.',2],['I had never flown before.',2],['It was snowing all night.',3],['We were having dinner when the lights went out.',3]]},
-    {keys:['past perfect','past perfect continuous','future perfect','future continuous'],s:[['She had already left by noon.',0],['By then, they had sold the house.',0],['He had been running, so he was tired.',1],['They had been arguing for hours.',1],
-      ['By June, I will have graduated.',2],['They will have finished by Friday.',2],['This time tomorrow, I\'ll be flying.',3],['Will you be using the car tonight?',3]]}
+    {keys:['present simple','present continuous','past simple','future (will)'],s:[['She plays tennis.',0],['I like pizza.',0],['My dad works in a bank.',0],['He gets up at seven.',0],['We live in Curitiba.',0],
+      ['They are watching TV.',1],['The baby is sleeping.',1],['I am reading a book.',1],['She is eating lunch.',1],['We are playing a game.',1],
+      ['We visited Rome.',2],['I played soccer yesterday.',2],['She went home.',2],['He watched a movie last night.',2],['We had pizza.',2],
+      ['It will rain tomorrow.',3],['I will call you later.',3],['They will win.',3],['I will be there at six.',3],['You will love it.',3]]},
+    {keys:['present simple','present continuous','past simple','future (will)'],s:[['She doesn\'t like fish.',0],['Do you speak English?',0],['The bus leaves at nine.',0],['Does he play the guitar?',0],['They don\'t eat meat.',0],
+      ['Is it raining?',1],['Tom is cooking dinner.',1],['We aren\'t working today.',1],['Are you listening?',1],['She isn\'t wearing a jacket.',1],
+      ['Did you call me?',2],['They didn\'t come.',2],['I bought a new bike.',2],['Where did you go?',2],['We didn\'t see the game.',2],
+      ['Will you help me?',3],['I won\'t tell anyone.',3],['She\'ll be late.',3],['It won\'t be easy.',3],['Will they come?',3]]},
+    {keys:['present simple','past simple','present perfect','past continuous'],s:[['He usually walks to school.',0],['Water boils at 100 degrees.',0],['She never drinks coffee.',0],['How often do you exercise?',0],
+      ['I lost my keys yesterday.',1],['Did she pass the test?',1],['We moved here in 2015.',1],['He didn\'t call me back.',1],
+      ['I have finished my homework.',2],['Have you ever seen snow?',2],['She has just left.',2],['They have already eaten.',2],['I haven\'t seen that movie.',2],
+      ['I was sleeping when you called.',3],['They were playing outside.',3],['What were you doing at 8?',3],['She was reading when I arrived.',3],['Were you sleeping?',3]]},
+    {keys:['present perfect','present perfect continuous','past perfect','past continuous'],s:[['We have lived here for years.',0],['He has broken his arm.',0],['I have known her since 2010.',0],['Has the mail arrived yet?',0],
+      ['I have been waiting for an hour.',1],['She has been studying all day.',1],['It has been raining all morning.',1],['How long have you been waiting?',1],
+      ['The film had started when we arrived.',2],['I had never flown before.',2],['She had left before I called.',2],['Had you met him before?',2],
+      ['It was snowing all night.',3],['We were having dinner at nine.',3],['While I was cooking, the phone rang.',3],['They weren\'t listening.',3]]},
+    {keys:['past perfect','past perfect continuous','future perfect','future continuous'],s:[['She had already left by noon.',0],['By then, they had sold the house.',0],['No sooner had we arrived than it rained.',0],['The train had left when we got there.',0],
+      ['He had been running, so he was tired.',1],['They had been arguing for hours.',1],['She had been working there for years.',1],['How long had they been waiting?',1],
+      ['By June, I will have graduated.',2],['They will have finished by Friday.',2],['By 2030, they will have built it.',2],['Will you have finished by then?',2],
+      ['This time tomorrow, I\'ll be flying.',3],['Will you be using the car tonight?',3],['I\'ll be waiting outside at eight.',3],['They will be traveling all summer.',3]]}
   ];
   // [definition, answer, distractor, distractor, distractor]
   const DEF=[
     [['a vehicle with two wheels and an engine','motorcycle','car','boat','skateboard'],['an animal that says "meow"','cat','dog','cow','duck'],['a room where you cook','kitchen','bedroom','bathroom','garage'],
      ['the color of the sky on a sunny day','blue','green','red','yellow'],['a long yellow fruit','banana','apple','grape','cherry'],['you read it; it has pages','book','chair','phone','bag'],
-     ['the meal you eat in the morning','breakfast','lunch','dinner','snack'],['a person who teaches at a school','teacher','doctor','chef','pilot']],
+     ['the meal you eat in the morning','breakfast','lunch','dinner','snack'],['a person who teaches at a school','teacher','doctor','chef','pilot'],['a pet that barks','dog','cat','fish','bird'],
+     ['you use it to write','pen','cup','shoe','spoon'],['the opposite of cold','hot','wet','tall','slow'],['a person who cooks in a restaurant','chef','pilot','nurse','farmer'],['you sleep in it','bed','sink','desk','oven'],
+     ['the season after spring','summer','winter','fall','night'],['a sweet, frozen dessert','ice cream','soup','salad','bread']],
     [['a person who flies a plane','pilot','driver','sailor','farmer'],['a place where you borrow books','library','bakery','bank','museum'],['the day after today','tomorrow','yesterday','tonight','weekend'],
      ['a very large animal with a trunk','elephant','giraffe','zebra','camel'],['you wear them on your feet','shoes','gloves','hats','scarves'],['frozen water','ice','steam','rain','cloud'],
-     ['a doctor for animals','vet','dentist','nurse','chef'],['a building where you watch movies','theater','stadium','hospital','airport']],
+     ['a doctor for animals','vet','dentist','nurse','chef'],['a building where you watch movies','theater','stadium','hospital','airport'],['a store that sells medicine','pharmacy','bakery','library','gym'],
+     ['someone who helps doctors','nurse','pilot','lawyer','waiter'],['the meal you eat in the evening','dinner','breakfast','lunch','brunch'],['a very big town','city','village','farm','street'],
+     ['you wear it to see the time','watch','ring','belt','wallet'],['a person who serves food in a restaurant','waiter','cashier','chef','pilot'],['the brother of your father','uncle','cousin','nephew','grandfather']],
     [['someone who lives next to you','neighbor','stranger','colleague','tourist'],['a vacation on a big ship','cruise','flight','commute','hike'],['to say sorry','apologize','complain','argue','promise'],
      ['a list of food in a restaurant','menu','receipt','recipe','bill'],['the money you get for working','salary','discount','tax','change'],['a person who saw a crime happen','witness','judge','lawyer','suspect'],
-     ['very, very tired','exhausted','bored','worried','excited'],['to keep money for later','save','waste','lend','spend']],
+     ['very, very tired','exhausted','bored','worried','excited'],['to keep money for later','save','waste','lend','spend'],['a word with the opposite meaning','antonym','synonym','verb','prefix'],
+     ['the place where planes land','airport','harbor','station','garage'],['to try to find something','search','borrow','wonder','measure'],['a paper that proves you paid','receipt','menu','recipe','passport'],
+     ['worried and unable to relax','nervous','bored','proud','lazy'],['the study of the past','history','geography','chemistry','biology'],['a person who writes news stories','journalist','architect','mechanic','plumber']],
     [['a person who buys goods or services','customer','supplier','manager','employee'],['to make something better','improve','reduce','delay','damage'],['happening once every year','annual','weekly','recent','daily'],
      ['afraid of small, closed spaces','claustrophobic','homesick','jealous','reluctant'],['a formal talk to an audience','speech','chat','rumor','gossip'],['not able to wait calmly','impatient','impolite','unfair','unaware'],
-     ['money you borrow from a bank','loan','profit','budget','fee'],['a feeling of worry or nervousness','anxiety','relief','pride','envy']],
+     ['money you borrow from a bank','loan','profit','budget','fee'],['a feeling of worry or nervousness','anxiety','relief','pride','envy'],['a person who pays rent to live somewhere','tenant','landlord','plumber','architect'],
+     ['to say no to an offer','refuse','accept','promise','admit'],['sad because you miss your home','homesick','jealous','proud','guilty'],['not easily broken or damaged','durable','fragile','flexible','delicate'],
+     ['an official count of a country\'s people','census','survey','election','budget'],['to stop something before it happens','prevent','predict','provoke','pretend'],['someone learning a job from an expert','apprentice','supervisor','landlord','tenant']],
     [['present everywhere at the same time','ubiquitous','obsolete','tentative','fragile'],['to make a problem less severe','alleviate','aggravate','postpone','fabricate'],['a choice between two bad options','dilemma','verdict','paradox','remedy'],
      ['showing great attention to detail','meticulous','reckless','hasty','vague'],['lasting only a very short time','ephemeral','perpetual','ancient','gradual'],['general agreement among a group','consensus','conflict','census','rumor'],
-     ['no longer in use; out of date','obsolete','innovative','urgent','vivid'],['able to recover quickly','resilient','fragile','hostile','naive']]
+     ['no longer in use; out of date','obsolete','innovative','urgent','vivid'],['able to recover quickly','resilient','fragile','hostile','naive'],['a statement that contradicts itself','paradox','dilemma','verdict','anecdote'],
+     ['a short, amusing personal story','anecdote','eulogy','manifesto','treaty'],['to officially cancel a law','repeal','enact','ratify','amend'],['stubborn; unwilling to change','obstinate','lenient','gullible','candid'],
+     ['easily tricked or deceived','gullible','cynical','shrewd','astute'],['present from birth; natural','innate','acquired','obsolete','tentative']]
   ];
   // [real word, invented, invented]
   const REAL=[
-    [['table','tavle','brable'],['happy','hapsy','plappy'],['water','wotter','blater'],['house','houpe','frouse'],['green','greem','grean'],['school','scrool','scholl'],['mother','mothet','plother'],['apple','abble','fapple'],['chair','chait','plair'],['friend','frend','briend']],
-    [['kitchen','kitchon','flitchen'],['garden','gardel','sparden'],['window','winbow','flindow'],['doctor','docter','plocter'],['summer','sumner','frummer'],['ticket','tickel','flicket'],['island','isleand','pliland'],['cousin','cosin','drousin'],['yellow','yellon','brellow'],['bridge','bridje','flidge']],
-    [['journey','jorney','flourney'],['neighbor','naybor','streighbor'],['delicious','delicous','flelicious'],['borrow','borrew','plorrow'],['knowledge','knowlege','flowledge'],['strange','strainge','blange'],['improve','impruve','glimprove'],['honest','onnest','plonest'],['ancient','anchient','blancient'],['weather','wheather','fleather']],
-    [['reluctant','relucant','glimtant'],['ambitious','ambicious','flambious'],['efficient','efishent','plefficient'],['behavior','behavier','flehavior'],['persuade','perswade','glersuade'],['anxious','anxous','blanxious'],['gradually','gradualy','flodually'],['opportunity','oportunity','blopportunity'],['recognize','recognice','flecognize'],['environment','enviroment','glenvironment']],
-    [['ubiquitous','ubiquitious','flobiquitous'],['meticulous','meticulus','plenticulous'],['ambiguous','ambigious','glambiguous'],['pragmatic','pragmatick','flagmatic'],['resilient','resiliant','bresilient'],['scrutiny','scrutany','flutiny'],['inevitable','inevitible','glinevitable'],['ephemeral','ephemerial','plemeral'],['serendipity','serendipidy','flerendity'],['conscientious','conscientous','blonscientious']]
+    [['table','tavle','brable'],['happy','hapsy','plappy'],['water','wotter','blater'],['house','houpe','frouse'],['green','greem','grean'],['school','scrool','scholl'],['mother','mothet','plother'],['apple','abble','fapple'],['chair','chait','plair'],['friend','frend','briend'],
+     ['dinner','dinnel','plinner'],['orange','orenge','florange'],['pencil','pensil','glencil'],['sister','sistor','plister'],['money','monny','plonny'],['chicken','chiken','plicken'],['bread','brede','glead']],
+    [['kitchen','kitchon','flitchen'],['garden','gardel','sparden'],['window','winbow','flindow'],['doctor','docter','plocter'],['summer','sumner','frummer'],['ticket','tickel','flicket'],['island','isleand','pliland'],['cousin','cosin','drousin'],['yellow','yellon','brellow'],['bridge','bridje','flidge'],
+     ['pocket','pockit','flocket'],['village','vilage','glillage'],['kitten','kiten','plitten'],['forest','forist','glorest'],['camera','camra','flamera'],['monkey','monkee','plonkey'],['button','buttan','frutton']],
+    [['journey','jorney','flourney'],['neighbor','naybor','streighbor'],['delicious','delicous','flelicious'],['borrow','borrew','plorrow'],['knowledge','knowlege','flowledge'],['strange','strainge','blange'],['improve','impruve','glimprove'],['honest','onnest','plonest'],['ancient','anchient','blancient'],['weather','wheather','fleather'],
+     ['jealous','jelous','flealous'],['receive','recieve','glenceive'],['business','buisness','flusiness'],['tongue','tounge','plongue'],['guilty','giltey','pluilty'],['mysterious','misterious','glysterious'],['puzzle','puzzel','fluzzle']],
+    [['reluctant','relucant','glimtant'],['ambitious','ambicious','flambious'],['efficient','efishent','plefficient'],['behavior','behavier','flehavior'],['persuade','perswade','glersuade'],['anxious','anxous','blanxious'],['gradually','gradualy','flodually'],['opportunity','oportunity','blopportunity'],['recognize','recognice','flecognize'],['environment','enviroment','glenvironment'],
+     ['embarrass','embarass','flembarrass'],['necessary','neccesary','plecessary'],['occasion','ocassion','flocassion'],['conscience','concience','plonscience'],['beginning','begining','glegining'],['privilege','privelege','flivilege']],
+    [['ubiquitous','ubiquitious','flobiquitous'],['meticulous','meticulus','plenticulous'],['ambiguous','ambigious','glambiguous'],['pragmatic','pragmatick','flagmatic'],['resilient','resiliant','bresilient'],['scrutiny','scrutany','flutiny'],['inevitable','inevitible','glinevitable'],['ephemeral','ephemerial','plemeral'],['serendipity','serendipidy','flerendity'],['conscientious','conscientous','blonscientious'],
+     ['idiosyncrasy','idiosyncracy','flidiosyncrasy'],['quintessential','quintessencial','plintessential'],['surreptitious','surreptitous','glurreptitious'],['magnanimous','magnanimus','flagnanimous'],['perfunctory','perfunctery','glerfunctory'],['obfuscate','obfuscute','plobfuscate'],['sycophant','sychophant','flycophant']]
   ];
 
   /* ---------- modules ----------
      roll(r, lv) -> content: {lcd, dim?, labels, layout?, neutral, cv, cmd (caption), say (speech), answer} */
   const MODULES=[
    {id:'wordclass',name:'Word Class Keys',short:'Parts of speech',accent:'#ffb547',type:'keys',
-    roll(r,lv){const B=LV(WC,lv),cls=['noun','verb','adjective','adverb'];const order=shuffle([0,1,2,3],r);const words=cls.map(c=>pick(B[c],r));
+    roll(r,lv){const cls=['noun','verb','adjective','adverb'];const order=shuffle([0,1,2,3],r);
+      const words=cls.map(c=>{const u=lvUse(WC,lv,r);return draw('wc'+c+u,WC[u][c],r);});
       const t=Math.floor(r()*4);const c=cls[t];
       const cmd=pick([`Press the ${c} on the Word Class Keys.`,`On the Word Class Keys, press the ${c}.`,`Find the ${c} on the Word Class Keys and press it.`],r);
       return {lcd:'pick one',dim:true,labels:order.map(i=>words[i]),layout:'grid2'+(lv>=3?' long':''),neutral:-1,cv:order.indexOf(t),cmd,say:cmd,answer:`${words[t]} = ${c}`};}},
    {id:'verbform',name:'Verb Form Dial',short:'V1 · V2 · V3',accent:'#34e0cf',type:'dial',
-    roll(r,lv){const v=pick(LV(VERBS3,lv),r);const f=Math.floor(r()*3);const w=v[f];
+    roll(r,lv){const u=lvUse(VERBS3,lv,r);const v=draw('v3'+u,VERBS3[u],r);const f=Math.floor(r()*3);const w=v[f];
       return {lcd:'verb: '+v[0],labels:['off','V1','V2','V3'],neutral:0,cv:f+1,
         cmd:`Turn the Verb Form Dial to the form of ${Q(w)}.`,say:`Turn the verb form dial to the form of: ${w}.`,answer:`${w} = V${f+1}`};}},
    {id:'article',name:'Article Keys',short:'a / an',accent:'#ff7ad9',type:'keys',
-    roll(r,lv){const B=LV(ART,lv);const k=r()<.5?'a':'an';const n=pick(B[k],r);
+    roll(r,lv){const u=lvUse(ART,lv,r);const k=r()<.5?'a':'an';const n=draw('art'+k+u,ART[u][k],r);
       return {lcd:'___ '+n,labels:['a','an'],layout:'row2',neutral:-1,cv:k==='a'?0:1,
         cmd:`Choose ${Q('a')} or ${Q('an')} for ${Q(n)} on the Article Keys.`,say:`On the article keys, choose: a, or an, for: ${n}.`,answer:`${k} ${n}`};}},
    {id:'pastswitch',name:'Verb Switches',short:'Past / irregular',accent:'#ff4b3e',type:'switches',
     roll(r,lv){const kind=lv<2?'past':pick(['past','irregular','regular'],r);const k=1+Math.floor(r()*3);const yes=shuffle([0,1,2,3],r).slice(0,k);let labels,cmd;
-      if(kind==='past'){const pairs=shuffle(LV(PASTPAIRS,lv),r).slice(0,4);labels=pairs.map((p,i)=>yes.includes(i)?p[0]:p[1]);cmd='Switch on every verb in the past on the Verb Switches.';}
-      else{const I=LV(IRREG,lv),R=LV(REG,lv);const A=shuffle(kind==='irregular'?I:R,r),B=shuffle(kind==='irregular'?R:I,r);let a=0,b=0;labels=[0,1,2,3].map(i=>yes.includes(i)?A[a++]:B[b++]);
+      if(kind==='past'){const u=lvUse(PASTPAIRS,lv,r);const pairs=[];while(pairs.length<4){const p=draw('pp'+u,PASTPAIRS[u],r);if(!pairs.includes(p))pairs.push(p);}
+        labels=pairs.map((p,i)=>yes.includes(i)?p[0]:p[1]);cmd='Switch on every verb in the past on the Verb Switches.';}
+      else{const I=IRREG[lv],R=REG[lv];const used=[];const get=(arr,key)=>{let w;do{w=draw(key,arr,r);}while(used.includes(w));used.push(w);return w;};
+        labels=[0,1,2,3].map(i=>yes.includes(i)===(kind==='irregular')?get(I,'ir'+lv):get(R,'re'+lv));
         cmd=`Switch on every ${kind} verb on the Verb Switches.`;}
       const cv=[0,1,2,3].map(i=>yes.includes(i));
       return {lcd:'4 verbs',dim:true,labels,neutral:[false,false,false,false],cv,cmd,say:cmd,answer:'on: '+labels.filter((_,i)=>cv[i]).join(', ')};}},
    {id:'prep',name:'Time Keys',short:'at / on / in',accent:'#7aa8ff',type:'keys',
-    roll(r,lv){const B=LV(PREP,lv);const p=pick(['at','on','in'],r);const ph=pick(B[p],r);
+    roll(r,lv){const u=lvUse(PREP,lv,r);const p=pick(['at','on','in'],r);const ph=draw('pr'+p+u,PREP[u][p],r);
       return {lcd:'___ '+ph,labels:['at','on','in'],layout:'row3',neutral:-1,cv:['at','on','in'].indexOf(p),
         cmd:`Press the right preposition for ${Q(ph)} on the Time Keys.`,say:`On the time keys, press the right preposition for: ${ph}.`,answer:`${p} ${ph}`};}},
    {id:'quantity',name:'Quantity Lever',short:'much / many',accent:'#4fe08a',type:'lever',
-    roll(r,lv){const B=LV(QTY,lv);const k=r()<.5?'much':'many';const n=pick(B[k],r);
+    roll(r,lv){const u=lvUse(QTY,lv,r);const k=r()<.5?'much':'many';const n=draw('qt'+k+u,QTY[u][k],r);
       return {lcd:`How ___ ${n}?`,labels:['much','','many'],neutral:1,cv:k==='much'?0:2,
         cmd:`Pull the Quantity Lever: how much or how many ${n}?`,say:`Pull the quantity lever. How much, or how many ${n}?`,answer:`How ${k} ${n}?`};}},
    {id:'plural',name:'Plural Keys',short:'Irregular plurals',accent:'#c38bff',type:'keys',
-    roll(r,lv){const p=pick(LV(PLURAL,lv),r);const order=shuffle([1,2,3],r);
+    roll(r,lv){const u=lvUse(PLURAL,lv,r);const p=draw('pl'+u,PLURAL[u],r);const order=shuffle([1,2,3],r);
       return {lcd:`one ${p[0]}, two…`,labels:order.map(i=>p[i]),layout:'stack',neutral:-1,cv:order.indexOf(1),
         cmd:`Press the correct plural of ${Q(p[0])} on the Plural Keys.`,say:`On the plural keys, press the correct plural of: ${p[0]}.`,answer:`${p[0]} → ${p[1]}`};}},
    {id:'definition',name:'Definition Keys',short:'Match the meaning',accent:'#ffd23f',type:'keys',
-    roll(r,lv){const d=pick(LV(DEF,lv),r);const order=shuffle([1,2,3,4],r);
+    roll(r,lv){const u=lvUse(DEF,lv,r);const d=draw('df'+u,DEF[u],r);const order=shuffle([1,2,3,4],r);
       return {lcd:d[0],labels:order.map(i=>d[i]),layout:'grid2 long',neutral:-1,cv:order.indexOf(1),
         cmd:'Press the word that matches the definition on the Definition Keys.',say:`On the definition keys, press the word that means: ${d[0].replace(/[;"]/g,',')}.`,answer:d[1]};}},
    {id:'realword',name:'Real Word Keys',short:'Real or invented?',accent:'#ff8a3d',type:'keys',
-    roll(r,lv){const w=pick(LV(REAL,lv),r);const order=shuffle([0,1,2],r);
+    roll(r,lv){const u=lvUse(REAL,lv,r);const w=draw('rw'+u,REAL[u],r);const order=shuffle([0,1,2],r);
       return {lcd:'only one is real',dim:true,labels:order.map(i=>w[i]),layout:'stack',neutral:-1,cv:order.indexOf(0),
         cmd:'Press the real English word on the Real Word Keys.',say:'On the real word keys, press the real English word.',answer:'real: '+w[0]};}},
    {id:'meaning',name:'Meaning Keys',short:'Synonyms / opposites',accent:'#5fd3ff',type:'keys',
-    roll(r,lv){const m=pick(LV(MEAN,lv),r);const opp=r()<.5;const order=shuffle([1,2,3],r);const target=opp?2:1;
+    roll(r,lv){const u=lvUse(MEAN,lv,r);const m=draw('mn'+u,MEAN[u],r);const opp=r()<.5;const order=shuffle([1,2,3],r);const target=opp?2:1;
       const cmd=opp?`Press the opposite of ${Q(m[0])} on the Meaning Keys.`:`Press the word that means the same as ${Q(m[0])} on the Meaning Keys.`;
       const say=opp?`On the meaning keys, press the opposite of: ${m[0]}.`:`On the meaning keys, press the word that means the same as: ${m[0]}.`;
       return {lcd:m[0],labels:order.map(i=>m[i]),layout:'stack',neutral:-1,cv:order.indexOf(target),cmd,say,answer:(opp?'opposite: ':'same: ')+m[target]};}},
    {id:'question',name:'Question Dial',short:'Wh- questions',accent:'#9be564',type:'dial',
-    roll(r,lv){const q=pick(LV(QW,lv),r);const labs=LV(QW_LABELS,lv);
+    roll(r,lv){const u=lvUse(QW,lv,r);const q=draw('qw'+u,QW[u],r);const labs=QW_LABELS[Math.min(u,2)];
       return {lcd:q[0],labels:labs.slice(),neutral:0,cv:labs.indexOf(q[1]),
         cmd:'Turn the Question Dial to the question word for the answer on its screen.',say:'Turn the question dial to the question word for the answer on its screen.',
         answer:q[1][0].toUpperCase()+q[1].slice(1)+'?'};}},
    {id:'tense',name:'Tense Keys',short:'Tenses by level',accent:'#ff6f91',type:'keys',
-    roll(r,lv){const T=LV(TENSE,lv);const s=pick(T.s,r);
+    roll(r,lv){const u=lvUse(TENSE,lv,r);const T=TENSE[u];const s=draw('te'+u,T.s,r);
       return {lcd:s[0],labels:T.keys.slice(),layout:'grid2 long',neutral:-1,cv:s[1],
         cmd:'Press the tense of the sentence on the Tense Keys screen.',say:'On the tense keys, press the tense of the sentence on the screen.',answer:T.keys[s[1]]};}}
   ];
@@ -664,10 +726,12 @@ const CD = (function(){
   function heat(g){const lv=levelFor(g);if(lv>=4)return 1;const into=g.startLevel+g.correct/PER_LEVEL-lv;return (lv+.12+.76*Math.min(1,into))/5;}
 
   /* ---------- game ---------- */
-  function newGame(s){
+  function newGame(s,r){
+    r=r||Math.random;
     const teams=s.mode==='solo'?[{name:s.soloName||'Pilot',slot:0,lives:s.lives,score:0,out:false}]
       :s.teams.map((n,i)=>({name:n,slot:i,lives:s.lives,score:0,out:false}));
-    const pool=(s.pool&&s.pool.length?s.pool:DEFAULT_POOL).map(id=>RENAMED[id]||id).filter((id,i,a)=>MOD[id]&&a.indexOf(id)===i);
+    let pool=(s.pool&&s.pool.length?s.pool:DEFAULT_POOL).map(id=>RENAMED[id]||id).filter((id,i,a)=>MOD[id]&&a.indexOf(id)===i);
+    if(s.randomOrder) pool=shuffle(pool,r);
     const startLevel=Math.max(0,Math.min(4,s.startLevel|0));
     return {mode:s.mode,chaos:!!s.chaos,maxLives:s.lives,rounds:s.rounds|0,startLevel,level:startLevel,correct:0,
       teams,cur:0,round:0,commands:0,pool,installed:[pool[0]],contents:{},targets:[],justInstalled:pool[0],lastTargets:[],phase:'ready'};
@@ -689,7 +753,6 @@ const CD = (function(){
     if(g.commands===1){g.round=1;while(g.teams[g.cur].out)g.cur++;}
     else if(advance(g)) g.round++;
     g.level=levelFor(g);
-    g.installed.forEach(id=>{g.contents[id]=MOD[id].roll(r,g.level);});
     const n=(g.chaos&&g.commands>=4&&g.installed.length>=4&&r()<.4)?2:1;
     const t=[];
     if(g.justInstalled&&g.installed.includes(g.justInstalled)) t.push(g.justInstalled);
@@ -699,11 +762,13 @@ const CD = (function(){
       if(!src.length) break;
       t.push(pick(src,r));
     }
+    // only the commanded modules draw fresh items from the bags; the others get decor content
+    g.installed.forEach(id=>{CONSUME=t.includes(id);try{g.contents[id]=MOD[id].roll(r,g.level);}finally{CONSUME=true;}});
     g.justInstalled=null;g.targets=t;g.lastTargets=t.slice();g.phase='command';
     return t;
   }
   function neutralValues(g){const v={};g.installed.forEach(id=>{if(g.contents[id]) v[id]=neutral(g.contents[id]);});return v;}
-  // speed: 0..1 share of the timer left when locked in (1 = before the clock started)
+  // speed: 0..1 share of the timer left when locked in
   function evaluate(g,values,speed){
     const results=g.targets.map(id=>({id,ok:check(g.contents[id],values[id])}));
     const all=results.every(x=>x.ok);
@@ -732,6 +797,7 @@ const CD = (function(){
     return {results,all,installed,out,over,winners,reason,team,base,bonus,full,levelUp,level:g.level};
   }
   return {MODULES,MOD,DEFAULT_POOL,RENAMED,LEVELS,LEVEL_SHORT,PER_LEVEL,newGame,startRound,evaluate,check,neutral,neutralValues,levelFor,heat,
+    getBags:()=>BAGS,roll:(id,r,lv,consume)=>{CONSUME=consume!==false;try{return MOD[id].roll(r,lv);}finally{CONSUME=true;}},setBags:b=>{BAGS=(b&&typeof b==='object')?b:{};},
     _banks:{WC,VERBS3,ART,PASTPAIRS,IRREG,REG,PREP,QTY,PLURAL,MEAN,QW,TENSE,DEF,REAL}};
 })();
 if(typeof module!=='undefined') module.exports=CD;
@@ -887,12 +953,15 @@ const TEAMS=[{c:'#ff8a3d',e:'🦊',n:'Foxes'},{c:'#4aa8ff',e:'🐬',n:'Dolphins'
 const SETUP_KEY='controlDeck.setup',SAVE_KEY='controlDeck.save2',HIGH_KEY='controlDeckHighScore';
 const inkFor=hex=>{const n=parseInt(hex.slice(1),16),r=n>>16&255,g=n>>8&255,b=n&255;return (0.299*r+0.587*g+0.114*b)/255>0.6?'#111':'#fff';};
 
-let setup={mode:'teams',teamCount:2,names:TEAMS.map(t=>t.n),soloName:'Pilot',lives:3,chaos:false,shuffle:false,autoNext:true,rounds:10,startLevel:0,captions:true,sound:true,music:true,vol:60,sec:15,rate:0.9,voice:'',pool:CD.DEFAULT_POOL.slice()};
+let setup={mode:'teams',teamCount:2,names:TEAMS.map(t=>t.n),soloName:'Pilot',lives:3,chaos:false,shuffle:false,autoNext:true,randomOrder:true,rounds:10,startLevel:0,captions:true,sound:true,music:true,vol:60,sec:15,rate:0.9,voice:'',pool:CD.DEFAULT_POOL.slice()};
 try{Object.assign(setup,JSON.parse(localStorage.getItem(SETUP_KEY)||'{}'));}catch(e){}
 setup.pool=setup.pool.map(id=>CD.RENAMED[id]||id).filter((id,i,a)=>CD.MOD[id]&&a.indexOf(id)===i);if(!setup.pool.length)setup.pool=CD.DEFAULT_POOL.slice();
+const BAGS_KEY='controlDeck.bags';
+try{CD.setBags(JSON.parse(localStorage.getItem(BAGS_KEY)||'{}'));}catch(e){}
+const saveBags=()=>{try{localStorage.setItem(BAGS_KEY,JSON.stringify(CD.getBags()));}catch(e){}};
 const saveSetup=()=>{try{localStorage.setItem(SETUP_KEY,JSON.stringify(setup));}catch(e){}};
 
-let G=null,values={},timerId=null,timeLeft=0,lastTick=null,commandText='',speechText='',muted=!setup.sound;
+let lockReady=false,nextReady=true,G=null,values={},timerId=null,timeLeft=0,lastTick=null,commandText='',speechText='',muted=!setup.sound;
 
 /* ---------- stage scale ---------- */
 function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);document.documentElement.style.setProperty('--s',s);}
@@ -1024,10 +1093,10 @@ function renderSetup(){
   $('names').innerHTML=TEAMS.slice(0,setup.teamCount).map((t,i)=>`<label><span class="emb" style="--tc:${t.c}">${t.e}</span><input class="txt" data-name="${i}" value="${esc(setup.names[i]||t.n)}" aria-label="Team ${i+1} name"></label>`).join('');
   const order=setup.pool.concat(CD.DEFAULT_POOL.filter(id=>!setup.pool.includes(id)));
   $('modChips').innerHTML=order.map(id=>{const m=CD.MOD[id],on=setup.pool.indexOf(id);
-    return `<button class="mchip ${on>=0?'sel':''}" data-mchip="${id}" style="--acc:${m.accent}"><span class="n">${on>=0?on+1:'–'}</span><span>${esc(m.name)}<small>${esc(m.short)}</small></span></button>`;}).join('');
+    return `<button class="mchip ${on>=0?'sel':''}" data-mchip="${id}" style="--acc:${m.accent}"><span class="n">${on>=0?(setup.randomOrder?'':on+1):'–'}</span><span>${esc(m.name)}<small>${esc(m.short)}</small></span></button>`;}).join('');
   $('roundOpts').innerHTML=[5,10,15,20,0].map(n=>`<button class="opt sm ${setup.rounds===n?'sel':''}" data-rounds="${n}">${n||'Unlimited'}</button>`).join('');
   $('levelOpts').innerHTML=CD.LEVEL_SHORT.map((l,i)=>`<button class="opt sm ${setup.startLevel===i?'sel':''}" data-level="${i}" title="${CD.LEVELS[i]}">${l}</button>`).join('');
-  $('optChaos').checked=setup.chaos;$('optShuffle').checked=setup.shuffle;$('optAuto').checked=setup.autoNext;$('optCaptions').checked=setup.captions;
+  $('optChaos').checked=setup.chaos;$('optShuffle').checked=setup.shuffle;$('optAuto').checked=setup.autoNext;$('optRandom').checked=setup.randomOrder;$('modHead').textContent=setup.randomOrder?'Modules (tap to turn on/off)':'Modules (unlock order)';$('optCaptions').checked=setup.captions;
   $('optSec').value=setup.sec;$('secVal').textContent=setup.sec;$('optRate').value=setup.rate;$('rateVal').textContent=Number(setup.rate).toFixed(1);
   let sv=null;try{sv=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(e){}
   $('resumeBtn').classList.toggle('hidden',!sv);
@@ -1048,6 +1117,7 @@ $('levelOpts').addEventListener('click',e=>{const b=e.target.closest('[data-leve
 $('optChaos').onchange=e=>{setup.chaos=e.target.checked;saveSetup();};
 $('optShuffle').onchange=e=>{setup.shuffle=e.target.checked;saveSetup();};
 $('optAuto').onchange=e=>{setup.autoNext=e.target.checked;saveSetup();};
+$('optRandom').onchange=e=>{setup.randomOrder=e.target.checked;saveSetup();renderSetup();};
 $('optCaptions').onchange=e=>{setup.captions=e.target.checked;saveSetup();};
 $('optSec').oninput=e=>{setup.sec=+e.target.value;$('secVal').textContent=setup.sec;saveSetup();};
 $('optRate').oninput=e=>{setup.rate=+e.target.value;$('rateVal').textContent=setup.rate.toFixed(1);saveSetup();};
@@ -1122,7 +1192,7 @@ $('rack').addEventListener('click',e=>{
 /* install animation: module drops into its bay */
 function installModule(id,bay,instant){
   const el=createModule(id);bayEl(bay).appendChild(el);
-  if(!previews[id]&&!(G&&G.contents[id]))previews[id]=CD.MOD[id].roll(Math.random,G?G.level:0);
+  if(!previews[id]&&!(G&&G.contents[id]))previews[id]=CD.roll(id,Math.random,G?G.level:0,false);
   const c=contentOf(id);values[id]=CD.neutral(c);buildWidget(id,c);
   if(instant||reduced)return;
   el.animate([{transform:'translateY(-700px) scale(1.05)',opacity:0},{transform:'translateY(-700px) scale(1.05)',opacity:1,offset:.05},{transform:'translateY(0) scale(1)',opacity:1}],
@@ -1165,8 +1235,11 @@ function setVoiceText(){
   if(setup.captions){el.classList.remove('listen');el.innerHTML=G.targets.map((id,i)=>`<span class="${i?'then':''}">${i?'Then: ':''}${esc(G.contents[id].cmd)}</span>`).join('');}
   else{el.classList.add('listen');el.textContent='Listen carefully…';}
 }
+function setLockReady(on){lockReady=on;const b=$('lockBtn');b.disabled=!on;b.textContent=on?'Lock it in':'Listen…';}
 function showAct(which){
   $('lockBtn').classList.toggle('hidden',which!=='lock');$('nextBtn').classList.toggle('hidden',which!=='next');
+  if(which==='next'){nextReady=false;$('nextBtn').disabled=true;setTimeout(()=>{nextReady=true;$('nextBtn').disabled=false;},1000);}
+  if(which==='lock') setLockReady(false);
   const b=which==='lock'?$('lockBtn'):$('nextBtn');b.classList.remove('pop','breathe');void b.offsetWidth;if(!reduced)b.classList.add('pop');
 }
 function clearResult(){$('resultZone').innerHTML='';}
@@ -1191,7 +1264,7 @@ function turnBanner(){
 function stopTimer(){clearInterval(timerId);timerId=null;}
 function drawTimer(){const p=Math.max(0,timeLeft/setup.sec*100);$('tfill').style.width=p+'%';$('tfill').classList.toggle('danger',p<25);$('tsec').textContent=Math.ceil(timeLeft);}
 function startTimer(){
-  stopTimer();timeLeft=setup.sec;lastTick=null;drawTimer();
+  stopTimer();setLockReady(true);timeLeft=setup.sec;lastTick=null;drawTimer();
   timerId=setInterval(()=>{
     if(!G||G.phase!=='command'){stopTimer();return;}
     timeLeft-=.1;
@@ -1213,7 +1286,7 @@ function startAuto(){
 /* ---------- flow ---------- */
 function startGame(){
   setup.names=setup.names.map((n,i)=>n&&n.trim()?n.trim():TEAMS[i].n);
-  G=CD.newGame({mode:setup.mode,teams:setup.names.slice(0,setup.teamCount),soloName:setup.soloName.trim()||'Pilot',lives:setup.lives,chaos:setup.chaos,pool:setup.pool,rounds:setup.rounds,startLevel:setup.startLevel});
+  G=CD.newGame({mode:setup.mode,teams:setup.names.slice(0,setup.teamCount),soloName:setup.soloName.trim()||'Pilot',lives:setup.lives,chaos:setup.chaos,pool:setup.pool,rounds:setup.rounds,startLevel:setup.startLevel,randomOrder:setup.randomOrder},Math.random);
   values={};previews={};buildRack();$('setupOv').classList.add('hidden');$('endOv').classList.add('hidden');
   renderTeams();renderChips();clearResult();
   installModule(G.installed[0],0,false);
@@ -1230,7 +1303,7 @@ function nextRound(){
   cancelAuto();
   if(!G||G.phase==='over')return;
   clearResult();
-  CD.startRound(G,Math.random);
+  CD.startRound(G,Math.random);saveBags();
   if(setup.shuffle&&G.round>1)shuffleTwo();
   G.installed.forEach(id=>{values[id]=CD.neutral(G.contents[id]);buildWidget(id,G.contents[id]);});
   renderTeams();renderChips();setVoiceText();showAct('lock');
@@ -1242,7 +1315,8 @@ function nextRound(){
   go();
 }
 function lockIn(timedOut){
-  if(!G||G.phase!=='command')return;stopTimer();if('speechSynthesis' in window)speechSynthesis.cancel();
+  if(!G||G.phase!=='command')return;
+  if(!timedOut&&!lockReady)return;stopTimer();if('speechSynthesis' in window)speechSynthesis.cancel();
   const res=CD.evaluate(G,values,timeLeft/setup.sec);
   const teamIdx=G.teams.indexOf(res.team);
   res.results.forEach(r=>{const el=modEl(r.id),c=G.contents[r.id];el.classList.add(r.ok?'ok':'bad');
@@ -1289,7 +1363,7 @@ function endGame(res){
 function stopFw(){clearInterval(fwTimer);fwTimer=null;}
 
 $('lockBtn').onclick=()=>lockIn(false);
-$('nextBtn').onclick=nextRound;
+$('nextBtn').onclick=()=>{if(nextReady)nextRound();};
 $('repeatBtn').onclick=()=>{if(G&&speechText)speak(speechText);};
 
 /* ---------- keyboard ---------- */
@@ -1305,7 +1379,7 @@ addEventListener('keydown',e=>{
   if(e.key==='r'||e.key==='R'){$('repeatBtn').click();return;}
   if(e.key==='Enter'){
     if(tag==='button'&&!tg.closest('#rack'))return;
-    e.preventDefault();if(G&&G.phase==='command')lockIn(false);else if(G&&G.phase==='result')nextRound();
+    e.preventDefault();if(G&&G.phase==='command')lockIn(false);else if(G&&G.phase==='result'&&nextReady)nextRound();
   }
 });
 
@@ -1316,7 +1390,7 @@ function toggleDebug(){
   d.innerHTML=`<b>Debug</b><button data-d="install">Install next module</button><button data-d="answer">Set correct answer</button><button data-d="life">Remove a life</button><button data-d="end">End game</button>`;
   document.body.appendChild(d);
   d.onclick=e=>{const a=e.target.dataset.d;if(!G)return;
-    if(a==='install'){const n=G.pool.find(id=>!G.installed.includes(id));if(n){G.installed.push(n);installModule(n,G.installed.length-1,false);if(G.phase==='command'){G.contents[n]=CD.MOD[n].roll(Math.random,G.level);values[n]=CD.neutral(G.contents[n]);buildWidget(n,G.contents[n]);}renderChips();}}
+    if(a==='install'){const n=G.pool.find(id=>!G.installed.includes(id));if(n){G.installed.push(n);installModule(n,G.installed.length-1,false);if(G.phase==='command'){G.contents[n]=CD.roll(n,Math.random,G.level,false);values[n]=CD.neutral(G.contents[n]);buildWidget(n,G.contents[n]);}renderChips();}}
     if(a==='answer'&&G.phase==='command'){G.targets.forEach(id=>{const c=G.contents[id];values[id]=Array.isArray(c.cv)?c.cv.slice():c.cv;syncWidget(id);});}
     if(a==='life'){const t=G.teams[G.cur];t.lives=Math.max(1,t.lives-1);renderTeams();}
     if(a==='end'){stopTimer();cancelAuto();G.phase='over';const alive=G.teams.filter(t=>!t.out).sort((a,b)=>b.score-a.score);endGame({winners:alive.slice(0,1),reason:'rounds'});}

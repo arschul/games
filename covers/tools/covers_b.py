@@ -703,8 +703,95 @@ def deep_cover():
     return svg(d, "".join(b))
 
 
+
+def azulejos():
+    # matches the game: Lisbon night, a limestone wall board of glazed azulejos, a terracotta plate, Unbounded title
+    T = {"B": ("#3a74e0", "#14348c", "#f6f1e3"), "Y": ("#ffd25a", "#d9921a", "#5a3604"), "R": ("#ec5a46", "#9a2316", "#fdebe2"),
+         "K": ("#4a4e5e", "#15171f", "#ece5d2"), "T": ("#8fe0ee", "#2f9cb3", "#0b3b48")}
+    order = "BYRKT"
+    def motif(c, k):
+        corners = "".join(f'<circle cx="{x}" cy="{y}" r="6" fill="none" stroke="{k}" stroke-width="2"/>' for x, y in ((0, 0), (40, 0), (0, 40), (40, 40)))
+        if c == "B":
+            return corners + "".join(f'<ellipse cx="20" cy="10.5" rx="4.6" ry="7.5" fill="{k}" transform="rotate({a} 20 20)"/>' for a in (0, 90, 180, 270)) + f'<circle cx="20" cy="20" r="4.4" fill="#1b3c96" stroke="{k}" stroke-width="2"/>'
+        if c == "Y":
+            return corners + f'<circle cx="20" cy="20" r="7" fill="none" stroke="{k}" stroke-width="2.6"/><circle cx="20" cy="20" r="2.6" fill="{k}"/>' + "".join(f'<path d="M20 4.5v6" stroke="{k}" stroke-width="2.6" stroke-linecap="round" transform="rotate({i*45} 20 20)"/>' for i in range(8))
+        if c == "R":
+            return f'<path d="M20 3L37 20L20 37L3 20Z" fill="none" stroke="{k}" stroke-width="2.4"/><path d="M20 11L29 20L20 29L11 20Z" fill="{k}"/><circle cx="20" cy="20" r="2.4" fill="#9a2316"/>'
+        if c == "K":
+            return corners + f'<rect x="11" y="11" width="18" height="18" fill="{k}"/><rect x="11" y="11" width="18" height="18" fill="{k}" transform="rotate(45 20 20)"/><circle cx="20" cy="20" r="4" fill="#2a2d38"/>'
+        return "".join(f'<path d="M4 {y}q4-5 8 0t8 0t8 0t8 0" fill="none" stroke="{k}" stroke-width="2.6" stroke-linecap="round"/>' for y in (11, 20, 29))
+    def tile(x, y, s, c, op=1.0, rot=0):
+        c1, c2, k = T[c]
+        sc = s * 0.76 / 40
+        g = (f'<g transform="rotate({rot} {x+s/2} {y+s/2})" opacity="{op}">'
+             f'<rect x="{x}" y="{y+s*.06}" width="{s}" height="{s}" rx="{s*.13}" fill="#000" opacity="{.45 if op == 1 else 0}"/>'
+             f'<rect x="{x}" y="{y}" width="{s}" height="{s}" rx="{s*.13}" fill="url(#g{c})"/>'
+             f'<svg x="{x+s*.12}" y="{y+s*.12}" width="{s*.76}" height="{s*.76}" viewBox="0 0 40 40">{motif(c, k)}</svg>'
+             f'<rect x="{x+1}" y="{y+1}" width="{s-2}" height="{s-2}" rx="{s*.12}" fill="url(#gloss)"/>'
+             f'<rect x="{x}" y="{y+s*.9}" width="{s}" height="{s*.1}" rx="{s*.05}" fill="#000" opacity=".22"/></g>')
+        return g
+    d = (lin("sky", [(0, "#060b22"), (.6, "#18244f"), (1, "#5b3e66")])
+         + lin("slab", [(0, "#f8f3e8"), (.55, "#ebe2cf"), (1, "#cfc0a3")])
+         + rad("gloss", [(0, "rgba(255,255,255,.6)"), (.35, "rgba(255,255,255,0)")], cx="28%", cy="20%", r="60%")
+         + rad("terra", [(0, "#e08a5c"), (.62, "#b9582f"), (1, "#6f2e14")], cy="50%", r="55%")
+         + rad("glaze", [(0, "#fffdf6"), (.6, "#fbf9f3"), (1, "#e4ded0")], cx="40%", cy="35%")
+         + lin("ttl", [(0, "#ffffff"), (1, "#dfe6ff")]))
+    for c in order:
+        d += lin("g" + c, [(0, T[c][0]), (1, T[c][1])], 1, 1)
+    b = [rect(0, 0, 600, 800, "url(#sky)"), stars(77, 70, y1=420, op=(.2, .8)),
+         '<circle cx="92" cy="214" r="70" fill="#f2ecd8" opacity=".12"/><circle cx="92" cy="214" r="24" fill="#f2ecd8"/>']
+    # rooftops
+    import random as _r
+    rr = _r.Random(7); x = -20; roofs = []
+    while x < 620:
+        w = 50 + rr.random() * 60; h = 40 + rr.random() * 90; top = 800 - 110 - h
+        roofs.append(f'<rect x="{x:.0f}" y="{top:.0f}" width="{w:.0f}" height="{h+120:.0f}" fill="#222a4d"/><path d="M{x-4:.0f} {top:.0f}L{x+w/2:.0f} {top-14-rr.random()*14:.0f}L{x+w+4:.0f} {top:.0f}Z" fill="#262848"/>')
+        wy = top + 14
+        while wy < 760:
+            wx = x + 9
+            while wx < x + w - 14:
+                if rr.random() < .35: roofs.append(f'<rect x="{wx:.0f}" y="{wy:.0f}" width="8" height="13" rx="4" fill="#ffcf74" opacity="{.95 if rr.random() < .6 else .35}"/>')
+                wx += 20
+            wy += 28
+        x += w + 4
+    b.append("".join(roofs))
+    # title
+    b.append(text(300, 118, "Azulejos", "Unbounded", 70, "url(#ttl)", 900, ls=-1.5, extra='filter="url(#k-drop)" stroke="#0f2363" stroke-width="2" paint-order="stroke"'))
+    b.append(text(300, 160, "Draft tiles, decorate the wall", "Figtree", 25, "#c8c2dc", 800))
+    # limestone wall board, tilted
+    bx, by, cs = 150, 222, 64
+    board = [rect(bx - 22, by + 8, 5 * cs + 44, 5 * cs + 44, "#9d8c6c", 22), rect(bx - 22, by - 22, 5 * cs + 44, 5 * cs + 44, "url(#slab)", 22)]
+    placed = {(0, 0), (0, 1), (0, 2), (0, 3), (1, 1), (1, 2), (2, 2), (2, 3), (3, 0), (3, 3), (4, 4), (2, 1), (1, 4)}
+    for r in range(5):
+        for c in range(5):
+            col = order[(c - r + 5) % 5]
+            x, y = bx + c * cs + 3, by + r * cs + 3
+            board.append(rect(x, y, cs - 6, cs - 6, "#8a7656", 9, 'opacity=".45"'))
+            if (r, c) in placed:
+                board.append(tile(x + 1, y + 1, cs - 8, col))
+            else:
+                board.append(tile(x + 3, y + 3, cs - 12, col, op=.3))
+    b.append(f'<g transform="rotate(-6 300 400)" filter="url(#k-drop)">{"".join(board)}</g>')
+    # a tile flying onto the wall + shards
+    b.append(tile(452, 222, 70, "K", rot=14))
+    b.append('<path d="M452 300 q-30 40 -86 52" fill="none" stroke="#f6dc96" stroke-width="3" stroke-dasharray="4 9" opacity=".7"/>')
+    # terracotta plate with four tiles
+    px, py, pr = 168, 600, 108
+    b.append(f'<circle cx="{px}" cy="{py+10}" r="{pr}" fill="#4f1f0c"/><circle cx="{px}" cy="{py}" r="{pr}" fill="url(#terra)"/><circle cx="{px}" cy="{py}" r="{pr*.78}" fill="url(#glaze)"/>'
+             f'<circle cx="{px}" cy="{py}" r="{pr*.72}" fill="none" stroke="#1d3f9e" stroke-width="3" stroke-dasharray="6 7" opacity=".4"/>')
+    for i, c in enumerate("BBTY"):
+        b.append(tile(px - 58 + (i % 2) * 60, py - 58 + (i // 2) * 60, 54, c, rot=(-4, 3, 5, -3)[i]))
+    # first-player coin
+    b.append('<circle cx="330" cy="660" r="30" fill="#5a400f"/><circle cx="330" cy="654" r="30" fill="#cfa449"/><circle cx="324" cy="648" r="20" fill="#f6dc96" opacity=".6"/>')
+    b.append(text(330, 669, "1", "Unbounded", 34, "#4a3207", 900))
+    # broken tile shards
+    for (sx, sy, rot, c) in ((430, 650, 20, "R"), (470, 676, -30, "R"), (452, 700, 60, "T")):
+        b.append(f'<path d="M{sx} {sy} l18 -6 l-6 20 z" fill="{T[c][0]}" transform="rotate({rot} {sx} {sy})" stroke="#fff" stroke-opacity=".5"/>')
+    b.append(footer("2–4 TEAMS  ·  TILE DRAFTING", "Figtree", "#c8c2dc", 15, 4, y=778, weight=800))
+    return svg(d, "".join(b))
+
 COVERS = {
     "alphabet": alphabet, "back-to-board": back_to_board, "bear-park": bear_park, "bingo": bingo, "bluff": bluff,
-    "cant-stop": cant_stop, "boardgame": cefr_quest, "chain": chain, "city": city, "classroom-auction": classroom_auction,
+    "azulejos": azulejos, "cant-stop": cant_stop, "boardgame": cefr_quest, "chain": chain, "city": city, "classroom-auction": classroom_auction,
     "connect": connect, "control-deck": control_deck, "crown-lands": crown_lands, "deal-no-deal": deal_no_deal, "deep-cover": deep_cover,
 }

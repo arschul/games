@@ -503,42 +503,70 @@ def connect():
 
 
 def control_deck():
-    d = lin("hous", [(0, "#26313a"), (1, "#161d22")])
-    b = [rect(0, 0, 600, 800, "#0c1114")]
-    stripes = "".join(f'<polygon points="{x},0 {x+20},0 {x-4},24 {x-24},24" fill="#f6d94a"/>' for x in range(0, 640, 40))
-    b.append(f'<g>{rect(0, 0, 600, 24, "#111")}{stripes}</g>')
-    b.append(text(40, 78, "● VOICE-COMMAND CONSOLE", "Space Mono", 14, "#2fd8c9", 700, "start", 2))
-    b.append(text(40, 156, "CONTROL", "Bricolage Grotesque", 88, "#eef4f5", 800, "start"))
-    b.append(text(40, 240, "DECK", "Bricolage Grotesque", 88, "#eef4f5", 800, "start"))
-    # LED readout
-    b.append(rect(40, 268, 520, 64, "#090d10", 8, 'stroke="#2c3941" stroke-width="2"'))
-    b.append(glow_text(60, 310, "SET COOLANT TO 7", "Space Mono", 26, "#ffb648", "#ffb648", 700, 3, anchor="start"))
-    # panel
-    b.append(f'<g filter="url(#k-drop)">{rect(30, 356, 540, 400, "url(#hous)", 18, "stroke=\"#2c3941\" stroke-width=\"3\"")}</g>')
-    # dials
-    def dial(x, y, ang, label, col):
-        a = math.radians(ang)
-        ticks = "".join(f'<line x1="{x+52*math.cos(math.radians(t)):.1f}" y1="{y+52*math.sin(math.radians(t)):.1f}" '
-                        f'x2="{x+60*math.cos(math.radians(t)):.1f}" y2="{y+60*math.sin(math.radians(t)):.1f}" stroke="#8fa1a9" stroke-width="2"/>'
-                        for t in range(135, 406, 27))
-        return (ticks + f'<circle cx="{x}" cy="{y}" r="44" fill="#2a353d" stroke="#0c1114" stroke-width="4"/>'
-                f'<circle cx="{x}" cy="{y}" r="34" fill="#1f272e"/>'
-                f'<line x1="{x}" y1="{y}" x2="{x+30*math.cos(a):.1f}" y2="{y+30*math.sin(a):.1f}" stroke="{col}" stroke-width="6" stroke-linecap="round"/>'
-                + text(x, y + 84, label, "Space Mono", 13, "#8fa1a9", 700, ls=2))
-    b.append(dial(130, 450, 300, "COOLANT", "#ffb648") + dial(300, 450, 200, "THRUST", "#2fd8c9") + dial(470, 450, 30, "PRESSURE", "#ff6f6f"))
-    # sliders
-    for i, (v, col, lab) in enumerate([(.3, "#43d17a", "O2"), (.75, "#f6d94a", "FUEL"), (.55, "#2fd8c9", "SHIELD")]):
-        y = 600 + i * 46
-        b.append(text(64, y + 6, lab, "Space Mono", 13, "#8fa1a9", 700, "start"))
-        b.append(rect(150, y - 4, 250, 10, "#090d10", 5) + rect(150, y - 4, 250 * v, 10, col, 5)
-                 + rect(150 + 250 * v - 12, y - 16, 24, 34, "#d4dde0", 5, 'stroke="#0c1114" stroke-width="3"'))
-    # switches
-    for i, on in enumerate([1, 0, 1]):
-        x = 440 + i * 38
-        col = "#43d17a" if on else "#ef4444"
-        b.append(rect(x, 590, 26, 96, "#090d10", 13) + f'<circle cx="{x+13}" cy="{(608 if on else 668)}" r="13" fill="#d4dde0"/>'
-                 + f'<circle cx="{x+13}" cy="706" r="5" fill="{col}"/>')
-    b.append(f'<g>{rect(0, 776, 600, 24, "#111")}<g transform="translate(0 776)">{stripes}</g></g>')
+    # matches the 2026-11 rebuild: gunmetal rack, amber VT323 screens, ivory keycaps, Dymo labels, Oxanium title
+    d = (lin("wall", [(0, "#080c10"), (.6, "#111a22"), (1, "#1b2a35")]) + lin("plate", [(0, "#4a555e"), (.6, "#30393f"), (1, "#283035")])
+         + lin("rackg", [(0, "#252d33"), (1, "#14191d")]) + rad("key", [(0, "#fffaf0"), (.6, "#ece3cf"), (1, "#b9ad93")], cy="20%")
+         + rad("knob", [(0, "#7d8a93"), (.62, "#2a3237"), (1, "#161b1f")], cx="36%", cy="30%") + rad("lcd", [(0, "#251a08"), (1, "#170f04")])
+         + rad("glo", [(0, "#2a5f6e"), (1, "#111a22")]))
+    b = [rect(0, 0, 600, 800, "url(#wall)"), '<ellipse cx="300" cy="520" rx="420" ry="300" fill="url(#glo)" opacity=".5"/>',
+         stars(77, 40, "#34e0cf", op=(.15, .6))]
+    b.append(text(40, 112, "Control", "Oxanium", 96, "#e8eef1", 800, "start"))
+    b.append(text(40, 206, "Deck", "Oxanium", 96, "#ffb547", 800, "start"))
+    # voice readout
+    b.append(rect(40, 236, 520, 72, "url(#lcd)", 10))
+    b.append(glow_text(300, 284, "Turn the dial to: begun", "VT323", 38, "#ffb547", "#ffb547", 400))
+    # rack
+    b.append(f'<g filter="url(#k-drop)">{rect(28, 330, 544, 440, "url(#rackg)", 20, "stroke=\"#46525b\" stroke-width=\"2\"")}</g>')
+    def module(x, y, label, acc, screen):
+        g = rect(x, y, 248, 198, "url(#plate)", 10, 'stroke="#66727b" stroke-width="1.5"') + rect(x, y, 248, 5, acc, 2)
+        for sx, sy in ((x + 9, y + 14), (x + 239, y + 14), (x + 9, y + 189), (x + 239, y + 189)):
+            g += f'<circle cx="{sx}" cy="{sy}" r="5" fill="#b9c2c7"/>'
+        w = len(label) * 10.5 + 16
+        g += rect(x + 18, y + 14, w, 26, "#141414", 3) + text(x + 18 + w / 2, y + 33, label, "Barlow Semi Condensed", 18, "#f4f4f0", 700)
+        g += rect(x + 14, y + 48, 220, 46, "url(#lcd)", 6) + glow_text(x + 124, y + 81, screen, "VT323", 32, "#ffb547", "#ffb547")
+        return g
+    ox, oy = 46, 350
+    # module 1: word class keys
+    m = module(ox, oy, "Word Class Keys", "#ffb547", "pick one")
+    for i, w in enumerate(["river", "slowly", "angry", "write"]):
+        kx, ky = ox + 16 + (i % 2) * 112, oy + 106 + (i // 2) * 44
+        down = i == 0
+        m += rect(kx, ky + (4 if down else 0), 104, 36, "#857a63", 8) if not down else ""
+        m += rect(kx, ky + (3 if down else 0), 104, 34, "url(#key)", 8, 'stroke="#ffb547" stroke-width="3"' if down else "")
+        m += text(kx + 52, ky + 27 + (3 if down else 0), w, "Barlow Semi Condensed", 22, "#0d1114", 700)
+    b.append(m)
+    # module 2: verb form dial
+    x2 = ox + 260
+    m = module(x2, oy, "Verb Form Dial", "#34e0cf", "verb: begin")
+    cx, cy = x2 + 124, oy + 160
+    for i, lab in enumerate(["off", "V1", "V2", "V3"]):
+        a = math.radians(-90 + 60 * i)
+        lx, ly = cx + 84 * math.sin(a + math.pi / 2 - math.pi / 2), cy - 52 * math.cos(a)
+        lx = cx + 86 * math.sin(a)
+        sel = lab == "V3"
+        if sel:
+            m += rect(lx - 20, ly - 15, 40, 26, "#34e0cf", 5)
+        m += text(f"{lx:.1f}", f"{ly + 5:.1f}", lab, "Barlow Semi Condensed", 20, "#0d1114" if sel else "#cfd8dd", 700)
+    m += f'<circle cx="{cx}" cy="{cy}" r="30" fill="url(#knob)" stroke="#0d1012" stroke-width="3"/>'
+    m += f'<line x1="{cx}" y1="{cy}" x2="{cx+24}" y2="{cy}" stroke="#34e0cf" stroke-width="6" stroke-linecap="round"/>'
+    b.append(m)
+    # module 3: verb switches
+    y3 = oy + 212
+    m = module(ox, y3, "Verb Switches", "#ff4b3e", "4 verbs")
+    for i, (w, on) in enumerate([("went", 1), ("eats", 0), ("saw", 1), ("play", 0)]):
+        sx = ox + 22 + i * 54
+        m += f'<circle cx="{sx+18}" cy="{y3+110}" r="5" fill="{"#4fe08a" if on else "#2a2020"}"/>'
+        m += rect(sx + 6, y3 + 120, 24, 44, "#0c0f11", 6)
+        m += rect(sx + 9, y3 + (123 if on else 141), 18, 20, "#ff4b3e" if on else "#c4ccd1", 4)
+        m += rect(sx - 2, y3 + 170, 40, 20, "#141414", 3) + text(sx + 18, y3 + 185, w, "Barlow Semi Condensed", 15, "#f4f4f0", 700)
+    b.append(m)
+    # module 4: quantity lever
+    m = module(x2, y3, "Quantity Lever", "#4fe08a", "How ___ water?")
+    ly = y3 + 150
+    m += rect(x2 + 12, ly - 16, 66, 32, "#4fe08a", 6) + text(x2 + 45, ly + 8, "much", "Oxanium", 22, "#0d1114", 800)
+    m += rect(x2 + 88, ly - 8, 76, 16, "#07090a", 8) + f'<circle cx="{x2+98}" cy="{ly}" r="17" fill="#4fe08a" stroke="#1f5c38" stroke-width="3"/>'
+    m += f'<circle cx="{x2+93}" cy="{ly-5}" r="5" fill="#fff" opacity=".55"/>' + text(x2 + 202, ly + 8, "many", "Oxanium", 22, "#cfd8dd", 800)
+    b.append(m)
     return svg(d, "".join(b))
 
 

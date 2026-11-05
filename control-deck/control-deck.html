@@ -403,6 +403,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
      <div class="togs">
        <label class="tog"><input type="checkbox" id="optChaos"><span class="tv"></span><span><strong>Chaos mode.</strong> From round 4, with 4+ modules, sometimes two commands come at once.</span></label>
        <label class="tog"><input type="checkbox" id="optShuffle"><span class="tv"></span><span><strong>Shuffle panel.</strong> Two modules swap places every turn.</span></label>
+       <label class="tog"><input type="checkbox" id="optAuto" checked><span class="tv"></span><span><strong>Auto next.</strong> After locking in, the next command starts by itself in 5 seconds.</span></label>
      </div>
    </div>
    <div class="col">
@@ -756,7 +757,7 @@ const TEAMS=[{c:'#ff8a3d',e:'🦊',n:'Foxes'},{c:'#4aa8ff',e:'🐬',n:'Dolphins'
 const SETUP_KEY='controlDeck.setup',SAVE_KEY='controlDeck.save',HIGH_KEY='controlDeckHighScore';
 const inkFor=hex=>{const n=parseInt(hex.slice(1),16),r=n>>16&255,g=n>>8&255,b=n&255;return (0.299*r+0.587*g+0.114*b)/255>0.6?'#111':'#fff';};
 
-let setup={mode:'teams',teamCount:2,names:TEAMS.map(t=>t.n),soloName:'Pilot',lives:3,chaos:false,shuffle:false,captions:true,sound:true,music:true,vol:60,sec:15,rate:0.9,voice:'',pool:CD.DEFAULT_POOL.slice()};
+let setup={mode:'teams',teamCount:2,names:TEAMS.map(t=>t.n),soloName:'Pilot',lives:3,chaos:false,shuffle:false,autoNext:true,captions:true,sound:true,music:true,vol:60,sec:15,rate:0.9,voice:'',pool:CD.DEFAULT_POOL.slice()};
 try{Object.assign(setup,JSON.parse(localStorage.getItem(SETUP_KEY)||'{}'));}catch(e){}
 setup.pool=setup.pool.filter(id=>CD.MOD[id]);if(!setup.pool.length)setup.pool=CD.DEFAULT_POOL.slice();
 const saveSetup=()=>{try{localStorage.setItem(SETUP_KEY,JSON.stringify(setup));}catch(e){}};
@@ -882,7 +883,7 @@ $('optSound').onchange=e=>setMuted(!e.target.checked);
 function toggleThemeLocal(){if(typeof window.toggleTheme==='function'&&window.toggleTheme!==toggleThemeLocal){window.toggleTheme();return;}
   const h=document.documentElement,n=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',n);try{localStorage.setItem('arschul:theme',n);}catch(e){}}
 $('themeBtn').onclick=toggleThemeLocal;
-$('setupBtn').onclick=()=>{stopTimer();if('speechSynthesis' in window)speechSynthesis.cancel();Music.setMode('standby');openSetup();};
+$('setupBtn').onclick=()=>{stopTimer();cancelAuto();if('speechSynthesis' in window)speechSynthesis.cancel();Music.setMode('standby');openSetup();};
 renderAudioBtns();
 
 /* ---------- setup screen ---------- */
@@ -894,7 +895,7 @@ function renderSetup(){
   const order=setup.pool.concat(CD.DEFAULT_POOL.filter(id=>!setup.pool.includes(id)));
   $('modChips').innerHTML=order.map(id=>{const m=CD.MOD[id],on=setup.pool.indexOf(id);
     return `<button class="mchip ${on>=0?'sel':''}" data-mchip="${id}" style="--acc:${m.accent}"><span class="n">${on>=0?on+1:'–'}</span><span>${esc(m.name)}<small>${esc(m.short)}</small></span></button>`;}).join('');
-  $('optChaos').checked=setup.chaos;$('optShuffle').checked=setup.shuffle;$('optCaptions').checked=setup.captions;
+  $('optChaos').checked=setup.chaos;$('optShuffle').checked=setup.shuffle;$('optAuto').checked=setup.autoNext;$('optCaptions').checked=setup.captions;
   $('optSec').value=setup.sec;$('secVal').textContent=setup.sec;$('optRate').value=setup.rate;$('rateVal').textContent=Number(setup.rate).toFixed(1);
   let sv=null;try{sv=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(e){}
   $('resumeBtn').classList.toggle('hidden',!sv);
@@ -912,6 +913,7 @@ $('modChips').addEventListener('click',e=>{const b=e.target.closest('[data-mchip
   if(i>=0){if(setup.pool.length>1)setup.pool.splice(i,1);}else setup.pool.push(id);saveSetup();renderSetup();});
 $('optChaos').onchange=e=>{setup.chaos=e.target.checked;saveSetup();};
 $('optShuffle').onchange=e=>{setup.shuffle=e.target.checked;saveSetup();};
+$('optAuto').onchange=e=>{setup.autoNext=e.target.checked;saveSetup();};
 $('optCaptions').onchange=e=>{setup.captions=e.target.checked;saveSetup();};
 $('optSec').oninput=e=>{setup.sec=+e.target.value;$('secVal').textContent=setup.sec;saveSetup();};
 $('optRate').oninput=e=>{setup.rate=+e.target.value;$('rateVal').textContent=setup.rate.toFixed(1);saveSetup();};
@@ -1051,6 +1053,14 @@ function startTimer(){
 }
 const baseIntensity=()=>Math.min(1,(G.installed.length-1)/10);
 
+/* ---------- auto next (5 s countdown after lock-in) ---------- */
+let autoId=null;
+function cancelAuto(){clearInterval(autoId);autoId=null;$('nextBtn').textContent='Next command';}
+function startAuto(){
+  cancelAuto();if(!setup.autoNext)return;let left=5;const b=$('nextBtn');b.textContent=`Next command (${left})`;
+  autoId=setInterval(()=>{left--;if(left<=0){cancelAuto();if(G&&G.phase==='result')nextRound();return;}b.textContent=`Next command (${left})`;},1000);
+}
+
 /* ---------- flow ---------- */
 function startGame(){
   setup.names=setup.names.map((n,i)=>n&&n.trim()?n.trim():TEAMS[i].n);
@@ -1068,6 +1078,7 @@ function resumeGame(){
   $('vtext').classList.remove('listen');$('vtext').textContent='Game resumed. Press Next command.';showAct('next');
 }
 function nextRound(){
+  cancelAuto();
   if(!G||G.phase==='over')return;
   clearResult();
   CD.startRound(G,Math.random);
@@ -1105,7 +1116,7 @@ function lockIn(timedOut){
   }
   if(res.over){try{localStorage.removeItem(SAVE_KEY);}catch(e){}setTimeout(()=>endGame(res),res.all?1800:1600);$('lockBtn').classList.add('hidden');return;}
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(G));}catch(e){}
-  showAct('next');
+  showAct('next');startAuto();
 }
 let fwTimer=null;
 function endGame(res){

@@ -389,25 +389,57 @@ def _shape(kind, cx, cy, r, fill, stroke):
 
 
 def problem_solvers():
-    d = lin("yl", [(0, "#fde68a"), (1, "#f7c948")])
-    b = [rect(0, 0, 600, 800, "#0f0e17"), '<circle cx="300" cy="300" r="240" fill="#f7c948" opacity=".1" filter="url(#k-glow)"/>']
-    b.append(emoji(300, 118, "💡", 82))
-    b.append(text(300, 210, "Problem", "Fredoka One", 86, "url(#yl)"))
-    b.append(text(300, 296, "Solvers", "Fredoka One", 86, "url(#yl)"))
-    b.append(text(300, 336, "Ridiculous problems. Ridiculous solutions.", "Nunito", 20, "#9b99b8", 700))
-    b.append(f'<g transform="translate(300 420) rotate(-2)" filter="url(#k-drop)">{rect(-220, -44, 440, 88, "#ff6b6b", 16)}'
-             + text(0, -8, "PROBLEM:", "Nunito", 16, "#2a0a0a", 900, ls=4) + text(0, 24, "Your cat is stuck on the Moon.", "Nunito", 24, "#fff", 900) + "</g>")
-    # sketch paper with doodle solution
-    b.append(f'<g transform="translate(300 600) rotate(2)" filter="url(#k-drop)">{rect(-200, -110, 400, 220, "#fdfcf6", 10)}'
-             + "".join(f'<line x1="-190" y1="{-80+i*26}" x2="190" y2="{-80+i*26}" stroke="#bfe0f5" stroke-width="1.5"/>' for i in range(8))
-             + '<path d="M-150 80 Q -120 -60 -60 -70" fill="none" stroke="#6bcbf7" stroke-width="5" stroke-linecap="round"/>'
-             + '<path d="M-150 80 l 300 0" stroke="#7de8a0" stroke-width="5"/>'
-             + '<path d="M-40 60 l 30 -120 l 30 120 Z" fill="none" stroke="#ff6b6b" stroke-width="5" stroke-linejoin="round"/>'
-             + '<path d="M-24 64 q 14 30 28 0" fill="none" stroke="#f7c948" stroke-width="5"/>'
-             + '<circle cx="120" cy="-62" r="32" fill="none" stroke="#9b99b8" stroke-width="4"/>'
-             + text(80, 40, "giant", "Caveat", 30, "#333", 700) + text(84, 70, "trampoline!", "Caveat", 30, "#333", 700)
-             + "</g>")
-    b.append(footer("DRAW IT · PITCH IT · TEACHER PICKS", "Nunito", "#f7c948", 14, 3, 776, 900))
+    # inventor's workshop: pegboard wall, birch drafting board, blueprint, brass stopwatch, gear tokens
+    d = (lin("ps-wall", [(0, "#34291f"), (1, "#1b140e")]) + rad("ps-lamp", [(0, "#ffb868"), (1, "#ffb868")], "20%", "0%", "80%")
+         + lin("ps-birch", [(0, "#efd7a8"), (.5, "#d9b77e"), (1, "#ad8952")])
+         + lin("ps-bp", [(0, "#2559a3"), (.6, "#1e5096"), (1, "#123563")], 1, 1)
+         + rad("ps-bezel", [(0, "#fff2b8"), (.4, "#d9ac48"), (1, "#7e5d19")], "38%", "30%", "80%")
+         + rad("ps-face", [(0, "#fffdf4"), (.85, "#efe3c4"), (1, "#d4c294")], "45%", "38%", "75%")
+         + lin("ps-gold", [(0, "#fff0b0"), (.45, "#e2b54a"), (1, "#8a6418")]) + lin("ps-silver", [(0, "#ffffff"), (.5, "#bcc4cc"), (1, "#66707a")])
+         + '<pattern id="ps-holes" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="15" r="4" fill="#0b0805"/></pattern>'
+         + '<pattern id="ps-grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#c8e1ff" stroke-opacity=".14" stroke-width="1"/></pattern>'
+         + '<pattern id="ps-grid2" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M100 0H0V100" fill="none" stroke="#c8e1ff" stroke-opacity=".28" stroke-width="2"/></pattern>'
+         + '<radialGradient id="ps-lampg" cx="20%" cy="0%" r="85%"><stop offset="0" stop-color="#ffb868" stop-opacity=".32"/><stop offset="1" stop-color="#ffb868" stop-opacity="0"/></radialGradient>')
+    def gear(cx, cy, r, n, fill, stroke):
+        p = []
+        st = 2 * math.pi / n
+        for k in range(n):
+            a = k * st - math.pi / 2
+            for q, o in ((r * .83, 0), (r, .16), (r, .44), (r * .83, .6)):
+                p.append(f"{cx + q*math.cos(a + st*o):.1f},{cy + q*math.sin(a + st*o):.1f}")
+        return f'<polygon points="{" ".join(p)}" fill="{fill}" stroke="{stroke}" stroke-width="2.5" stroke-linejoin="round"/>'
+    b = [rect(0, 0, 600, 800, "url(#ps-wall)"), rect(0, 0, 600, 800, "url(#ps-holes)"), rect(0, 0, 600, 800, "url(#ps-lampg)")]
+    # drafting board
+    b.append(f'<g filter="url(#k-drop)">{rect(28, 44, 544, 716, "#5d4227", 22)}{rect(36, 52, 528, 700, "url(#ps-birch)", 18)}</g>')
+    b.append("".join(rect(36, 60 + i * 23, 528, 1.5, "#7a5428", 0, 'opacity=".12"') for i in range(30)))
+    for x in (150, 380):
+        b.append(f'<g filter="url(#k-drop-s)">{rect(x, 30, 70, 30, "#c9d0d7", 8)}<circle cx="{x+35}" cy="45" r="7" fill="#6b737c"/></g>')
+    # blueprint
+    b.append(f'<g transform="rotate(-2 300 290)" filter="url(#k-drop)">{rect(64, 88, 472, 400, "url(#ps-bp)", 4)}'
+             f'{rect(64, 88, 472, 400, "url(#ps-grid)", 4)}{rect(64, 88, 472, 400, "url(#ps-grid2)", 4)}'
+             f'{rect(78, 102, 444, 372, "none", 2, "stroke=\"#dcecff\" stroke-opacity=\".5\" stroke-width=\"2\"")}'
+             + text(300, 216, "Problem", "Alfa Slab One", 84, "#f1f7ff")
+             + text(300, 306, "Solvers", "Alfa Slab One", 84, "#f1f7ff")
+             + text(300, 352, "Silly machines for everyday problems", "Outfit", 21, "#a9cdfa", 600)
+             + '<g fill="none" stroke="#dcecff" stroke-opacity=".6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
+               '<path d="M118 446c-14-8-19-27-8-41s35-14 45 2-2 32-11 40v9h-26z" stroke-dasharray="5 5"/><path d="M120 462h22"/>'
+               '<circle cx="214" cy="430" r="26"/><circle cx="214" cy="430" r="9"/><path d="M214 396v-6M214 470v-6M248 430h6M174 430h6"/>'
+               '<path d="M280 456h120M280 450v12M400 450v12"/></g>'
+             + rect(420, 404, 100, 64, "none", 0, 'stroke="#dcecff" stroke-opacity=".6" stroke-width="2"')
+             + text(470, 424, "No.", "Outfit", 14, "#a9cdfa", 600) + text(470, 458, "042", "Alfa Slab One", 28, "#f1f7ff") + "</g>")
+    # stopwatch
+    ticks = "".join(f'<line x1="{430 + 74*math.sin(math.radians(i*30)):.1f}" y1="{612 - 74*math.cos(math.radians(i*30)):.1f}" x2="{430 + 84*math.sin(math.radians(i*30)):.1f}" y2="{612 - 84*math.cos(math.radians(i*30)):.1f}" stroke="#3a2e1e" stroke-width="4" stroke-linecap="round"/>' for i in range(12))
+    b.append(f'<g filter="url(#k-drop)">{rect(414, 500, 32, 22, "#d5a640", 6)}<circle cx="430" cy="612" r="104" fill="url(#ps-bezel)"/><circle cx="430" cy="612" r="92" fill="url(#ps-face)"/>'
+             f'<path d="M430 542 A70 70 0 1 1 369.4 577" fill="none" stroke="#3a9e58" stroke-width="12" stroke-linecap="round"/>{ticks}'
+             f'<path d="M430 622 L425 612 L374 578 L433 606Z" fill="#b5502a"/><circle cx="430" cy="612" r="9" fill="url(#ps-bezel)"/></g>')
+    b.append(text(430, 662, "4:00", "Alfa Slab One", 26, "#2b2117"))
+    # gear tokens
+    b.append(f'<g filter="url(#k-drop-s)">{gear(140, 610, 58, 12, "url(#ps-gold)", "#6b4d10")}<circle cx="140" cy="610" r="36" fill="none" stroke="#000" stroke-opacity=".2" stroke-width="3"/></g>')
+    b.append(text(140, 622, "100", "Alfa Slab One", 32, "#3a2a08"))
+    b.append(f'<g filter="url(#k-drop-s)">{gear(254, 664, 44, 12, "url(#ps-silver)", "#4a525b")}<circle cx="254" cy="664" r="27" fill="none" stroke="#000" stroke-opacity=".2" stroke-width="3"/></g>')
+    b.append(text(254, 674, "50", "Alfa Slab One", 27, "#2f3740"))
+    # steel rule
+    b.append(rect(56, 724, 488, 16, "#c9d0d7", 3) + "".join(rect(60 + i * 16, 724, 1.5, 6 if i % 5 else 10, "#333", 0) for i in range(30)))
     return svg(d, "".join(b))
 
 

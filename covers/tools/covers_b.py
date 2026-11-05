@@ -36,35 +36,61 @@ def alphabet():
 
 
 def back_to_board():
-    d = rad("bg", [(0, "#1e2733"), (1, "#0d1117")], cy="35%") + lin("amb", [(0, "#fbbf24"), (1, "#d97706")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 108, "Back to", "Sora", 62, "#f5f7fa", 800))
-    b.append(text(300, 176, 'the <tspan fill="url(#amb)">Board</tspan>', "Sora", 62, "#f5f7fa", 800))
-    # board
-    b.append(f'<g filter="url(#k-drop)">{rect(70, 220, 460, 230, "#1d3b33", 10, "stroke=\"#8a6a3a\" stroke-width=\"10\"")}</g>')
-    b.append(text(300, 318, "Things that fly", "Caveat", 56, "#f4f1e8", 700))
-    b.append('<path d="M150 345 q 150 -12 300 0" stroke="#f4f1e8" stroke-width="3" fill="none" opacity=".7"/>')
-    b.append(text(300, 395, "?  ?  ?", "Caveat", 40, "#f59e0b", 700))
-    b.append(rect(120, 452, 360, 10, "#8a6a3a", 3))
-    # chair + student from behind
-    b.append('<g transform="translate(300 600)">'
-             '<rect x="-62" y="-40" width="124" height="100" rx="16" fill="#0d9488" stroke="#064e48" stroke-width="4"/>'
-             '<rect x="-50" y="60" width="10" height="60" fill="#3a4555"/><rect x="40" y="60" width="10" height="60" fill="#3a4555"/>'
-             '<path d="M-56 -40 Q -60 -92 0 -96 Q 60 -92 56 -40 Z" fill="#334155"/>'
-             '<circle cx="0" cy="-122" r="36" fill="#1f2937"/>'
-             '<path d="M-36 -126 Q 0 -168 36 -126 Q 20 -140 0 -142 Q -20 -140 -36 -126 Z" fill="#111827"/>'
-             '</g>')
-    # team bubbles
-    def bubble(x, y, w, word, col, tail):
-        tx = x + (20 if tail == "l" else w - 20)
-        return (f'<g filter="url(#k-drop-s)">{rect(x, y, w, 52, col, 26)}'
-                f'<polygon points="{tx-10},{y+48} {tx+10},{y+48} {tx + (-14 if tail=="l" else 14)},{y+72}" fill="{col}"/></g>'
-                + text(x + w/2, y + 35, word, "Sora", 24, "#0d1117", 800))
-    b.append(bubble(28, 500, 140, "BIRD!", "#2dd4bf", "l"))
-    b.append(bubble(432, 492, 140, "PLANE!", "#fbbf24", "r"))
-    b.append(bubble(24, 640, 120, "KITE!", "#f59e0b", "l"))
-    b.append(bubble(452, 636, 130, "BEE!", "#2dd4bf", "r"))
-    b.append(footer("100 CATEGORIES · A1–B2", "Sora", "#95a5b8", 14, 4, 784))
+    d = (lin("wall", [(0, "#1a0b19"), (1, "#2c0e1d")])
+         + lin("brass", [(0, "#ffe7a6"), (.35, "#dca545"), (.8, "#94661b"), (1, "#6b4712")])
+         + rad("panel", [(0, "#fffaf0"), (.6, "#f8f0dd"), (1, "#e9dcbf")], cy="30%")
+         + lin("cur", [(0, "#3e0510"), (.3, "#7d1222"), (.55, "#b8263b"), (.8, "#7d1222"), (1, "#5a0a18")], x2=1, y2=0)
+         + lin("floor", [(0, "#6b4325"), (1, "#3e2412")])
+         + rad("p1", [(0, "#5fe0d2"), (.5, "#17b8a6"), (1, "#0a6a60")], cy="25%")
+         + rad("p2", [(0, "#cf9bff"), (.5, "#a24dff"), (1, "#541c9a")], cy="25%")
+         + rad("bulb", [(0, "#fffbe6"), (.55, "#ffd36a"), (1, "#e89a20")], cy="40%", r="60%"))
+    b = [rect(0, 0, 600, 800, "url(#wall)")]
+    b.append('<polygon points="150,0 200,0 330,760 20,760" fill="#ffecbe" opacity=".10"/>'
+             '<polygon points="400,0 450,0 580,760 270,760" fill="#ffecbe" opacity=".10"/>')
+    b.append(rect(0, 690, 600, 110, "url(#floor)"))
+    b.append("".join(f'<rect x="{x}" y="690" width="2" height="110" fill="#000" opacity=".35"/>' for x in range(30, 600, 70)))
+    b.append(rect(0, 684, 600, 8, "#120804"))
+    # curtains + valance
+    for x0, flip in ((0, 1), (600, -1)):
+        b.append(f'<g transform="translate({x0} 0) scale({flip} 1)">'
+                 '<path d="M0 0 H70 Q 64 400 40 690 H0 Z" fill="url(#cur)"/>'
+                 '<rect x="26" y="420" width="44" height="14" rx="7" fill="url(#brass)"/></g>')
+    b.append(''.join(f'<ellipse cx="{x}" cy="34" rx="34" ry="24" fill="#8f1527"/>' for x in range(0, 640, 60)))
+    b.append(rect(0, 0, 600, 34, "#5a0a18") + rect(0, 34, 600, 4, "#dca545"))
+    # marquee sign
+    sx, sy, sw, sh = 54, 92, 492, 300
+    b.append(f'<g filter="url(#k-drop)">{rect(sx, sy, sw, sh, "url(#brass)", 22)}</g>')
+    b.append(rect(sx + 34, sy + 34, sw - 68, sh - 68, "url(#panel)", 8, 'stroke="#5e3f0e" stroke-opacity=".5" stroke-width="2"'))
+    pts = []
+    n_x, n_y, ins = 13, 7, 17
+    for i in range(n_x): pts.append((sx + ins + i * (sw - 2 * ins) / n_x, sy + ins))
+    for i in range(n_y): pts.append((sx + sw - ins, sy + ins + i * (sh - 2 * ins) / n_y))
+    for i in range(n_x): pts.append((sx + sw - ins - i * (sw - 2 * ins) / n_x, sy + sh - ins))
+    for i in range(n_y): pts.append((sx + ins, sy + sh - ins - i * (sh - 2 * ins) / n_y))
+    for k, (x, y) in enumerate(pts):
+        lit = k < len(pts) * .72
+        if lit:
+            b.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="11" fill="#ffc64a" opacity=".45" filter="url(#k-glow-s)"/>')
+        b.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7.5" fill="{"url(#bulb)" if lit else "#3a2b1a"}" stroke="#7a5418" stroke-width="2.5"/>')
+    b.append(text(300, sy + 92, "Back to", "Figtree", 30, "#6e5a50", 800))
+    b.append(text(300, sy + 200, "the Board", "Anton", 98, "#24161f"))
+    b.append(chip(222, sy + 220, 156, 30, "100 categories", "Figtree", 16, "url(#brass)", "#2b1a05", weight=800))
+    # timer LED
+    b.append(rect(250, sy + sh - 16, 100, 40, "#0a0505", 8, 'stroke="#94661b" stroke-width="4"'))
+    b.append(glow_text(300, sy + sh + 16, "0:12", "Anton", 30, "#ffb84a", "#ff9a20"))
+    # podiums
+    for px, col, em, sc in ((40, "p1", "🦊", "4"), (330, "p2", "🦉", "3")):
+        b.append(f'<g filter="url(#k-drop)">'
+                 f'<ellipse cx="{px+80}" cy="{532}" rx="46" ry="26" fill="url(#{col})" stroke="#b98a2f" stroke-width="4"/>'
+                 f'{rect(px, 536, 230, 24, "#3a2830", 10)}'
+                 f'{rect(px + 10, 556, 210, 120, "url(#" + col + ")", 10)}</g>')
+        b.append(f'<circle cx="{px+52}" cy="600" r="30" fill="#f4ead6"/>' + emoji(px + 52, 612, em, 34))
+        b.append(rect(px + 140, 576, 64, 54, "#0a0505", 8) + glow_text(px + 172, 618, sc, "Anton", 40, "#ffcf6b", "#ffa030"))
+        b.append(rect(px + 22, 640, 186, 24, "#000", 12, 'opacity=".35"'))
+        b.append("".join(f'<circle cx="{px + 38 + i*22}" cy="652" r="8" fill="{"#fff" if i < int(sc) else "#000"}" opacity="{.85 if i < int(sc) else .45}"/>' for i in range(8)))
+    # center button
+    b.append(rect(272, 580, 56, 80, "url(#brass)", 10))
+    b.append(footer("TEAMS · A1–B2 · SPEAKING", "Figtree", "#f2dcb6", 14, 4, 760, 800))
     return svg(d, "".join(b))
 
 

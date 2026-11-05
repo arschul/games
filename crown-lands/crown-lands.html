@@ -177,6 +177,22 @@ kbd{display:inline-block;font:800 15px var(--ui);padding:0 7px;border-radius:6px
 .bbreak div{white-space:nowrap;border-radius:6px;padding:0 6px;transition:background .2s}
 .bbreak div.hl{background:#7a2a12;color:#fff4dc}
 .bbreak .sum{border-top:2px solid rgba(110,75,30,.35);margin-top:4px;padding-top:4px}
+/* player view: the active kingdom fills one side, the others sit in a compact rail */
+.vseg{display:inline-flex;border:2px solid var(--barLine);border-radius:14px;overflow:hidden;height:50px}
+.vseg .ibtn{border:0;border-radius:0;height:46px}
+.vseg .ibtn+.ibtn{border-left:2px solid var(--barLine)}
+#game.pv.pvL{grid-template-columns:minmax(0,1fr) 600px 300px}
+#game.pv.pvR{grid-template-columns:300px 600px minmax(0,1fr)}
+#game.pv .board.live{flex-grow:1}
+#game.pv .side.rail{gap:18px}
+#game.pv .rail .bhead{padding:8px 10px 4px;gap:8px}
+#game.pv .rail .bhead .token{width:38px;height:38px}
+#game.pv .rail .bhead .token .ico{font-size:21px}
+#game.pv .rail .bname{font-size:25px}
+#game.pv .rail .bstat{font-size:15px}
+#game.pv .rail .bscore{font-size:36px;gap:3px}
+#game.pv .rail .bscore small{display:none}
+#game.pv .rail .bbody{margin:0 8px 8px}
 #game.p2 .bbody{flex-direction:column}
 #game.p2 .bbreak{flex:0 0 auto;align-self:stretch;margin:0 12px 12px;max-height:none;column-count:2;column-gap:18px}
 #game.p2 .bbreak .sum{column-span:all}
@@ -306,6 +322,10 @@ button.ent .slot{box-shadow:inset 0 4px 7px rgba(0,0,0,.85),0 0 0 3px var(--gilt
       <span class="sp"></span>
       <button class="ibtn" id="rulesBtn" title="Rules (H)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z"/><path d="M8 7h6M8 11h6"/></svg>Rules</button>
       <button class="ibtn hidden" id="legalBtn" title="Show where the domino fits (L)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3" stroke-dasharray="4 3"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Hints</button>
+      <span class="vseg hidden" id="viewSeg" role="group" aria-label="Board view">
+        <button class="ibtn" id="pvBtn" title="Player view: the active team's kingdom big (V)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="4" width="13" height="16" rx="2"/><rect x="18" y="4" width="3" height="4.5" rx="1"/><rect x="18" y="10" width="3" height="4.5" rx="1"/><rect x="18" y="16" width="3" height="4" rx="1"/></svg>Player view</button>
+        <button class="ibtn" id="wvBtn" title="World view: all kingdoms the same size (V)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>World view</button>
+      </span>
       <button class="ibtn hidden" id="menuBtn" title="Back to setup (the game is saved)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Setup</button>
       <button class="ibtn" id="musicBtn" title="Music (Shift+N)" aria-label="Music"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg></button>
       <button class="ibtn" id="muteBtn" title="Sound (M)"></button>
@@ -1003,7 +1023,7 @@ const Music = (function () {
   const E = CL;
   const $ = (q, r) => (r || document).querySelector(q);
   const $$ = (q, r) => Array.from((r || document).querySelectorAll(q));
-  const SAVE = 'crownlands:save', SETUP = 'crownlands:setup:v2', MUTE = 'crownlands:mute', THEME_KEY = 'arschul:theme';
+  const VIEW = 'crownlands:view', SAVE = 'crownlands:save', SETUP = 'crownlands:setup:v2', MUTE = 'crownlands:mute', THEME_KEY = 'arschul:theme';
   const RM = matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => RM.matches;
   const store = {
@@ -1589,14 +1609,14 @@ const Music = (function () {
   function showGame() {
     stopEndCycle();
     $('#setup').classList.add('hidden'); $('#game').classList.remove('hidden');
-    ['#roundBox', '#legalBtn', '#menuBtn'].forEach(q => $(q).classList.remove('hidden'));
+    ['#roundBox', '#legalBtn', '#viewSeg', '#menuBtn'].forEach(q => $(q).classList.remove('hidden'));
     buildBoards();
     afterChange();
   }
   function showSetup() {
     stopEndCycle();
     $('#game').classList.add('hidden'); $('#setup').classList.remove('hidden');
-    ['#roundBox', '#legalBtn', '#menuBtn'].forEach(q => $(q).classList.add('hidden'));
+    ['#roundBox', '#legalBtn', '#viewSeg', '#menuBtn'].forEach(q => $(q).classList.add('hidden'));
     $('#debug').classList.add('hidden'); ui.debug = false;
     renderSetup();
   }
@@ -1774,7 +1794,30 @@ const Music = (function () {
       $('.bscore', b.el).innerHTML = sc.total + (sc.middle || sc.harmony ? `<small>+${sc.middle + sc.harmony} bonus</small>` : '') + '<small>pts</small>';
       $('.bstat', b.el).textContent = `${sc.crowns} crown${sc.crowns === 1 ? '' : 's'}` + (p.discards.length ? `, ${p.discards.length} discarded` : '');
     }
+    applyView(ap);
   }
+  // Player view: the active team's board gets its whole side; every other board moves to a compact rail.
+  // World view (and game over): even boards, players 0/2 left and 1/3 right.
+  let viewMode = store.get(VIEW) === 'world' ? 'world' : 'player';
+  function applyView(ap) {
+    if (ap === undefined) ap = S && S.phase !== 'over' ? activePid() : null;
+    $('#pvBtn').classList.toggle('on', viewMode === 'player');
+    $('#wvBtn').classList.toggle('on', viewMode === 'world');
+    $('#pvBtn').setAttribute('aria-pressed', viewMode === 'player');
+    $('#wvBtn').setAttribute('aria-pressed', viewMode === 'world');
+    if (!S) return;
+    const L = $('#sideL'), R = $('#sideR'), g = $('#game');
+    const pv = viewMode === 'player' && ap != null && boardEls[ap];
+    const bigSide = pv ? (ap % 2 === 0 ? L : R) : null, rail = pv ? (bigSide === L ? R : L) : null;
+    g.classList.toggle('pv', !!pv); g.classList.toggle('pvL', bigSide === L); g.classList.toggle('pvR', bigSide === R);
+    L.classList.toggle('rail', rail === L); R.classList.toggle('rail', rail === R);
+    for (const side of [L, R]) {   // only touch the DOM when the arrangement actually changes
+      const want = S.players.filter(p => boardEls[p.id] && (pv ? (p.id === ap ? bigSide : rail) : (p.id % 2 === 0 ? L : R)) === side).map(p => boardEls[p.id].el);
+      const have = Array.from(side.children);
+      if (want.length !== have.length || want.some((el, i) => el !== have[i])) want.forEach(el => side.appendChild(el));
+    }
+  }
+  function setView(m) { viewMode = m; store.set(VIEW, m); applyView(); }
   function drawBoard(pid) {
     const b = boardEls[pid]; if (!b || !S) return;
     const p = S.players[pid], placing = S.phase === 'turn' && E.need(S) === 'place' && activePid() === pid;
@@ -2140,6 +2183,7 @@ const Music = (function () {
     if (k === 'h' || k === '?') { showRules(); return; }
     if (!S || $('#game').classList.contains('hidden') || S.phase === 'over') return;
     if (k === 'l') { toggleLegal(); return; }
+    if (k === 'v') { setView(viewMode === 'player' ? 'world' : 'player'); return; }
     if (k === 'u' || ((e.ctrlKey || e.metaKey) && k === 'z')) { e.preventDefault(); doUndo(); return; }
     const nd = E.need(S);
     if (nd === 'place') {
@@ -2168,6 +2212,8 @@ const Music = (function () {
   $('#menuBtn').onclick = showSetup;
   $('#rulesBtn').onclick = showRules;
   $('#legalBtn').onclick = toggleLegal;
+  $('#pvBtn').onclick = () => setView('player');
+  $('#wvBtn').onclick = () => setView('world');
   $('#muteBtn').onclick = toggleMute;
   $('#musicBtn').onclick = toggleMusic;
   // music volume: hover (or tap) a music button to show a slider; optional inline slider under the setup option

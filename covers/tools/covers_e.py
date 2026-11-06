@@ -229,24 +229,48 @@ def stairs():
 
 
 def stop_twist():
-    b = [rect(0, 0, 600, 800, "#0d0d0d")]
-    b.append(text(50, 140, "STOP", "Black Han Sans", 120, "#f0ede6", anchor="start"))
-    b.append(text(50, 270, "TWIST", "Black Han Sans", 120, "#f0e040", anchor="start"))
-    b.append(rect(54, 286, 330, 10, "#ff5c3a", 3))
-    b.append(text(52, 330, "SCATTERGORIES WITH A TWIST", "DM Sans", 15, "#888", 700, "start", 5))
-    # stop sign
-    b.append(f'<g transform="translate(500 110) rotate(12) scale(.78)" filter="url(#k-drop)"><polygon points="{_oct(0,0,92)}" fill="#ff5c3a" stroke="#fff" stroke-width="7"/>'
-             + text(0, 16, "STOP!", "Black Han Sans", 42, "#fff") + "</g>")
-    b.append(rect(52, 368, 120, 120, "#f0e040", 18) + text(112, 462, "M", "Black Han Sans", 92, "#0d0d0d"))
-    b.append(rect(190, 384, 360, 88, "#161616", 14, 'stroke="#ff5c3a" stroke-width="3"') + text(210, 418, "TWIST:", "DM Sans", 15, "#ff5c3a", 800, "start", 3)
-             + text(210, 452, "two words, double points", "DM Sans", 22, "#f0ede6", 600, "start"))
-    cats = [("👤 Name", "Maria"), ("🐾 Animal", "monkey"), ("🍔 Food", "mango"), ("🌍 Place", "Madrid"), ("🎬 Movie", ""), ("✨ Adjective", "messy")]
-    for k, (c, a) in enumerate(cats):
-        r, col = divmod(k, 2)
-        x, y = 52 + col * 254, 512 + r * 82
-        b.append(rect(x, y, 240, 70, "#161616", 12, 'stroke="#2a2a2a" stroke-width="2"') + text(x + 16, y + 28, c, "DM Sans", 16, "#888", 700, "start")
-                 + text(x + 16, y + 58, a or "…", "Caveat", 30, "#f0e040" if a else "#444", 700, "start"))
-    return svg("", "".join(b))
+    d = (lin("sky", [(0, "#0a1024"), (.6, "#1b1f3d"), (1, "#4a2d43")]) + lin("ylw", [(0, "#ffd23c"), (1, "#f2b414")])
+         + lin("post", [(0, "#5d6168"), (.4, "#eef0f2"), (1, "#4d5157")], x2=1, y2=0) + lin("tile", [(0, "#2a2c31"), (1, "#0f1013")])
+         + lin("plate", [(0, "#fdfcf7"), (1, "#dcd7c9")]) + lin("road", [(0, "#17181b"), (1, "#24262b")]))
+    b = [rect(0, 0, 600, 800, "url(#sky)"), stars(31, 70, y1=330)]
+    r = random.Random(5); x = -10; city = ""; wins = ""
+    while x < 610:
+        w = 40 + r.random() * 70; h = 50 + r.random() * 150
+        city += rect(round(x), round(560 - h), round(w), round(h + 2), "#0c0f1c")
+        for yy in range(int(560 - h + 12), 548, 18):
+            for xx in range(int(x + 8), int(x + w - 10), 15):
+                if r.random() < .22:
+                    wins += rect(xx, yy, 6, 8, "#ffcf6b", extra='opacity=".7"')
+        x += w + 3
+    b.append(city + wins)
+    b.append(rect(0, 556, 600, 244, "url(#road)") + rect(0, 552, 600, 7, "#8d8a80") + rect(0, 578, 600, 6, "#f2b81c", extra='opacity=".85"'))
+    b.append("".join(rect(xx, 782, 64, 7, "#e9e4d4", 2, 'opacity=".6"') for xx in range(-20, 620, 120)))
+    # title: STOP octagon + TWIST
+    b.append(f'<g transform="translate(132 132) rotate(-8)" filter="url(#k-drop)"><polygon points="{_oct(0,0,100)}" fill="#f6f3ea"/>'
+             f'<polygon points="{_oct(0,0,92)}" fill="#c81e2b"/>' + text(0, 22, "STOP", "Bungee", 54, "#fff") + "</g>")
+    b.append(text(242, 170, "TWIST", "Bungee", 90, "#f7c21b", anchor="start", extra='filter="url(#k-drop)"'))
+    b.append(text(246, 212, "the category race", "Overpass", 26, "#c9c4b6", 800, "start"))
+    # rule sign on posts
+    b.append(rect(170, 450, 18, 130, "url(#post)") + rect(412, 450, 18, 130, "url(#post)"))
+    b.append(f'<g filter="url(#k-drop)">{rect(40, 258, 520, 210, "url(#ylw)", 22, "stroke=\"#c7920a\" stroke-width=\"2\"")}</g>')
+    b.append(rect(54, 272, 492, 182, "none", 14, 'stroke="#151515" stroke-width="6"'))
+    b.append('<g transform="translate(78 315) scale(1.0)"><path d="M50 3 97 50 50 97 3 50Z" fill="#141414"/><path d="M50 10 90 50 50 90 10 50Z" fill="#ffd23c"/>'
+             '<path d="M44 76V60c0-7 13-7 13-14s-13-7-13-14v-6" fill="none" stroke="#141414" stroke-width="7" stroke-linecap="round"/><path d="M35 29 44 15 53 29Z" fill="#141414"/></g>')
+    b.append(text(200, 314, "Round 3: Last letter", "Overpass", 22, "#2a2a2a", 800, "start"))
+    b.append(text(200, 380, "Ends with", "Overpass", 50, "#151515", 900, "start"))
+    b.append(rect(440, 330, 74, 78, "url(#tile)", 10) + rect(440, 368, 74, 2, "#000") + text(477, 395, "E", "Bungee", 58, "#ffb23e"))
+    b.append(text(200, 428, "Every answer ends with E.", "Overpass", 20, "#2a2a2a", 700, "start"))
+    # license plates
+    plates = [("👤", "Name", "#c81e2b"), ("🐾", "Animal", "#1d4fa0"), ("🍕", "Food", "#0f6a43"),
+              ("🌍", "Place", "#6b3fa0"), ("🏃", "Verb", "#e2650f"), ("🎵", "Music", "#0e7a8a")]
+    for k, (ic, lb, band) in enumerate(plates):
+        rr, cc = divmod(k, 3)
+        px, py = 28 + cc * 186, 604 + rr * 86
+        b.append(f'<g filter="url(#k-drop-s)">{rect(px, py, 172, 72, "url(#plate)", 10, "stroke=\"#b8b3a4\" stroke-width=\"2\"")}</g>'
+                 + rect(px + 6, py + 6, 160, 11, band, 4) + emoji(px + 32, py + 55, ic, 26)
+                 + text(px + 56, py + 56, lb, "Overpass", 27, "#1d2a4a", 900, "start")
+                 + f'<circle cx="{px+14}" cy="{py+28}" r="3.5" fill="#222"/><circle cx="{px+158}" cy="{py+28}" r="3.5" fill="#222"/>')
+    return svg(d, "".join(b))
 
 
 def _oct(cx, cy, r):

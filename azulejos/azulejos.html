@@ -170,6 +170,11 @@ button.tl:focus-visible{outline:4px solid var(--gilt-hi);outline-offset:3px}
 .badge.good{background:var(--ok)} .badge.bad{background:var(--danger)} .badge.full{background:linear-gradient(var(--gilt-hi),var(--gilt));color:#3d2a05}
 .badge svg{width:24px;height:24px}
 .arrow{position:absolute;width:44px;height:20px;opacity:.35}
+.arrow.go{opacity:.9}
+.arrow.go path{stroke:var(--gilt-lo)}
+.lcount{position:absolute;width:58px;height:34px;display:grid;place-items:center;font:900 21px/1 var(--display);color:var(--gilt-lo);background:rgba(207,164,73,.2);border-radius:10px;box-shadow:inset 0 0 0 2px rgba(207,164,73,.5)}
+.waitRow{position:absolute;border:3px dashed rgba(122,90,25,.55);border-radius:14px;pointer-events:none}
+.waitTag{position:absolute;font:800 17px/1.15 var(--ui);color:var(--gilt-lo);text-align:right;pointer-events:none}
 .flab{position:absolute;font:600 16px var(--ui);color:rgba(90,70,40,.75);text-align:center;pointer-events:none}
 .floorInfo{position:absolute;font:800 22px/1.2 var(--ui);color:var(--lime-ink-soft)}
 .floorInfo b{display:block;font:900 34px/1 var(--display);color:var(--danger)}
@@ -1289,7 +1294,7 @@ function bowlPattern(d) {
 }
 function hintText() {
   if (G.phase === 'draft') return ui.sel ? '<b>Then:</b> tap a row on your board, or the floor. Tap the tiles again to cancel.' : '<b>Your turn:</b> take all the tiles of one color from a plate or from the center.';
-  if (G.phase === 'tiling') return ui.pick ? '<b>Gray wall:</b> no color can repeat in a column. Pick one of the glowing spaces.' : '<b>Wall time!</b> Full rows send one tile to the wall. Floor tiles lose points.';
+  if (G.phase === 'tiling') return ui.pick ? '<b>Gray wall:</b> no color can repeat in a column. Pick one of the glowing spaces.' : '<b>Wall time!</b> Only full rows send a tile to the wall. Rows that are not full stay for the next round.';
   if (G.phase === 'refill') return '<b>Round over.</b> The team with the <b>1</b> coin starts the next round.';
   return '<b>Game over!</b> Bonus points: +2 for each full row, +7 for each full column, +10 for each color with all 5 tiles.';
 }
@@ -1308,7 +1313,8 @@ function boardPrompt(p) {
   }
   if (G.phase === 'tiling') {
     if (ui.pick) return 'Choose a space for the <b>' + cname(G.players[p].lineColor[ui.pick.r]) + '</b> tile.';
-    return AZ.tilingPlayer(G) === p ? 'Wall time! Full rows move to the wall.' : 'Done.';
+    var waiting = G.players[p].lines.some(function (l, r) { return l.length && l.length < r + 1; });
+    return AZ.tilingPlayer(G) === p ? 'Wall time! Only <b>full</b> rows move to the wall.' : (waiting ? 'Done. Rows that are not full wait for next round.' : 'Done.');
   }
   if (G.phase === 'refill') return 'Round ' + G.round + ' is over.';
   return who + ' finished with ' + G.players[p].score + ' points.';
@@ -1326,8 +1332,16 @@ function renderBoard(enter) {
   var sel = G.phase === 'draft' && ui.sel && p === G.current && !ui.busy, legal = sel ? AZ.legalLines(G, p, ui.sel.color) : [];
   for (var r = 0; r < 5; r++) {
     for (var k = 0; k <= r; k++) { var s = lineSlot(g, r, k); h += '<div class="slot" style="left:' + s.x + 'px;top:' + s.y + 'px;width:' + g.slot + 'px;height:' + g.slot + 'px"></div>'; }
-    var ay = g.bodyY + r * g.pitch + g.pitch / 2 - 10;
-    h += '<svg class="arrow" style="left:454px;top:' + ay + 'px" viewBox="0 0 44 20"><path d="M2 10h34M28 3l8 7-8 7" fill="none" stroke="#1b2853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var ay = g.bodyY + r * g.pitch + g.pitch / 2 - 10, ln = pl.lines[r].length, full = ln === r + 1, wallTime = G.phase === 'tiling' || G.phase === 'refill';
+    if (ln && !full) {
+      // not full yet: show how many of how many, and during wall time mark the row as waiting
+      h += '<div class="lcount" style="left:447px;top:' + (ay - 7) + 'px" title="Not full yet">' + ln + '/' + (r + 1) + '</div>';
+      if (wallTime) {
+        var ws = lineSlot(g, r, r);
+        h += '<div class="waitRow" style="left:' + (ws.x - 4) + 'px;top:' + (ws.y - 4) + 'px;width:' + ((r + 1) * g.pitch + 2) + 'px;height:' + (g.slot + 8) + 'px"></div>';
+        if (r < 4) h += '<div class="waitTag" style="left:' + (g.linesX - 54) + 'px;top:' + (ws.y + 24) + 'px;width:' + (ws.x - g.linesX + 40) + 'px">Not full yet</div>';
+      }
+    } else h += '<svg class="arrow' + (full && wallTime ? ' go' : '') + '" style="left:454px;top:' + ay + 'px" viewBox="0 0 44 20"><path d="M2 10h34M28 3l8 7-8 7" fill="none" stroke="#1b2853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
   // wall cells
   for (r = 0; r < 5; r++) for (var c = 0; c < 5; c++) {
@@ -1720,7 +1734,7 @@ window.openRules = function () {
     '<li>A row has <strong>one color only</strong>. You cannot use a color that is already on the wall in that row.</li>' +
     '<li>Tiles that do not fit <strong>fall to the floor</strong> and break. Floor tiles lose points: −1, −1, −2, −2, −2, −3, −3.</li></ul>' +
     '<h2 style="margin-top:22px">3. Wall time</h2><ul>' +
-    '<li>When the plates and the center are empty, every <strong>full row</strong> moves one tile to the wall. The other tiles go in the box lid.</li>' +
+    '<li>When the plates and the center are empty, every <strong>full row</strong> moves one tile to the wall. The other tiles go in the box lid.</li><li>Rows that are <strong>not full</strong> stay on the board. Fill them in the next round.</li>' +
     '<li>The game ends after the round when a team <strong>completes a row on its wall</strong>.</li></ul></div>' +
     '<div><h2>Scoring a new tile</h2><div class="score-ex">' + ex + '<div>The new tile touches a line of <strong>3 across</strong> and <strong>4 down</strong>.<br>It scores <strong>3 + 4 = 7</strong> points.<br><br>A tile that touches nothing scores <strong>1</strong>.</div></div>' +
     '<h2 style="margin-top:26px">End bonus</h2><ul><li><strong>+2</strong> for each full row (across)</li><li><strong>+7</strong> for each full column (down)</li><li><strong>+10</strong> for each color with all 5 tiles on the wall</li></ul>' +

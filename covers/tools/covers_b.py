@@ -4,34 +4,83 @@ from kit import *
 
 
 def alphabet():
-    d = rad("bg", [(0, "#16244a"), (1, "#0a1020")], cy="30%") + lin("gold", [(0, "#fde68a"), (1, "#f59e0b")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 120, 'Alphabet <tspan fill="url(#gold)">Grab</tspan>', "Lilita One", 78, "#f8fafc",
-                  extra='stroke="#050a16" stroke-width="6" paint-order="stroke"'))
-    b.append(text(300, 166, "SAY IT · GRAB THE LETTER", "Nunito", 17, "#93a4c6", 900, ls=4))
-    letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    owner = {"B": "r", "C": "b", "F": "r", "H": "b", "M": "r", "P": "b", "S": "r", "T": "b", "W": "b", "D": "r", "L": "b"}
-    hard = {"Q": 3, "X": 3, "Z": 3, "J": 2, "K": 2, "V": 2, "Y": 2}
-    cs, gap, cols = 78, 12, 6
-    x0 = (600 - cols * cs - (cols - 1) * gap) / 2
-    y0 = 210
-    for k, ch in enumerate(letters):
+    d = (lin("wall", [(0, "#2a1a10"), (1, "#100905")])
+         + rad("lamp", [(0, "#ffba68"), (1, "#ffba68")], cy="0%", r="70%")
+         + lin("maple", [(0, "#f3dbb0"), (1, "#cf9f62")])
+         + lin("walnut", [(0, "#6b4428"), (.4, "#4a2e1b"), (1, "#24150b")])
+         + rad("brass", [(0, "#fff3c4"), (.45, "#d6ad4a"), (1, "#86661c")], cx="35%", cy="30%", r="70%")
+         + lin("ember", [(0, "#ef7a3a"), (1, "#c84a14")]))
+    d = d.replace('<stop offset="1" stop-color="#ffba68"/>', '<stop offset="1" stop-color="#ffba68" stop-opacity="0"/>')
+    b = [rect(0, 0, 600, 800, "url(#wall)")]
+    # wall of type-case drawers
+    for c in range(5):
+        for r in range(9):
+            x, y = 8 + c * 118, 10 + r * 88
+            b.append(rect(x, y, 108, 76, "#2f1d12", 4) + rect(x + 3, y + 3, 102, 3, "#3d2617", 1.5)
+                     + rect(x + 34, y + 16, 40, 20, "none", 2, 'stroke="#6e5424" stroke-width="3"')
+                     + rect(x + 40, y + 46, 28, 9, "#6e5424", 4.5))
+    b.append('<rect width="600" height="800" fill="url(#lamp)" opacity=".35"/>')
+    # title in wood type
+    def block(x, y, w, h, ch, size, hot=False, fill=None, ink=None):
+        f = fill or ("url(#ember)" if hot else "url(#maple)")
+        edge = "#7a2a08" if hot else "#8a5a2a"
+        out = f'<g filter="url(#k-drop-s)">{rect(x, y + 4, w, h, edge, 6)}{rect(x, y, w, h, f, 6)}</g>'
+        out += rect(x + 2, y + 2, w - 4, 2, "#ffffff", 1, 'opacity=".45"')
+        out += text(x + w / 2, y + h / 2 + size * .36, ch, "Alfa Slab One", size, ink or ("#fff6e6" if hot else "#3a2312"))
+        return out
+    word, bw, gap = "ALPHABET", 62, 6
+    x0 = (600 - (8 * bw + 7 * gap)) / 2
+    for i, ch in enumerate(word):
+        b.append(block(x0 + i * (bw + gap), 52, bw, 70, ch, 50))
+    gw = 96
+    x1 = (600 - (4 * gw + 3 * 8)) / 2
+    for i, ch in enumerate("GRAB"):
+        b.append(block(x1 + i * (gw + 8), 138, gw, 106, ch, 80, hot=True))
+    # the type case with blocks
+    cx, cy, cw, ch_ = 40, 300, 520, 400
+    b.append(f'<g filter="url(#k-drop)">{rect(cx, cy, cw, ch_, "url(#walnut)", 14)}</g>')
+    for sx, sy in ((cx + 14, cy + 14), (cx + cw - 14, cy + 14), (cx + 14, cy + ch_ - 14), (cx + cw - 14, cy + ch_ - 14)):
+        b.append(f'<circle cx="{sx}" cy="{sy}" r="5" fill="url(#brass)"/>')
+    teams = {"B": ("#e0362f", "\U0001F98A"), "D": ("#2b6fe0", "\U0001F433"), "H": ("#e0362f", "\U0001F98A"),
+             "K": ("#1e9a4a", "\U0001F438"), "M": ("#2b6fe0", "\U0001F433"), "R": ("#1e9a4a", "\U0001F438"), "S": ("#e0362f", "\U0001F98A")}
+    vals = {"A": 40, "C": 10, "E": 30, "F": 20, "G": 20, "I": 40, "J": 40, "L": 30, "N": 0, "O": 30, "P": 10, "Q": 0, "T": 30}
+    letters = "ABCDEFGHIJKLMNOPQRST"
+    ts, tg, cols = 98, 10, 5
+    tx0 = cx + (cw - (cols * ts + (cols - 1) * tg)) / 2
+    ty0 = cy + 22
+    for k, L in enumerate(letters):
         r, c = divmod(k, cols)
-        if r == 4:
-            c += 2  # center the last two
-        x, y = x0 + c * (cs + gap), y0 + r * (cs + gap)
-        o = owner.get(ch)
-        fill = {"r": "#ef4444", "b": "#3b82f6"}.get(o, "#162038")
-        stroke = {"r": "#fca5a5", "b": "#93c5fd"}.get(o, "#2a3a64")
-        b.append(f'<g filter="url(#k-drop-s)">{rect(x, y, cs, cs, fill, 14, f"stroke=\"{stroke}\" stroke-width=\"2.5\"")}</g>')
-        b.append(text(x + cs/2, y + cs/2 + 17, ch, "Lilita One", 48, "#fff" if o else "#e2e8f0"))
-        if ch in hard:
-            b.append(f'<circle cx="{x+cs-6}" cy="{y+6}" r="15" fill="#fbbf24" stroke="#0a1020" stroke-width="3"/>'
-                     + text(x + cs - 6, y + 12, f"+{hard[ch]}", "Nunito", 15, "#1a1203", 900))
-    # grabbing hand cursor over "G"
-    gx, gy = 470, 640
-    b.append(f'<g transform="translate({gx} {gy}) rotate(-15)">' + emoji(0, 0, "👆", 58) + "</g>")
-    b.append(footer("TEAMS · A1–B1 · 16 WORD LISTS", "Nunito", "#fbbf24", 15, 3, 772, 900))
+        x, y = tx0 + c * (ts + tg), ty0 + r * ((ch_ - 44 - 3 * tg) / 4 + tg)
+        if L in ("N", "Q"):
+            b.append(rect(x, y, ts, 78, "#140a05", 7) + text(x + ts / 2, y + 58, L, "Alfa Slab One", 54, "#3a2616"))
+            continue
+        if L == "M":   # the block the peg is flying to: still bare, with a ring
+            ring = 'stroke="#2b6fe0" stroke-width="5"'
+            b.append(rect(x, y + 5, ts, 78, "#8a5a2a", 7) + rect(x, y, ts, 78, "url(#maple)", 7, ring))
+            b.append(text(x + ts / 2, y + 59, L, "Alfa Slab One", 54, "#3a2312"))
+            mx, my = x + ts / 2, y + 39
+            continue
+        if L in teams:
+            col, em = teams[L]
+            b.append(rect(x, y + 5, ts, 78, "#1d130b", 7, 'opacity=".6"') + rect(x, y, ts, 78, col, 7))
+            b.append(rect(x + 2, y + 2, ts - 4, 3, "#ffffff", 1.5, 'opacity=".4"'))
+            b.append(text(x + ts / 2, y + 59, L, "Alfa Slab One", 54, "#ffffff" if col != "#1e9a4a" else "#1d130b"))
+            b.append(emoji(x + 17, y + 22, em, 18))
+        else:
+            b.append(rect(x, y + 5, ts, 78, "#8a5a2a", 7) + rect(x, y, ts, 78, "url(#maple)", 7))
+            b.append(rect(x + 2, y + 2, ts - 4, 2, "#ffffff", 1, 'opacity=".5"'))
+            b.append(text(x + ts / 2, y + 60, L, "Alfa Slab One", 54, "#3a2312"))
+            v = vals.get(L)
+            if v:
+                b.append(f'<circle cx="{x + ts - 17}" cy="{y + 17}" r="14" fill="url(#brass)" stroke="#5b4410" stroke-width="1.5"/>'
+                         + text(x + ts - 17, y + 22, str(v), "Figtree", 13, "#2b1a06", 900))
+    # flying ink peg on an arc toward M
+    for k, (dx, dy, r) in enumerate(((70, -76, 5), (92, -96, 4), (110, -120, 3))):
+        b.append(f'<circle cx="{mx + dx}" cy="{my + dy}" r="{r}" fill="#f6dc85" opacity="{.8 - k * .2:.1f}"/>')
+    px, py = mx + 40, my - 52
+    b.append(f'<g filter="url(#k-drop)"><circle cx="{px}" cy="{py}" r="30" fill="#2b6fe0"/>'
+             f'<circle cx="{px - 9}" cy="{py - 10}" r="9" fill="#ffffff" opacity=".55"/></g>' + emoji(px, py + 11, "\U0001F433", 30))
+    b.append(footer("Teams \u00b7 A1\u2013B1 \u00b7 16 word lists", "Figtree", "#f2c95f", 16, 1, 760, 800))
     return svg(d, "".join(b))
 
 

@@ -34,36 +34,78 @@ def ring_of_gems():
 
 
 def save_the_cheese():
-    d = lin("bg", [(0, "#f2fbff"), (1, "#d6ecf5")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 104, '<tspan fill="#f88c30">Save</tspan> the <tspan fill="#f5c842">Cheese!</tspan>', "Fredoka One", 54, "#2a3f5f",
-                  extra='stroke="#fff" stroke-width="6" paint-order="stroke"'))
-    b.append(text(300, 146, "GUESS THE WORD BEFORE THE MOUSE ARRIVES", "Nunito", 14, "#6a88aa", 900, ls=3))
-    b.append(f'<g filter="url(#k-drop-s)">{rect(40, 180, 520, 170, "#fff8e1", 22, "stroke=\"#f5c842\" stroke-width=\"4\"")}</g>')
-    b.append('<path d="M110 300 H470" stroke="#6a88aa" stroke-width="4" stroke-dasharray="4 12" stroke-linecap="round"/>')
-    b.append(emoji(200, 300, "🐭", 70) + emoji(500, 300, "🧀", 80))
-    b.append('<path d="M150 296 q -24 -10 -40 6" fill="none" stroke="#9b6cd8" stroke-width="3"/>')
-    # blanks
-    word = "B_N_N_"
-    real = "BANANA"
+    d = (lin("wall", [(0, "#182033"), (1, "#26324c")])
+         + '<pattern id="wp" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M30 4 L39 30 L30 56 L21 30Z" fill="#ffffff" fill-opacity=".04"/></pattern>'
+         + lin("sky", [(0, "#0a1430"), (1, "#2a3a66")])
+         + lin("wood", [(0, "#c99158"), (.55, "#a96f3b"), (1, "#8a5a2e")])
+         + lin("board", [(0, "#e2b57e"), (.6, "#c99258"), (1, "#b07a46")])
+         + lin("cube", [(0, "#ffe384"), (.55, "#f4c542"), (1, "#e3a92e")])
+         + lin("cTop", [(0, "#fff0a8"), (1, "#ffd75e")], x2=1) + lin("cFront", [(0, "#ffd457"), (1, "#e9b434")])
+         + lin("cBack", [(0, "#d9a02a"), (1, "#b9821c")], x2=1, y2=0)
+         + rad("fur", [(0, "#d3cdc6"), (.55, "#9f968e"), (1, "#5d554f")], cx="40%", cy="28%", r="80%")
+         + rad("ear", [(0, "#ffd0d4"), (1, "#e58a96")], cx="45%", cy="40%", r="60%")
+         + rad("hole", [(0, "#05070b"), (.8, "#14100c"), (1, "#2a1b10")], cx="50%", cy="70%", r="70%")
+         + lin("tile", [(0, "#fdfbf6"), (1, "#e8e1d2")]) + lin("herb", [(0, "#72bd6b"), (1, "#3f8a3b")]))
+    b = [rect(0, 0, 600, 800, "url(#wall)"), rect(0, 0, 600, 470, "url(#wp)")]
+    outline = 'stroke="#5b3a0c" stroke-width="10" stroke-linejoin="round" paint-order="stroke"'
+    b.append(text(300, 96, "Save the", "Lilita One", 64, "#f3ead2", extra='stroke="#0d1322" stroke-width="8" paint-order="stroke"'))
+    b.append(text(300, 196, "Cheese!", "Lilita One", 112, "#f4c542", extra=outline))
+    # window with moon
+    win = ['<g transform="translate(396 236)">', rect(-12, -12, 184, 160, "url(#wood)", 6), rect(0, 0, 160, 136, "url(#sky)")]
+    import random as _r
+    rr = _r.Random(7)
+    for _ in range(18):
+        win.append(f'<circle cx="{rr.uniform(4,156):.1f}" cy="{rr.uniform(4,132):.1f}" r="{rr.uniform(.6,1.6):.2f}" fill="#fff" opacity="{rr.uniform(.3,1):.2f}"/>')
+    win.append('<circle cx="112" cy="44" r="38" fill="#f3e9c6" opacity=".12"/><circle cx="112" cy="44" r="20" fill="#f3e9c6"/>')
+    win.append(rect(76, 0, 8, 136, "url(#wood)") + rect(0, 64, 160, 8, "url(#wood)") + rect(-18, 132, 196, 14, "url(#wood)", 3) + "</g>")
+    b.append("".join(win))
+    # mouse hole
+    b.append('<path d="M26 470 V420 A58 58 0 0 1 142 420 V470Z" fill="#7a4a22"/><path d="M36 470 V422 A48 48 0 0 1 132 422 V470Z" fill="url(#hole)"/>')
+    # counter
+    b.append(rect(0, 468, 600, 74, "url(#wood)"))
+    for x in range(0, 600, 96):
+        b.append(f'<rect x="{x+94}" y="468" width="2" height="74" fill="#3c1c08" opacity=".3"/>')
+    b.append('<rect x="0" y="468" width="600" height="3" fill="#ffecd0" opacity=".55"/><rect x="0" y="482" width="600" height="2" fill="#3c1c08" opacity=".3"/>')
+    for x in (232, 290):
+        b.append(f'<g fill="#f1ead8" opacity=".8"><ellipse cx="{x}" cy="476" rx="7" ry="5"/><circle cx="{x-7}" cy="469" r="2.6"/><circle cx="{x}" cy="466" r="2.6"/><circle cx="{x+7}" cy="469" r="2.6"/></g>')
+    # cheese on plate
+    b.append('<ellipse cx="470" cy="470" rx="124" ry="14" fill="#2f5d9c"/><ellipse cx="470" cy="468" rx="116" ry="11" fill="#f6f3ec"/>')
+    b.append('<g transform="translate(360 300) scale(.82)" filter="url(#k-drop-s)">'
+             '<polygon points="16,176 16,152 246,76 246,180" fill="url(#cFront)"/><polygon points="16,152 246,76 268,64 40,142" fill="url(#cTop)"/>'
+             '<polygon points="246,76 268,64 268,168 246,180" fill="url(#cBack)"/>'
+             '<g fill="#d39a22" opacity=".85"><ellipse cx="86" cy="156" rx="13" ry="10"/><ellipse cx="148" cy="132" rx="17" ry="13"/><ellipse cx="206" cy="152" rx="14" ry="11"/><ellipse cx="200" cy="108" rx="9" ry="7"/><ellipse cx="232" cy="124" rx="7" ry="9"/></g>'
+             '<path d="M16 152 L246 76" stroke="#fff" stroke-opacity=".7" stroke-width="3"/></g>')
+    # mouse
+    b.append('<g transform="translate(150 360) scale(.95)" filter="url(#k-drop-s)">'
+             '<path d="M36 92 C 10 100, 2 78, 16 66 C 26 58, 22 46, 12 40" fill="none" stroke="#e5a3a8" stroke-width="5" stroke-linecap="round"/>'
+             '<ellipse cx="62" cy="114" rx="14" ry="5" fill="#e9a7ad"/><ellipse cx="112" cy="114" rx="14" ry="5" fill="#e9a7ad"/>'
+             '<ellipse cx="82" cy="82" rx="54" ry="33" fill="url(#fur)"/><circle cx="112" cy="40" r="20" fill="#8d847c"/><circle cx="112" cy="40" r="13" fill="url(#ear)"/>'
+             '<ellipse cx="130" cy="70" rx="31" ry="25" fill="url(#fur)"/><path d="M150 58 Q174 70 170 80 Q158 88 140 84 Z" fill="url(#fur)"/>'
+             '<circle cx="170" cy="78" r="6" fill="#f08a9a"/><circle cx="142" cy="63" r="6" fill="#1d1820"/><circle cx="144" cy="61" r="2" fill="#fff"/>'
+             '<g stroke="#3b3430" stroke-width="1.6" stroke-linecap="round" opacity=".8"><path d="M160 82 L186 76"/><path d="M160 85 L186 88"/><path d="M158 87 L180 98"/></g></g>')
+    # cheese board with cubes
+    b.append('<g filter="url(#k-drop)">' + rect(28, 572, 544, 120, "url(#board)", 24) + "</g>")
+    b.append('<circle cx="540" cy="632" r="13" fill="#1a2a37"/>')
+    word, shown = "CHEESE", set("CE")
     for k, ch in enumerate(word):
-        x = 90 + k * 72
-        b.append(rect(x, 400, 60, 74, "#fff", 12, 'stroke="#d0e8f0" stroke-width="3"') + f'<line x1="{x+12}" y1="460" x2="{x+48}" y2="460" stroke="#2a3f5f" stroke-width="4"/>')
-        if ch != "_":
-            b.append(text(x + 30, 452, ch, "Fredoka One", 44, "#2a3f5f"))
-    # keyboard
-    rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
-    used_ok = set("BN")
-    used_bad = set("TSO")
-    for r, row in enumerate(rows):
-        w = 46
-        x0 = (600 - len(row) * (w + 6)) / 2
-        for c, ch in enumerate(row):
-            x, y = x0 + c * (w + 6), 520 + r * 62
-            fill = "#4ccc6a" if ch in used_ok else ("#c8d6e2" if ch in used_bad else "#fff")
-            ink = "#fff" if ch in used_ok else ("#8aa0b8" if ch in used_bad else "#2a3f5f")
-            b.append(f'<g filter="url(#k-drop-s)">{rect(x, y, w, 54, fill, 10, "stroke=\"#d0e8f0\" stroke-width=\"2\"")}</g>' + text(x + w/2, y + 37, ch, "Fredoka One", 26, ink))
-    b.append(text(300, 760, "CHANCES  ● ● ● ● ● ● ○ ○ ○", "Nunito", 18, "#38a854", 900, ls=2))
+        x, y = 50 + k * 76, 590
+        b.append(rect(x, y, 66, 74, "#2c1a0c", 10))
+        if ch in shown:
+            b.append(rect(x - 3, y - 5, 72, 78, "#b9821c", 11) + rect(x - 3, y - 7, 72, 74, "url(#cube)", 11)
+                     + f'<circle cx="{x+9}" cy="{y+4}" r="3.5" fill="#c4821a" opacity=".6"/><circle cx="{x+60}" cy="{y+58}" r="5" fill="#c4821a" opacity=".55"/>'
+                     + text(x + 33, y + 54, ch, "Lilita One", 52, "#5b3a0c"))
+        else:
+            b.append(f'<rect x="{x+14}" y="{y+58}" width="38" height="4" rx="2" fill="#f4c542" opacity=".35"/>')
+    # delft tiles
+    for k, ch in enumerate("QWERTY"):
+        x, y = 44 + k * 88, 714
+        fill, ink = ("url(#herb)", "#fff") if ch == "E" else (("#8e897f", "#cfcac0") if ch in "QT" else ("url(#tile)", "#24508e"))
+        frame = "#24561f" if ch == "E" else ("#5f5b54" if ch in "QT" else "#2f5d9c")
+        b.append(f'<g filter="url(#k-drop-s)">' + rect(x, y, 76, 70, fill, 10) + "</g>"
+                 + f'<rect x="{x+5}" y="{y+5}" width="66" height="60" rx="7" fill="none" stroke="{frame}" stroke-width="2.5"/>'
+                 + text(x + 38, y + 52, ch, "Lilita One", 44, ink))
+        if ch in "QT":
+            b.append(f'<line x1="{x+14}" y1="{y+52}" x2="{x+62}" y2="{y+18}" stroke="#e2412f" stroke-width="6" stroke-linecap="round"/>')
     return svg(d, "".join(b))
 
 

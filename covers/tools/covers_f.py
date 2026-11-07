@@ -249,25 +249,51 @@ def wheel_quest():
 
 
 def word_buzz():
-    b = [rect(0, 0, 600, 800, "#0d0d0f"), '<circle cx="300" cy="560" r="230" fill="#f04060" opacity=".14" filter="url(#k-glow)"/>']
-    b.append(text(300, 150, 'WORD<tspan fill="#f0e040">BUZZ</tspan>', "Syne", 52, "#f0f0f5", 800, ls=-1))
-    b.append(text(300, 196, "BE FAST · SAY IT FIRST", "Space Mono", 18, "#666680", 700, ls=5))
-    word = "ELEPHANT"
-    shown = {0, 2, 4, 7}
+    d = (lin("wbc", [(0, "#1a0619"), (.3, "#3a1338"), (.5, "#5e2357"), (.7, "#3a1338"), (1, "#1a0619")], x2=1, y2=0)
+         + rad("wbspot", [(0, "rgba(255,214,150,.30)"), (1, "rgba(255,214,150,0)")], cy="0%", r="70%")
+         + lin("wbwood", [(0, "#8a4f2a"), (.5, "#6b3a1f"), (1, "#4a2412")])
+         + lin("wbchrome", [(0, "#f6f7fa"), (.46, "#c3c7cf"), (.54, "#e6e8ed"), (1, "#8a8f99")])
+         + rad("wbglass", [(0, "#1d1624"), (1, "#09070c")], cy="0%", r="90%")
+         + rad("wbcap", [(0, "#ff8fa6"), (.55, "#ef476f"), (1, "#7a1730")], cx="40%", cy="30%", r="75%"))
+    b = [rect(0, 0, 600, 800, "#1a0619")]
+    for x in range(-20, 620, 56):
+        b.append(rect(x, 0, 56, 800, "url(#wbc)"))
+    b.append(rect(0, 0, 600, 800, "url(#wbspot)"))
+    b.append(rect(0, 0, 600, 22, "#5e2357") + "".join(f'<circle cx="{x}" cy="22" r="20" fill="#3a1338" stroke="#d9a441" stroke-width="3"/>' for x in range(20, 620, 40)))
+    b.append(rect(0, 640, 600, 160, "#0b0409") + rect(0, 640, 600, 5, "#000", 0, 'opacity=".5"'))
+    # marquee title board
+    bx, by, bw, bh = 40, 70, 520, 330
+    b.append(f'<g filter="url(#k-drop)">{rect(bx-8, by-8, bw+16, bh+16, "#6d727c", 30)}{rect(bx-4, by-4, bw+8, bh+8, "#d5d8de", 28)}{rect(bx, by, bw, bh, "#2c110d", 24)}</g>')
+    b.append(rect(bx + 34, by + 34, bw - 68, bh - 68, "url(#wbglass)", 12))
+    per = 2 * ((bw - 34) + (bh - 34)); n = 34
+    for k in range(n):
+        dd = k * per / n; W2, H2 = bw - 34, bh - 34
+        if dd < W2: x, y = bx + 17 + dd, by + 17
+        elif dd < W2 + H2: x, y = bx + bw - 17, by + 17 + dd - W2
+        elif dd < 2 * W2 + H2: x, y = bx + bw - 17 - (dd - W2 - H2), by + bh - 17
+        else: x, y = bx + 17, by + bh - 17 - (dd - 2 * W2 - H2)
+        on = k < 26
+        b.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="12" fill="#ffc04a" opacity=".35" filter="url(#k-glow-s)"/>' if on else "")
+        b.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7.5" fill="{"#ffe3a0" if on else "#4a2e1a"}"/>')
+    b.append(glow_text(300, 200, "Word", "Bowlby One", 96, "#fff4dc", "#ffc04a"))
+    b.append(glow_text(300, 300, "Buzz", "Bowlby One", 96, "#fff4dc", "#ffc04a"))
+    b.append(text(300, 352, "You ride this with two wheels…", "Rethink Sans", 22, "#e8d6b8", 600))
+    # split-flap tiles
+    word = "BICYCLE"; tw = 62
+    x0 = 300 - (len(word) * tw + (len(word) - 1) * 6) / 2
     for k, ch in enumerate(word):
-        x = 46 + k * 64
-        b.append(rect(x, 250, 56, 72, "#16161a", 8, f'stroke="{"#f0e040" if k in shown else "#2a2a35"}" stroke-width="3"')
-                 + (text(x + 28, 302, ch, "Space Mono", 38, "#f0e040", 700) if k in shown else text(x + 28, 304, "_", "Space Mono", 38, "#3a3a48", 700)))
-    b.append(rect(46, 344, 508, 10, "#1e1e24", 5) + rect(46, 344, 320, 10, "#40e0f0", 5))
-    # buzzer
-    b.append('<ellipse cx="300" cy="660" rx="190" ry="54" fill="#1e1e24"/><ellipse cx="300" cy="640" rx="190" ry="54" fill="#2a2a35"/>'
-             '<rect x="150" y="560" width="300" height="80" fill="#a01c34"/><ellipse cx="300" cy="640" rx="150" ry="40" fill="#a01c34"/>'
-             '<ellipse cx="300" cy="560" rx="150" ry="44" fill="#f04060"/><ellipse cx="270" cy="548" rx="70" ry="16" fill="#fff" opacity=".3"/>')
-    for k, (dx, dy) in enumerate([(-200, -110), (200, -110), (-230, -30), (230, -30)]):
-        b.append(f'<path d="M{300+dx*.6:.0f} {560+dy*.6:.0f} L{300+dx:.0f} {560+dy:.0f}" stroke="#f0e040" stroke-width="6" stroke-linecap="round"/>')
-    b.append(text(300, 470, "BZZZT!", "Syne", 52, "#f0e040", 800, ls=4))
-    b.append(footer("A1–B2 · TEAMS · REVEAL SPEED", "Space Mono", "#40e0f0", 14, 3, 770, 700))
-    return svg("", "".join(b))
+        x = x0 + k * (tw + 6)
+        b.append(f'<g filter="url(#k-drop-s)">{rect(x, 430, tw, 80, "#1e1e23", 8)}</g>' + rect(x, 470, tw, 2, "#000")
+                 + text(x + tw / 2, 488, ch, "Bowlby One", 44, "#f6ecd6"))
+    # podium + buzzer
+    b.append(f'<g filter="url(#k-drop)"><ellipse cx="300" cy="610" rx="96" ry="18" fill="url(#wbchrome)"/>'
+             f'<path d="M222 606 Q222 540 300 536 Q378 540 378 606 Z" fill="url(#wbcap)"/>'
+             f'<ellipse cx="276" cy="560" rx="30" ry="12" fill="#fff" opacity=".45"/></g>')
+    b.append(f'<g filter="url(#k-drop)">{rect(150, 624, 300, 150, "url(#wbwood)", 16)}{rect(144, 618, 312, 12, "url(#wbchrome)", 6)}{rect(150, 758, 300, 16, "#ef476f", 4)}</g>')
+    b.append(rect(186, 646, 228, 96, "#0d0705", 12) + glow_text(300, 718, "+1", "Bowlby One", 64, "#ffc04a", "#ffc04a"))
+    for (x1, y1, x2, y2) in [(200, 560, 160, 530), (400, 560, 440, 530), (190, 596, 140, 590), (410, 596, 460, 590)]:
+        b.append(f'<path d="M{x1} {y1} L{x2} {y2}" stroke="#ffc04a" stroke-width="6" stroke-linecap="round"/>')
+    return svg(d, "".join(b))
 
 
 def word_gap():

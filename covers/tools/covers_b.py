@@ -245,27 +245,39 @@ def bingo():
 
 
 def bluff():
-    d = rad("felt", [(0, "#4a1d2a"), (1, "#1c0a10")], cy="40%")
-    b = [rect(0, 0, 600, 800, "url(#felt)")]
-    b.append(text(300, 104, "WORD", "Playfair Display", 40, "#e8c98a", 700, ls=16))
-    b.append(text(300, 204, "Bluff", "Playfair Display", 120, "#f6ead2", 900, italic=True,
-                  extra='stroke="#1c0a10" stroke-width="4" paint-order="stroke"'))
-    b.append(text(300, 246, "IF YOU DON'T KNOW, MAKE IT UP", "Lato", 15, "#c9a36a", 700, ls=4))
-    defs_ = [("snollygoster", "n. a clever, dishonest person", -10, 150, 360),
-             ("snollygoster", "n. a small snow-covered hill", 3, 300, 330),
-             ("snollygoster", "n. a ghost that eats socks", 12, 450, 360)]
-    for k, (w, df, rot, x, y) in enumerate(defs_):
-        b.append(f'<g transform="translate({x} {y+180}) rotate({rot})" filter="url(#k-drop)">'
-                 + rect(-110, -150, 220, 300, "#fbf6ea", 14, 'stroke="#c9a36a" stroke-width="2"')
-                 + text(0, -112, ["A", "B", "C"][k], "Playfair Display", 34, "#8e2a3a", 900)
-                 + text(0, -62, w, "Playfair Display", 19, "#2a1a10", 700, italic=True)
-                 + '<line x1="-80" y1="-44" x2="80" y2="-44" stroke="#c9a36a" stroke-width="1.5"/>'
-                 + "".join(text(-86, -10 + i*26, line, "Lato", 16, "#3b2a1e", 400, "start") for i, line in enumerate(_wrap(df, 20)))
-                 + "</g>")
-    # stamp
-    b.append('<g transform="translate(330 700) rotate(-12)" opacity=".9">'
-             + rect(-110, -34, 220, 68, "none", 8, 'stroke="#d0342c" stroke-width="5"')
-             + text(0, 14, "BLUFF?", "Playfair Display", 42, "#d0342c", 900, ls=4) + "</g>")
+    d = (lin("sky", [(0, "#08041f"), (.62, "#220e47"), (1, "#6a1b69")])
+         + lin("sun", [(0, "#ffe66d"), (1, "#ff3f8e")])
+         + lin("floor", [(0, "#1b0839"), (1, "#05020f")])
+         + '<mask id="cut"><rect width="600" height="800" fill="#fff"/>'
+         + "".join(f'<rect x="0" y="{318 + k*17 + k*k}" width="600" height="{2 + k*1.6:.1f}" fill="#000"/>' for k in range(6))
+         + '</mask>')
+    hz = 420
+    b = [rect(0, 0, 600, hz + 2, "url(#sky)"), stars(9, 70, y1=300)]
+    b.append(f'<circle cx="300" cy="330" r="150" fill="url(#sun)" filter="url(#k-glow)" opacity=".55"/>'
+             f'<circle cx="300" cy="330" r="140" fill="url(#sun)" mask="url(#cut)"/>')
+    pts = " ".join(f"{x},{hz - abs(math.sin(x/600*math.pi*3+1.3))*80*(0.3 if abs(x-300)<120 else 1):.0f}" for x in range(0, 601, 30))
+    b.append(f'<polygon points="0,{hz} {pts} 600,{hz}" fill="#0f0726"/><polyline points="{pts}" fill="none" stroke="#2de2e6" stroke-width="2" opacity=".6"/>')
+    b.append(rect(0, hz, 600, 800 - hz, "url(#floor)"))
+    g = ['<g stroke="#ff3fb4" stroke-width="2" opacity=".65">']
+    for i in range(-10, 11):
+        g.append(f'<line x1="{300 + i*12}" y1="{hz}" x2="{300 + i*90}" y2="800"/>')
+    for k in range(1, 12):
+        y = hz + (800 - hz) * (k/11) ** 2.2
+        g.append(f'<line x1="0" x2="600" y1="{y:.1f}" y2="{y:.1f}"/>')
+    b.append("".join(g) + "</g>")
+    b.append(glow_text(300, 112, "Word", "Monoton", 92, "#fff", "#ff3fb4"))
+    b.append(glow_text(300, 214, "Bluff", "Monoton", 104, "#fff", "#2de2e6"))
+    cols = ["#ff3fb4", "#2de2e6", "#ff8a3d", "#a66bff"]
+    for k, ch in enumerate("CATC"):
+        x = 96 + k * 108
+        b.append(f'<g transform="translate({x} 560)" filter="url(#k-drop)">'
+                 + rect(-44, -44, 88, 88, "#150f33", 16, f'stroke="{cols[k]}" stroke-width="4"')
+                 + glow_text(0, 22, ch, "Bungee", 58, "#fff", cols[k]) + "</g>")
+    b.append('<g transform="translate(528 560)">' + rect(-44, -44, 88, 88, "none", 16, 'stroke="#ffd23f" stroke-width="4" stroke-dasharray="10 8"')
+             + glow_text(0, 22, "?", "Bungee", 58, "#fff", "#ffd23f") + "</g>")
+    b.append('<g transform="translate(300 706) rotate(-8)">'
+             + rect(-170, -46, 340, 92, "#0b0418", 14, 'stroke="#ff2b4e" stroke-width="6" opacity=".92"')
+             + glow_text(0, 22, "BLUFF!", "Bungee", 62, "#ff2b4e", "#ff2b4e") + "</g>")
     return svg(d, "".join(b))
 
 

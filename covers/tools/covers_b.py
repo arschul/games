@@ -395,43 +395,109 @@ def chain():
 
 
 def city():
-    d = rad("bg", [(0, "#1a2622"), (1, "#0e1614")], cy="40%") + lin("brass", [(0, "#e3c273"), (1, "#a8791f")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    # city blocks
-    x0, y0 = 30, 250
-    bw, st = 110, 34
-    blk_cols = ["#3a6635", "#4a5a52", "#5b4a3a", "#3e4b5e", "#4a5a52", "#3a6635"]
-    for r in range(4):
-        for c in range(4):
-            x, y = x0 + c * (bw + st) + st, y0 + r * (bw + st) + st/2
-            if y > 760:
+    """Model city at night on a slate plinth: card buildings with lit windows, enamel street plates, taxi-yellow route, push pins."""
+    d = (lin("sky", [(0, "#070c19"), (.55, "#13213f"), (1, "#33305e")])
+         + lin("plate", [(0, "#2a62ad"), (1, "#163f78")])
+         + rad("meep", [(0, "#fff3c2"), (.35, "#f4b829"), (1, "#a86f05")], cx="35%", cy="28%", r="70%")
+         + rad("lamp", [(0, "#ffe3a0"), (1, "#ffcf7300")], cx="50%", cy="50%", r="50%")
+         + rad("tree", [(0, "#8fd27a"), (.55, "#4f9443"), (1, "#2f6a2b")], cx="35%", cy="30%", r="70%")
+         + "".join(rad(f"pin{k}", [(0, "#ffffff"), (.3, c), (1, s)], cx="34%", cy="28%", r="75%")
+                   for k, (c, s) in enumerate([("#f2685e", "#7a1d16"), ("#5b9bf0", "#17407a"), ("#ffcf4a", "#8a6406")])))
+    b = [rect(0, 0, 600, 800, "url(#sky)"), stars(31, 70, y1=330)]
+    r = random.Random(7)
+    x = -10
+    while x < 610:  # skyline
+        w, h = r.randint(40, 90), r.randint(90, 240)
+        b.append(rect(x, 800 - h, w, h, "#050912", 0, 'opacity=".75"'))
+        for wy in range(800 - h + 12, 795, 18):
+            for wx in range(x + 8, x + w - 10, 14):
+                if r.random() < .3:
+                    b.append(rect(wx, wy, 6, 8, "#ffcf73", 0, 'opacity=".45"'))
+        x += w + r.randint(2, 8)
+    # slate plinth
+    b.append('<g filter="url(#k-drop)">' + rect(26, 262, 548, 500, "#14181d", 26) + rect(26, 248, 548, 500, "#2a3139", 26) + '</g>')
+    RW, BW, BH, x0, y0 = 28, 134, 108, 52, 296
+    ax = lambda i: x0 + RW / 2 + i * (RW + BW)
+    sy = lambda j: y0 + RW / 2 + j * (RW + BH)
+    Wd, Hd = RW + 3 * (RW + BW), RW + 3 * (RW + BH)
+    b.append(rect(x0 - 3, y0 - 3, Wd + 6, Hd + 6, "#2b2f37", 12))
+    dash = []
+    for i in range(4):
+        for j in range(3):
+            dash.append(f'<line x1="{ax(i)}" y1="{sy(j)+24}" x2="{ax(i)}" y2="{sy(j+1)-24}"/>')
+    for j in range(4):
+        for i in range(3):
+            dash.append(f'<line x1="{ax(i)+24}" y1="{sy(j)}" x2="{ax(i+1)-24}" y2="{sy(j)}"/>')
+    b.append('<g stroke="#ece6d2" stroke-width="2.5" stroke-dasharray="10 9" opacity=".7">' + "".join(dash) + '</g>')
+    cats = ["#6f93c8", "#e7a443", "#e2674e", "#9d78cf", "#3fb3a0", "#ec8fa0", "#86939d"]
+    emo = ["🏦", "☕", "🍕", "🎬", "🏊", "💊", "🚌", "📚", "🥐", "🎭", "🛒", "🏨", "🍦", "🏥", "🧸"]
+    k = 0
+    def shade(hx, f):
+        n = int(hx[1:], 16); rr, gg, bb = n >> 16, (n >> 8) & 255, n & 255
+        return "#%02x%02x%02x" % (int(rr * f), int(gg * f), int(bb * f))
+    dest = None
+    for br in range(3):
+        for bc in range(3):
+            bx, by = x0 + RW + bc * (RW + BW), y0 + RW + br * (RW + BH)
+            b.append(rect(bx, by, BW, BH, "#bdb7a9", 8, 'stroke="#8d877a" stroke-width="2.5"'))
+            parts = [(0, 0, 1, 1)] if (br, bc) in [(0, 1), (2, 2)] else [(0, 0, .5, 1), (.5, 0, .5, 1)] if (br + bc) % 2 else [(0, 0, 1, .5), (0, .5, 1, .5)]
+            if (br, bc) == (1, 0):
+                b.append(rect(bx + 5, by + 5, BW - 10, BH - 10, "#5c9a4f", 8))
+                for _ in range(6):
+                    tx, ty, tr_ = bx + 14 + r.random() * (BW - 28), by + 14 + r.random() * (BH - 28), 8 + r.random() * 5
+                    b.append(f'<circle cx="{tx+2:.0f}" cy="{ty+3:.0f}" r="{tr_:.0f}" fill="#000" opacity=".25"/><circle cx="{tx:.0f}" cy="{ty:.0f}" r="{tr_:.0f}" fill="url(#tree)"/>')
                 continue
-            col = blk_cols[(r * 3 + c) % 6]
-            b.append(rect(x, y, bw, bw, col, 8))
-            rr = random.Random(r * 7 + c)
-            for _ in range(3):
-                bx, by = x + rr.randint(8, 60), y + rr.randint(8, 60)
-                b.append(rect(bx, by, rr.randint(24, 40), rr.randint(24, 40), "#000", 3, 'opacity=".22"'))
-    # street names
-    b.append(text(48, 300, "OAK ST", "Manrope", 11, "#9fb3a9", 800, "start", 2, 'transform="rotate(-90 48 300)"'))
-    # route
-    pts = [(x0 + st/2, 760), (x0 + st/2, y0 + 2*(bw+st)), (x0 + st/2 + 2*(bw+st), y0 + 2*(bw+st)),
-           (x0 + st/2 + 2*(bw+st), y0 + (bw+st)), (x0 + st/2 + 3*(bw+st), y0 + (bw+st))]
-    pl = " ".join(f"{x:.0f},{y:.0f}" for x, y in pts)
-    b.append(f'<polyline points="{pl}" fill="none" stroke="#e3c273" stroke-width="12" stroke-linejoin="round" opacity=".35" filter="url(#k-glow-s)"/>')
-    b.append(f'<polyline points="{pl}" fill="none" stroke="#e3c273" stroke-width="5" stroke-dasharray="14 9" stroke-linejoin="round"/>')
-    # arrows at turns
-    for (x, y), rot in zip(pts[1:4], [0, -90, 0]):
-        pass
-    px, py = pts[-1]
-    b.append(f'<g transform="translate({px} {py-12})" filter="url(#k-drop)"><path d="M0 0 C -24 -30 -24 -60 0 -60 C 24 -60 24 -30 0 0 Z" fill="#e2665a" stroke="#fff" stroke-width="3"/>'
-             '<circle cx="0" cy="-40" r="9" fill="#fff"/></g>')
-    b.append(f'<circle cx="{pts[0][0]}" cy="742" r="12" fill="#fff" stroke="#2b3733" stroke-width="4"/>')
-    # title
-    b.append(rect(0, 0, 600, 230, "#0e1614", 0, 'opacity=".9"'))
-    b.append(emoji(300, 84, "🏙️", 56))
-    b.append(text(300, 162, "City Directions", "Cinzel", 56, "url(#brass)", 700))
-    b.append(text(300, 204, "“Turn left on Oak Street…”", "Manrope", 21, "#c2cbc6", 600, italic=True))
+            for (px, py, pw, ph) in parts:
+                X, Y, Wb, Hb = bx + px * BW + 5, by + py * BH + 5, pw * BW - 10, ph * BH - 10
+                col = cats[k % len(cats)]; wh = min(16, Hb * .3)
+                b.append(rect(X + 5, Y + 7, Wb, Hb, "#000", 6, 'opacity=".32"'))
+                b.append(rect(X, Y + Hb - wh - 4, Wb, wh + 4, shade(col, .55), 6))
+                for c in range(int((Wb - 10) // 11)):
+                    b.append(rect(X + 6 + c * 11, Y + Hb - wh + 1, 6, 4, "#ffd27a" if r.random() < .65 else "#3b4d63", 1))
+                b.append(rect(X, Y, Wb, Hb - wh, col, 6) + rect(X + 4, Y + 4, Wb - 8, Hb - wh - 8, "none", 4, f'stroke="#ffffff" stroke-opacity=".35" stroke-width="2"'))
+                cx, cy = X + Wb / 2, Y + (Hb - wh) / 2
+                rad_ = min(17, (Hb - wh) * .32, Wb * .25)
+                b.append(f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="{rad_:.0f}" fill="#fbf8ef" stroke="{shade(col, .7)}" stroke-width="2.5"/>' + emoji(cx, cy + rad_ * .36, emo[k % len(emo)], rad_ * 1.15))
+                if (br, bc, px, py) == (0, 2, 0, .5):
+                    dest = (X, Y, Wb, Hb)
+                k += 1
+    # lamps
+    for i in range(4):
+        for j in range(1, 4):
+            lx, ly = ax(i) + 18, sy(j) - 18
+            b.append(f'<circle cx="{lx}" cy="{ly}" r="20" fill="url(#lamp)"/><circle cx="{lx}" cy="{ly}" r="3.5" fill="#f2efe6"/>')
+    # route: from (0,3) north to (0,1), east to (2,1), north to the front of the destination
+    X, Y, Wb, Hb = dest
+    pts = [(ax(0), sy(3)), (ax(0), sy(1)), (ax(2), sy(1)), (ax(2), Y + Hb / 2)]
+    pl = " ".join(f"{px:.0f},{py:.0f}" for px, py in pts)
+    b.append(f'<polyline points="{pl}" fill="none" stroke="#f4b829" stroke-width="18" stroke-linejoin="round" stroke-linecap="round" opacity=".3"/>')
+    b.append(f'<polyline points="{pl}" fill="none" stroke="#f4b829" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>')
+    b.append(f'<circle cx="{ax(0)}" cy="{sy(3)}" r="19" fill="none" stroke="#2fb36f" stroke-width="4" stroke-dasharray="6 4"/>')
+    b.append(f'<rect x="{X-7}" y="{Y-7}" width="{Wb+14}" height="{Hb+14}" rx="11" fill="none" stroke="#f4b829" stroke-width="6"/>')
+    # meeple
+    mx, my = pts[-1]
+    b.append(f'<g transform="translate({mx:.0f} {my:.0f}) scale(1.25)"><ellipse cx="3" cy="4" rx="14" ry="5.5" fill="#000" opacity=".45"/>'
+             '<path d="M-13 4 C-13 -9 -9 -16 0 -16 C9 -16 13 -9 13 4 Z" fill="url(#meep)" stroke="#3a2a00" stroke-width="2.2"/>'
+             '<circle cy="-24" r="9.5" fill="url(#meep)" stroke="#3a2a00" stroke-width="2.2"/></g>')
+    # pins on the destination
+    for n, k2 in enumerate([2, 0, 1]):
+        px, py = X + Wb - 14 - n * 22, Y + 12 + (n % 2) * 4
+        b.append(f'<g transform="translate({px:.0f} {py:.0f})"><ellipse cx="4" cy="2" rx="8" ry="3.5" fill="#000" opacity=".4"/>'
+                 f'<line x1="0" y1="0" x2="0" y2="-20" stroke="#d3d7dd" stroke-width="3"/><circle cy="-32" r="14" fill="url(#pin{k2})" stroke="#000" stroke-opacity=".35"/></g>')
+    # enamel street plates on the plinth edge
+    def plate(cx, cy, w, s):
+        return (rect(cx - w / 2 + 2, cy - 15, w, 34, "#000", 8, 'opacity=".4"') + rect(cx - w / 2, cy - 18, w, 34, "#1c4f93", 8, 'stroke="#f6f2e7" stroke-width="2.5"')
+                + text(cx, cy + 8, s, "Barlow Condensed", 22, "#f6f2e7", 800))
+    b.append(plate(ax(0), 274, 76, "A Ave") + plate(ax(2), 274, 76, "C Ave"))
+    b.append(plate(ax(1) + 81, sy(2), 74, "3rd St"))
+    # title plate
+    b.append('<g filter="url(#k-drop)">' + rect(42, 46, 516, 156, "url(#plate)", 22, 'stroke="#f6f2e7" stroke-width="5"') + '</g>')
+    b.append(rect(52, 56, 496, 136, "none", 16, 'stroke="#0b2a55" stroke-width="3" opacity=".6"'))
+    for cx, cy in [(64, 68), (536, 68), (64, 180), (536, 180)]:
+        b.append(f'<circle cx="{cx}" cy="{cy}" r="6" fill="#c9d2df" stroke="#6b7584"/>')
+    b.append(text(300, 150, "City Directions", "Barlow Condensed", 84, "#f6f2e7", 800, ls=1))
+    b.append(chip(178, 176, 244, 40, "A1 · A2 · B1 · B2", "Barlow Condensed", 25, "#f4b829", "#2a1d00", rx=10, weight=800))
+    b.append(text(300, 790, "Listen · Follow the streets · Find the place", "Overpass", 17, "#c9d2df", 700))
     return svg(d, "".join(b))
 
 

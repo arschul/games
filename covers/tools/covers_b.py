@@ -336,36 +336,45 @@ def cant_stop():
 
 
 def cefr_quest():
-    d = rad("bg", [(0, "#1b2033"), (1, "#0f1117")], cy="30%") + lin("gold", [(0, "#fde9a0"), (1, "#f5c842")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(emoji(300, 118, "⚔️", 72))
-    b.append(text(300, 216, "CEFR Quest", "Instrument Serif", 104, "url(#gold)", 400, italic=True))
-    b.append(text(300, 254, "GRAMMAR BOARD GAME", "Sora", 15, "#8a93b0", 700, ls=6))
-    # snaking path
-    cols = ["#34d98b", "#4ea8f5", "#a78bfa", "#fb923c"]
-    path = []
-    for r in range(5):
-        row = list(range(6)) if r % 2 == 0 else list(range(5, -1, -1))
-        for c in row:
-            path.append((90 + c * 84, 320 + r * 88))
-    b.append('<polyline points="' + " ".join(f"{x},{y}" for x, y in path) + '" fill="none" stroke="#2a3250" stroke-width="40" stroke-linejoin="round"/>')
-    special = {5: "🎲", 11: "⚡", 17: "🏆", 22: "💎", 3: "❓", 14: "❓"}
-    for k, (x, y) in enumerate(path):
-        col = cols[(k // 6) % 4]
-        b.append(rect(x - 30, y - 30, 60, 60, "#161b2a", 12, f'stroke="{col}" stroke-width="3"'))
-        if k in special:
-            b.append(emoji(x, y + 11, special[k], 30))
-        else:
-            b.append(text(x, y + 7, k + 1, "JetBrains Mono", 18, col, 700))
-    # team pawns
-    for (k, col) in [(8, "#f25c6e"), (13, "#4ea8f5"), (19, "#34d98b")]:
-        x, y = path[k]
-        b.append(f'<g transform="translate({x+14} {y-16})" filter="url(#k-drop-s)"><circle cx="0" cy="-10" r="10" fill="{col}" stroke="#fff" stroke-width="2.5"/>'
-                 f'<path d="M-12 14 Q 0 -6 12 14 Z" fill="{col}" stroke="#fff" stroke-width="2.5"/></g>')
-    # level tokens
-    for i, (lv, col) in enumerate(zip(["A1", "A2", "B1", "B2"], cols)):
-        x = 120 + i * 120
-        b.append(f'<circle cx="{x}" cy="760" r="24" fill="{col}22" stroke="{col}" stroke-width="3"/>' + text(x, 767, lv, "Sora", 18, col, 800))
+    d = (lin("oak", [(0, "#8a5a32"), (1, "#5a3519")]) + lin("slate", [(0, "#2d4a43"), (1, "#1c302b")])
+         + lin("gold", [(0, "#fde9a0"), (1, "#e0a93c")]))
+    b = [rect(0, 0, 600, 800, "url(#oak)")]
+    for y in range(18, 800, 34):
+        b.append(f'<path d="M0 {y} Q 150 {y-5} 300 {y} T 600 {y}" stroke="#3d2310" stroke-opacity=".25" stroke-width="2" fill="none"/>')
+    b.append(rect(34, 34, 532, 732, "#d9b277", 22) + rect(46, 46, 508, 708, "url(#slate)", 14, 'stroke="#3d2310" stroke-width="4"'))
+    b.append(text(300, 98, "PHIL YOUNG'S ENGLISH SCHOOL", "Lexend", 15, "#d9e6df", 600, ls=3))
+    b.append(text(300, 190, "CEFR", "Bevan", 112, "url(#gold)", 400, extra='filter="url(#k-drop)"'))
+    b.append(text(300, 262, "Quest", "Bevan", 84, "#f6f1e3", 400, extra='filter="url(#k-drop)"'))
+    b.append('<path d="M120 284 H480" stroke="#d9e6df" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>')
+    # ring of lacquered tiles
+    pal = ["#2f7fb5", "#6a55b8", "#2f9a86", "#c9553f", "#cf8a2e"]
+    cells = []
+    n = 6
+    x0, y0, st = 126, 330, 69
+    for i in range(n): cells.append((x0 + i * st, y0))
+    for i in range(1, n): cells.append((x0 + (n - 1) * st, y0 + i * st))
+    for i in range(n - 2, -1, -1): cells.append((x0 + i * st, y0 + (n - 1) * st))
+    for i in range(n - 2, 0, -1): cells.append((x0, y0 + i * st))
+    hubs = {0: "#2fbf8a", 5: "#4ea8f5", 10: "#a78bfa", 15: "#fb923c"}
+    for k, (x, y) in enumerate(cells):
+        col = hubs.get(k, pal[k % len(pal)])
+        hub = k in hubs
+        b.append(f'<g filter="url(#k-drop-s)">' + rect(x - 29, y - 29, 58, 58, col, 10, 'stroke="#fff" stroke-opacity=".35" stroke-width="2"')
+                 + rect(x - 27, y - 27, 54, 20, "#fff", 8, 'opacity=".18"') + '</g>')
+        if hub:
+            b.append(f'<path d="M{x} {y-20} l17 7 v13 q0 14 -17 22 q-17 -8 -17 -22 v-13 z" fill="#fff8e1" stroke="#3d2310" stroke-width="2.5"/>'
+                     + text(x, y + 8, ["A1", "A2", "B1", "B2"][list(hubs).index(k)], "Lexend", 14, "#3d2310", 700))
+    # chalk die in the middle
+    pips = [(-1, -1), (1, -1), (0, 0), (-1, 1), (1, 1)]
+    b.append('<g transform="translate(300 503) rotate(-12)" filter="url(#k-drop)">' + rect(-52, -52, 104, 104, "#fbf5e4", 20, 'stroke="#c9b98f" stroke-width="3"')
+             + "".join(f'<circle cx="{px*26}" cy="{py*26}" r="10" fill="#c9553f"/>' for px, py in pips) + "</g>")
+    # pawns
+    for (k, col) in [(3, "#e4572e"), (8, "#2f7fb5"), (13, "#f2b632")]:
+        x, y = cells[k]
+        b.append(f'<g transform="translate({x} {y-4})" filter="url(#k-drop-s)"><ellipse cx="0" cy="22" rx="16" ry="6" fill="#000" opacity=".3"/>'
+                 f'<path d="M-15 20 Q -15 -2 0 -4 Q 15 -2 15 20 Z" fill="{col}" stroke="#fff" stroke-width="3"/>'
+                 f'<circle cx="0" cy="-14" r="11" fill="{col}" stroke="#fff" stroke-width="3"/></g>')
+    b.append(text(300, 736, "GRAMMAR BOARD GAME · A1–B2", "Lexend", 14, "#d9e6df", 600, ls=3))
     return svg(d, "".join(b))
 
 

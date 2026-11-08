@@ -183,24 +183,35 @@ def scrambler():
 
 
 def sentence_auction():
-    d = lin("gold", [(0, "#fff0a8"), (1, "#e8a820")])
-    b = [rect(0, 0, 600, 800, "#0a0a0f"), '<circle cx="300" cy="120" r="260" fill="#f5c842" opacity=".08" filter="url(#k-glow)"/>']
-    b.append(glow_text(300, 112, "SENTENCE", "Bebas Neue", 108, "url(#gold)", "#f5c842", ls=6))
-    b.append(glow_text(300, 210, "AUCTION", "Bebas Neue", 108, "url(#gold)", "#f5c842", ls=6))
-    b.append(text(300, 248, "BID ON CORRECT SENTENCES", "DM Mono", 15, "#7777aa", 500, ls=4))
-    lots = [("She don't like coffee.", False, "$300"), ("I have lived here for years.", True, "$650"), ("He go to school by bus.", False, "$200")]
-    for k, (s, ok, bid) in enumerate(lots):
-        y = 290 + k * 120
-        b.append(f'<g filter="url(#k-drop-s)">{rect(40, y, 520, 100, "#12121a", 14, "stroke=\"#2a2a3d\" stroke-width=\"2\"")}</g>')
-        b.append(text(64, y + 30, f"LOT 0{k+1}", "DM Mono", 13, "#7777aa", 500, "start", 3))
-        b.append(text(64, y + 68, s, "DM Sans", 25, "#eeeef5", 600, "start"))
-        b.append(rect(452, y + 46, 88, 38, "#f5c842", 8) + text(496, y + 72, bid, "Bebas Neue", 28, "#0a0a0f"))
-        b.append(f'<circle cx="520" cy="{y+24}" r="14" fill="{"#2ecc71" if ok else "#e74c3c"}"/>' + text(520, y + 30, "✓" if ok else "✕", "DM Sans", 16, "#fff", 800))
-    # money stack
-    for k in range(5):
-        b.append(rect(90 + k * 4, 700 - k * 14, 150, 30, "#2ecc71", 6, 'stroke="#145a32" stroke-width="2"'))
-    b.append(text(170, 690, "$", "Bebas Neue", 30, "#145a32"))
-    b.append(text(420, 724, "$1,000", "Bebas Neue", 76, "url(#gold)"))
+    d = (lin("sa-wall", [(0, "#5a1626"), (1, "#1b060b")]) + lin("sa-wood", [(0, "#8a3d1c"), (1, "#4a1c0c")])
+         + lin("sa-brass", [(0, "#f7de8e"), (.46, "#cc9c3c"), (.56, "#8c6519"), (1, "#e3be5e")])
+         + rad("sa-ivory", [(0, "#fffaf0"), (1, "#eadcbc")], "35%", "30%", "90%")
+         + rad("sa-lamp", [(0, "#ffd9a0"), (1, "#ffd9a0")], "50%", "0%", "60%")
+         + '<pattern id="sa-pleat" width="78" height="10" patternUnits="userSpaceOnUse"><rect width="3" height="10" fill="#000" opacity=".3"/><rect x="34" width="6" height="10" fill="#ffd2aa" opacity=".05"/></pattern>')
+    b = [rect(0, 0, 600, 800, "url(#sa-wall)"), rect(0, 0, 600, 800, "url(#sa-pleat)"),
+         '<ellipse cx="300" cy="0" rx="330" ry="250" fill="#ffba6e" opacity=".16" filter="url(#k-glow)"/>']
+    # brass title plate
+    b.append(f'<g filter="url(#k-drop)">{rect(46, 44, 508, 176, "url(#sa-brass)", 10)}</g>')
+    b.append(text(300, 128, "Sentence", "Abril Fatface", 78, "#3a2410"))
+    b.append(text(300, 198, "Auction", "Abril Fatface", 78, "#3a2410"))
+    # easel frame + lot card
+    b.append(f'<g filter="url(#k-drop)">{rect(40, 258, 520, 300, "url(#sa-wood)", 8)}</g>')
+    b.append(rect(58, 276, 484, 264, "url(#sa-ivory)", 3) + rect(66, 284, 468, 248, "none", 2, 'stroke="#7a6248" stroke-opacity=".5" stroke-width="2"'))
+    b.append(text(88, 326, "Lot 3", "Abril Fatface", 32, "#b9291c", anchor="start"))
+    b.append(text(300, 392, "She don't like", "Hanken Grotesk", 40, "#2a190f", 800))
+    b.append(text(300, 440, "coffee.", "Hanken Grotesk", 40, "#2a190f", 800))
+    b.append('<g transform="rotate(-9 420 492)"><rect x="330" y="448" width="180" height="82" rx="8" fill="none" stroke="#b9291c" stroke-width="5"/>'
+             '<rect x="337" y="455" width="166" height="68" rx="5" fill="none" stroke="#b9291c" stroke-width="2"/>'
+             + text(420, 508, "FAKE", "Abril Fatface", 50, "#b9291c") + '</g>')
+    # bidder paddles
+    for k, (c, em) in enumerate([("#d63a2f", "🦁"), ("#2f6fd6", "🦉"), ("#2e9e57", "🦊")]):
+        x, y = 130 + k * 170, 660 - (36 if k == 1 else 0)
+        b.append(rect(x - 9, y + 30, 18, 90, "url(#sa-wood)", 6))
+        b.append(f'<g filter="url(#k-drop-s)"><circle cx="{x}" cy="{y}" r="56" fill="{c}"/></g>'
+                 f'<circle cx="{x-16}" cy="{y-20}" r="16" fill="#fff" opacity=".35"/>')
+        b.append(f'<text x="{x}" y="{y+18}" text-anchor="middle" font-size="54">{em}</text>')
+    # coin
+    b.append(f'<g filter="url(#k-drop-s)"><circle cx="300" cy="756" r="0" fill="none"/></g>')
     return svg(d, "".join(b))
 
 

@@ -197,12 +197,17 @@ def sentence_auction():
     # easel frame + lot card
     b.append(f'<g filter="url(#k-drop)">{rect(40, 258, 520, 300, "url(#sa-wood)", 8)}</g>')
     b.append(rect(58, 276, 484, 264, "url(#sa-ivory)", 3) + rect(66, 284, 468, 248, "none", 2, 'stroke="#7a6248" stroke-opacity=".5" stroke-width="2"'))
-    b.append(text(88, 326, "Lot 3", "Abril Fatface", 32, "#b9291c", anchor="start"))
-    b.append(text(300, 392, "She don't like", "Hanken Grotesk", 40, "#2a190f", 800))
-    b.append(text(300, 440, "coffee.", "Hanken Grotesk", 40, "#2a190f", 800))
-    b.append('<g transform="rotate(-9 420 492)"><rect x="330" y="448" width="180" height="82" rx="8" fill="none" stroke="#b9291c" stroke-width="5"/>'
-             '<rect x="337" y="455" width="166" height="68" rx="5" fill="none" stroke="#b9291c" stroke-width="2"/>'
-             + text(420, 508, "FAKE", "Abril Fatface", 50, "#b9291c") + '</g>')
+    b.append(text(88, 322, "Lot 3", "Abril Fatface", 30, "#b9291c", anchor="start"))
+    b.append(text(182, 322, "My weekend", "Hanken Grotesk", 21, "#7a6248", 700, "start"))
+    # a paragraph lot: one sentence carries a mistake
+    b.append(rect(84, 380, 300, 36, "#b9291c", 6, 'opacity=".15"'))
+    for k, (ln, c) in enumerate([("I went to the beach.", "#2a190f"), ("We buyed ice cream.", "#2a190f"), ("It was a great day.", "#2a190f")]):
+        y = 366 + k * 42
+        b.append(f'<circle cx="100" cy="{y-9}" r="11" fill="{"#b9291c" if k == 1 else "#22855a"}"/>' + text(100, y - 4, str(k + 1), "Hanken Grotesk", 14, "#fff", 800))
+        b.append(text(120, y, ln, "Hanken Grotesk", 27, c, 700, "start"))
+    # price tag
+    b.append('<g transform="rotate(-9 440 470)" filter="url(#k-drop-s)"><path d="M352 438 L384 418 H520 V512 H384 Z" fill="url(#sa-brass)"/>'
+             '<circle cx="380" cy="465" r="7" fill="#3a2410"/>' + text(456, 482, "$1,400", "Abril Fatface", 38, "#3a2410") + '</g>')
     # bidder paddles
     for k, (c, em) in enumerate([("#d63a2f", "🦁"), ("#2f6fd6", "🦉"), ("#2e9e57", "🦊")]):
         x, y = 130 + k * 170, 660 - (36 if k == 1 else 0)

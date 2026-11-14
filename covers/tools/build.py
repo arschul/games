@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 os.makedirs(SRC, exist_ok=True)
 only = set(sys.argv[1:])
 paths = []
-for m in ["covers_a", "covers_b", "covers_c", "covers_d", "covers_e", "covers_f"]:
+for m in ["covers_a", "covers_b", "covers_c", "covers_d", "covers_e", "covers_f", "covers_g"]:
     for gid, fn in importlib.import_module(m).COVERS.items():
         if only and gid not in only:
             continue

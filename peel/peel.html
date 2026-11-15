@@ -127,6 +127,8 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #dumpBtn{--a1:#ff9a5a;--a2:#e5642a;--edge:#94380d;flex:1}
 #doneBtn{--a1:var(--brass-hi);--a2:var(--brass);--edge:var(--brass-lo);color:#4a3200;flex:1}
 #acts .row{display:flex;gap:8px;height:48px}
+#stuckBtn{--a1:#b78bd6;--a2:#8a5cb0;--edge:#4f2d6e;flex:1}
+#acts.three .act.small{font-size:21px;padding:0 4px}
 #lockmsg{position:absolute;left:20px;top:158px;width:1280px;height:560px;border-radius:14px;display:grid;place-items:center;background:rgba(40,22,4,.55);backdrop-filter:blur(2px);z-index:5}
 #lockmsg .box{background:var(--chalk);padding:28px 54px;border-radius:20px;text-align:center;border:6px solid var(--crate);box-shadow:0 14px 30px rgba(0,0,0,.5)}
 #lockmsg h3{margin:0 0 8px;font:400 70px var(--display);color:var(--sun)}
@@ -319,7 +321,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
       <div id="rack"><span id="racklabel">YOUR TILES</span></div>
       <div id="acts">
         <button class="act" id="peelBtn" disabled>PEEL!</button>
-        <div class="row"><button class="act small" id="dumpBtn" disabled>Dump</button><button class="act small" id="doneBtn">Done</button></div>
+        <div class="row"><button class="act small" id="dumpBtn" disabled>Dump</button><button class="act small" id="stuckBtn" style="display:none">Stuck</button><button class="act small" id="doneBtn">Done</button></div>
       </div>
     </section>
 
@@ -365,8 +367,8 @@ button{font-family:inherit;color:inherit;cursor:pointer}
       <li><b class="n">1</b><span><strong>Split.</strong> Every team gets the same number of tiles and flips them face up.</span></li>
       <li><b class="n">2</b><span><strong>Build.</strong> Make one connected crossword. Words read left to right or top to bottom. Move tiles any time.</span></li>
       <li><b class="n">3</b><span><strong>Peel.</strong> Used every tile? Say Peel! Every team takes one new tile from the Bunch.</span></li>
-      <li><b class="n">4</b><span><strong>Dump.</strong> Stuck with a tile? Put it back in the Bunch and take three.</span></li>
-      <li><b class="n">5</b><span><strong>Bananas!</strong> When the Bunch has fewer tiles than there are teams, the first team to use every tile wins.</span></li>
+      <li><b class="n">4</b><span><strong>Dump.</strong> Stuck with a tile? Put it back in the Bunch and take three. With only 1 or 2 left, swap it for one.</span></li>
+      <li><b class="n">5</b><span><strong>Bananas!</strong> When the Bunch has fewer tiles than there are teams, the first team to use every tile wins. Nobody can finish? Press Stuck. If every team is stuck in a row, the fewest tiles left wins.</span></li>
       <li><b class="n">6</b><span><strong>Rotten.</strong> A bad word at the end puts your team out and your tiles go back to the Bunch.</span></li>
     </ol>
     <p class="hint">No names, abbreviations or hyphenated words. Keys: Space pause · P peel · U undo · N next team · M sound · Shift+N music · T theme</p>
@@ -544,12 +546,18 @@ const Engine = (function(){
   }
   function dump(st, ti, id){
     const t = st.teams[ti];
-    if(st.bunch.length < 3) return { ok: false, reason: "bunch" };
+    if(st.bunch.length < 1) return { ok: false, reason: "bunch" };
     const loc = find(st, ti, id); if(!loc) return { ok: false, reason: "missing" };
     if(loc.where === "hand") t.hand.splice(loc.idx, 1); else delete t.grid[loc.key];
-    st.bunch.push(id); shuffle(st, st.bunch);
     const drawn = [];
-    for(let i = 0; i < 3; i++){ const d = st.bunch.pop(); t.hand.push(d); drawn.push(d); }
+    if(st.bunch.length >= 3){
+      st.bunch.push(id); shuffle(st, st.bunch);
+      for(let i = 0; i < 3; i++){ const d = st.bunch.pop(); t.hand.push(d); drawn.push(d); }
+    } else {
+      // Late swap: draw first so the dumped tile can't come straight back.
+      const d = st.bunch.pop(); t.hand.push(d); drawn.push(d);
+      st.bunch.push(id); shuffle(st, st.bunch);
+    }
     t.dumps++;
     return { ok: true, drawn };
   }
@@ -606,15 +614,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fmtTime = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 
 /* ═════ DICTIONARY ═════ */
-// Base list is shared/wordlist.js (about 50,000 common word forms). Two-letter words follow the setting.
+// Base list is shared/wordlist.js (about 50,000 common word forms) for 3+ letters. Two-letter words follow the setting.
 const SCRABBLE2 = "AA AB AD AE AG AH AI AL AM AN AR AS AT AW AX AY BA BE BI BO BY DA DE DO ED EF EH EL EM EN ER ES EX FA FE GI GO HA HE HI HM HO ID IF IN IS IT JO KA KI LA LI LO MA ME MI MM MO MU MY NA NE NO NU OD OE OF OH OI OK OM ON OP OR OS OW OX OY PA PE PI PO QI RE SH SI SO TA TI TO UH UM UN UP US UT WE WO XI XU YA YE YO ZA".split(" ");
+// Classroom two-letter words, hand-picked. The shared list drops common ones (HE, IS, AM, HI) and carries junk (CC, SA).
+const CLASSROOM2 = "AH AM AN AS AT AW AX BE BY DO GO HA HE HI HM IF IN IS IT ME MY NO OF OH OK ON OR OW OX SO TO UH UM UP US WE YA YO".split(" ");
 // The shared list carries slurs and obscenities; none of these are playable in class.
 const BLOCKED = new Set("ANUS ARSE ASS BASTARD BITCH BOOB BOOBS COCK COON CRAP CRAPPY CUM CUNT DAGO DICK DILDO DYKE FAG FAGS FUCK FUCKED FUCKER FUCKING GOOK HOES HOMO JEWY KIKE MUFF NIGGER NUDE NUDES PENIS PISS POOF PORN PUSSY RAPE RAPED RAPIST RETARD RETARDED SEXY SHAG SHIT SHITS SHITTY SLAG SLUT SMUT SPIC TITS TURD TWAT VAGINA WANK WHORE WOPS".split(" "));
 let BASE = null, TWO = null;
 const ALLOW = new Set(LS.get("peel:allow", [])), BAN = new Set(LS.get("peel:ban", []));
 function buildDict(twoSet){
   if(!BASE){ BASE = new Set((window.WORDLIST || "").split(/\s+/).filter(Boolean)); }
-  TWO = new Set(); BASE.forEach(w => { if(w.length === 2) TWO.add(w); });
+  TWO = new Set(CLASSROOM2);
   if(twoSet === "scrabble") SCRABBLE2.forEach(w => TWO.add(w));
 }
 function isWord(w){
@@ -981,10 +991,14 @@ function render(){
   const bn = Engine.bananasTime(G), ready = Engine.ready(G, ti);
   const cn = $("cnum"); if(U.lastCount !== null && U.lastCount !== G.bunch.length){ cn.classList.remove("bump"); void cn.offsetWidth; cn.classList.add("bump"); } U.lastCount = G.bunch.length; cn.textContent = G.bunch.length;
   $("ctext").firstChild.textContent = G.bunch.length === 1 ? "tile in the Bunch" : "tiles in the Bunch";
-  $("csub").textContent = bn ? "Bananas time! Use every tile to win" : "Drop a tile here to dump";
+  $("csub").textContent = bn ? "Bananas time! Use every tile to win" : G.bunch.length < 3 ? "Drop a tile here to swap" : "Drop a tile here to dump";
   $("crate").classList.toggle("bn", bn);
   const pb = $("peelBtn"); pb.textContent = bn ? "BANANAS!" : "PEEL!"; pb.disabled = !(canAct() && ready); pb.classList.toggle("bananas", bn); pb.classList.toggle("ready", !pb.disabled);
-  $("dumpBtn").disabled = !(canAct() && U.sel != null && G.bunch.length >= 3);
+  $("dumpBtn").disabled = !(canAct() && U.sel != null && G.bunch.length >= 1);
+  $("dumpBtn").textContent = G.bunch.length > 0 && G.bunch.length < 3 ? "Swap" : "Dump";
+  const stuckOk = G.phase === "playing" && bn && team.hand.length > 0;
+  $("stuckBtn").style.display = stuckOk ? "" : "none"; $("stuckBtn").disabled = !canAct();
+  $("acts").classList.toggle("three", stuckOk && !coop);
   $("doneBtn").style.display = coop ? "none" : ""; $("doneBtn").disabled = !canAct();
   $("undoBtn").disabled = !U.undo.length || G.phase !== "playing";
   $("readyhint").classList.toggle("hidden", G.phase !== "ready");
@@ -1064,15 +1078,17 @@ function doPeel(){
 }
 function askDump(id){
   if(!canAct() || id == null) return; closePop();
-  if(G.bunch.length < 3){ toast("The Bunch has fewer than 3 tiles, so no dumping"); return; }
-  const p = popover('<p>Dump <b>' + G.letters[id] + "</b>? You take 3 new tiles.</p><div class=\"r\"><button class=\"pbad\" id=\"dumpYes\">Dump it</button><button class=\"pgrey\" id=\"dumpNo\">Keep it</button></div>", CR.x + 70, CR.y + CR.h + 12);
+  if(G.bunch.length < 1){ toast("The Bunch is empty, so no dumping"); return; }
+  const swap = G.bunch.length < 3;
+  const p = popover('<p>' + (swap ? "Swap" : "Dump") + ' <b>' + G.letters[id] + "</b>? " + (swap ? "You take 1 tile from the Bunch." : "You take 3 new tiles.") + "</p><div class=\"r\"><button class=\"pbad\" id=\"dumpYes\">Dump it</button><button class=\"pgrey\" id=\"dumpNo\">Keep it</button></div>", CR.x + 70, CR.y + CR.h + 12);
   $("dumpYes").onclick = () => { closePop(); doDump(id); }; $("dumpNo").onclick = () => { closePop(); U.sel = null; render(); };
 }
 function doDump(id){
   if(!canAct()) return; const ti = activeTi(); const from = tileCenter(id);
   snapshot(); const letter = G.letters[id], r = Engine.dump(G, ti, id);
   if(!r.ok){ U.undo.pop(); render(); return; }
-  U.sel = null; Sound.play("dump"); Music.cue("dump"); callout("dump", "DUMP!", "1 tile back, 3 new tiles");
+  G.passes = 0;
+  U.sel = null; Sound.play("dump"); Music.cue("dump"); callout("dump", r.drawn.length === 1 ? "SWAP!" : "DUMP!", r.drawn.length === 1 ? "1 tile back, 1 new tile" : "1 tile back, 3 new tiles");
   r.drawn.forEach(d => U.hide.add(d)); render();
   const cc = crateCenter(); flyTile(letter, { x: from.x, y: from.y }, cc, from.ts || 64, 0);
   r.drawn.forEach((d, i) => { const to = targetCenter(ti, d); setTimeout(() => Sound.play("deal"), 380 + i * 110); flyTile(G.letters[d], cc, to, Math.min(to.ts, 64), 340 + i * 110).then(() => { U.hide.delete(d); render(); }); });
@@ -1090,7 +1106,7 @@ function rottenFx(ti, r){
   Sound.play("rotten"); Music.cue("rotten"); callout("rotten", "ROTTEN!", t.name + " are out"); FX.flash(); FX.shake(26, 750);
   FX.emit(50, 700, 760, { kind: "puff", speed: 3.2, g: .03, size: 26, decay: .012, colors: ["rgba(90,60,30,.55)", "rgba(60,40,20,.5)"], angle: -Math.PI / 2, spread: Math.PI, w: 1000 });
   render(); save();
-  if(G.phase === "over"){ setTimeout(() => finish(G.winner, true), 1800); return; }
+  if(G.phase === "over"){ setTimeout(() => finish(G.winner, "rotten"), 1800); return; }
   setTimeout(() => lockBoard("rotten", "Rotten!", t.name + " are out. Their tiles went back to the Bunch."), 1500);
 }
 function lockBoard(mode, title, msg){
@@ -1101,9 +1117,30 @@ function timeUp(){
   U.tleft = 0; updateTimerUI(); Sound.play("buzz"); FX.shake(8, 350);
   lockBoard("time", "Time's up!", "Pass the board to the next team.");
 }
-function endTurn(){
+function endTurn(stuck){
   if(!G || G.phase !== "playing" || G.mode === "coop") return; closePop();
-  snapshot(); Engine.advanceTurn(G); hideLock(); startTurn(); save();
+  snapshot(); G.passes = stuck ? (G.passes || 0) + 1 : 0;
+  if(stuck && G.passes >= Engine.activeCount(G)){ U.locked = false; hideLock(); return finish(stuckWinner(), "stuck"); }
+  Engine.advanceTurn(G); hideLock(); startTurn(); save();
+}
+// Everyone is stuck: fewest tiles in hand wins, then most tiles on the board, then longest word.
+function stuckWinner(){
+  const live = G.teams.map((t, i) => i).filter(i => !G.teams[i].out);
+  live.sort((a, b) => {
+    const A = G.teams[a], B = G.teams[b];
+    return A.hand.length - B.hand.length || Object.keys(B.grid).length - Object.keys(A.grid).length || Engine.longest(G, b).length - Engine.longest(G, a).length || a - b;
+  });
+  return live[0];
+}
+const STUCK_PENALTY = 30;
+function askStuck(){
+  if(!canAct()) return; const ti = activeTi(), t = G.teams[ti], n = t.hand.length, coop = G.mode === "coop";
+  const left = Engine.activeCount(G) - (G.passes || 0) - 1;
+  const msg = coop ? "Finish with <b>" + n + "</b> tile" + (n === 1 ? "" : "s") + " left? Each adds " + STUCK_PENALTY + " seconds to your time."
+    : "Pass as stuck? " + (left > 0 ? "If the next " + (left === 1 ? "team is" : left + " teams are") + " stuck too, the game ends and the fewest tiles left wins." : "Every team is stuck, so the game ends now. Fewest tiles left wins.");
+  popover("<p>" + msg + '</p><div class="r"><button class="pbad" id="stuckYes">' + (coop ? "Finish" : "We're stuck") + '</button><button class="pgrey" id="stuckNo">Keep trying</button></div>', CR.x + 70, CR.y + CR.h + 12);
+  $("stuckYes").onclick = () => { closePop(); coop ? finish(0, "stuck") : endTurn(true); };
+  $("stuckNo").onclick = closePop;
 }
 function startTurn(){
   const t = G.teams[G.turn.team]; U.locked = false; U.sel = null; U.flag = false; U.tleft = G.cfg.turnSecs; U.hold = reduced ? 0 : 1.7;
@@ -1115,19 +1152,23 @@ function doSplit(){
   U.tleft = G.cfg.turnSecs; render(); save();
   if(G.mode === "turns") setTimeout(() => { if(G && G.phase === "playing") startTurn(); }, 900);
 }
-function finish(ti, viaRotten){
-  G.phase = "over"; G.winner = ti; const t = G.teams[ti], coop = G.mode === "coop";
-  Sound.play("bananas"); Music.cue("bananas"); callout("bananas", "BANANAS!", coop ? "All tiles used in " + fmtTime(G.elapsed) : t.name + " win!"); FX.shake(10, 450); FX.fireworks(4200);
+function finish(ti, how){
+  G.phase = "over"; G.winner = ti; const t = G.teams[ti], coop = G.mode === "coop", stuck = how === "stuck";
+  if(stuck && coop){ G.leftover = t.hand.length; G.final = Math.floor(G.elapsed) + G.leftover * STUCK_PENALTY; }
+  Sound.play("bananas"); Music.cue("bananas");
+  callout("bananas", stuck ? "GAME OVER" : "BANANAS!", coop ? (stuck ? G.leftover + " tiles left" : "All tiles used in " + fmtTime(G.elapsed)) : t.name + " win!"); FX.shake(10, 450); FX.fireworks(4200);
   FX.emit(90, 960, 520, { kind: "confetti", speed: 9, g: .22, size: 8, decay: .008, colors: [t.color, "#ffd36a", "#ffffff", "#7fe3a2"], angle: -Math.PI / 2, spread: Math.PI * 1.1 });
   let extra = "";
-  if(coop){ const b = LS.get("peel:best", {}); if(b[G.total] == null || G.elapsed < b[G.total]){ extra = b[G.total] == null ? "First time on the board!" : "New best time!"; b[G.total] = Math.floor(G.elapsed); LS.set("peel:best", b); } }
+  if(coop && !stuck){ const b = LS.get("peel:best", {}); if(b[G.total] == null || G.elapsed < b[G.total]){ extra = b[G.total] == null ? "First time on the board!" : "New best time!"; b[G.total] = Math.floor(G.elapsed); LS.set("peel:best", b); } }
   else { SERIES.wins[ti] = (SERIES.wins[ti] || 0) + 1; SERIES.games++; }
   LS.del("peel:save"); render();
-  setTimeout(() => showWin(ti, extra, viaRotten), 1900);
+  setTimeout(() => showWin(ti, extra, how), 1900);
 }
-function showWin(ti, extra, viaRotten){
-  const coop = G.mode === "coop", t = G.teams[ti];
-  let title = coop ? "All tiles used!" : t.name + " win!", sub = coop ? "Time " + fmtTime(G.elapsed) + (extra ? " · " + extra : "") : (viaRotten ? "Last team standing." : "Every word checked out.");
+function showWin(ti, extra, how){
+  const coop = G.mode === "coop", t = G.teams[ti], stuck = how === "stuck";
+  let title = coop ? (stuck ? "Board finished" : "All tiles used!") : t.name + " win!";
+  let sub = coop ? (stuck ? "Time " + fmtTime(G.elapsed) + " + " + G.leftover + " × " + STUCK_PENALTY + "s = " + fmtTime(G.final) + " (best times count only when every tile is used)" : "Time " + fmtTime(G.elapsed) + (extra ? " · " + extra : ""))
+    : how === "rotten" ? "Last team standing." : stuck ? "Every team was stuck. Fewest tiles left: " + t.hand.length + "." : "Every word checked out.";
   let seriesTxt = "", seriesDone = false;
   if(!coop && S.series > 1){
     seriesTxt = G.teams.map((x, i) => esc(x.name) + " " + (SERIES.wins[i] || 0)).join(" · ");
@@ -1306,7 +1347,7 @@ function init(){
   fit(); addEventListener("resize", fit); buildAwning(); buildSetup(); syncSoundUi();
   $("tiles").addEventListener("pointerdown", onTileDown); $("gridview").addEventListener("click", onGridClick); $("rack").addEventListener("click", onRackClick); $("chips").addEventListener("click", onChipClick);
   $("crate").addEventListener("click", () => { if(U.sel != null) askDump(U.sel); });
-  $("peelBtn").onclick = doPeel; $("dumpBtn").onclick = () => askDump(U.sel); $("doneBtn").onclick = () => { if(canAct()) endTurn(); }; $("nextBtn").onclick = () => { if(U.lockMode === "rotten" && G.phase === "over") return; endTurn(); };
+  $("peelBtn").onclick = doPeel; $("dumpBtn").onclick = () => askDump(U.sel); $("doneBtn").onclick = () => { if(canAct()) endTurn(); }; $("stuckBtn").onclick = askStuck; $("nextBtn").onclick = () => { if(U.lockMode === "rotten" && G.phase === "over") return; endTurn(); };
   $("splitBtn").onclick = doSplit; $("undoBtn").onclick = undo; $("pauseBtn").onclick = () => togglePause(); $("resumeP").onclick = () => togglePause(false);
   $("rulesBtn").onclick = () => { $("rules").classList.remove("hidden"); U.paused = true; }; $("rulesOk").onclick = () => { $("rules").classList.add("hidden"); U.paused = !$("setup").classList.contains("hidden"); render(); };
   $("endBtn").onclick = () => { if(!G || G.phase === "over") return openSetup(); const p = popover('<p>Leave this game?</p><div class="r"><button class="pbad" id="leaveY">Back to setup</button><button class="pgrey" id="leaveN">Keep playing</button></div>', 1500, 90); $("leaveY").onclick = () => { closePop(); save(); openSetup(); }; $("leaveN").onclick = closePop; };

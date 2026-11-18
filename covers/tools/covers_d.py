@@ -574,24 +574,57 @@ def resistance():
 
 
 def reveal_it():
-    d = rad("bg", [(0, "#172033"), (1, "#0b1220")], cy="30%") + lin("tt", [(0, "#c7d2fe"), (1, "#818cf8")])
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 124, "Reveal It!", "Fredoka One", 96, "url(#tt)"))
-    b.append(text(300, 170, "Fewer squares open, more points.", "Nunito", 21, "#94a3b8", 700))
-    cs = 92
-    x0, y0 = (600 - 5 * cs) / 2, 210
-    b.append(f'<g filter="url(#k-drop)">{rect(x0 - 10, y0 - 10, 5 * cs + 20, 5 * cs + 20, "#1e293b", 18)}</g>')
-    b.append(f'<clipPath id="cl"><rect x="{x0}" y="{y0}" width="{5*cs}" height="{5*cs}" rx="10"/></clipPath>')
-    b.append(f'<g clip-path="url(#cl)">{rect(x0, y0, 5*cs, 5*cs, "#fef3c7")}{emoji(300, y0 + 5*cs/2 + 140, "🦒", 400)}</g>')
-    openc = {6, 7, 12, 17, 13}
-    for k in range(25):
+    D, U = "Alfa Slab One", "Figtree"
+    d = (lin("rsky", [(0, "#1d1630"), (.45, "#43284a"), (.75, "#8f4a45"), (1, "#e08a4c")])
+         + rad("rsun", [(0, "#ffcf7a"), (.35, "#ffcf7a80"), (1, "#ffcf7a00")], cx="50%", cy="50%", r="50%")
+         + lin("rwood", [(0, "#b98b5a"), (.6, "#9b6d41"), (1, "#86592f")])
+         + lin("rsoil", [(0, "#9a6a40"), (.12, "#8a5a35"), (.125, "#7a4a2b"), (.31, "#6d4026"), (.315, "#80502f"), (.52, "#74472a"),
+                         (.525, "#5f3820"), (.74, "#6a3f24"), (.745, "#57321c"), (1, "#4b2b17")])
+         + rad("rplaster", [(0, "#f6eedb"), (1, "#e4d5b4")], cy="45%"))
+    b = [rect(0, 0, 600, 800, "url(#rsky)"), stars(31, 60, "#fff6e0", 330, (0.6, 1.8), (.3, .9))]
+    b.append('<circle cx="430" cy="640" r="220" fill="url(#rsun)"/><circle cx="430" cy="640" r="46" fill="#ffcf7a"/>')
+    b.append('<path d="M0 800 L0 600 L40 560 L160 556 L190 600 L260 598 L300 540 L420 536 L450 590 L540 586 L570 548 L600 546 L600 800Z" fill="#3b2438"/>')
+    b.append('<path d="M0 800 L0 680 L70 650 L200 654 L230 690 L380 688 L420 650 L600 660 L600 800Z" fill="#6c3d2c"/>')
+    b.append('<path d="M0 760 C140 730 260 780 380 750 C470 728 540 760 600 740 L600 800 L0 800Z" fill="#a06b3f"/>')
+    b.append(text(302, 126, "Reveal It!", D, 92, "#000", extra='opacity=".35"'))
+    b.append(text(300, 120, "Reveal It!", D, 92, "#f3d88a"))
+    b.append(text(300, 166, "Dig up the hidden picture", U, 26, "#f7eedb", 800))
+    # dig pit
+    n, cs = 4, 104
+    x0, y0 = (600 - n * cs) / 2, 214
+    b.append(f'<g filter="url(#k-drop)">{rect(x0 - 30, y0 - 30, n*cs + 60, n*cs + 60, "url(#rwood)", 12)}</g>')
+    for k in range(9):
+        b.append(f'<rect x="{x0 - 30}" y="{y0 - 30 + 14 + k * 54}" width="{n*cs + 60}" height="2" fill="#46240c" opacity=".18"/>')
+    b.append(rect(x0 - 8, y0 - 8, n*cs + 16, n*cs + 16, "#2e1b0f", 6))
+    b.append(f'<clipPath id="rcl"><rect x="{x0}" y="{y0}" width="{n*cs}" height="{n*cs}"/></clipPath>')
+    b.append(f'<g clip-path="url(#rcl)">{rect(x0, y0, n*cs, n*cs, "url(#rplaster)")}{emoji(300, y0 + n*cs/2 + 118, "🦒", 340)}</g>')
+    openc = {1, 5, 6, 9}
+    import random as _r
+    rr = _r.Random(5)
+    for k in range(n * n):
         if k in openc:
             continue
-        r, c = divmod(k, 5)
+        r, c = divmod(k, n)
         x, y = x0 + c * cs, y0 + r * cs
-        b.append(rect(x + 2, y + 2, cs - 4, cs - 4, "#4f46e5", 8, 'stroke="#a5b4fc" stroke-width="2"') + text(x + cs/2, y + cs/2 + 12, k + 1, "Fredoka One", 32, "#e0e7ff"))
-    b.append(text(300, 736, "What is it?", "Fredoka One", 40, "#a5b4fc"))
-    b.append(footer("16 CATEGORIES · TEAMS", "Nunito", "#64748b", 14, 4, 778, 900))
+        g = [f'<svg x="{x}" y="{y}" width="{cs}" height="{cs}" viewBox="{c*cs} {r*cs} {cs} {cs}" preserveAspectRatio="none"><rect x="0" y="0" width="{n*cs}" height="{n*cs}" fill="url(#rsoil)"/></svg>']
+        for _ in range(3):
+            g.append(f'<circle cx="{x + rr.uniform(14, cs-14):.0f}" cy="{y + rr.uniform(14, cs-14):.0f}" r="{rr.uniform(2.5, 5):.1f}" fill="#b38a64"/>')
+        g.append(rect(x, y, cs, 3, "#ffdeb4", 0, 'opacity=".25"') + rect(x, y + cs - 5, cs, 5, "#000", 0, 'opacity=".28"'))
+        g.append(text(x + cs/2, y + cs/2 + 15, k + 1, D, 42, "#000", extra='opacity=".45"') + text(x + cs/2, y + cs/2 + 13, k + 1, D, 42, "#ffe8c4", extra='opacity=".85"'))
+        b.append("".join(g))
+    for k in range(1, n):
+        p = x0 + k * cs
+        b.append(f'<line x1="{x0 - 22}" y1="{y0 + k*cs}" x2="{x0 + n*cs + 22}" y2="{y0 + k*cs}" stroke="#efe3c2" stroke-width="2.5"/>')
+        b.append(f'<line x1="{p}" y1="{y0 - 22}" x2="{p}" y2="{y0 + n*cs + 22}" stroke="#efe3c2" stroke-width="2.5"/>')
+        for qx, qy in ((x0 - 22, y0 + k*cs), (x0 + n*cs + 22, y0 + k*cs), (p, y0 - 22), (p, y0 + n*cs + 22)):
+            b.append(f'<circle cx="{qx}" cy="{qy}" r="7" fill="#6e4a2a" stroke="#3e2714" stroke-width="2"/>')
+    for cx, cy in ((x0 - 18, y0 - 18), (x0 + n*cs + 18, y0 - 18), (x0 - 18, y0 + n*cs + 18), (x0 + n*cs + 18, y0 + n*cs + 18)):
+        b.append(f'<circle cx="{cx}" cy="{cy}" r="7" fill="#e0bb5f" stroke="#6e5418" stroke-width="2"/>')
+    # a block mid-flight
+    b.append(f'<g transform="translate(548 196) rotate(28) scale(.8)" filter="url(#k-drop-s)"><rect x="-38" y="-38" width="76" height="76" rx="4" fill="#7a4a2b"/><rect x="-38" y="-38" width="76" height="12" fill="#8a5a35"/>{text(0, 13, 2, D, 34, "#ffe8c4")}</g>')
+    # brass label
+    b.append(f'<g filter="url(#k-drop-s)">{rect(150, 694, 300, 62, "#d0aa4f", 8)}{rect(150, 694, 300, 4, "#f4dc93", 2)}</g>')
+    b.append(text(300, 737, "What is it?", D, 32, "#3b2a0c"))
     return svg(d, "".join(b))
 
 

@@ -336,6 +336,8 @@ button{font-family:inherit}
   *,*:before,*:after{animation:none!important;transition:none!important}
 }
 </style>
+<script src="../shared/music/index.js"></script>
+<script src="../shared/music/picker.js" data-game="boardgame" data-own="Schoolroom March"></script>
 </head>
 <body>
 <div id="viewport">
@@ -395,6 +397,7 @@ button{font-family:inherit}
           <div class="tools">
             <button class="rnd" id="b-snd" title="Sound (M)"></button>
             <button class="rnd" id="b-mus" title="Music (Shift+N)"></button>
+            <span data-music-picker="icon" style="display:contents"></span>
             <button class="rnd" id="b-thm" title="Theme (T)"></button>
             <button class="rnd" id="b-rul" title="Rules (H)"></button>
             <button class="rnd" id="b-pau" title="Pause (P)"></button>
@@ -1294,7 +1297,10 @@ var SFX = {
   click: function () { var t = ctx.currentTime; nz(t, .03, 'highpass', 3000, 1, .25); },
   shop: function () { var t = ctx.currentTime; tone(880, t, .14, 'sine', .2); tone(1320, t + .08, .2, 'sine', .18); }
 };
-Q.sfx = function (name, a) { if (!ctx || !Q.cfg.snd) return; try { SFX[name](a); } catch (e) { } };
+Q.sfx = function (name, a) {
+  if (LIB) { var cue = { win: 'win', fail: 'fail', bank: 'success', turn: 'turn' }[name]; if (cue) try { LIB.cue(cue); if (cue === 'win') LIB.duck(3); } catch (e) { } }
+  if (!ctx || !Q.cfg.snd) return; try { SFX[name](a); } catch (e) { }
+};
 
 /* generative schoolroom music: pizzicato march */
 var MUS = { on: false, step: 0, next: 0, mood: 'menu', timer: null };
@@ -1319,12 +1325,32 @@ function musicSched() {
     MUS.next += sd; MUS.step++;
   }
 }
+/* shared music library: the teacher can swap the march for another game's track (../shared/music/picker.js) */
+var LIB = null, LIBT = 0, MOOD_GEN = { menu: 'calm', play: 'active', hurry: 'tense' };
+function libId() { return window.ArschulMusic && ArschulMusic.current ? ArschulMusic.current() : ''; }
+function libStart() {
+  if (LIB || !ctx) return;
+  LIB = ArschulMusic.make(null, ctx, { mode: MOOD_GEN[MUS.mood] || 'calm', out: musBus });
+  LIB.start(ctx.currentTime + .05, 0.9);
+  LIBT = setInterval(function () { if (LIB && !document.hidden) LIB.scheduleUntil(ctx.currentTime + .6); }, 50);
+}
+function libStop() { if (!LIB) return; LIB.stop(ctx.currentTime + .05); LIB = null; clearInterval(LIBT); LIBT = 0; }
+function marchStart() { MUS.next = ctx.currentTime + .1; MUS.timer = setInterval(musicSched, 80); }
+function marchStop() { clearInterval(MUS.timer); MUS.timer = null; }
 Q.musicStart = function () {
   if (!ctx || MUS.on) return;
-  MUS.on = true; MUS.next = ctx.currentTime + .1; MUS.timer = setInterval(musicSched, 80);
+  MUS.on = true;
+  if (libId()) libStart(); else marchStart();
 };
-Q.musicStop = function () { MUS.on = false; clearInterval(MUS.timer); MUS.timer = null; };
-Q.musicMood = function (m) { MUS.mood = m; };
+Q.musicStop = function () { MUS.on = false; marchStop(); libStop(); };
+Q.musicMood = function (m) { MUS.mood = m; if (LIB) LIB.setMode(MOOD_GEN[m] || 'calm'); };
+Q.musicState = function () { return { on: MUS.on, march: !!MUS.timer, lib: !!LIB, track: LIB ? LIB.track : '', bars: LIB ? LIB.bars : 0 }; };
+if (window.ArschulMusic && ArschulMusic.onChange) ArschulMusic.onChange(function () {
+  if (!MUS.on || !ctx) return;
+  var id = libId();
+  if (id && !LIB) { marchStop(); libStart(); }
+  else if (!id && LIB) { libStop(); marchStart(); }
+});
 Q.musicWanted = function () { return MUS.on; };
 
 /* ---------- effects ---------- */

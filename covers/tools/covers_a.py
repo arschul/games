@@ -461,7 +461,7 @@ def castle_roads():
         (4, 0): dict(), (4, 1): dict(mon=True), (4, 2): dict(city="S"), (4, 3): dict(roads="NS"),
         (5, 0): dict(city="E"), (5, 1): dict(city="WN"), (5, 2): dict(city="N"), (5, 3): dict(roads="N"),
     }
-    meeples = {(1, 1): "#e2552f", (2, 2): "#2f6fd6", (4, 1): "#e2552f", (5, 1): "#f0bf55", (1, 3): "#2f6fd6"}
+    meeples = {(1, 1): "#d55e00", (2, 2): "#0a6fc2", (4, 1): "#d55e00", (5, 1): "#f0d43a", (1, 3): "#0a6fc2"}
     edge_mid = {"N": (T/2, 0), "S": (T/2, T), "E": (T, T/2), "W": (0, T/2)}
     city_shape = {
         "N": f"M0 0 H{T} Q {T/2} {T*0.55} 0 0 Z",
@@ -475,7 +475,17 @@ def castle_roads():
         frozenset("NE"): f"M0 0 H{T} V{T} Q {T*0.2} {T*0.8} 0 0 Z",
         frozenset("NW"): f"M0 {T} V0 H{T} Q {T*0.8} {T*0.8} 0 {T} Z",
     }
-    b = ['<rect width="600" height="800" fill="#10161e"/>']
+    defs += '''
+    <linearGradient id="oak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b4527"/><stop offset="1" stop-color="#3a2312"/></linearGradient>
+    <pattern id="grain" width="600" height="38" patternUnits="userSpaceOnUse"><rect width="600" height="38" fill="none"/>
+      <path d="M0 37 H600" stroke="#000" stroke-opacity=".28" stroke-width="3"/><path d="M0 12 C150 9 300 15 600 11 M0 25 C200 28 380 22 600 26" stroke="#000" stroke-opacity=".09" stroke-width="1.5" fill="none"/></pattern>
+    <radialGradient id="candle" cx=".5" cy=".42" r=".7"><stop offset="0" stop-color="#ffba60" stop-opacity=".28"/><stop offset=".55" stop-color="#ff963c" stop-opacity=".06"/><stop offset="1" stop-color="#080401" stop-opacity=".7"/></radialGradient>
+    <linearGradient id="vel" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#f8edd2"/><stop offset=".5" stop-color="#f1e4c3"/><stop offset="1" stop-color="#ddc795"/></linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d47e"/><stop offset=".6" stop-color="#b8892a"/><stop offset="1" stop-color="#7a5a14"/></linearGradient>
+    <radialGradient id="wax" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#e0645a"/><stop offset=".5" stop-color="#a8322a"/><stop offset="1" stop-color="#6b1a14"/></radialGradient>
+    <radialGradient id="lacq" cx=".35" cy=".25" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".35" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient>
+    '''
+    b = ['<rect width="600" height="800" fill="url(#oak)"/><rect width="600" height="800" fill="url(#grain)"/>']
     ox, oy = 0, -50
     for (r, c), t in M.items():
         x, y = ox + c * T, oy + r * T
@@ -524,16 +534,23 @@ def castle_roads():
             mx, my = (T*0.7, T*0.62) if t.get("roads") else (T*0.5, T*0.45)
             g.append(f'<g transform="translate({mx} {my})" filter="url(#tile)">'
                      f'<path d="M0 -24 a9 9 0 1 1 0.1 0 Z M-6 -14 h12 l12 8 l-3 6 l-8 -3 l7 26 h-11 l-3 -12 l-3 12 h-11 l7 -26 l-8 3 l-3 -6 Z" '
-                     f'fill="{col}" stroke="#1d232b" stroke-width="2.5" stroke-linejoin="round"/></g>')
+                     f'fill="{col}" stroke="#1d232b" stroke-width="2.5" stroke-linejoin="round"/>'
+                     f'<path d="M0 -24 a9 9 0 1 1 0.1 0 Z M-6 -14 h12 l12 8 l-3 6 l-8 -3 l7 26 h-11 l-3 -12 l-3 12 h-11 l7 -26 l-8 3 l-3 -6 Z" fill="url(#lacq)"/></g>')
         g.append("</g>")
         b.append(f'<g filter="url(#tile)">{"".join(g)}</g>')
-    # title panel
-    b.append('<g filter="url(#drop)"><rect x="50" y="300" width="500" height="186" rx="16" fill="#1d2530" fill-opacity=".94" stroke="#f0bf55" stroke-width="3"/></g>')
-    b.append('<rect x="62" y="312" width="476" height="162" rx="10" fill="none" stroke="#f0bf55" stroke-opacity=".35" stroke-width="1.5"/>')
-    b.append('<text x="300" y="400" text-anchor="middle" font-family="Cinzel" font-weight="700" font-size="66" fill="#f0bf55">Castle Roads</text>')
-    b.append('<text x="300" y="442" text-anchor="middle" font-family="Inter" font-weight="500" font-size="17" fill="#aab5c3">Build the map one tile at a time</text>')
-    b.append('<rect x="0" y="752" width="600" height="48" fill="#10161e" opacity=".82"/>'
-             '<text x="300" y="783" text-anchor="middle" font-family="Inter" font-weight="700" font-size="14" letter-spacing="4" fill="#f0bf55">TILE LAYING · 2–5 PLAYERS</text>')
+    b.append('<rect width="600" height="800" fill="url(#candle)"/>')
+    # title: a vellum charter with a madder and gold border, a gold-leaf initial and a wax seal
+    b.append('<g filter="url(#drop)" transform="rotate(-2 300 400)"><rect x="40" y="270" width="520" height="250" rx="4" fill="url(#vel)"/>'
+             '<rect x="50" y="280" width="500" height="230" fill="none" stroke="#8a2a20" stroke-width="4"/>'
+             '<rect x="56" y="286" width="488" height="218" fill="none" stroke="#b88a26" stroke-width="2"/>'
+             '<rect x="118" y="300" width="84" height="96" rx="5" fill="url(#leaf)" stroke="#6b1f17" stroke-width="4"/>'
+             '<text x="160" y="380" text-anchor="middle" font-family="Germania One" font-size="96" fill="#fff6d6" stroke="#6b1f17" stroke-width="2" paint-order="stroke">C</text>'
+             '<text x="208" y="380" font-family="Germania One" font-size="96" fill="#6b1f17">astle</text>'
+             '<text x="300" y="478" text-anchor="middle" font-family="Germania One" font-size="96" fill="#6b1f17">Roads</text>'
+             '<circle cx="526" cy="496" r="40" fill="url(#wax)"/><circle cx="526" cy="496" r="30" fill="none" stroke="#000" stroke-opacity=".18" stroke-width="4"/>'
+             '<path d="M512 514 h28 v-6 h-4 l2 -16 h4 v-12 h-6 v5 h-5 v-5 h-6 v5 h-5 v-5 h-6 v12 h4 l2 16 h-4 z" fill="#5a120d" fill-opacity=".6"/></g>')
+    b.append('<rect x="0" y="748" width="600" height="52" fill="#2a180a" opacity=".9"/>'
+             '<text x="300" y="782" text-anchor="middle" font-family="Albert Sans" font-weight="700" font-size="19" fill="#f1e4c3">Tile laying for 2 to 5 players</text>')
     return wrap(defs, "".join(b))
 
 

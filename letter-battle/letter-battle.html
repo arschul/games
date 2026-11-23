@@ -558,7 +558,7 @@ onmouseout="this.style.opacity=.55" title="Classroom Hub">&#8592; Hub</a>
             <h3>Abilities</h3>
             <ul class="rl" id="rules-abs"></ul>
             <h3>Solo</h3>
-            <p>Beat wave after wave of monsters. Your HP, board and power carry over. Each wave cleared gives +20 HP. Extra damage on a monster turns into power.</p>
+            <p>Beat wave after wave of monsters. Your HP, board, power and shield carry over. Each wave cleared gives +20 HP. Extra damage on a monster turns into power.</p>
           </div>
           <div>
             <h3>Special tiles</h3>
@@ -670,8 +670,8 @@ function genGrid(){
 }
 function newPower(S){
   if(rng()<S.tileChance){
-    let t=POWER_TYPES[ri(POWER_TYPES.length)];
-    if(S.solo&&SOLO_USELESS.has(t))t='heal';
+    const pool=S.solo?POWER_TYPES.filter(x=>!SOLO_USELESS.has(x)):POWER_TYPES;  // solo: even split, no heal flood
+    const t=pool[ri(pool.length)];
     return{type:t,turns:2};
   }
   return null;
@@ -773,6 +773,7 @@ function newWave(o){
   S.p2HP=S.monsterMaxHP=Math.floor(o.startHP*(m.cycle>0?.6:.5));
   S.charge[1]=c.charge!==undefined?c.charge:0;
   S.chargeReady[1]=!!c.chargeReady;
+  S.effects[1].defend=!!c.defend;            // a raised shield lasts until it actually blocks a hit
   return S;
 }
 
@@ -791,6 +792,7 @@ function renewRestore(S){
   return out;
 }
 function canUse(S,p,ab){
+  if(ab==='defend'&&S.effects[p].defend)return false;   // already shielded
   return S.cur===p&&!S.ab[p][ab]&&!(S.pending[p]&&S.pending[p][ab])&&S.chargeReady[p]&&!(S.solo&&SOLO_DISABLED.has(ab));
 }
 function useAbility(S,p,ab){
@@ -1995,7 +1997,7 @@ $('result-body').addEventListener('click',e=>{const b=e.target.closest('[data-r]
   if(r==='next')startDuelRound();
   else if(r==='rematch')startGame();
   else if(r==='setup'){showDemo();openOv('ov-setup');syncSetup();}
-  else if(r==='wave'){UI.soloWave++;startWave({hp:S.p1HP,grid:S.grid,powers:S.powers,charge:S.charge[1],chargeReady:S.chargeReady[1]});}
+  else if(r==='wave'){UI.soloWave++;startWave({hp:S.p1HP,grid:S.grid,powers:S.powers,charge:S.charge[1],chargeReady:S.chargeReady[1],defend:S.effects[1].defend});}
 });
 
 /* ================= START ================= */

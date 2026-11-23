@@ -364,34 +364,87 @@ def take_a_seat():
 
 
 def tangled_paths():
-    d = lin("card", [(0, "#f1dcb2"), (1, "#d9bd8a")])
-    b = [rect(0, 0, 600, 800, "#12161c")]
-    b.append(text(300, 104, "Tangled Paths", "Sora", 66, "#eef2f6", 800))
-    b.append(text(300, 146, "LAY A TILE · FOLLOW YOUR PATH · SURVIVE", "Inter", 14, "#aab5c3", 800, ls=3))
-    T = 150
-    x0, y0 = 0, 190
-    cols = ["#e8742b", "#2f9e57", "#3a7bd5", "#c94a8a", "#d4a520", "#6b5bd1"]
-    rr = random.Random(8)
-    for r in range(4):
-        for c in range(4):
-            x, y = x0 + c * T, y0 + r * T
-            if (r, c) in {(0, 3), (3, 0)}:
-                b.append(rect(x + 4, y + 4, T - 8, T - 8, "#2c3139", 8))
-                continue
-            b.append(f'<g filter="url(#k-drop-s)">{rect(x + 4, y + 4, T - 8, T - 8, "url(#card)", 10, "stroke=\"#8a6a3a\" stroke-width=\"2\"")}</g>')
-            pts = [(x + 4 + T*.33, y + 4), (x + 4 + T*.66, y + 4), (x + T - 4, y + T*.33), (x + T - 4, y + T*.66),
-                   (x + T*.66, y + T - 4), (x + T*.33, y + T - 4), (x + 4, y + T*.66), (x + 4, y + T*.33)]
-            order = list(range(8))
-            rr.shuffle(order)
-            for k in range(4):
-                a, bb = pts[order[2*k]], pts[order[2*k+1]]
-                col = cols[(r * 4 + c + k) % 6] if k == 0 else "#8a7a5a"
-                w = 9 if k == 0 else 6
-                b.append(f'<path d="M{a[0]:.0f} {a[1]:.0f} Q {x+T/2} {y+T/2} {bb[0]:.0f} {bb[1]:.0f}" fill="none" stroke="#fff6e2" stroke-width="{w+5}" stroke-linecap="round"/>'
-                         f'<path d="M{a[0]:.0f} {a[1]:.0f} Q {x+T/2} {y+T/2} {bb[0]:.0f} {bb[1]:.0f}" fill="none" stroke="{col}" stroke-width="{w}" stroke-linecap="round"/>')
-    for (cx, cy, col) in [(x0 + 1.33*T, y0 + 4, "#e8742b"), (x0 + 4, y0 + 2.66*T, "#2f9e57"), (x0 + 3*T - 4, y0 + 1.66*T, "#3a7bd5")]:
-        b.append(f'<circle cx="{cx}" cy="{cy}" r="17" fill="{col}" stroke="#fff" stroke-width="4" filter="url(#k-drop-s)"/>')
-    b.append(rect(0, 752, 600, 48, "#12161c", 0, 'opacity=".85"') + footer("2–8 PLAYERS · LAST STONE STANDING", "Inter", "#f0bf55", 14, 3, 782, 800))
+    # Lacquer tray at night by a misty lake: porcelain tiles with gold-wire paths, enamel dragons, lanterns, a red seal.
+    d = (lin("sky", [(0, "#04060d"), (.6, "#0f1729"), (1, "#2a2838")]) + lin("rim", [(0, "#cf4a2e"), (.5, "#a8321f"), (1, "#6a1b10")])
+         + lin("porc", [(0, "#fcf7ea"), (1, "#e2d6b9")], 1, 1) + lin("lac", [(0, "#2a1713"), (1, "#0e0706")], 1, 1)
+         + rad("moon", [(0, "rgba(243,234,210,.35)"), (1, "rgba(243,234,210,0)")], cx="50%", cy="50%", r="50%")
+         + rad("lg", [(0, "rgba(255,179,90,.6)"), (1, "rgba(255,138,42,0)")], cx="50%", cy="50%", r="50%"))
+    b = [rect(0, 0, 600, 800, "url(#sky)"), stars(21, 70, "#fff", 420, (.5, 1.6), (.2, .8))]
+    b.append('<circle cx="470" cy="250" r="120" fill="url(#moon)"/><circle cx="470" cy="250" r="34" fill="#f3ead2"/>')
+    rr = random.Random(5)
+    def ridge(base, amp, fill, k):
+        pts = [f"{x} {base - amp*(math.sin(x/(70+k*15)+k)*.6 + math.sin(x/29)*.25 + rr.uniform(-.2, .2)):.0f}" for x in range(0, 621, 20)]
+        return f'<path d="M0 800L{"L".join(pts)}L600 800Z" fill="{fill}"/>'
+    b.append(ridge(330, 50, "#222a3c", 1)); b.append(ridge(380, 40, "#151a27", 2))
+    for (x, y, s) in [(80, 250, 1.1), (190, 300, .7), (540, 330, .8), (330, 280, .55)]:
+        b.append(f'<g transform="translate({x} {y}) scale({s})"><circle r="40" fill="url(#lg)"/><rect x="-10" y="-14" width="20" height="28" rx="7" fill="#f0a145"/>'
+                 f'<rect x="-7" y="-17" width="14" height="4" rx="1.5" fill="#5a2a12"/><rect x="-7" y="13" width="14" height="4" rx="1.5" fill="#5a2a12"/></g>')
+    b.append(rect(0, 400, 600, 400, "#0a0f18"))
+    # title
+    b.append(text(40, 120, "Tangled", "Dela Gothic One", 86, "#f6eddb", anchor="start", extra='filter="url(#k-drop)"'))
+    b.append(text(40, 214, "Paths", "Dela Gothic One", 86, "#f3d27a", anchor="start", extra='filter="url(#k-drop)"'))
+    dpath = ("M-.2 -.52C.25 -.62 .55 -.36 .62 -.3L1.02 -.16Q1.14 .02 1 .2L.62 .32C.4 .5 .1 .62 -.2 .56C-.62 .5 -.82 .2 -.8 -.02C-.78 -.3 -.55 -.48 -.2 -.52Z"
+             "M-.38 -.42Q-.78 -.82 -1.12 -.92Q-.8 -.6 -.66 -.22ZM-.02 -.5Q-.3 -.86 -.6 -1Q-.4 -.66 -.34 -.4ZM-.7 .05L-1.08 .22L-.72 .3L-1 .5L-.55 .44Z")
+    b.append(f'<g transform="translate(530 72) rotate(6)"><rect x="-34" y="-34" width="68" height="68" rx="7" fill="#c3301d"/>'
+             f'<rect x="-29" y="-29" width="58" height="58" rx="5" fill="none" stroke="#f7efdc" stroke-width="3"/>'
+             f'<path d="{dpath}" transform="translate(2 4) scale(21)" fill="#f7efdc"/></g>')
+    # tray (tilted corner)
+    T = 132
+    ox, oy = 14, 360
+    g = [f'<g transform="rotate(-8 300 560)">']
+    R = T * .36
+    g.append(f'<g filter="url(#k-drop)">{rect(ox - R, oy - R, 6*T, 6*T, "url(#rim)", 22)}</g>')
+    g.append(f'<rect x="{ox-R*.84:.0f}" y="{oy-R*.84:.0f}" width="{6*T}" height="{6*T}" rx="16" fill="none" stroke="#d9a93e" stroke-width="2.5"/>')
+    g.append(rect(ox - 8, oy - 8, 5*T, 5*T, "url(#lac)", 8))
+    for k in range(5):
+        for side in ("h", "v"):
+            pass
+    PT = [(1, 0), (2, 0), (3, 1), (3, 2), (2, 3), (1, 3), (0, 2), (0, 1)]
+    NRM = [(0, 1), (-1, 0), (0, -1), (1, 0)]
+    def bez(x0, y0, a, c):
+        A = (x0 + PT[a][0]*T/3, y0 + PT[a][1]*T/3); B = (x0 + PT[c][0]*T/3, y0 + PT[c][1]*T/3)
+        na, nb = NRM[a >> 1], NRM[c >> 1]; sa, sb = a >> 1, c >> 1
+        k = T*(.22 if abs(a-c) == 1 else .3) if sa == sb else (T*.36 if abs(sa-sb) == 2 else T*.38)
+        return f"M{A[0]:.1f} {A[1]:.1f}C{A[0]+na[0]*k:.1f} {A[1]+na[1]*k:.1f} {B[0]+nb[0]*k:.1f} {B[1]+nb[1]*k:.1f} {B[0]:.1f} {B[1]:.1f}"
+    # trails: orange along row 1 (7->3, 6->2, 7->3 ...), green down column 3 (0->5? use 1->4)
+    R1, G1 = "#d55e00", "#56b4e9"
+    trails = {(0, 1): [(7, 3, R1)], (1, 1): [(6, 2, R1)], (2, 1): [(7, 3, R1)], (3, 1): [(6, 2, R1)],
+              (4, 2): [(3, 7, G1)], (3, 2): [(2, 6, G1)], (2, 2): [(3, 7, G1)]}
+    filled = [(x, y) for y in range(4) for x in range(5)] 
+    empty = {(4, 1), (1, 2), (1, 0), (4, 3)}
+    for (x, y) in filled:
+        x0, y0 = ox + x*T, oy + y*T
+        if (x, y) in empty:
+            g.append(rect(x0 + 6, y0 + 6, T - 12, T - 12, "#0b0504", 8, 'stroke="#000" stroke-width="3"'))
+            continue
+        tr = trails.get((x, y), [])
+        used = set(); pairs = []
+        for a, c, col in tr: used |= {a, c}; pairs.append((a, c, col))
+        rest = [p for p in range(8) if p not in used]; rr.shuffle(rest)
+        while rest: a, c = rest.pop(), rest.pop(); pairs.insert(0, (a, c, None))
+        g.append(f'<g filter="url(#k-drop-s)">{rect(x0 + 4, y0 + 4, T - 8, T - 8, "url(#porc)", 11, "stroke=\"#8fb9a0\" stroke-width=\"4\"")}</g>')
+        g.append(f'<clipPath id="tp{x}{y}"><rect x="{x0+4}" y="{y0+4}" width="{T-8}" height="{T-8}" rx="11"/></clipPath><g clip-path="url(#tp{x}{y})">')
+        for a, c, col in pairs:
+            dd = bez(x0, y0, a, c)
+            g.append(f'<path d="{dd}" fill="none" stroke="#fcf7ea" stroke-width="{T*.17:.1f}"/>')
+            if col:
+                g.append(f'<path d="{dd}" fill="none" stroke="#24160c" stroke-width="{T*.108:.1f}"/><path d="{dd}" fill="none" stroke="#d9a93e" stroke-width="{T*.09:.1f}"/>'
+                         f'<path d="{dd}" fill="none" stroke="{col}" stroke-width="{T*.068:.1f}"/>')
+            else:
+                g.append(f'<path d="{dd}" fill="none" stroke="#5a4216" stroke-width="{T*.07:.1f}"/><path d="{dd}" fill="none" stroke="#d9a93e" stroke-width="{T*.046:.1f}"/>')
+        g.append('</g>')
+    def dragon(x, y, ang, col, num, ink, fx=1):
+        return (f'<g transform="translate({x} {y}) rotate({ang}) scale({28*fx} 28)" filter="url(#k-drop-s)"><path d="{dpath}" fill="{col}" stroke="#d9a93e" stroke-width=".12" stroke-linejoin="round"/>'
+                f'<ellipse cx=".42" cy="-.2" rx=".13" ry=".09" fill="#fff8e6"/><ellipse cx=".45" cy="-.2" rx=".035" ry=".075" fill="#111"/></g>'
+                f'<text x="{x-6}" y="{y+8}" text-anchor="middle" font-family="\'Zen Kaku Gothic New\'" font-weight="900" font-size="20" fill="{ink}">{num}</text>')
+    # orange dragon at end of its trail (tile 3,1 point 4 -> bottom), green dragon at (3,3) point 5 heading down
+    g.append(dragon(ox + 4*T + 12, oy + T + T/3, 0, R1, 1, "#fff"))
+    g.append(dragon(ox + 2*T - 12, oy + 2*T + T/3, 0, G1, 2, "#111", -1))
+    g.append('</g>')
+    b.append("".join(g))
+    b.append(rect(0, 744, 600, 56, "#17100e", 0, 'opacity=".92"'))
+    b.append(rect(0, 744, 600, 3, "#d9a93e"))
+    b.append(footer("Lay a tile, follow your path, stay on the board", "Zen Kaku Gothic New", "#f3d27a", 19, 0, 780, 700))
     return svg(d, "".join(b))
 
 

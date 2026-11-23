@@ -4,21 +4,53 @@ from kit import *
 
 
 def trivia_badges():
-    d = lin("tt", [(0, "#c084fc"), (.5, "#a855f7"), (1, "#f59e0b")], x2=1, y2=0) + rad("bg", [(0, "#24123f"), (1, "#0f0f1a")], cy="35%")
-    b = [rect(0, 0, 600, 800, "url(#bg)")]
-    b.append(text(300, 104, "TRIVIA", "Bebas Neue", 96, "url(#tt)", ls=10))
-    b.append(text(300, 194, "BADGE HUNTERS", "Bebas Neue", 84, "url(#tt)", ls=6))
-    b.append(text(300, 232, "THE MORE YOU KNOW…", "Nunito", 18, "#a99bd6", 900, ls=5))
-    badges = [("🌎", "#3b82f6", True), ("🧪", "#10b981", True), ("⚽", "#f59e0b", False), ("🎵", "#ec4899", True),
-              ("🏛️", "#a855f7", False), ("🐾", "#22c55e", True), ("💻", "#06b6d4", False), ("🍕", "#f97316", True), ("🚀", "#6366f1", False)]
-    for k, (e, col, got) in enumerate(badges):
-        r, c = divmod(k, 3)
-        cx, cy = 140 + c * 160, 330 + r * 148
-        b.append(f'<g filter="url(#k-drop)"><polygon points="{hexpts(cx, cy, 64, 30)}" fill="{col if got else "#1e1b33"}" stroke="{"#fbbf24" if got else "#2a2a4a"}" stroke-width="5"/></g>')
-        b.append(f'<g opacity="{1 if got else .3}">' + emoji(cx, cy + 18, e, 50) + "</g>")
-        if got:
-            b.append(f'<path d="M{cx-20} {cy+56} l -8 34 l 20 -10 l 8 18 l 8 -38 Z" fill="#fbbf24"/><path d="M{cx+20} {cy+56} l 8 34 l -20 -10 l -8 18 l -8 -38 Z" fill="#c2740b"/>')
-    b.append(footer("TEAMS · 20 CATEGORIES · A1–B2", "Nunito", "#fbbf24", 15, 4, 776, 900))
+    D, U = "Graduate", "Hanken Grotesk"
+    d = (lin("tsky", [(0, "#0b1622"), (.6, "#16302f"), (1, "#2a3a2c")])
+         + rad("tfire", [(0, "#ff963c55"), (1, "#ff963c00")], cx="50%", cy="100%", r="70%")
+         + lin("tsash", [(0, "#2a5fc4"), (1, "#173a80")], x2=1, y2=1)
+         + lin("taida", [(0, "#f1ebdb"), (1, "#dcd2b9")]))
+    rr = random.Random(9)
+    b = [rect(0, 0, 600, 800, "url(#tsky)"), stars(17, 70, "#fff", 380, (0.6, 1.7), (.25, .8))]
+    for col, base, hgt in (("#1a3a32", 470, 120), ("#132f29", 560, 150), ("#0f2622", 650, 190)):
+        x = -40
+        g = []
+        while x < 640:
+            h = hgt * rr.uniform(.7, 1.25); w = h * .42; y = base + rr.uniform(0, 30)
+            g.append(f'<path d="M{x} {y-h} l{w*.5:.0f} {h*.35:.0f} h-{w*.18:.0f} l{w*.38:.0f} {h*.3:.0f} h-{w*.2:.0f} l{w*.5:.0f} {h*.35:.0f} h-{w*2:.0f} l{w*.5:.0f} -{h*.35:.0f} h-{w*.2:.0f} l{w*.38:.0f} -{h*.3:.0f} h-{w*.18:.0f}z"/>')
+            x += w * rr.uniform(.9, 1.6)
+        b.append(f'<g fill="{col}">' + "".join(g) + f'<rect x="0" y="{base+20}" width="600" height="400"/></g>')
+    b.append(rect(0, 0, 600, 800, "url(#tfire)"))
+    b.append(text(300, 78, "Trivia", U, 34, "#b9c7b4", 800))
+    b.append(text(302, 152, "BADGE", D, 82, "#000", extra='opacity=".4"') + text(300, 148, "BADGE", D, 82, "#E9E2CF"))
+    b.append(text(302, 236, "HUNTERS", D, 72, "#000", extra='opacity=".4"') + text(300, 232, "HUNTERS", D, 72, "#E9E2CF"))
+
+    def patch(cx, cy, r, e, base, rim, dashed=True):
+        o = [f'<g filter="url(#k-drop-s)"><circle cx="{cx}" cy="{cy}" r="{r}" fill="{rim}"/>',
+             f'<circle cx="{cx}" cy="{cy}" r="{r-r*.05:.1f}" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="{r*.1:.1f}" stroke-dasharray="2.2 2.2"/>',
+             f'<circle cx="{cx}" cy="{cy}" r="{r*.86:.1f}" fill="{base}"/>']
+        if dashed:
+            o.append(f'<circle cx="{cx}" cy="{cy}" r="{r*.74:.1f}" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2" stroke-dasharray="5 4"/>')
+        o.append(emoji(cx, cy + r * .33, e, r * 0.95) + "</g>")
+        return "".join(o)
+    # felt sash across the poster
+    b.append('<g filter="url(#k-drop)" transform="rotate(-18 300 470)"><rect x="-60" y="380" width="720" height="190" fill="url(#tsash)"/>'
+             '<rect x="-60" y="392" width="720" height="166" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-dasharray="10 7"/></g>')
+    metals = {"b": "#B0703A", "s": "#AEB6C0", "g": "#DDAA2E"}
+    row = [("🌍", "#2D4F7C", "g"), ("🧬", "#2F5D50", "s"), ("⚽", "#3E5F2A", "b"), ("🎮", "#7A2E3A", "g")]
+    for k, (e, base, m) in enumerate(row):
+        t = math.radians(-18); x = 120 + k * 120; y = 470 + (x - 300) * math.tan(t)
+        b.append(patch(x, y, 50, e, base, metals[m]))
+    # a patch flying in, with a running stitch trail
+    b.append('<path d="M540 300 C560 240 470 220 460 280" fill="none" stroke="#f6e7b0" stroke-width="3" stroke-dasharray="6 6" opacity=".8"/>')
+    b.append(patch(520, 318, 40, "🚀", "#3B4A63", metals["g"]))
+    # aida strip with point cells
+    b.append(f'<g filter="url(#k-drop)">{rect(40, 646, 520, 100, "#9b6a3a", 12)}{rect(52, 656, 496, 80, "url(#taida)", 4)}</g>')
+    cols = ["#2E7D3E", "#2559A8", "#9C710A", "#C2561A", "#B3242C"]
+    for k, c in enumerate(cols):
+        x = 62 + k * 97
+        b.append(rect(x, 664, 88, 64, c, 8, 'fill-opacity=".08" stroke="' + c + '" stroke-width="2.5" stroke-dasharray="5 4"'))
+        b.append(text(x + 44, 709, (k + 1) * 100, D, 30, c))
+    b.append(text(300, 784, "Bet, answer, collect the badges", U, 20, "#d8e2cf", 700))
     return svg(d, "".join(b))
 
 

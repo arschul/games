@@ -288,7 +288,7 @@ const TriviaDB = (() => {
           q: "The city of Ouro Preto in Minas Gerais was the center of which historical economic cycle?",
           a: "Gold",
           wrong: ["Sugar", "Rubber", "Coffee"],
-          hint: "Its name literally means 'black gold'."
+          hint: "This cycle came after sugar and before coffee, in the 1700s."
         },
         {
           id: "BH-010", points: 300, cefr: "B1",
@@ -1251,7 +1251,7 @@ const TriviaDB = (() => {
           q: "In what year did Columbus first reach the Americas?",
           a: "1492",
           wrong: ["1500", "1488", "1510"],
-          hint: "'In 1492, Columbus sailed the ocean blue.'"
+          hint: "It happened in the late 1400s, before the year 1500."
         },
         {
           id: "WH-008", points: 200, cefr: "A2",
@@ -2041,7 +2041,7 @@ const TriviaDB = (() => {
           q: "In The Lion King, what is the name of Simba's evil uncle?",
           a: "Scar",
           wrong: ["Mufasa", "Shenzi", "Banzai"],
-          hint: "He has a distinctive scar over one eye."
+          hint: "He is the younger brother of Simba's father."
         },
         {
           id: "MS-007", points: 200, cefr: "B1",
@@ -2440,10 +2440,10 @@ const TriviaDB = (() => {
         },
         {
           id: "TI-003", points: 100, cefr: "B1",
-          q: "Which company created the Android operating system?",
+          q: "Which company owns and develops the Android operating system?",
           a: "Google",
           wrong: ["Samsung", "Apple", "Microsoft"],
-          hint: "It is now owned by Google's parent company, Alphabet."
+          hint: "It is an American company, but not the one that makes the iPhone."
         },
         {
           id: "TI-004", points: 200, cefr: "A2",
@@ -3011,7 +3011,7 @@ const TriviaDB = (() => {
           q: "What does a light-year actually measure?",
           a: "Distance",
           wrong: ["Time", "Speed", "Brightness of a star"],
-          hint: "It is the distance light travels in one year."
+          hint: "It has the word 'year' in its name, but it does not measure time."
         },
         {
           id: "SP-005", points: 100, cefr: "B1",
@@ -3223,10 +3223,10 @@ const TriviaDB = (() => {
         },
         {
           id: "FC-008", points: 200, cefr: "B1",
-          q: "From which country does the dish ramen (noodle soup) originate?",
+          q: "Ramen, the famous noodle soup, is part of the food culture of which country?",
           a: "Japan",
-          wrong: ["China", "South Korea", "Vietnam"],
-          hint: "It became iconic Japanese street food in the 20th century."
+          wrong: ["Thailand", "Vietnam", "Indonesia"],
+          hint: "This country also invented instant noodles, in 1958."
         },
         {
           id: "FC-009", points: 200, cefr: "B1",
